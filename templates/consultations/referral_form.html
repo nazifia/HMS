@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load core_form_tags %}
+
+{% block title %}Create Referral - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Create Referral for {{ consultation.patient.get_full_name }}</h1>
+        <a href="{% url 'consultations:doctor_consultation' consultation.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Consultation
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Referral Details</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.referred_to.id_for_label }}" class="form-label">Refer To</label>
+                            {{ form.referred_to|add_class:"form-control select2" }}
+                            {% if form.referred_to.errors %}
+                                <div class="text-danger">
+                                    {{ form.referred_to.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Select the doctor to refer the patient to.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.reason.id_for_label }}" class="form-label">Reason for Referral</label>
+                            {{ form.reason|add_class:"form-control" }}
+                            {% if form.reason.errors %}
+                                <div class="text-danger">
+                                    {{ form.reason.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Additional Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">
+                                    {{ form.notes.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'consultations:doctor_consultation' consultation.id %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i> Create Referral
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}

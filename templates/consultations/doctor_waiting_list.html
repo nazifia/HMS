@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load core_form_tags %}
+
+{% block title %}My Waiting Patients - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">My Waiting Patients</h1>
+        <a href="{% url 'consultations:doctor_dashboard' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="mb-0">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="consulting_room" class="form-label">Consulting Room</label>
+                        <select class="form-control select2" id="consulting_room" name="consulting_room">
+                            <option value="">All Rooms</option>
+                            {% for room in consulting_rooms %}
+                                <option value="{{ room.id }}" {% if consulting_room == room.id|stringformat:"s" %}selected{% endif %}>{{ room.room_number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter fa-sm"></i> Filter
+                        </button>
+                    </div>
+                    <div class="col-md-2 mb-3 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-primary w-100" id="refreshBtn">
+                            <i class="fas fa-sync-alt fa-sm"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Waiting Patients -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Patients Waiting for Consultation</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover" id="waitingListTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Room</th>
+                                    <th>Check-in Time</th>
+                                    <th>Wait Time</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in waiting_entries %}
+                                    <tr class="{% if entry.priority == 'emergency' %}table-danger{% elif entry.priority == 'urgent' %}table-warning{% endif %}">
+                                        <td>
+                                            <a href="{% url 'patients:detail' entry.patient.id %}">
+                                                {{ entry.patient.get_full_name }}
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">{{ entry.patient.patient_id }}</small>
+                                        </td>
+                                        <td>{{ entry.consulting_room.room_number }}</td>
+                                        <td>{{ entry.check_in_time|date:"M d, Y" }} at {{ entry.check_in_time|time:"h:i A" }}</td>
+                                        <td>
+                                            <span class="waiting-time" data-checkin="{{ entry.check_in_time|date:'c' }}">
+                                                Calculating...
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if entry.priority == 'normal' %}
+                                                <span class="badge bg-success">Normal</span>
+                                            {% elif entry.priority == 'urgent' %}
+                                                <span class="badge bg-warning">Urgent</span>
+                                            {% elif entry.priority == 'emergency' %}
+                                                <span class="badge bg-danger">Emergency</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if entry.status == 'waiting' %}
+                                                <span class="badge bg-warning">Waiting</span>
+                                            {% elif entry.status == 'in_progress' %}
+                                                <span class="badge bg-info">In Progress</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if entry.status == 'waiting' %}
+                                                <a href="{% url 'consultations:start_consultation' entry.id %}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-stethoscope"></i> Start Consultation
+                                                </a>
+                                            {% elif entry.status == 'in_progress' %}
+                                                {% if entry.consultation %}
+                                                    <a href="{% url 'consultations:doctor_consultation' entry.consultation.id %}" class="btn btn-sm btn-info">
+                                                        <i class="fas fa-edit"></i> Continue Consultation
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{% url 'consultations:start_consultation' entry.id %}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-stethoscope"></i> Start Consultation
+                                                    </a>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No patients waiting for consultation.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize select2 for better dropdown experience
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+
+        // Function to calculate and update waiting times
+        function updateWaitingTimes() {
+            $('.waiting-time').each(function() {
+                var checkinTime = new Date($(this).data('checkin'));
+                var now = new Date();
+                var diffMs = now - checkinTime;
+                var diffMins = Math.floor(diffMs / 60000);
+                var diffHrs = Math.floor(diffMins / 60);
+                diffMins = diffMins % 60;
+
+                var waitTimeText = '';
+                if (diffHrs > 0) {
+                    waitTimeText = diffHrs + 'h ' + diffMins + 'm';
+                    // Add warning class if waiting more than 1 hour
+                    if (diffHrs >= 1) {
+                        $(this).addClass('text-danger fw-bold');
+                    }
+                } else {
+                    waitTimeText = diffMins + ' minutes';
+                    // Add warning class if waiting more than 30 minutes
+                    if (diffMins >= 30) {
+                        $(this).addClass('text-warning fw-bold');
+                    }
+                }
+
+                $(this).text(waitTimeText);
+            });
+        }
+
+        // Initial update
+        updateWaitingTimes();
+
+        // Update every minute
+        setInterval(updateWaitingTimes, 60000);
+
+        // Refresh button
+        $('#refreshBtn').click(function() {
+            location.reload();
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Test Requests - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Test Requests</h4>
+                <a href="{% url 'laboratory:create_test_request' %}" class="btn btn-light">
+                    <i class="fas fa-plus"></i> Create Test Request
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-2 mb-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total</h5>
+                                <h2 class="mb-0">{{ total_requests }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Pending</h5>
+                                <h2 class="mb-0">{{ pending_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Collected</h5>
+                                <h2 class="mb-0">{{ collected_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <div class="card bg-secondary text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Processing</h5>
+                                <h2 class="mb-0">{{ processing_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Completed</h5>
+                                <h2 class="mb-0">{{ completed_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Cancelled</h5>
+                                <h2 class="mb-0">{{ cancelled_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Analytics Row -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="mb-2">Requests by Doctor Role</h5>
+                                <div class="d-flex flex-wrap">
+                                    {% for rc in role_counts %}
+                                        <span class="badge bg-secondary m-1">{{ rc.doctor__profile__role|default:'(None)' }}: {{ rc.count }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="mb-2">Recent Audit Logs</h5>
+                                {% if audit_logs %}
+                                    <ul class="list-group">
+                                        {% for log in audit_logs %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>{{ log.timestamp|date:'M d, Y H:i' }} - {{ log.user.get_full_name|default:log.user.username }}: {{ log.action_type|capfirst }}</span>
+                                                <span>{{ log.description }}</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <div class="alert alert-info mb-0">No recent audit logs.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Notifications Row -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="mb-2">Notifications</h5>
+                                {% if user_notifications %}
+                                    <ul class="list-group">
+                                        {% for n in user_notifications %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                {{ n.message }}
+                                                <span class="badge bg-secondary">{{ n.created_at|date:'M d, Y H:i' }}</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <div class="alert alert-info mb-0">No notifications for you.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search and Filter Form -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <label for="{{ search_form.search.id_for_label }}" class="form-label">Search</label>
+                                {{ search_form.search|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-2">
+                                <label for="{{ search_form.status.id_for_label }}" class="form-label">Status</label>
+                                {{ search_form.status|add_class:"form-select" }}
+                            </div>
+                            <div class="col-md-2">
+                                <label for="{{ search_form.priority.id_for_label }}" class="form-label">Priority</label>
+                                {{ search_form.priority|add_class:"form-select" }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ search_form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                                {{ search_form.doctor|add_class:"form-select select2" }}
+                            </div>
+                            <div class="col-md-3">
+                                <label for="{{ search_form.date_from.id_for_label }}" class="form-label">From Date</label>
+                                {{ search_form.date_from|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-3">
+                                <label for="{{ search_form.date_to.id_for_label }}" class="form-label">To Date</label>
+                                {{ search_form.date_to|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-6 d-flex justify-content-end align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{% url 'laboratory:test_requests' %}" class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Test Requests Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Tests</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in page_obj %}
+                                <tr class="{% if request.status == 'pending' %}table-warning{% elif request.status == 'collected' %}table-info{% elif request.status == 'processing' %}table-secondary{% elif request.status == 'completed' %}table-success{% elif request.status == 'cancelled' %}table-danger{% endif %}">
+                                    <td>{{ request.id }}</td>
+                                    <td>{{ request.request_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'patients:detail' request.patient.id %}">
+                                            {{ request.patient.get_full_name }}
+                                        </a>
+                                        <div class="small text-muted">{{ request.patient.patient_id }}</div>
+                                    </td>
+                                    <td>Dr. {{ request.doctor.get_full_name }}</td>
+                                    <td>{{ request.tests.count }}</td>
+                                    <td>
+                                        {% if request.priority == 'normal' %}
+                                            <span class="badge bg-success">Normal</span>
+                                        {% elif request.priority == 'urgent' %}
+                                            <span class="badge bg-warning">Urgent</span>
+                                        {% elif request.priority == 'emergency' %}
+                                            <span class="badge bg-danger">Emergency</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif request.status == 'collected' %}
+                                            <span class="badge bg-info">Sample Collected</span>
+                                        {% elif request.status == 'processing' %}
+                                            <span class="badge bg-secondary">Processing</span>
+                                        {% elif request.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif request.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'laboratory:test_request_detail' request.id %}" class="btn btn-info" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if request.status != 'completed' and request.status != 'cancelled' %}
+                                                <a href="{% url 'laboratory:create_test_result' request.id %}" class="btn btn-success" title="Add Result">
+                                                    <i class="fas fa-vial"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No test requests found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 for doctor dropdown
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}

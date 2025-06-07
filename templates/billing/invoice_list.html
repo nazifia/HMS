@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Invoices - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-file-invoice-dollar me-2"></i>Invoice List</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'billing:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-1"></i> Create New Invoice
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Search & Filter</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="{{ search_form.search.id_for_label }}" class="form-label">Search</label>
+                    {{ search_form.search|add_class:"form-control" }}
+                    <div class="form-text">Search by invoice number, patient name or patient ID</div>
+                </div>
+                <div class="col-md-3">
+                    <label for="{{ search_form.status.id_for_label }}" class="form-label">Status</label>
+                    {{ search_form.status|add_class:"form-select" }}
+                </div>
+                <div class="col-md-2">
+                    <label for="{{ search_form.date_from.id_for_label }}" class="form-label">From Date</label>
+                    {{ search_form.date_from|add_class:"form-control" }}
+                </div>
+                <div class="col-md-2">
+                    <label for="{{ search_form.date_to.id_for_label }}" class="form-label">To Date</label>
+                    {{ search_form.date_to|add_class:"form-control" }}
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Patient</th>
+                    <th>Patient ID</th>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                    <th>Paid</th>
+                    <th>Balance</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in page_obj %}
+                <tr>
+                    <td>{{ invoice.invoice_number }}</td>
+                    <td><a href="{% url 'patients:detail' invoice.patient.id %}">{{ invoice.patient.get_full_name }}</a></td>
+                    <td>{{ invoice.patient.patient_id }}</td>
+                    <td>{{ invoice.created_at|date:"M d, Y" }}</td>
+                    <td>{{ invoice.get_source_app_display|default:"N/A" }}</td>
+                    <td>{{ invoice.status|capfirst }}</td>
+                    <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
+                    <td>₦{{ invoice.amount_paid|floatformat:2 }}</td>
+                    <td>₦{{ invoice.get_balance|floatformat:2 }}</td>
+                    <td>
+                        <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-sm btn-primary">View</a>
+                        {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.get_balance > 0 %}
+                        <a href="{% url 'billing:payment' invoice.id %}" class="btn btn-sm btn-success">Record Payment</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="text-center">No invoices found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav>
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

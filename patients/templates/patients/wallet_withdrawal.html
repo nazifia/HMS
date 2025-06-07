@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+  {{ title }} | {{ block.super }}
+{% endblock title %}
+
+{% block page_title %}
+  {{ title }}
+{% endblock page_title %}
+
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:detail' patient.id %}">{{ patient.get_full_name }}</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:wallet_dashboard' patient.id %}">Wallet</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Withdraw Funds</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Withdraw Funds from Wallet</h6>
+            </div>
+            <div class="card-body">
+                <!-- Patient Info -->
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-user"></i> Patient Information</h6>
+                    <p class="mb-1"><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                    <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                    <p class="mb-0"><strong>Current Wallet Balance:</strong> <span class="text-success font-weight-bold">₦{{ wallet.balance|floatformat:2 }}</span></p>
+                </div>
+
+                <!-- Withdrawal Form -->
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ form.amount.label_tag }}
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.amount.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Available balance: ₦{{ wallet.balance|floatformat:2 }}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ form.withdrawal_method.label_tag }}
+                                {{ form.withdrawal_method }}
+                                {% if form.withdrawal_method.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.withdrawal_method.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        {{ form.description.label_tag }}
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="text-danger">
+                                {% for error in form.description.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Form Errors -->
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <p class="mb-0">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-minus"></i> Withdraw Funds
+                        </button>
+                        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Wallet Summary -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Wallet Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <i class="fas fa-wallet fa-3x text-gray-300 mb-3"></i>
+                    <h4 class="text-primary">₦{{ wallet.balance|floatformat:2 }}</h4>
+                    <p class="text-muted">Current Balance</p>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="text-success">
+                            <i class="fas fa-arrow-up"></i>
+                            <div class="font-weight-bold">₦{{ wallet.get_total_credits|floatformat:2 }}</div>
+                            <small>Total Credits</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-danger">
+                            <i class="fas fa-arrow-down"></i>
+                            <div class="font-weight-bold">₦{{ wallet.get_total_debits|floatformat:2 }}</div>
+                            <small>Total Debits</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Add Funds
+                    </a>
+                    <a href="{% url 'patients:wallet_transfer' patient.id %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-exchange-alt"></i> Transfer Funds
+                    </a>
+                    <a href="{% url 'patients:wallet_refund' patient.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-undo"></i> Process Refund
+                    </a>
+                    <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-dark btn-sm">
+                        <i class="fas fa-list"></i> View Transactions
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Important Notes -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-warning">Important Notes</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        <small>Withdrawal amount cannot exceed available balance</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-clock text-info"></i>
+                        <small>Cash withdrawals are processed immediately</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-university text-primary"></i>
+                        <small>Bank transfers may take 1-3 business days</small>
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-receipt text-success"></i>
+                        <small>All transactions are recorded and audited</small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for real-time balance validation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const amountInput = document.getElementById('id_amount');
+    const availableBalance = {{ wallet.balance }};
+    
+    if (amountInput) {
+        amountInput.addEventListener('input', function() {
+            const amount = parseFloat(this.value) || 0;
+            const balanceAfter = availableBalance - amount;
+            
+            // Remove existing feedback
+            const existingFeedback = this.parentNode.querySelector('.balance-feedback');
+            if (existingFeedback) {
+                existingFeedback.remove();
+            }
+            
+            // Add new feedback
+            if (amount > 0) {
+                const feedback = document.createElement('small');
+                feedback.className = 'form-text balance-feedback';
+                
+                if (amount > availableBalance) {
+                    feedback.className += ' text-danger';
+                    feedback.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Insufficient balance!';
+                } else {
+                    feedback.className += ' text-info';
+                    feedback.innerHTML = `<i class="fas fa-info-circle"></i> Balance after withdrawal: ₦${balanceAfter.toFixed(2)}`;
+                }
+                
+                this.parentNode.appendChild(feedback);
+            }
+        });
+    }
+});
+</script>
+{% endblock content %}

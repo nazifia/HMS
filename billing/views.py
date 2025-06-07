@@ -1,0 +1,504 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Q, Sum, F, Count
+from django.core.paginator import Paginator
+from django.utils import timezone
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+import csv
+from .models import Invoice, InvoiceItem, Payment, Service
+from .forms import InvoiceForm, InvoiceItemForm, PaymentForm, ServiceForm, InvoiceSearchForm
+from patients.models import Patient
+from appointments.models import Appointment
+from laboratory.models import TestRequest
+from pharmacy.models import Prescription
+from inpatient.models import Admission
+from core.audit_utils import log_audit_action
+from core.models import InternalNotification, send_notification_email
+
+@login_required
+def invoice_list(request):
+    """View for listing all invoices with search and filter functionality"""
+    search_form = InvoiceSearchForm(request.GET)
+    invoices = Invoice.objects.all().order_by('-created_at')
+
+    # Apply filters if the form is valid
+    if search_form.is_valid():
+        search_query = search_form.cleaned_data.get('search')
+        status = search_form.cleaned_data.get('status')
+        date_from = search_form.cleaned_data.get('date_from')
+        date_to = search_form.cleaned_data.get('date_to')
+
+        if search_query:
+            invoices = invoices.filter(
+                Q(invoice_number__icontains=search_query) |
+                Q(patient__first_name__icontains=search_query) |
+                Q(patient__last_name__icontains=search_query) |
+                Q(patient__patient_id__icontains=search_query)
+            )
+
+        if status:
+            invoices = invoices.filter(status=status)
+
+        if date_from:
+            invoices = invoices.filter(created_at__date__gte=date_from)
+
+        if date_to:
+            invoices = invoices.filter(created_at__date__lte=date_to)
+
+    # Pagination
+    paginator = Paginator(invoices, 10)  # Show 10 invoices per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Get counts for different statuses
+    pending_count = Invoice.objects.filter(status='pending').count()
+    paid_count = Invoice.objects.filter(status='paid').count()
+    partially_paid_count = Invoice.objects.filter(status='partially_paid').count()
+    overdue_count = Invoice.objects.filter(status='overdue').count()
+    cancelled_count = Invoice.objects.filter(status='cancelled').count()
+
+    # Get total amounts
+    total_amount = Invoice.objects.aggregate(total=Sum('total_amount'))['total'] or 0
+    paid_amount = Invoice.objects.filter(status='paid').aggregate(total=Sum('total_amount'))['total'] or 0
+    pending_amount = Invoice.objects.filter(status='pending').aggregate(total=Sum('total_amount'))['total'] or 0
+    overdue_amount = Invoice.objects.filter(status='overdue').aggregate(total=Sum('total_amount'))['total'] or 0
+
+    context = {
+        'page_obj': page_obj,
+        'search_form': search_form,
+        'total_invoices': invoices.count(),
+        'pending_count': pending_count,
+        'paid_count': paid_count,
+        'partially_paid_count': partially_paid_count,
+        'overdue_count': overdue_count,
+        'cancelled_count': cancelled_count,
+        'total_amount': total_amount,
+        'paid_amount': paid_amount,
+        'pending_amount': pending_amount,
+        'overdue_amount': overdue_amount,
+    }
+
+    return render(request, 'billing/invoice_list.html', context)
+
+@login_required
+def create_invoice(request):
+    """View for creating a new invoice"""
+    # Pre-fill patient_id if provided in GET parameters
+    patient_id = request.GET.get('patient_id')
+    initial_data = {}
+
+    if patient_id:
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            initial_data['patient'] = patient
+        except Patient.DoesNotExist:
+            pass
+
+    if request.method == 'POST':
+        form = InvoiceForm(request.POST)
+        if form.is_valid():
+            invoice = form.save(commit=False)
+            invoice.created_by = request.user
+            invoice.save()
+            # Audit log
+            log_audit_action(request.user, 'create', invoice, f"Created invoice {invoice.invoice_number}")
+            # Notification to billing/admin
+            InternalNotification.objects.create(
+                user=invoice.created_by,
+                message=f"Invoice {invoice.invoice_number} created for {invoice.patient.get_full_name()}"
+            )
+            send_notification_email(
+                subject="New Invoice Created",
+                message=f"Invoice {invoice.invoice_number} has been created for {invoice.patient.get_full_name()}.",
+                recipient_list=[invoice.created_by.email]
+            )
+            messages.success(request, f'Invoice {invoice.invoice_number} has been created successfully.')
+            return redirect('billing:detail', invoice_id=invoice.id)
+    else:
+        form = InvoiceForm(initial=initial_data)
+
+    context = {
+        'form': form,
+        'title': 'Create New Invoice'
+    }
+
+    return render(request, 'billing/invoice_form.html', context)
+
+@login_required
+def invoice_detail(request, invoice_id):
+    """View for displaying invoice details"""
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+    invoice_items = invoice.items.all()
+    payments = invoice.payments.all().order_by('-payment_date')
+
+    # Handle adding new invoice item
+    if request.method == 'POST' and 'add_item' in request.POST:
+        item_form = InvoiceItemForm(request.POST)
+        if item_form.is_valid():
+            item = item_form.save(commit=False)
+            item.invoice = invoice
+            # Calculate total price and save
+            item.save()
+
+            # Update invoice total amount
+            subtotal = invoice.items.aggregate(total=Sum('total_amount'))['total'] or 0
+            invoice.subtotal = subtotal
+            invoice.total_amount = subtotal + invoice.tax_amount - invoice.discount_amount
+            invoice.save()
+
+            messages.success(request, f'Item {item.description} added to invoice.')
+            return redirect('billing:detail', invoice_id=invoice.id)
+    else:
+        item_form = InvoiceItemForm()
+
+    context = {
+        'invoice': invoice,
+        'invoice_items': invoice_items,
+        'payments': payments,
+        'item_form': item_form,
+    }
+
+    return render(request, 'billing/invoice_detail.html', context)
+
+@login_required
+def edit_invoice(request, invoice_id):
+    """View for editing an invoice"""
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+
+    # Don't allow editing of paid or cancelled invoices
+    if invoice.status in ['paid', 'cancelled']:
+        messages.error(request, f'Cannot edit invoice with status: {invoice.get_status_display()}')
+        return redirect('billing:detail', invoice_id=invoice.id)
+
+    if request.method == 'POST':
+        form = InvoiceForm(request.POST, instance=invoice)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Invoice {invoice.invoice_number} has been updated successfully.')
+            return redirect('billing:detail', invoice_id=invoice.id)
+    else:
+        form = InvoiceForm(instance=invoice)
+
+    context = {
+        'form': form,
+        'invoice': invoice,
+        'title': f'Edit Invoice: {invoice.invoice_number}'
+    }
+
+    return render(request, 'billing/invoice_form.html', context)
+
+@login_required
+def delete_invoice(request, invoice_id):
+    """View for deleting an invoice"""
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+
+    # Don't allow deleting of paid invoices
+    if invoice.status == 'paid':
+        messages.error(request, 'Cannot delete a paid invoice.')
+        return redirect('billing:detail', invoice_id=invoice.id)
+
+    # Check if there are payments associated with this invoice
+    if invoice.payments.exists():
+        messages.error(request, 'Cannot delete an invoice with payments. Cancel it instead.')
+        return redirect('billing:detail', invoice_id=invoice.id)
+
+    if request.method == 'POST':
+        invoice_number = invoice.invoice_number
+        invoice.delete()
+        messages.success(request, f'Invoice {invoice_number} has been deleted.')
+        return redirect('billing:list')
+
+    context = {
+        'invoice': invoice
+    }
+
+    return render(request, 'billing/delete_invoice.html', context)
+
+@login_required
+def print_invoice(request, invoice_id):
+    """View for printing an invoice"""
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+    invoice_items = invoice.items.all()
+    payments = invoice.payments.all().order_by('-payment_date')
+
+    context = {
+        'invoice': invoice,
+        'invoice_items': invoice_items,
+        'payments': payments,
+        'print_view': True
+    }
+
+    return render(request, 'billing/print_invoice.html', context)
+
+@login_required
+def record_payment(request, invoice_id):
+    """View for recording a payment for an invoice"""
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+
+    # Calculate remaining amount
+    remaining_amount = invoice.get_balance()
+
+    if remaining_amount <= 0 and invoice.status == 'paid':
+        messages.info(request, 'This invoice has already been fully paid.')
+        return redirect('billing:detail', invoice_id=invoice.id)
+
+    if request.method == 'POST':
+        form = PaymentForm(request.POST)
+        if form.is_valid():
+            payment = form.save(commit=False)
+            payment.invoice = invoice
+            payment.received_by = request.user
+
+            # Validate payment amount
+            if payment.amount > remaining_amount:
+                messages.error(request, f'Payment amount exceeds the remaining balance of ₦{remaining_amount:.2f}.')
+            else:
+                payment.save()
+                # Audit log
+                log_audit_action(request.user, 'create', payment, f"Recorded payment of ₦{payment.amount:.2f} for invoice {invoice.invoice_number}")
+                # Notification to billing/admin
+                InternalNotification.objects.create(
+                    user=invoice.created_by,
+                    message=f"Payment of ₦{payment.amount:.2f} recorded for invoice {invoice.invoice_number}"
+                )
+                send_notification_email(
+                    subject="Payment Recorded",
+                    message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number}.",
+                    recipient_list=[invoice.created_by.email]
+                )
+                messages.success(request, f'Payment of ₦{payment.amount:.2f} recorded successfully.')
+                return redirect('billing:detail', invoice_id=invoice.id)
+    else:
+        # Pre-fill the amount with the remaining balance
+        form = PaymentForm(initial={
+            'amount': remaining_amount,
+            'payment_date': timezone.now().date(),
+            'payment_method': 'cash'
+        })
+
+    context = {
+        'form': form,
+        'invoice': invoice,
+        'remaining_amount': remaining_amount,
+        'title': f'Record Payment for Invoice #{invoice.invoice_number}'
+    }
+
+    return render(request, 'billing/payment_form.html', context)
+
+@login_required
+def service_list(request):
+    """View for listing all services"""
+    services = Service.objects.all().order_by('name')
+
+    if request.method == 'POST':
+        form = ServiceForm(request.POST)
+        if form.is_valid():
+            service = form.save()
+            messages.success(request, f'Service {service.name} has been added successfully.')
+            return redirect('billing:services')
+    else:
+        form = ServiceForm()
+
+    context = {
+        'services': services,
+        'form': form,
+        'title': 'Manage Services'
+    }
+
+    return render(request, 'billing/service_list.html', context)
+
+@login_required
+def add_service(request):
+    """Redirect to service_list view which handles both listing and adding"""
+    # The request parameter is required by the decorator but not used
+    return redirect('billing:services')
+
+@login_required
+def edit_service(request, service_id):
+    """View for editing a service"""
+    service = get_object_or_404(Service, id=service_id)
+
+    if request.method == 'POST':
+        form = ServiceForm(request.POST, instance=service)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Service {service.name} has been updated successfully.')
+            return redirect('billing:services')
+    else:
+        form = ServiceForm(instance=service)
+
+    context = {
+        'form': form,
+        'service': service,
+        'title': f'Edit Service: {service.name}'
+    }
+
+    return render(request, 'billing/service_form.html', context)
+
+@login_required
+def delete_service(request, service_id):
+    """View for deleting a service"""
+    service = get_object_or_404(Service, id=service_id)
+
+    # Check if service is used in any invoice items
+    if InvoiceItem.objects.filter(service=service).exists():
+        messages.error(request, f'Cannot delete service {service.name} because it is used in invoices.')
+        return redirect('billing:services')
+
+    if request.method == 'POST':
+        service.delete()
+        messages.success(request, f'Service {service.name} has been deleted.')
+        return redirect('billing:services')
+
+    context = {
+        'service': service
+    }
+
+    return render(request, 'billing/delete_service.html', context)
+
+@login_required
+def patient_invoices(request, patient_id):
+    """View for displaying invoices for a specific patient"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    invoices = Invoice.objects.filter(patient=patient).order_by('-created_at')
+
+    # Get total amounts
+    total_amount = invoices.aggregate(total=Sum('total_amount'))['total'] or 0
+    paid_amount = invoices.filter(status='paid').aggregate(total=Sum('total_amount'))['total'] or 0
+    pending_amount = invoices.filter(status__in=['pending', 'partially_paid', 'overdue']).aggregate(total=Sum('total_amount'))['total'] or 0
+
+    context = {
+        'patient': patient,
+        'invoices': invoices,
+        'total_amount': total_amount,
+        'paid_amount': paid_amount,
+        'pending_amount': pending_amount,
+    }
+
+    return render(request, 'billing/patient_invoices.html', context)
+
+@login_required
+def billing_reports(request):
+    """View for billing summary and reporting"""
+    # Revenue by month (last 12 months)
+    from django.utils import timezone
+    from datetime import timedelta
+    today = timezone.now().date()
+    months = []
+    revenue_data = []
+    for i in range(11, -1, -1):
+        month = (today.replace(day=1) - timedelta(days=30*i)).replace(day=1)
+        next_month = (month + timedelta(days=32)).replace(day=1)
+        total = Invoice.objects.filter(
+            invoice_date__gte=month,
+            invoice_date__lt=next_month,
+            status__in=['paid', 'partially_paid']
+        ).aggregate(total=Sum('total_amount'))['total'] or 0
+        months.append(month.strftime('%b %Y'))
+        revenue_data.append(float(total))
+    # Outstanding balances
+    outstanding = Invoice.objects.filter(status__in=['pending', 'partially_paid', 'overdue']).aggregate(total=Sum('total_amount'))['total'] or 0
+    # Invoice count by status
+    status_counts = Invoice.objects.values('status').annotate(count=Count('id'))
+    # Revenue by department (ServiceCategory)
+    from billing.models import ServiceCategory
+    dept_revenue = (
+        InvoiceItem.objects
+        .values('service__category__name')
+        .annotate(total=Sum('total_amount'))
+        .order_by('-total')
+    )
+    # Revenue by service
+    service_revenue = (
+        InvoiceItem.objects
+        .values('service__name')
+        .annotate(total=Sum('total_amount'))
+        .order_by('-total')
+    )
+    # Revenue by provider (created_by)
+    provider_revenue = (
+        Invoice.objects
+        .values('created_by__username')
+        .annotate(total=Sum('total_amount'))
+        .order_by('-total')
+    )
+    context = {
+        'months': months,
+        'revenue_data': revenue_data,
+        'outstanding': outstanding,
+        'status_counts': status_counts,
+        'dept_revenue': dept_revenue,
+        'service_revenue': service_revenue,
+        'provider_revenue': provider_revenue,
+        'page_title': 'Billing Reports',
+    }
+    return render(request, 'billing/billing_reports.html', context)
+
+@login_required
+def export_billing_report_csv(request):
+    """Export billing report as CSV (by department, service, provider)"""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="billing_report.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Type', 'Name', 'Total'])
+    # Department
+    for row in InvoiceItem.objects.values('service__category__name').annotate(total=Sum('total_amount')).order_by('-total'):
+        writer.writerow(['Department', row['service__category__name'] or 'Uncategorized', row['total']])
+    # Service
+    for row in InvoiceItem.objects.values('service__name').annotate(total=Sum('total_amount')).order_by('-total'):
+        writer.writerow(['Service', row['service__name'] or 'Custom/Other', row['total']])
+    # Provider
+    for row in Invoice.objects.values('created_by__username').annotate(total=Sum('total_amount')).order_by('-total'):
+        writer.writerow(['Provider', row['created_by__username'] or 'Unknown', row['total']])
+    return response
+
+@login_required
+def create_invoice_for_prescription(request, prescription_id):
+    """Create an invoice for a prescription if not already created."""
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+    if hasattr(prescription, 'invoice') and prescription.invoice:
+        messages.info(request, 'Invoice already exists for this prescription.')
+        return redirect('billing:invoice_detail', invoice_id=prescription.invoice.id)
+
+    # You may want to select a Service for dispensing medication
+    service = Service.objects.filter(name__icontains='Medication Dispensing').first()
+    if not service:
+        messages.error(request, 'Medication Dispensing service not found. Please create it in Billing > Services.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+    # Calculate total from prescription items
+    items = prescription.items.all()
+    subtotal = sum(item.medication.price * item.quantity for item in items)
+    tax_amount = (subtotal * service.tax_percentage) / 100
+    total = subtotal + tax_amount
+
+    invoice = Invoice.objects.create(
+        patient=prescription.patient,
+        status='pending',
+        total_amount=total,
+        subtotal=subtotal,
+        tax_amount=tax_amount,
+        created_by=request.user,
+        prescription=prescription
+    )
+    # Link invoice to prescription if not already linked
+    prescription.invoice = invoice
+    prescription.save()
+
+    # Add invoice items
+    for item in items:
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            service=service,
+            description=f"{item.medication.name} x {item.quantity}",
+            quantity=item.quantity,
+            unit_price=item.medication.price,
+            tax_percentage=service.tax_percentage,
+            tax_amount=(item.medication.price * item.quantity * service.tax_percentage) / 100,
+            total_amount=(item.medication.price * item.quantity) + ((item.medication.price * item.quantity * service.tax_percentage) / 100)
+        )
+
+    messages.success(request, f'Invoice created for prescription #{prescription.id}.')
+    return redirect('billing:invoice_detail', invoice_id=invoice.id)

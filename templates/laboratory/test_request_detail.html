@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% load billing_tags %} {# Assuming you might create billing_tags later for invoice status #}
+
+{% block title %}Test Request Details - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Test Request Details</h4>
+                <div>
+                    {% if test_request.status == 'payment_confirmed' or test_request.status == 'sample_collected' or test_request.status == 'processing' %}
+                        <a href="{% url 'laboratory:create_test_result' test_request.id %}" class="btn btn-success me-2">
+                            <i class="fas fa-vial"></i> Add Test Result
+                        </a>
+                    {% elif test_request.status == 'awaiting_payment' and test_request.invoice %}
+                        <a href="{% url 'billing:detail' test_request.invoice.id %}" class="btn btn-warning me-2">
+                            <i class="fas fa-file-invoice-dollar"></i> View Invoice ({{ test_request.invoice.status|capfirst }})
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Request Information -->
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Request Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Request ID:</div>
+                            <div class="col-md-8">{{ test_request.id }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Request Date:</div>
+                            <div class="col-md-8">{{ test_request.request_date|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Status:</div>
+                            <div class="col-md-8">
+                                {% if test_request.status == 'pending' %}
+                                    <span class="badge bg-secondary">Pending Initial Review</span>
+                                {% elif test_request.status == 'awaiting_payment' %}
+                                    <span class="badge bg-warning text-dark">Awaiting Payment</span>
+                                    {% if test_request.invoice %}
+                                        <a href="{% url 'billing:detail' test_request.invoice.id %}" class="badge bg-primary ms-1">View Invoice</a>
+                                    {% endif %}
+                                {% elif test_request.status == 'payment_confirmed' %}
+                                    <span class="badge bg-success">Payment Confirmed</span>
+                                {% elif test_request.status == 'sample_collected' %}
+                                    <span class="badge bg-info">Sample Collected</span>
+                                {% elif test_request.status == 'processing' %}
+                                    <span class="badge bg-info text-dark">Processing</span>
+                                {% elif test_request.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif test_request.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Priority:</div>
+                            <div class="col-md-8">
+                                {% if test_request.priority == 'normal' %}
+                                    <span class="badge bg-success">Normal</span>
+                                {% elif test_request.priority == 'urgent' %}
+                                    <span class="badge bg-warning">Urgent</span>
+                                {% elif test_request.priority == 'emergency' %}
+                                    <span class="badge bg-danger">Emergency</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Created By:</div>
+                            <div class="col-md-8">{{ test_request.created_by.get_full_name|default:test_request.created_by.username }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Notes:</div>
+                            <div class="col-md-8">{{ test_request.notes|default:"No notes provided." }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Invoice (debug):</div>
+                            <div class="col-md-8">{{ test_request.invoice }}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Patient & Doctor Information -->
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Patient & Doctor Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient:</div>
+                            <div class="col-md-8">
+                                <a href="{% url 'patients:detail' test_request.patient.id %}">
+                                    {{ test_request.patient.get_full_name }}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient ID:</div>
+                            <div class="col-md-8">{{ test_request.patient.patient_id }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Gender:</div>
+                            <div class="col-md-8">{{ test_request.patient.get_gender_display }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Age:</div>
+                            <div class="col-md-8">{{ test_request.patient.age }} years</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Doctor:</div>
+                            <div class="col-md-8">Dr. {{ test_request.doctor.get_full_name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Department:</div>
+                            <div class="col-md-8">{{ test_request.doctor.profile.department|default:"Not specified" }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Requested Tests -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Requested Tests</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Test Name</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for test_obj in tests %}
+                                        <tr>
+                                            <td>{{ test_obj.name }}</td>
+                                            <td>{{ test_obj.category.name|default:"N/A" }}</td>
+                                            <td>₦{{ test_obj.price|floatformat:2 }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-primary fw-bold">
+                                        <td colspan="2" class="text-end">Total Estimated Price:</td>
+                                        <td>₦{{ test_request.get_total_price|floatformat:2 }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test Results -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Test Results</h5>
+                        {% if results %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Test</th>
+                                            <th>Result Date</th>
+                                            <th>Sample Collection</th>
+                                            <th>Performed By</th>
+                                            <th>Verified By</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for result in results %}
+                                            <tr>
+                                                <td>{{ result.test.name }}</td>
+                                                <td>{{ result.result_date|date:"M d, Y" }}</td>
+                                                <td>
+                                                    {% if result.sample_collection_date %}
+                                                        {{ result.sample_collection_date|date:"M d, Y H:i" }}
+                                                        <div class="small text-muted">({{ result.sample_collection_date|timesince }} ago)</div>
+                                                    {% else %}
+                                                        <span class="text-muted">Not yet collected</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ result.performed_by.get_full_name }}</td>
+                                                <td>{{ result.verified_by.get_full_name }}</td>
+                                                <td>
+                                                    <a href="{% url 'laboratory:result_detail' result.id %}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </a>
+                                                    {# Add other action buttons if needed, e.g., Edit, Print #}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                        {% else %}
+                            <p>No test results available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

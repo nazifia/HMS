@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ doctor.get_full_name }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Doctor Profile</h1>
+        <a href="{% url 'doctors:doctor_list' %}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Doctors
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Doctor Profile Card -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Doctor Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if doctor.user.profile.profile_picture %}
+                            <img src="{{ doctor.user.profile.profile_picture.url }}" alt="{{ doctor.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <img src="/static/img/undraw_profile.svg" alt="{{ doctor.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% endif %}
+                    </div>
+                    <h4 class="text-center text-primary mb-3">{{ doctor.get_full_name }}</h4>
+
+                    <!-- Rating -->
+                    <div class="text-center mb-3">
+                        {% if avg_rating %}
+                            <div class="text-warning">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= avg_rating|floatformat:"0" %}
+                                        <i class="fas fa-star"></i>
+                                    {% elif forloop.counter <= avg_rating|add:"0.5"|floatformat:"0" %}
+                                        <i class="fas fa-star-half-alt"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="text-muted ml-1">({{ review_count }} reviews)</span>
+                            </div>
+                        {% else %}
+                            <div class="text-muted">No reviews yet</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Specialization</h6>
+                        <p>{{ doctor.specialization.name }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Department</h6>
+                        <p>{{ doctor.department.name }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Experience</h6>
+                        <p>{{ doctor.get_experience_display_value }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Qualification</h6>
+                        <p>{{ doctor.qualification }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Consultation Fee</h6>
+                        <p>${{ doctor.consultation_fee }}</p>
+                    </div>
+
+                    {% if doctor.bio %}
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">About</h6>
+                        <p>{{ doctor.bio }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="text-center mt-4">
+                        <a href="{% url 'appointments:create' %}?doctor_id={{ doctor.user.id }}" class="btn btn-primary">
+                            <i class="fas fa-calendar-plus mr-1"></i> Book Appointment
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Details Tabs -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <ul class="nav nav-tabs card-header-tabs" id="doctorTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button" role="tab" aria-controls="schedule" aria-selected="true">Schedule</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="education-tab" data-bs-toggle="tab" data-bs-target="#education" type="button" role="tab" aria-controls="education" aria-selected="false">Education</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="experience-tab" data-bs-toggle="tab" data-bs-target="#experience" type="button" role="tab" aria-controls="experience" aria-selected="false">Experience</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="false">Reviews</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="doctorTabsContent">
+                        <!-- Schedule Tab -->
+                        <div class="tab-pane fade show active" id="schedule" role="tabpanel" aria-labelledby="schedule-tab">
+                            <h5 class="font-weight-bold mb-3">Weekly Schedule</h5>
+                            {% if availability %}
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Day</th>
+                                                <th>Time</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for slot in availability %}
+                                                <tr>
+                                                    <td>{{ slot.get_weekday_display }}</td>
+                                                    <td>{{ slot.start_time|time:"g:i A" }} - {{ slot.end_time|time:"g:i A" }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No schedule information available.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Education Tab -->
+                        <div class="tab-pane fade" id="education" role="tabpanel" aria-labelledby="education-tab">
+                            <h5 class="font-weight-bold mb-3">Educational Background</h5>
+                            {% if education %}
+                                <div class="timeline">
+                                    {% for edu in education %}
+                                        <div class="timeline-item">
+                                            <div class="timeline-marker"></div>
+                                            <div class="timeline-content">
+                                                <h6 class="font-weight-bold">{{ edu.degree }}</h6>
+                                                <p class="mb-0">{{ edu.institution }}</p>
+                                                <p class="text-muted small">{{ edu.year_of_completion }}</p>
+                                                {% if edu.additional_info %}
+                                                    <p>{{ edu.additional_info }}</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No education information available.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Experience Tab -->
+                        <div class="tab-pane fade" id="experience" role="tabpanel" aria-labelledby="experience-tab">
+                            <h5 class="font-weight-bold mb-3">Work Experience</h5>
+                            {% if experience %}
+                                <div class="timeline">
+                                    {% for exp in experience %}
+                                        <div class="timeline-item">
+                                            <div class="timeline-marker"></div>
+                                            <div class="timeline-content">
+                                                <h6 class="font-weight-bold">{{ exp.position }}</h6>
+                                                <p class="mb-0">{{ exp.hospital_name }}</p>
+                                                <p class="text-muted small">
+                                                    {{ exp.start_date|date:"M Y" }} -
+                                                    {% if exp.end_date %}
+                                                        {{ exp.end_date|date:"M Y" }}
+                                                    {% else %}
+                                                        Present
+                                                    {% endif %}
+                                                </p>
+                                                {% if exp.description %}
+                                                    <p>{{ exp.description }}</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No experience information available.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Reviews Tab -->
+                        <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="font-weight-bold">Patient Reviews</h5>
+                                {% if user.is_authenticated and not user_review and review_form %}
+                                    <a href="{% url 'doctors:submit_review' doctor.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-star mr-1"></i> Write a Review
+                                    </a>
+                                {% endif %}
+                            </div>
+
+                            {% if reviews %}
+                                {% for review in reviews %}
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <h6 class="font-weight-bold mb-0">{{ review.patient.get_full_name }}</h6>
+                                                <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                                            </div>
+                                            <div class="text-warning mb-2">
+                                                {% for i in "12345" %}
+                                                    {% if forloop.counter <= review.rating %}
+                                                        <i class="fas fa-star"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                            <p class="mb-0">{{ review.review_text }}</p>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">No reviews available yet.</p>
+                            {% endif %}
+
+                            {% if user_review %}
+                                <div class="card bg-light mt-4">
+                                    <div class="card-body">
+                                        <h6 class="font-weight-bold">Your Review</h6>
+                                        <div class="text-warning mb-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= user_review.rating %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <p class="mb-0">{{ user_review.review_text }}</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    /* Timeline styling */
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: -30px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background-color: #4e73df;
+        top: 5px;
+    }
+    .timeline-item:not(:last-child):before {
+        content: '';
+        position: absolute;
+        left: -23px;
+        width: 2px;
+        height: calc(100% + 30px);
+        background-color: #e3e6f0;
+        top: 5px;
+    }
+</style>
+{% endblock %}

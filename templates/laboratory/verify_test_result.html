@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load laboratory_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You are about to verify the test result for <strong>{{ result.test.name }}</strong> for patient <strong>{{ result.test_request.patient.get_full_name }}</strong>.
+                    This action cannot be undone.
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Test Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Patient:</strong> {{ result.test_request.patient.get_full_name }}</p>
+                            <p><strong>Test:</strong> {{ result.test.name }}</p>
+                            <p><strong>Sample Type:</strong> {{ result.test.get_sample_type_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Request Date:</strong> {{ result.test_request.request_date|date:"M d, Y" }}</p>
+                            <p><strong>Result Date:</strong> {{ result.result_date|date:"M d, Y" }}</p>
+                            <p><strong>Performed By:</strong> {{ result.performed_by.get_full_name }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Test Parameters</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Value</th>
+                                    <th>Normal Range</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for parameter in result.parameters.all %}
+                                    <tr>
+                                        <td>{{ parameter.parameter.name }}</td>
+                                        <td>{{ parameter.value }} {{ parameter.parameter.unit }}</td>
+                                        <td>{{ parameter.parameter.normal_range }}</td>
+                                        <td>{{ parameter.is_normal|result_status_badge }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Notes</h5>
+                    <p>{{ result.notes|default:"No notes provided." }}</p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'laboratory:result_detail' result.id %}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check-circle me-1"></i> Verify Result
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

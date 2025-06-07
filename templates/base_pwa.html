@@ -1,0 +1,18 @@
+{# templates/base_pwa.html #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hospital Management System{% endblock %}</title>
+    <link rel="manifest" href="/pwa-manifest.json">
+    <meta name="theme-color" content="#1976d2">
+    <link rel="icon" href="/static/icons/icon-192x192.png">
+    <script src="/static/js/pwa.js" defer></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <noscript><div style="background:#ffc107;color:#222;text-align:center;padding:8px;">This app works best with JavaScript enabled.</div></noscript>
+    {% block content %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hospital Management System{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+    <!-- Custom CSS -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
+    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
+
+    {% block extra_css %}{% endblock %}
+    <style>
+        /* Responsive sidebar integrated into main content */
+        .main-layout {
+            display: flex;
+            flex-direction: row;
+            min-height: 100vh;
+            width: 100vw;
+            background: #f8f9fc;
+        }
+        .sidebar-responsive {
+            width: 250px;
+            min-width: 220px;
+            max-width: 300px;
+            background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
+            color: #fff;
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+            z-index: 1050;
+            min-height: 100vh;
+            height: auto;
+            background-repeat: repeat-y;
+        }
+        .sidebar-collapsed {
+            transform: translateX(-100%);
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: auto;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
+            background-repeat: repeat-y;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 1040;
+        }
+        .sidebar-toggle-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #23272b;
+            margin-right: 1rem;
+        }
+        .content-area {
+            flex: 1;
+            width: 100%;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fc;
+            min-height: 100vh;
+        }
+        #content {
+            flex: 1 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 1rem;
+        }
+        .container-fluid {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+        @media (max-width: 991.98px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .sidebar-responsive {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: auto;
+                min-height: 100vh;
+                transform: translateX(-100%);
+                box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+                background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
+                background-repeat: repeat-y;
+            }
+            .sidebar-open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.active {
+                display: block;
+            }
+            .sidebar-toggle-btn {
+                display: inline-block;
+            }
+        }
+        /* Topbar custom style */
+        .topbar {
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            border-radius: 0 0 12px 12px;
+            padding: 0.5rem 2rem;
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+        .topbar .navbar-brand {
+            font-weight: 700;
+            color: #00bfff !important;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+        }
+        .topbar .nav-link, .topbar .fa {
+            color: #23272b !important;
+            font-size: 1.1rem;
+        }
+        .topbar .nav-link:hover {
+            color: #00bfff !important;
+        }
+        /* Footer custom style */
+        footer, .footer {
+            flex-shrink: 0;
+            background: #fff;
+            color: #23272b;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+            border-radius: 12px 12px 0 0;
+            padding: 1rem 2rem;
+            text-align: center;
+            font-size: 1rem;
+            margin-top: auto;
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+        }
+        /* Responsive tweaks */
+        @media (max-width: 991.98px) {
+            .topbar, footer, .footer {
+                padding: 0.5rem 1rem;
+                border-radius: 0;
+            }
+        }
+        @media (max-width: 600px) {
+            .topbar, footer, .footer {
+                padding: 0.5rem 0.5rem;
+                font-size: 0.95rem;
+            }
+            .topbar .navbar-brand {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+    <script>
+        // Sidebar toggle for mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar-responsive');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('sidebar-open');
+            overlay.classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar-responsive').classList.remove('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.remove('active');
+        }
+    </script>
+    {% block extra_head %}
+    {{ block.super }}
+    <!-- Additional head content here -->
+    {% endblock %}
+</head>
+<body id="page-top">
+
+    <!-- Page Wrapper -->
+    <div class="main-layout">
+        <!-- Sidebar -->
+        {% if user.is_authenticated %}
+            <div id="sidebar-responsive" class="sidebar-responsive">
+                {% include 'includes/sidebar.html' %}
+            </div>
+            <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+        {% endif %}
+        <!-- Content Wrapper -->
+        <div class="content-area">
+            <!-- Main Content -->
+            <div id="content" style="width:100%;">
+                <!-- Topbar -->
+                <div class="topbar">
+                    {% if user.is_authenticated %}
+                        <button class="sidebar-toggle-btn d-lg-none" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                    {% endif %}
+                    {% include 'includes/topbar.html' %}
+                    
+                </div>
+                <!-- Begin Page Content -->
+                <div class="container-fluid px-0">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    {% block content %}
+                        {% if 'bot' not in request.META.HTTP_USER_AGENT|default:''|lower %}
+                            <div id="offline-banner"></div>
+                        {% endif %}
+                        <!-- BEGIN: Patient Widget -->
+                        {% if patient %}
+                        <div class="card mb-4" id="patient-widget">
+                            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Patient Quick Info</h5>
+                                <span class="badge bg-primary">ID: {{ patient.patient_id }}</span>
+                                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#patientModal">
+                                    <i class="fas fa-info-circle"></i> More
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Name:</strong> {{ patient.get_full_name }}<br>
+                                        <strong>Gender:</strong> {{ patient.get_gender_display }}<br>
+                                        <strong>Age:</strong> {{ age }}<br>
+                                        <strong>Phone:</strong> {{ patient.phone_number }}<br>
+                                        <strong>Email:</strong> {{ patient.email|default:'-' }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>City:</strong> {{ patient.city|default:'-' }}<br>
+                                        <strong>Blood Group:</strong> {{ patient.blood_group|default:'-' }}<br>
+                                        <strong>Status:</strong> {% if patient.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}<br>
+                                        <strong>Registered:</strong> {{ patient.registration_date|date:'M d, Y' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Patient Modal -->
+                        <div class="modal fade" id="patientModal" tabindex="-1" aria-labelledby="patientModalLabel" aria-hidden="true">
+                          <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                              <div class="modal-header bg-info text-white">
+                                <h5 class="modal-title" id="patientModalLabel">Patient Full Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body">
+                                <div class="row mb-2">
+                                  <div class="col-md-6">
+                                    <strong>Name:</strong> {{ patient.get_full_name }}<br>
+                                    <strong>Patient ID:</strong> {{ patient.patient_id }}<br>
+                                    <strong>Gender:</strong> {{ patient.get_gender_display }}<br>
+                                    <strong>Age:</strong> {{ age }}<br>
+                                    <strong>Phone:</strong> {{ patient.phone_number }}<br>
+                                    <strong>Email:</strong> {{ patient.email|default:'-' }}<br>
+                                    <strong>City:</strong> {{ patient.city|default:'-' }}<br>
+                                    <strong>Address:</strong> {{ patient.address|default:'-' }}<br>
+                                  </div>
+                                  <div class="col-md-6">
+                                    <strong>Blood Group:</strong> {{ patient.blood_group|default:'-' }}<br>
+                                    <strong>Status:</strong> {% if patient.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}<br>
+                                    <strong>Registered:</strong> {{ patient.registration_date|date:'M d, Y' }}<br>
+                                    <strong>Last Updated:</strong> {{ patient.updated_at|date:'M d, Y H:i' }}<br>
+                                    <strong>Created By:</strong> {{ patient.created_by.get_full_name|default:patient.created_by.username }}<br>
+                                    <strong>Updated By:</strong> {{ patient.updated_by.get_full_name|default:patient.updated_by.username }}<br>
+                                  </div>
+                                </div>
+                                <div class="row">
+                                  <div class="col-12">
+                                    <strong>Notes:</strong> {{ patient.notes|default:'No notes'|linebreaks }}
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {% endif %}
+                        <!-- END: Patient Widget -->
+                        {% if medical_history_form %}
+                        <!-- BEGIN: Add Medical History Widget -->
+                        <div class="modal fade" id="addMedicalHistoryModal" tabindex="-1" aria-labelledby="addMedicalHistoryModalLabel" aria-hidden="true">
+                          <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                              <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="addMedicalHistoryModalLabel">Add Medical History for {{ patient.get_full_name }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="modal-body">
+                                  <div class="mb-3">
+                                    {{ medical_history_form.non_field_errors }}
+                                  </div>
+                                  <div class="row g-3">
+                                    <div class="col-md-6">
+                                      <div class="form-group mb-2">
+                                        <label for="id_condition">Condition</label>
+                                        {{ medical_history_form.condition }}
+                                      </div>
+                                      <div class="form-group mb-2">
+                                        <label for="id_date">Date</label>
+                                        {{ medical_history_form.date }}
+                                      </div>
+                                      <div class="form-group mb-2">
+                                        <label for="id_doctor_name">Doctor Name</label>
+                                        {{ medical_history_form.doctor_name }}
+                                      </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                      <div class="form-group mb-2">
+                                        <label for="id_notes">Notes</label>
+                                        {{ medical_history_form.notes }}
+                                      </div>
+                                      <div class="form-group mb-2">
+                                        <label for="id_attachments">Attachments</label>
+                                        {{ medical_history_form.attachments }}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="modal-footer">
+                                  <button type="submit" name="add_medical_history" class="btn btn-primary">Add Medical History</button>
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                        <!-- END: Add Medical History Widget -->
+                        {% endif %}
+                        <!-- Radiology Requests Widget -->
+                {% if user.is_authenticated %}
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-info shadow-sm">
+                            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-x-ray me-2"></i>Recent Radiology Requests</h5>
+                                <a href="{% url 'radiology:index' %}" class="btn btn-sm btn-light">View All</a>
+                            </div>
+                            <div class="card-body p-3">
+                                {% if recent_radiology_orders %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Patient</th>
+                                                    <th>Test</th>
+                                                    <th>Status</th>
+                                                    <th>Requested</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for order in recent_radiology_orders %}
+                                                <tr>
+                                                    <td>{{ order.patient.get_full_name }}</td>
+                                                    <td>{{ order.test.name }}</td>
+                                                    <td>{{ order.get_status_display }}</td>
+                                                    <td>{{ order.order_date|date:'M d, Y H:i' }}</td>
+                                                    <td><a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-sm btn-outline-primary">Details</a></td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="text-muted">No recent radiology requests.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                <!-- End Radiology Requests Widget -->
+                
+                {{ block.super }}
+                    {% endblock %}
+                </div>
+                <!-- /.container-fluid -->
+            </div>
+            <!-- End of Main Content -->
+            <!-- Footer -->
+            <footer class="footer w-100 mt-auto bg-light text-center py-2" style="position:fixed; left:0; bottom:0; width:100%; z-index:1000;">
+                <div class="container">
+                    <span class="text-muted">&copy; {{ year|default:2025 }} Hospital Management System. All rights reserved.</span>
+                </div>
+            </footer>
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- jQuery Easing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+    <!-- Custom JS -->
+    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/sidebar.js' %}"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

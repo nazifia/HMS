@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Patients - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-user-injured me-2"></i>Patient List</h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'patients:register' %}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-1"></i> Register New Patient
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Search & Filter</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'patients:list' %}" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="id_search" class="form-label">Search</label>
+                        {{ search_form.search|add_class:"form-control" }}
+                    </div>
+                    <div class="col-md-2">
+                        <label for="id_gender" class="form-label">Gender</label>
+                        {{ search_form.gender|add_class:"form-select" }}
+                    </div>
+                    <div class="col-md-2">
+                        <label for="id_blood_group" class="form-label">Blood Group</label>
+                        {{ search_form.blood_group|add_class:"form-select" }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_city" class="form-label">City</label>
+                        {{ search_form.city|add_class:"form-control" }}
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_date_from" class="form-label">Registration Date From</label>
+                        {{ search_form.date_from|add_class:"form-control" }}
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_date_to" class="form-label">Registration Date To</label>
+                        {{ search_form.date_to|add_class:"form-control" }}
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                        <a href="{% url 'patients:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-redo me-1"></i> Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Patients</h5>
+                <span class="badge bg-light text-dark">Total: {{ total_patients }}</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Gender</th>
+                                <th>Age</th>
+                                <th>Phone</th>
+                                <th>Registration Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patient in page_obj %}
+                                <tr>
+                                    <td>{{ patient.patient_id }}</td>
+                                    <td>{{ patient.get_full_name }}</td>
+                                    <td>{{ patient.get_gender_display }}</td>
+                                    <td>{{ patient.get_age }}</td>
+                                    <td>{{ patient.phone_number }}</td>
+                                    <td>{{ patient.registration_date|date:"d M Y" }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-info" data-bs-toggle="tooltip" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary" data-bs-toggle="tooltip" title="Edit Patient">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'patients:delete' patient.id %}" class="btn btn-danger" data-bs-toggle="tooltip" title="Delete Patient">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                            <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success" data-bs-toggle="tooltip" title="View Wallet">
+                                                <i class="fas fa-wallet"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No patients found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

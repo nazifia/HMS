@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Manage Education - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Manage Education</h1>
+        <a href="{% url 'doctors:doctor_profile' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Profile
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Add Education Form -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Add Education</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.degree.id_for_label }}" class="form-label">Degree *</label>
+                            {{ form.degree|add_class:"form-control" }}
+                            {% if form.degree.errors %}
+                                <div class="text-danger">{{ form.degree.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.institution.id_for_label }}" class="form-label">Institution *</label>
+                            {{ form.institution|add_class:"form-control" }}
+                            {% if form.institution.errors %}
+                                <div class="text-danger">{{ form.institution.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.year_of_completion.id_for_label }}" class="form-label">Year of Completion *</label>
+                            {{ form.year_of_completion|add_class:"form-control" }}
+                            {% if form.year_of_completion.errors %}
+                                <div class="text-danger">{{ form.year_of_completion.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.additional_info.id_for_label }}" class="form-label">Additional Information</label>
+                            {{ form.additional_info|add_class:"form-control" }}
+                            {% if form.additional_info.errors %}
+                                <div class="text-danger">{{ form.additional_info.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle mr-1"></i> Add Education
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Education List -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Education History</h6>
+                </div>
+                <div class="card-body">
+                    {% if education %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="educationTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Degree</th>
+                                        <th>Institution</th>
+                                        <th>Year</th>
+                                        <th>Additional Info</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for edu in education %}
+                                        <tr>
+                                            <td>{{ edu.degree }}</td>
+                                            <td>{{ edu.institution }}</td>
+                                            <td>{{ edu.year_of_completion }}</td>
+                                            <td>{{ edu.additional_info|default:"-" }}</td>
+                                            <td>
+                                                <form method="post" action="{% url 'doctors:delete_education' edu.id %}">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this education entry?');">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-0">No education history found.</p>
+                            <p class="text-muted">Add your educational background to enhance your profile.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#educationTable').DataTable({
+            "order": [[2, "desc"]]
+        });
+    });
+</script>
+{% endblock %}

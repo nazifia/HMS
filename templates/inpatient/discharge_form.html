@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Patient Information</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th style="width: 30%">Patient Name</th>
+                                <td>{{ admission.patient.get_full_name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Patient ID</th>
+                                <td>{{ admission.patient.patient_id }}</td>
+                            </tr>
+                            <tr>
+                                <th>Admission Date</th>
+                                <td>{{ admission.admission_date|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Ward/Bed</th>
+                                <td>
+                                    {% if admission.bed %}
+                                        {{ admission.bed.ward.name }} / {{ admission.bed.bed_number }}
+                                    {% else %}
+                                        <span class="text-muted">Not assigned</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Diagnosis</th>
+                                <td>{{ admission.diagnosis }}</td>
+                            </tr>
+                            <tr>
+                                <th>Duration</th>
+                                <td>{{ admission.get_duration }} days</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.discharge_date.id_for_label }}" class="form-label">Discharge Date & Time</label>
+                                {{ form.discharge_date|add_class:"form-control" }}
+                                {% if form.discharge_date.errors %}
+                                    <div class="text-danger">
+                                        {{ form.discharge_date.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.status.id_for_label }}" class="form-label">Discharge Status</label>
+                                {{ form.status|add_class:"form-select" }}
+                                {% if form.status.errors %}
+                                    <div class="text-danger">
+                                        {{ form.status.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="{{ form.discharge_notes.id_for_label }}" class="form-label">Discharge Notes</label>
+                                {{ form.discharge_notes|add_class:"form-control" }}
+                                {% if form.discharge_notes.errors %}
+                                    <div class="text-danger">
+                                        {{ form.discharge_notes.errors }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Include discharge summary, follow-up instructions, medications, etc.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i> Back to Admission
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i> Complete Discharge
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

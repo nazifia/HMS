@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Schedule - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Delete Schedule</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    You are about to delete the following schedule:
+                </div>
+                
+                <div class="text-center mb-4">
+                    <i class="fas fa-calendar-times fa-5x text-danger mb-3"></i>
+                    <h5>Schedule for Dr. {{ schedule.doctor.get_full_name }}</h5>
+                    <p class="text-muted">
+                        {{ schedule.get_weekday_display }} from 
+                        {{ schedule.start_time|time:"h:i A" }} to 
+                        {{ schedule.end_time|time:"h:i A" }}
+                    </p>
+                </div>
+                
+                <p class="mb-4">
+                    This action will delete the schedule. The doctor will no longer be available for appointments during this time.
+                    This action cannot be undone.
+                </p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'appointments:manage_doctor_schedule' doctor_id=schedule.doctor.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> No, Go Back
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Yes, Delete Schedule
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}My Doctor Profile - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">My Doctor Profile</h1>
+        <a href="{% url 'dashboard:dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Profile Information -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Profile Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if doctor.user.profile.profile_picture %}
+                            <img src="{{ doctor.user.profile.profile_picture.url }}" alt="{{ doctor.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <img src="/static/img/undraw_profile.svg" alt="{{ doctor.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% endif %}
+                    </div>
+                    <h4 class="text-center text-primary mb-3">{{ doctor.get_full_name }}</h4>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Email</h6>
+                        <p>{{ doctor.user.email }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Phone</h6>
+                        <p>{{ doctor.user.profile.phone_number }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Specialization</h6>
+                        <p>{{ doctor.specialization.name|default:"Not specified" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Department</h6>
+                        <p>{{ doctor.department.name|default:"Not specified" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">License Number</h6>
+                        <p>{{ doctor.license_number }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Experience</h6>
+                        <p>{{ doctor.get_experience_display_value }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Consultation Fee</h6>
+                        <p>${{ doctor.consultation_fee }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold">Status</h6>
+                        <p>
+                            {% if doctor.available_for_appointments %}
+                                <span class="badge bg-success text-white">Available for Appointments</span>
+                            {% else %}
+                                <span class="badge bg-danger text-white">Not Available</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Edit Profile Form -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Edit Profile</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.specialization.id_for_label }}" class="form-label">Specialization *</label>
+                                {{ form.specialization|add_class:"form-select" }}
+                                {% if form.specialization.errors %}
+                                    <div class="text-danger">{{ form.specialization.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.department.id_for_label }}" class="form-label">Department *</label>
+                                {{ form.department|add_class:"form-select" }}
+                                {% if form.department.errors %}
+                                    <div class="text-danger">{{ form.department.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.license_number.id_for_label }}" class="form-label">License Number *</label>
+                                {{ form.license_number|add_class:"form-control" }}
+                                {% if form.license_number.errors %}
+                                    <div class="text-danger">{{ form.license_number.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.experience.id_for_label }}" class="form-label">Experience *</label>
+                                {{ form.experience|add_class:"form-select" }}
+                                {% if form.experience.errors %}
+                                    <div class="text-danger">{{ form.experience.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.qualification.id_for_label }}" class="form-label">Qualification *</label>
+                                {{ form.qualification|add_class:"form-control" }}
+                                {% if form.qualification.errors %}
+                                    <div class="text-danger">{{ form.qualification.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.consultation_fee.id_for_label }}" class="form-label">Consultation Fee *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.consultation_fee|add_class:"form-control" }}
+                                </div>
+                                {% if form.consultation_fee.errors %}
+                                    <div class="text-danger">{{ form.consultation_fee.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.bio.id_for_label }}" class="form-label">Bio</label>
+                            {{ form.bio|add_class:"form-control" }}
+                            {% if form.bio.errors %}
+                                <div class="text-danger">{{ form.bio.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.signature.id_for_label }}" class="form-label">Signature</label>
+                                {{ form.signature|add_class:"form-control" }}
+                                {% if form.signature.errors %}
+                                    <div class="text-danger">{{ form.signature.errors }}</div>
+                                {% endif %}
+                                {% if doctor.signature %}
+                                    <div class="mt-2">
+                                        <img src="{{ doctor.signature.url }}" alt="Signature" style="max-width: 200px; max-height: 100px;">
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    {{ form.available_for_appointments }}
+                                    <label class="form-check-label" for="{{ form.available_for_appointments.id_for_label }}">
+                                        Available for Appointments
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Quick Links -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Links</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'doctors:manage_availability' %}" class="btn btn-primary btn-block">
+                                <i class="fas fa-calendar-alt mr-1"></i> Manage Availability
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'doctors:request_leave' %}" class="btn btn-primary btn-block">
+                                <i class="fas fa-calendar-minus mr-1"></i> Request Leave
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'doctors:manage_education' %}" class="btn btn-primary btn-block">
+                                <i class="fas fa-graduation-cap mr-1"></i> Manage Education
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'doctors:manage_experience' %}" class="btn btn-primary btn-block">
+                                <i class="fas fa-briefcase mr-1"></i> Manage Experience
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

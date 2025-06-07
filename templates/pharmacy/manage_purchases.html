@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ title }}</h4>
+                <div>
+                    <a href="{% url 'pharmacy:add_purchase' %}" class="btn btn-light me-2">
+                        <i class="fas fa-plus"></i> Add Purchase
+                    </a>
+                    <a href="{% url 'pharmacy:inventory' %}" class="btn btn-light">
+                        <i class="fas fa-arrow-left"></i> Back to Inventory
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Purchases Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Invoice #</th>
+                                <th>Supplier</th>
+                                <th>Items</th>
+                                <th>Total Amount</th>
+                                <th>Payment Status</th>
+                                <th>Approval Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for purchase in purchases %}
+                                <tr>
+                                    <td>{{ purchase.id }}</td>
+                                    <td>{{ purchase.purchase_date|date:"M d, Y" }}</td>
+                                    <td>{{ purchase.invoice_number }}</td>
+                                    <td>{{ purchase.supplier.name }}</td>
+                                    <td>{{ purchase.items.count }}</td>
+                                    <td>${{ purchase.total_amount }}</td>
+                                    <td>
+                                        {% if purchase.payment_status == 'paid' %}
+                                            <span class="badge bg-success">Paid</span>
+                                        {% elif purchase.payment_status == 'partial' %}
+                                            <span class="badge bg-warning">Partial</span>
+                                        {% elif purchase.payment_status == 'pending' %}
+                                            <span class="badge bg-danger">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if purchase.approval_status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif purchase.approval_status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif purchase.approval_status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% elif purchase.approval_status == 'draft' %}
+                                            <span class="badge bg-secondary">Draft</span>
+                                        {% elif purchase.approval_status == 'cancelled' %}
+                                            <span class="badge bg-dark">Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-info" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if purchase.approval_status == 'pending' and user == purchase.current_approver %}
+                                                <a href="{% url 'pharmacy:approve_purchase' purchase.id %}" class="btn btn-success" title="Approve">
+                                                    <i class="fas fa-check"></i>
+                                                </a>
+                                                <a href="{% url 'pharmacy:reject_purchase' purchase.id %}" class="btn btn-danger" title="Reject">
+                                                    <i class="fas fa-times"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center">No purchases found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

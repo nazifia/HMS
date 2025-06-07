@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ patient.get_full_name }} - Medical History{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Medical History</h1>
+        <div>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#medicalHistoryModal">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Add New Entry
+            </button>
+            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Patient
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-2 text-center">
+                    {% if patient.profile_picture %}
+                        <img src="{{ patient.profile_picture.url }}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                    {% else %}
+                        <img src="{% static 'img/undraw_profile.svg' %}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                    {% endif %}
+                </div>
+                <div class="col-md-5">
+                    <h4>{{ patient.get_full_name }}</h4>
+                    <p class="mb-0"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                    <p class="mb-0"><strong>Gender:</strong> {{ patient.get_gender_display }}</p>
+                    <p class="mb-0"><strong>Age:</strong> {{ patient.get_age }} years</p>
+                </div>
+                <div class="col-md-5">
+                    <p class="mb-0"><strong>Date of Birth:</strong> {{ patient.date_of_birth|date:"F d, Y" }}</p>
+                    <p class="mb-0"><strong>Phone:</strong> {{ patient.phone_number }}</p>
+                    <p class="mb-0"><strong>Blood Group:</strong> {{ patient.blood_group|default:"Not specified" }}</p>
+                    <p class="mb-0"><strong>Registration Date:</strong> {{ patient.registration_date|date:"F d, Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medical History Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Medical History Records</h6>
+        </div>
+        <div class="card-body">
+            {% if medical_histories %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="medicalHistoryTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Diagnosis</th>
+                                <th>Treatment</th>
+                                <th>Doctor</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for history in medical_histories %}
+                            <tr>
+                                <td>{{ history.date|date:"M d, Y" }}</td>
+                                <td>{{ history.diagnosis }}</td>
+                                <td>{{ history.treatment|truncatechars:50 }}</td>
+                                <td>{{ history.doctor_name }}</td>
+                                <td>{{ history.notes|default:"-"|truncatechars:50 }}</td>
+                                <td>
+                                    <a href="{% url 'patients:edit_medical_history' history.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <a href="{% url 'patients:delete_medical_history' history.id %}" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle mr-1"></i> No medical history records found for this patient.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Medical History Timeline -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Medical History Timeline</h6>
+        </div>
+        <div class="card-body">
+            {% if medical_histories %}
+                <div class="timeline">
+                    {% for history in medical_histories %}
+                        <div class="timeline-item mb-4">
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="timeline-date">
+                                        <h5 class="mb-0">{{ history.date|date:"M d, Y" }}</h5>
+                                        <small class="text-muted">{{ history.created_at|timesince }} ago</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-10">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">{{ history.diagnosis }}</h6>
+                                            <small class="text-muted">Doctor: {{ history.doctor_name }}</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6>Treatment:</h6>
+                                            <p>{{ history.treatment }}</p>
+                                            
+                                            {% if history.notes %}
+                                                <h6>Notes:</h6>
+                                                <p>{{ history.notes }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-footer bg-light">
+                                            <div class="btn-group">
+                                                <a href="{% url 'patients:edit_medical_history' history.id %}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                <a href="{% url 'patients:delete_medical_history' history.id %}" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle mr-1"></i> No medical history records found for this patient.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Medical History Modal -->
+<div class="modal fade" id="medicalHistoryModal" tabindex="-1" aria-labelledby="medicalHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="medicalHistoryModalLabel">Add Medical History for {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'patients:detail' patient.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="add_medical_history" value="1">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_date">Date</label>
+                            <input type="date" name="date" id="id_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_doctor_name">Doctor</label>
+                            <input type="text" name="doctor_name" id="id_doctor_name" class="form-control" value="Dr. {{ request.user.get_full_name }}" required>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="id_diagnosis">Diagnosis</label>
+                            <input type="text" name="diagnosis" id="id_diagnosis" class="form-control" required>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="id_treatment">Treatment</label>
+                            <textarea name="treatment" id="id_treatment" rows="3" class="form-control" required></textarea>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="id_notes">Notes</label>
+                            <textarea name="notes" id="id_notes" rows="3" class="form-control"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Medical History</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize DataTable
+        if ($.fn.dataTable) {
+            $('#medicalHistoryTable').DataTable({
+                "order": [[0, "desc"]]
+            });
+        }
+    });
+</script>
+
+{% block extra_css %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 4px;
+        background: #e9ecef;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+    }
+    
+    .timeline-date {
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+{% endblock %}

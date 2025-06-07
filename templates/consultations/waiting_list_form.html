@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load core_form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'consultations:waiting_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Waiting List
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Details</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Patient</label>
+                            {{ form.patient|add_class:"form-control select2" }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">
+                                    {{ form.patient.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                                {{ form.doctor|add_class:"form-control select2" }}
+                                {% if form.doctor.errors %}
+                                    <div class="text-danger">
+                                        {{ form.doctor.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.consulting_room.id_for_label }}" class="form-label">Consulting Room</label>
+                                {{ form.consulting_room|add_class:"form-control select2" }}
+                                {% if form.consulting_room.errors %}
+                                    <div class="text-danger">
+                                        {{ form.consulting_room.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.appointment.id_for_label }}" class="form-label">Appointment (Optional)</label>
+                                {{ form.appointment|add_class:"form-control select2" }}
+                                {% if form.appointment.errors %}
+                                    <div class="text-danger">
+                                        {{ form.appointment.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">Priority</label>
+                                {{ form.priority|add_class:"form-control select2" }}
+                                {% if form.priority.errors %}
+                                    <div class="text-danger">
+                                        {{ form.priority.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">
+                                    {{ form.notes.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'consultations:waiting_list' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Add to Waiting List
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+
+        // When patient changes, update appointment options
+        $('#id_patient').change(function() {
+            var patientId = $(this).val();
+            if (patientId) {
+                // You could make an AJAX call here to get appointments for this patient
+                // For now, we'll just clear the current selection
+                $('#id_appointment').val(null).trigger('change');
+            }
+        });
+
+        // When doctor changes, update consulting room options
+        $('#id_doctor').change(function() {
+            var doctorId = $(this).val();
+            if (doctorId) {
+                // You could make an AJAX call here to get rooms for this doctor
+                // For now, we'll just clear the current selection
+                $('#id_consulting_room').val(null).trigger('change');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ title }}</h4>
+                <div>
+                    <button onclick="window.print()" class="btn btn-light me-2">
+                        <i class="fas fa-print me-1"></i> Print Report
+                    </button>
+                    <a href="{% url 'pharmacy:inventory' %}" class="btn btn-light">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Inventory
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <form method="get" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="warning_days" class="form-label">Warning Period (Days)</label>
+                            <input type="number" class="form-control" id="warning_days" name="warning_days" value="{{ warning_days }}" min="1" max="365">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter me-1"></i> Apply Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Showing medications that will expire between <strong>{{ today|date:"M d, Y" }}</strong> and <strong>{{ warning_date|date:"M d, Y" }}</strong> ({{ warning_days }} days).
+                </div>
+                
+                {% if expired_medications %}
+                    <h5 class="mt-4 mb-3 text-danger">Expired Medications</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Category</th>
+                                    <th>Expiry Date</th>
+                                    <th>Stock Quantity</th>
+                                    <th>Status</th>
+                                    <th class="no-print">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for medication in expired_medications %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ medication.name }}</strong>
+                                            {% if medication.generic_name %}
+                                                <br><small class="text-muted">{{ medication.generic_name }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ medication.category.name }}</td>
+                                        <td class="text-danger">{{ medication.expiry_date|date:"M d, Y" }}</td>
+                                        <td>{{ medication.stock_quantity }}</td>
+                                        <td>{{ medication|stock_status_badge }}</td>
+                                        <td class="no-print">
+                                            <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+                
+                {% if expiring_medications %}
+                    <h5 class="mt-4 mb-3 text-warning">Expiring Soon</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Category</th>
+                                    <th>Expiry Date</th>
+                                    <th>Days Until Expiry</th>
+                                    <th>Stock Quantity</th>
+                                    <th class="no-print">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for medication in expiring_medications %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ medication.name }}</strong>
+                                            {% if medication.generic_name %}
+                                                <br><small class="text-muted">{{ medication.generic_name }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ medication.category.name }}</td>
+                                        <td>{{ medication.expiry_date|date:"M d, Y" }}</td>
+                                        <td>{{ medication.expiry_date|days_until_expiry }} days</td>
+                                        <td>{{ medication.stock_quantity }}</td>
+                                        <td class="no-print">
+                                            <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-success mt-4">
+                        <i class="fas fa-check-circle me-2"></i>
+                        No medications are expiring within the next {{ warning_days }} days.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        .card-header {
+            background-color: #fff !important;
+            color: #000 !important;
+            border-bottom: 1px solid #ddd !important;
+        }
+        
+        .table {
+            width: 100% !important;
+        }
+    }
+</style>
+{% endblock %}

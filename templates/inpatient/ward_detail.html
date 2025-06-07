@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ title }}</h4>
+                <div>
+                    <a href="{% url 'inpatient:edit_ward' ward.id %}" class="btn btn-light me-2">
+                        <i class="fas fa-edit me-1"></i> Edit Ward
+                    </a>
+                    <a href="{% url 'inpatient:add_bed' %}?ward_id={{ ward.id }}" class="btn btn-light">
+                        <i class="fas fa-plus-circle me-1"></i> Add Bed
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Ward Information</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th style="width: 30%">Name</th>
+                                <td>{{ ward.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Type</th>
+                                <td>{{ ward.get_ward_type_display }}</td>
+                            </tr>
+                            <tr>
+                                <th>Floor</th>
+                                <td>{{ ward.floor }}</td>
+                            </tr>
+                            <tr>
+                                <th>Capacity</th>
+                                <td>{{ ward.capacity }} beds</td>
+                            </tr>
+                            <tr>
+                                <th>Charge Per Day</th>
+                                <td>₦{{ ward.charge_per_day }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>
+                                    {% if ward.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Description</th>
+                                <td>{{ ward.description|default:"No description provided" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Bed Statistics</h5>
+                        <div class="row text-center">
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body">
+                                        <h3>{{ total_beds }}</h3>
+                                        <p class="mb-0">Total Beds</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body">
+                                        <h3>{{ available_beds }}</h3>
+                                        <p class="mb-0">Available</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-danger text-white">
+                                    <div class="card-body">
+                                        <h3>{{ occupied_beds }}</h3>
+                                        <p class="mb-0">Occupied</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-secondary text-white">
+                                    <div class="card-body">
+                                        <h3>{{ inactive_beds }}</h3>
+                                        <p class="mb-0">Inactive</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress mt-3 mb-4" style="height: 25px;">
+                            {% with occupancy_percentage=occupied_beds|default:0|floatformat:0 %}
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ occupancy_percentage }}%;" 
+                                     aria-valuenow="{{ occupancy_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ occupancy_percentage }}% Occupied
+                                </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+                
+                <h5 class="border-bottom pb-2 mb-3">Beds in {{ ward.name }}</h5>
+                {% if beds %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Bed Number</th>
+                                    <th>Status</th>
+                                    <th>Description</th>
+                                    <th>Current Patient</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bed in beds %}
+                                    <tr>
+                                        <td>{{ bed.bed_number }}</td>
+                                        <td>
+                                            {% if not bed.is_active %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% elif bed.is_occupied %}
+                                                <span class="badge bg-danger">Occupied</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Available</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ bed.description|default:"No description" }}</td>
+                                        <td>
+                                            {% if bed.is_occupied %}
+                                                {% with current_admission=bed.admissions.filter.first %}
+                                                    {% if current_admission %}
+                                                        <a href="{% url 'inpatient:admission_detail' current_admission.id %}">
+                                                            {{ current_admission.patient.get_full_name }}
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="text-muted">Unknown</span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            {% else %}
+                                                <span class="text-muted">None</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{% url 'inpatient:edit_bed' bed.id %}" class="btn btn-sm btn-secondary">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                {% if not bed.is_occupied %}
+                                                    <a href="{% url 'inpatient:delete_bed' bed.id %}" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </a>
+                                                {% endif %}
+                                                {% if not bed.is_occupied and bed.is_active %}
+                                                    <a href="{% url 'inpatient:create_admission' %}?bed_id={{ bed.id }}" class="btn btn-sm btn-success">
+                                                        <i class="fas fa-procedures"></i> Admit Patient
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No beds have been added to this ward yet.
+                        <a href="{% url 'inpatient:add_bed' %}?ward_id={{ ward.id }}" class="alert-link">Add a bed now</a>.
+                    </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{% url 'inpatient:wards' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Wards
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

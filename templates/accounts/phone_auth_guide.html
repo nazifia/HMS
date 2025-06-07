@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Phone Authentication Guide - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Phone Number Authentication Guide</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    The HMS system now uses phone numbers for authentication. This guide explains how to use this feature.
+                </div>
+
+                <h5 class="mt-4">Logging in with Phone Number</h5>
+                <p>
+                    You can now log in to the HMS system using your registered phone number instead of your username.
+                    Simply enter your phone number in the login form and your password.
+                </p>
+                <div class="card bg-light p-3 mb-4">
+                    <strong>Example:</strong>
+                    <ul>
+                        <li>Phone Number: 9876543210</li>
+                        <li>Password: [Your regular password]</li>
+                    </ul>
+                </div>
+
+                <h5 class="mt-4">Benefits of Phone Number Authentication</h5>
+                <ul>
+                    <li>Easier to remember than usernames</li>
+                    <li>More secure as phone numbers are unique</li>
+                    <li>Faster login process</li>
+                    <li>Enables SMS-based password recovery (coming soon)</li>
+                </ul>
+
+                <h5 class="mt-4">Updating Your Phone Number</h5>
+                <p>
+                    To update your phone number:
+                </p>
+                <ol>
+                    <li>Log in to your account</li>
+                    <li>Go to your profile page</li>
+                    <li>Click on "Edit Profile"</li>
+                    <li>Update your phone number</li>
+                    <li>Save changes</li>
+                </ol>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important:</strong> Make sure your phone number is unique and not used by another user in the system.
+                </div>
+
+                <h5 class="mt-4">Fallback to Username</h5>
+                <p>
+                    If you forget your phone number, you can still log in using your username as a fallback option.
+                </p>
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'accounts:login' %}" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-2"></i> Go to Login Page
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

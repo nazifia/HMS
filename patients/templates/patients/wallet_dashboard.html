@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {{ title }} | {{ block.super }}
+{% endblock title %}
+
+{% block page_title %}
+  {{ title }}
+{% endblock page_title %}
+
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:detail' patient.id %}">{{ patient.get_full_name }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Wallet Dashboard</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="row">
+    <!-- Wallet Overview Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Current Balance</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ wallet.balance|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Credits Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Total Credits</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_credits|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-arrow-up fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Debits Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                            Total Debits</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_debits|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-arrow-down fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Activity Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Monthly Net</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            ₦{{ monthly_credits|add:monthly_debits|floatformat:2 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Info and Quick Actions -->
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Patient Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                        <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                        <p><strong>Phone:</strong> {{ patient.phone_number }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Email:</strong> {{ patient.email|default:"Not provided" }}</p>
+                        <p><strong>Registration Date:</strong> {{ patient.registration_date|date:"Y-m-d" }}</p>
+                        <p><strong>Wallet Status:</strong> 
+                            {% if wallet.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Add Funds
+                    </a>
+                    <a href="{% url 'patients:wallet_withdrawal' patient.id %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-minus"></i> Withdraw Funds
+                    </a>
+                    <a href="{% url 'patients:wallet_transfer' patient.id %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-exchange-alt"></i> Transfer Funds
+                    </a>
+                    <a href="{% url 'patients:wallet_refund' patient.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-undo"></i> Process Refund
+                    </a>
+                    <a href="{% url 'patients:wallet_adjustment' patient.id %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-edit"></i> Make Adjustment
+                    </a>
+                    <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-dark btn-sm">
+                        <i class="fas fa-list"></i> View All Transactions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Transactions</h6>
+                <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-primary btn-sm">
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Balance After</th>
+                                    <th>Description</th>
+                                    <th>Reference</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in recent_transactions %}
+                                <tr>
+                                    <td>{{ transaction.created_at|date:"Y-m-d H:i:s" }}</td>
+                                    <td>
+                                        {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
+                                            <span class="badge bg-success">{{ transaction.get_transaction_type_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ transaction.get_transaction_type_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
+                                            <span class="text-success">+₦{{ transaction.amount|floatformat:2 }}</span>
+                                        {% else %}
+                                            <span class="text-danger">-₦{{ transaction.amount|floatformat:2 }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>₦{{ transaction.balance_after|floatformat:2 }}</td>
+                                    <td>{{ transaction.description|truncatechars:50 }}</td>
+                                    <td>{{ transaction.reference_number }}</td>
+                                    <td>
+                                        {% if transaction.status == 'completed' %}
+                                            <span class="badge bg-success">{{ transaction.get_status_display }}</span>
+                                        {% elif transaction.status == 'pending' %}
+                                            <span class="badge bg-warning">{{ transaction.get_status_display }}</span>
+                                        {% elif transaction.status == 'failed' %}
+                                            <span class="badge bg-danger">{{ transaction.get_status_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ transaction.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-receipt fa-3x text-gray-300 mb-3"></i>
+                        <p class="text-muted">No transactions found.</p>
+                        <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-primary">
+                            Add First Transaction
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back to Patient Detail -->
+<div class="row">
+    <div class="col-12">
+        <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Patient Details
+        </a>
+    </div>
+</div>
+{% endblock content %}

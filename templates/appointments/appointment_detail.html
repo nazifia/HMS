@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Appointment Details - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Appointment Details</h4>
+                <div>
+                    {% if appointment.status != 'cancelled' and appointment.status != 'completed' and appointment.status != 'no_show' %}
+                        <a href="{% url 'appointments:edit' appointment.id %}" class="btn btn-light me-2">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{% url 'appointments:cancel' appointment.id %}" class="btn btn-danger">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Appointment Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Appointment ID:</div>
+                            <div class="col-md-8">{{ appointment.id }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Date:</div>
+                            <div class="col-md-8">{{ appointment.appointment_date|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Time:</div>
+                            <div class="col-md-8">
+                                {{ appointment.appointment_time|time:"h:i A" }}
+                                {% if appointment.end_time %} - {{ appointment.end_time|time:"h:i A" }}{% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Status:</div>
+                            <div class="col-md-8">
+                                {% if appointment.status == 'scheduled' %}
+                                    <span class="badge bg-secondary">Scheduled</span>
+                                {% elif appointment.status == 'confirmed' %}
+                                    <span class="badge bg-primary">Confirmed</span>
+                                {% elif appointment.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif appointment.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% elif appointment.status == 'no_show' %}
+                                    <span class="badge bg-warning">No Show</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Priority:</div>
+                            <div class="col-md-8">
+                                {% if appointment.priority == 'normal' %}
+                                    <span class="badge bg-secondary">Normal</span>
+                                {% elif appointment.priority == 'urgent' %}
+                                    <span class="badge bg-warning">Urgent</span>
+                                {% elif appointment.priority == 'emergency' %}
+                                    <span class="badge bg-danger">Emergency</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Created By:</div>
+                            <div class="col-md-8">{{ appointment.created_by.get_full_name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Created On:</div>
+                            <div class="col-md-8">{{ appointment.created_at|date:"F d, Y h:i A" }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Patient & Doctor Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient:</div>
+                            <div class="col-md-8">
+                                <a href="{% url 'patients:detail' appointment.patient.id %}">
+                                    {{ appointment.patient.get_full_name }}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient ID:</div>
+                            <div class="col-md-8">{{ appointment.patient.patient_id }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient Phone:</div>
+                            <div class="col-md-8">{{ appointment.patient.phone_number }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Doctor:</div>
+                            <div class="col-md-8">Dr. {{ appointment.doctor.get_full_name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Department:</div>
+                            <div class="col-md-8">{{ appointment.doctor.profile.department|default:"Not specified" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Specialization:</div>
+                            <div class="col-md-8">{{ appointment.doctor.profile.specialization|default:"Not specified" }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Appointment Details</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-2 text-muted">Reason:</div>
+                            <div class="col-md-10">{{ appointment.reason }}</div>
+                        </div>
+                        {% if appointment.notes %}
+                            <div class="row mb-3">
+                                <div class="col-md-2 text-muted">Notes:</div>
+                                <div class="col-md-10">{{ appointment.notes }}</div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Follow-ups Section -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Follow-ups</h5>
+                        
+                        {% if follow_ups %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Notes</th>
+                                            <th>Created By</th>
+                                            <th>Created On</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for follow_up in follow_ups %}
+                                            <tr>
+                                                <td>{{ follow_up.follow_up_date|date:"F d, Y" }}</td>
+                                                <td>{{ follow_up.notes }}</td>
+                                                <td>{{ follow_up.created_by.get_full_name }}</td>
+                                                <td>{{ follow_up.created_at|date:"F d, Y h:i A" }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No follow-ups recorded for this appointment.</p>
+                        {% endif %}
+                        
+                        <!-- Add Follow-up Form -->
+                        {% if appointment.status == 'completed' %}
+                            <div class="card mt-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Add Follow-up</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="add_follow_up" value="1">
+                                        
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label for="{{ follow_up_form.follow_up_date.id_for_label }}" class="form-label">Follow-up Date</label>
+                                                {{ follow_up_form.follow_up_date|add_class:"form-control" }}
+                                                {% if follow_up_form.follow_up_date.errors %}
+                                                    <div class="text-danger">
+                                                        {{ follow_up_form.follow_up_date.errors }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="col-md-8 mb-3">
+                                                <label for="{{ follow_up_form.notes.id_for_label }}" class="form-label">Notes</label>
+                                                {{ follow_up_form.notes|add_class:"form-control" }}
+                                                {% if follow_up_form.notes.errors %}
+                                                    <div class="text-danger">
+                                                        {{ follow_up_form.notes.errors }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-plus"></i> Add Follow-up
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Appointments
+                    </a>
+                    
+                    {% if appointment.status == 'scheduled' %}
+                        <form method="post" action="{% url 'appointments:edit' appointment.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="confirmed">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> Confirm Appointment
+                            </button>
+                        </form>
+                    {% elif appointment.status == 'confirmed' %}
+                        <form method="post" action="{% url 'appointments:edit' appointment.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="completed">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check-double"></i> Mark as Completed
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

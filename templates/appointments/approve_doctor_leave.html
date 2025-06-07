@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Approve Leave - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Approve Leave Request</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You are about to approve the following leave request:
+                </div>
+                
+                <div class="text-center mb-4">
+                    <i class="fas fa-calendar-check fa-5x text-success mb-3"></i>
+                    <h5>Leave Request for Dr. {{ leave.doctor.get_full_name }}</h5>
+                    <p class="text-muted">
+                        From {{ leave.start_date|date:"F d, Y" }} to {{ leave.end_date|date:"F d, Y" }}
+                    </p>
+                    <p class="text-muted">
+                        <strong>Reason:</strong> {{ leave.reason }}
+                    </p>
+                </div>
+                
+                <p class="mb-4">
+                    Approving this leave request will mark the doctor as unavailable for appointments during this period.
+                    Any existing appointments during this period will need to be rescheduled.
+                </p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'appointments:manage_doctor_leaves' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Approve Leave
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

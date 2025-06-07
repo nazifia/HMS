@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Confirm Patient Deletion{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-danger text-white py-3">
+                    <h6 class="m-0 font-weight-bold">Confirm Deletion</h6>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Are you sure you want to delete the patient "{{ patient.first_name }} {{ patient.last_name }}"?</p>
+                    <p>This action cannot be undone.</p>
+                    
+                    <div class="alert alert-warning">
+                        <h5 class="alert-heading">Patient Details</h5>
+                        <ul class="mb-0">
+                            <li><strong>Name:</strong> {{ patient.first_name }} {{ patient.last_name }}</li>
+                            <li><strong>Date of Birth:</strong> {{ patient.date_of_birth|date:"F j, Y" }}</li>
+                            <li><strong>Gender:</strong> {{ patient.get_gender_display }}</li>
+                            <li><strong>Contact:</strong> {{ patient.contact_number }}</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-danger">Delete Patient</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

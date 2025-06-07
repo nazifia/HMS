@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+  {{ title }} | {{ block.super }}
+{% endblock title %}
+
+{% block page_title %}
+  {{ title }}
+{% endblock page_title %}
+
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:detail' patient.id %}">{{ patient.get_full_name }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Add Funds</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Add Funds to Wallet</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Patient:</strong> {{ patient.get_full_name }} ({{ patient.patient_id }})</p>
+                <p><strong>Current Wallet Balance:</strong> {{ wallet.balance }}</p>
+                <hr>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-primary mt-3">Add Funds</button>
+                    <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary mt-3">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

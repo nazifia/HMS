@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+  Patient: {{ patient.get_full_name }} | {{ block.super }}
+{% endblock title %}
+
+{% block page_title %}
+  Patient Details: {{ patient.get_full_name }} ({{ patient.patient_id }})
+{% endblock page_title %}
+
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+  <li class="breadcrumb-item active" aria-current="page">{{ patient.get_full_name }}</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Patient Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                <p><strong>Date of Birth:</strong> {{ patient.date_of_birth|date:"Y-m-d" }} (Age: {{ age }})</p>
+                <p><strong>Gender:</strong> {{ patient.get_gender_display }}</p>
+                <p><strong>Phone:</strong> {{ patient.phone_number }}</p>
+                <p><strong>Email:</strong> {{ patient.email|default:"N/A" }}</p>
+                <p><strong>Address:</strong> {{ patient.address }}, {{ patient.city }}, {{ patient.state }} {{ patient.postal_code }}, {{ patient.country }}</p>
+                <p><strong>Registration Date:</strong> {{ patient.registration_date|date:"Y-m-d H:i" }}</p>
+                <p><strong>Status:</strong> {% if patient.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</p>
+
+                <!-- Wallet Information -->
+                <h5>Wallet Information</h5>
+                {% if has_wallet and wallet_is_active %}
+                    <p><strong>Wallet Balance:</strong> ₦{{ patient.wallet.balance|floatformat:2 }}</p>
+                    <p><strong>Wallet Status:</strong>
+                        {% if patient.wallet.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </p>
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-dashboard"></i> Wallet Dashboard
+                        </a>
+                        <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus"></i> Add Funds
+                        </a>
+                        <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-list"></i> Transactions
+                        </a>
+                    </div>
+                {% elif has_wallet and not wallet_is_active %}
+                    <p>Wallet is currently inactive.</p>
+                    <p><strong>Wallet Balance:</strong> ₦{{ patient.wallet.balance|floatformat:2 }}</p>
+                     <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-dashboard"></i> Wallet Dashboard
+                    </a>
+                {% else %}
+                    <p>No wallet found for this patient.</p>
+                    <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-wallet"></i> Create Wallet & Add Funds
+                    </a>
+                {% endif %}
+                <hr>
+
+                <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">Edit Patient</a>
+                {% if patient.is_active %}
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deletePatientModal">
+                        Deactivate Patient
+                    </button>
+                {% else %}
+                    <span class="text-muted">Patient is inactive.</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Medical History Section (Placeholder) -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title">Medical History</h5>
+            </div>
+            <div class="card-body">
+                <p><em>Medical history details will be displayed here.</em></p>
+                <!-- Add Medical History Form/Button -->
+            </div>
+        </div>
+
+        <!-- Vitals Section (Placeholder) -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title">Vitals</h5>
+            </div>
+            <div class="card-body">
+                <p><em>Patient vitals will be displayed here.</em></p>
+                <!-- Add Vitals Form/Button -->
+            </div>
+        </div>
+
+    </div>
+    <div class="col-md-4">
+        <!-- Sidebar or Additional Info (Placeholder) -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <p><em>Quick action links can be placed here.</em></p>
+                <a href="#" class="btn btn-info btn-block mb-2">New Appointment</a>
+                <a href="#" class="btn btn-warning btn-block mb-2">New Consultation</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate Patient Modal -->
+<div class="modal fade" id="deletePatientModal" tabindex="-1" aria-labelledby="deletePatientModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deletePatientModalLabel">Confirm Deactivation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to deactivate patient {{ patient.get_full_name }} ({{ patient.patient_id }})?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" action="{% url 'patients:delete' patient.id %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Deactivate</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <!-- Test Result Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Test Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Test:</div>
+                                    <div class="col-md-8">{{ result.test.name }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Category:</div>
+                                    <div class="col-md-8">{{ result.test.category.name }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Sample Type:</div>
+                                    <div class="col-md-8">{{ result.test.sample_type }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient:</div>
+                                    <div class="col-md-8">
+                                        <a href="{% url 'patients:detail' result.test_request.patient.id %}">
+                                            {{ result.test_request.patient.get_full_name }}
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient ID:</div>
+                                    <div class="col-md-8">{{ result.test_request.patient.patient_id }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Doctor:</div>
+                                    <div class="col-md-8">Dr. {{ result.test_request.doctor.get_full_name }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test Result Form -->
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {{ form.management_form }}
+                    {{ form.test }} {# Hidden test field for edit mode #}
+                    {# Error summary block for all errors #}
+                    {% if form.errors or parameter_formset.non_form_errors or parameter_formset.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Please correct the errors below:</strong>
+                            <ul class="mb-0">
+                                {# Main form non-field errors #}
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                                {# Main form field errors #}
+                                {% for field in form.visible_fields %}
+                                    {% for error in field.errors %}
+                                        <li>{{ field.label }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                                {# Parameter formset non-form errors #}
+                                {% for error in parameter_formset.non_form_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                                {# Parameter formset field errors #}
+                                {% for param_form in parameter_formset.forms %}
+                                    {% for field in param_form.visible_fields %}
+                                        {% for error in field.errors %}
+                                            <li>Parameter {{ forloop.parentloop.counter }} - {{ field.label }}: {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.result_date.id_for_label }}" class="form-label">Result Date</label>
+                            {{ form.result_date|add_class:"form-control" }}
+                            {% if form.result_date.errors %}
+                                <div class="text-danger">
+                                    {{ form.result_date.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sample_collection_date.id_for_label }}" class="form-label">Sample Collection Date & Time</label>
+                            {{ form.sample_collection_date|add_class:"form-control" }}
+                            {% if form.sample_collection_date.errors %}
+                                <div class="text-danger">
+                                    {{ form.sample_collection_date.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sample_collected_by.id_for_label }}" class="form-label">Sample Collected By</label>
+                            {{ form.sample_collected_by|add_class:"form-select select2" }}
+                            {% if form.sample_collected_by.errors %}
+                                <div class="text-danger">
+                                    {{ form.sample_collected_by.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.performed_by.id_for_label }}" class="form-label">Performed By</label>
+                            {{ form.performed_by|add_class:"form-select select2" }}
+                            {% if form.performed_by.errors %}
+                                <div class="text-danger">
+                                    {{ form.performed_by.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.verified_by.id_for_label }}" class="form-label">Verified By</label>
+                            {{ form.verified_by|add_class:"form-select select2" }}
+                            {% if form.verified_by.errors %}
+                                <div class="text-danger">
+                                    {{ form.verified_by.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.result_file.id_for_label }}" class="form-label">Result File (Optional)</label>
+                            {{ form.result_file|add_class:"form-control" }}
+                            {% if form.result_file.errors %}
+                                <div class="text-danger">
+                                    {{ form.result_file.errors }}
+                                </div>
+                            {% endif %}
+                            {% if result.result_file %}
+                                <div class="form-text">
+                                    Current file: <a href="{{ result.result_file.url }}" target="_blank">{{ result.result_file.name }}</a>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">
+                                    {{ form.notes.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Test Parameters -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Test Parameters</h5>
+                        </div>
+                        <div class="card-body">
+                            {{ parameter_formset.management_form }}
+                            {% if parameter_formset.non_form_errors %}
+                                <div class="alert alert-danger">
+                                    {{ parameter_formset.non_form_errors }}
+                                </div>
+                            {% endif %}
+
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Parameter</th>
+                                            <th>Value</th>
+                                            <th>Normal Range</th>
+                                            <th>Unit</th>
+                                            <th>Is Normal?</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for param_form in parameter_formset %}
+                                            <tr>
+                                                <td>
+                                                    {{ param_form.id }} {# Hidden ID field for the parameter form #}
+                                                    {{ param_form.parameter.as_hidden }} {# Hidden, as it's not editable #}
+                                                    <strong>{{ param_form.instance.parameter.name }}</strong>
+                                                    {% if param_form.parameter.errors %}<div class="text-danger small">{{ param_form.parameter.errors|join:", " }}</div>{% endif %}
+                                                </td>
+                                                <td>
+                                                    {{ param_form.value }}
+                                                    {% if param_form.value.errors %}<div class="text-danger small">{{ param_form.value.errors|join:", " }}</div>{% endif %}
+                                                </td>
+                                                <td>{{ param_form.instance.parameter.normal_range|default:"N/A" }}</td>
+                                                <td>{{ param_form.instance.parameter.unit|default:"N/A" }}</td>
+                                                <td>
+                                                    {{ param_form.is_normal }}
+                                                    {% if param_form.is_normal.errors %}<div class="text-danger small">{{ param_form.is_normal.errors|join:", " }}</div>{% endif %}
+                                                </td>
+                                                <td>
+                                                    {{ param_form.notes }}
+                                                    {% if param_form.notes.errors %}<div class="text-danger small">{{ param_form.notes.errors|join:", " }}</div>{% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'laboratory:result_detail' result.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Result
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Test Result
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 for dropdowns
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}

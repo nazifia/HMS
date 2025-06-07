@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.supplier.id_for_label }}" class="form-label">Supplier</label>
+                            {{ form.supplier|add_class:"form-select select2" }}
+                            {% if form.supplier.errors %}
+                                <div class="text-danger">
+                                    {{ form.supplier.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.invoice_number.id_for_label }}" class="form-label">Invoice Number</label>
+                            {{ form.invoice_number|add_class:"form-control" }}
+                            {% if form.invoice_number.errors %}
+                                <div class="text-danger">
+                                    {{ form.invoice_number.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.purchase_date.id_for_label }}" class="form-label">Purchase Date</label>
+                            {{ form.purchase_date|add_class:"form-control" }}
+                            {% if form.purchase_date.errors %}
+                                <div class="text-danger">
+                                    {{ form.purchase_date.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.total_amount.id_for_label }}" class="form-label">Total Amount (₦)</label>
+                            {{ form.total_amount|add_class:"form-control" }}
+                            {% if form.total_amount.errors %}
+                                <div class="text-danger">
+                                    {{ form.total_amount.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.payment_status.id_for_label }}" class="form-label">Payment Status</label>
+                            {{ form.payment_status|add_class:"form-select" }}
+                            {% if form.payment_status.errors %}
+                                <div class="text-danger">
+                                    {{ form.payment_status.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">
+                                    {{ form.notes.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        After creating the purchase, you will be able to add medications to it.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'pharmacy:manage_purchases' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Purchases
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Purchase
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 for supplier dropdown
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}

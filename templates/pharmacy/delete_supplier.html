@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Supplier - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Delete Supplier</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    You are about to deactivate the following supplier:
+                </div>
+                
+                <div class="text-center mb-4">
+                    <i class="fas fa-truck fa-5x text-danger mb-3"></i>
+                    <h5>{{ supplier.name }}</h5>
+                    <p class="text-muted">
+                        <strong>Contact Person:</strong> {{ supplier.contact_person }}
+                    </p>
+                    <p class="text-muted">
+                        <strong>Email:</strong> {{ supplier.email }}
+                    </p>
+                    <p class="text-muted">
+                        <strong>Phone:</strong> {{ supplier.phone_number }}
+                    </p>
+                </div>
+                
+                <p class="mb-4">
+                    This action will deactivate the supplier. The supplier will still exist in the database but will be marked as inactive and will not be available for new purchases.
+                    This action can be reversed by editing the supplier and marking it as active again.
+                </p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'pharmacy:manage_suppliers' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> No, Go Back
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Yes, Deactivate Supplier
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

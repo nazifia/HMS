@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}User Management - Hospital Management System{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">User Management</h2>
+    <!-- Analytics Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h4>{{ active_count }}</h4>
+                    <p class="mb-0">Active Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body">
+                    <h4>{{ inactive_count }}</h4>
+                    <p class="mb-0">Inactive Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card text-center bg-info text-dark"> <!-- Ensure text is readable, bg-info might need text-white or adjust -->
+                <div class="card-body">
+                    <h5 class="mb-2">Users by Role</h5>
+                    <div class="d-flex flex-wrap justify-content-center">
+                        {% for rc in role_counts %} {# role_counts is now a list of dicts {'name': ..., 'count': ...} #}
+                            <span class="badge bg-secondary m-1">{{ rc.name }}: {{ rc.count }}</span>
+                        {% empty %}
+                            <p>No roles found or no users assigned to roles.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <form method="get" class="row g-3 mb-3">
+        <div class="col-md-3">
+            <label for="search" class="form-label">Search</label>
+            <input type="text" class="form-control" id="search" name="search" value="{{ search|default:'' }}" placeholder="Username, name, email, phone">
+        </div>
+        <div class="col-md-3">
+            <label for="role" class="form-label">Role</label>
+            <select class="form-select" id="role" name="role">
+                <option value="">All Roles</option>
+                {% for r_obj in roles %} {# 'roles' from context is a list of Role objects #}
+                    <option value="{{ r_obj.name }}" {% if role == r_obj.name %}selected{% endif %}>{{ r_obj.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="is_active" class="form-label">Status</label>
+            <select class="form-select" id="is_active" name="is_active">
+                <option value="">All Statuses</option>
+                <option value="true" {% if is_active == 'true' %}selected{% endif %}>Active</option>
+                <option value="false" {% if is_active == 'false' %}selected{% endif %}>Inactive</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search me-1"></i> Filter
+            </button>
+        </div>
+    </form>
+    <div class="mb-3 text-end">
+        <a href="?{% if search %}search={{ search }}&{% endif %}{% if role %}role={{ role }}&{% endif %}{% if is_active %}is_active={{ is_active }}&{% endif %}export=1" class="btn btn-outline-success">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </a>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-2 align-items-end mb-2">
+            <div class="col-auto">
+                <select name="bulk_action" class="form-select">
+                    <option value="">Bulk Action</option>
+                    <option value="activate">Activate</option>
+                    <option value="deactivate">Deactivate</option>
+                    <option value="assign_role">Assign Role</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="assign_role" class="form-select">
+                    <option value="">Select Role to Assign</option>
+                    {% for r_obj in roles %} {# 'roles' from context is a list of Role objects #}
+                        <option value="{{ r_obj.name }}">{{ r_obj.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-warning">Apply</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="select-all"></th>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Roles</th> {# Changed header from Role to Roles #}
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user_item in page_obj %} {# Renamed user to user_item to avoid conflict with request.user if used in template #}
+                    <tr>
+                        <td><input type="checkbox" name="selected_users" value="{{ user_item.id }}"></td>
+                        <td>{{ user_item.username }}</td>
+                        <td>{{ user_item.get_full_name|default:'-' }}</td>
+                        <td>{{ user_item.email|default:'-' }}</td>
+                        <td>{{ user_item.phone_number|default:'-' }}</td>
+                        <td> {# Display user roles #}
+                            {% for r in user_item.roles.all %}
+                                <span class="badge bg-info text-dark me-1">{{ r.name }}</span> {# Ensure contrast for bg-info #}
+                            {% empty %}
+                                <span class="badge bg-light text-dark">-</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if user_item.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {# Pass user_item.id to profile and edit_profile views #}
+                            <a href="{% url 'accounts:profile' %}?user_id={{ user_item.id }}" class="btn btn-sm btn-primary">View</a>
+                            <a href="{% url 'accounts:edit_profile' %}?user_id={{ user_item.id }}" class="btn btn-sm btn-secondary">Edit</a>
+                            {# Add other actions like delete/deactivate if needed #}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center">No users found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+    {# accounts/user_dashboard.html (pagination part) #}
+
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {# Previous button #}
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if role %}&role={{ role }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">Previous</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                {% endif %}
+
+                {# Page numbers with ellipsis #}
+                {% for i in elided_page_range %}
+                    {% if i == page_obj.paginator.ELLIPSIS %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% else %}
+                        <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+                            <a class="page-link" href="?page={{ i }}{% if search %}&search={{ search }}{% endif %}{% if role %}&role={{ role }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">{{ i }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {# Next button #}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if role %}&role={{ role }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">Next</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllCheckbox = document.getElementById('select-all');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                document.querySelectorAll('input[name="selected_users"]').forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
+        }
+        
+    });
+</script>
+{% endblock %}

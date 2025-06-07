@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100px" height="100px" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>User Profile</title>
+    <g id="User-Profile" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <circle id="Background" fill="#E6E9EE" cx="50" cy="50" r="50"></circle>
+        <g id="User" transform="translate(20.000000, 15.000000)" fill="#556080">
+            <circle id="Head" cx="30" cy="20" r="20"></circle>
+            <path d="M60,70 C60,53.4315 46.5685,40 30,40 C13.4315,40 0,53.4315 0,70 L60,70 Z" id="Body"></path>
+        </g>
+    </g>
+</svg>

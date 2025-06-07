@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Purchase Item - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Delete Purchase Item</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    You are about to remove the following item from the purchase:
+                </div>
+                
+                <div class="text-center mb-4">
+                    <i class="fas fa-pills fa-5x text-danger mb-3"></i>
+                    <h5>{{ item.medication.name }}</h5>
+                    <p class="text-muted">
+                        {{ item.medication.strength }} - {{ item.medication.dosage_form }}
+                    </p>
+                    <p class="text-muted">
+                        <strong>Quantity:</strong> {{ item.quantity }} units
+                    </p>
+                    <p class="text-muted">
+                        <strong>Unit Price:</strong> ₦{{ item.unit_price }}
+                    </p>
+                    <p class="text-muted">
+                        <strong>Total Price:</strong> ₦{{ item.total_price }}
+                    </p>
+                </div>
+                
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Warning:</strong> This action will also reduce the stock quantity of this medication by {{ item.quantity }} units.
+                </div>
+                
+                <p class="mb-4">
+                    This action will remove this item from the purchase and update the medication stock. This action cannot be undone.
+                </p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> No, Go Back
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Yes, Remove Item
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Doctor Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Doctor Dashboard</h1>
+        <a href="{% url 'consultations:patient_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-user-injured fa-sm text-white-50"></i> View All Patients
+        </a>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Today's Appointments Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Today's Appointments</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ appointments.count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patients with Vitals Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Patients with Vitals</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ patients_with_vitals.count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Consultations Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Consultations</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_consultations.count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Referrals Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Pending Referrals</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals.count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Today's Appointments -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Today's Appointments ({{ today|date:"F d, Y" }})</h6>
+                    <a href="{% url 'appointments:list' %}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in appointments %}
+                                    <tr>
+                                        <td>{{ appointment.appointment_time }}</td>
+                                        <td>{{ appointment.patient.get_full_name }}</td>
+                                        <td>
+                                            <span class="badge {% if appointment.status == 'scheduled' %}badge-primary{% elif appointment.status == 'confirmed' %}badge-success{% elif appointment.status == 'cancelled' %}badge-danger{% else %}badge-secondary{% endif %}">
+                                                {{ appointment.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'consultations:patient_detail' appointment.patient.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No appointments scheduled for today.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Patients with Vitals -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-success">Patients with Vitals</h6>
+                </div>
+                <div class="card-body">
+                    {% if patients_with_vitals %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Last Vitals</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for patient in patients_with_vitals %}
+                                    <tr>
+                                        <td>{{ patient.get_full_name }}</td>
+                                        <td>
+                                            {% with latest_vitals=patient.vitals.all.0 %}
+                                            {% if latest_vitals %}
+                                                {{ latest_vitals.date_time|date:"F d, Y H:i" }}
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'consultations:patient_detail' patient.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-stethoscope"></i> Consult
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No patients with vitals recorded today.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Pending Consultations -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-warning">Pending Consultations</h6>
+                    <a href="{% url 'consultations:consultation_list' %}?status=pending" class="btn btn-sm btn-warning">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if pending_consultations %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Patient</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for consultation in pending_consultations %}
+                                    <tr>
+                                        <td>{{ consultation.consultation_date|date:"F d, Y" }}</td>
+                                        <td>{{ consultation.patient.get_full_name }}</td>
+                                        <td>
+                                            <span class="badge {% if consultation.status == 'pending' %}badge-warning{% elif consultation.status == 'in_progress' %}badge-info{% elif consultation.status == 'completed' %}badge-success{% else %}badge-secondary{% endif %}">
+                                                {{ consultation.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No pending consultations.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Consultations -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Consultations</h6>
+                    <a href="{% url 'consultations:consultation_list' %}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_consultations %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Patient</th>
+                                        <th>Diagnosis</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for consultation in recent_consultations %}
+                                    <tr>
+                                        <td>{{ consultation.consultation_date|date:"F d, Y" }}</td>
+                                        <td>{{ consultation.patient.get_full_name }}</td>
+                                        <td>{{ consultation.diagnosis|truncatechars:30 }}</td>
+                                        <td>
+                                            <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No recent consultations.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

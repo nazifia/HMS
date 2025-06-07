@@ -1,0 +1,1121 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ patient.get_full_name }} - Patient Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Patient Details</h1>
+        <div>
+            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit fa-sm text-white-50"></i> Edit Patient
+            </a>
+            <a href="{% url 'patients:list' %}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Patient Information Card -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <!-- Card Header -->
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                </div>
+                <!-- Card Body -->
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if patient.profile_picture %}
+                            <img src="{{ patient.profile_picture.url }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <img src="{% static 'img/undraw_profile.svg' %}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% endif %}
+                        <h4 class="mt-3">{{ patient.get_full_name }}</h4>
+                        <p class="text-muted">Patient ID: {{ patient.patient_id }}</p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Gender</p>
+                            <p class="mb-0">{{ patient.get_gender_display }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Age</p>
+                            <p class="mb-0">{{ age }} years</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Date of Birth</p>
+                            <p class="mb-0">{{ patient.date_of_birth|date:"F d, Y" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Blood Group</p>
+                            <p class="mb-0">{{ patient.blood_group|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Phone Number</p>
+                            <p class="mb-0">{{ patient.phone_number }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Email</p>
+                            <p class="mb-0">{{ patient.email|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Address</p>
+                            <p class="mb-0">{{ patient.address|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Emergency Contact</p>
+                            <p class="mb-0">{{ patient.emergency_contact_name|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Emergency Phone</p>
+                            <p class="mb-0">{{ patient.emergency_contact_phone|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Emergency Relation</p>
+                            <p class="mb-0">{{ patient.emergency_contact_relation|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Photo</p>
+                            {% if patient.photo %}
+                                <img src="{{ patient.photo.url }}" alt="Patient Photo" class="img-thumbnail" style="max-height: 100px;">
+                            {% else %}
+                                <span class="text-muted">Not uploaded</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">ID Document</p>
+                            {% if patient.id_document %}
+                                <a href="{{ patient.id_document.url }}" target="_blank">View ID Document</a>
+                            {% else %}
+                                <span class="text-muted">Not uploaded</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Registration Date</p>
+                            <p class="mb-0">{{ patient.registration_date|date:"F d, Y" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Status</p>
+                            <p class="mb-0">
+                                {% if patient.is_active %}
+                                    <span class="badge bg-success text-white">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger text-white">Inactive</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Functional quick actions -->
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-warning btn-block">
+                                <i class="fas fa-flask"></i> Order Lab Tests
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'radiology:order' patient.id %}" class="btn btn-info btn-block">
+                                <i class="fas fa-x-ray"></i> Order Radiology
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <button type="button" class="btn btn-success btn-block" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                                <i class="fas fa-stethoscope"></i> New Consultation
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <button type="button" class="btn btn-danger btn-block" data-bs-toggle="modal" data-bs-target="#referralModal">
+                                <i class="fas fa-user-md"></i> Refer Patient
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'inpatient:create_admission' %}?patient_id={{ patient.id }}" class="btn btn-secondary btn-block">
+                                <i class="fas fa-procedures"></i> Admit Patient
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'appointments:create' %}?patient={{ patient.id }}" class="btn btn-primary btn-block">
+                                <i class="fas fa-calendar-plus"></i> New Appointment
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'billing:create' %}?patient={{ patient.id }}" class="btn btn-success btn-block">
+                                <i class="fas fa-file-invoice-dollar"></i> New Invoice
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <button type="button" class="btn btn-secondary btn-block" data-bs-toggle="modal" data-bs-target="#vitalsModal">
+                                <i class="fas fa-heartbeat"></i> Record Vitals
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'laboratory:patient_tests' patient.id %}" class="btn btn-info btn-block">
+                                <i class="fas fa-vials"></i> View Lab Test Results
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient Records Column -->
+        <div class="col-xl-8 col-lg-7">
+            <!-- Vitals Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Vitals</h6>
+                    <a href="{% url 'patients:vitals' patient.id %}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if vitals %}
+                        {% with latest_vital=vitals.0 %}
+                        <!-- Latest Vitals Summary -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3">Latest Vitals ({{ latest_vital.date_time|date:"M d, Y H:i" }})</h6>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2 text-center">
+                                        <h6 class="text-primary mb-0">Temperature</h6>
+                                        <h4 class="mb-0">{{ latest_vital.temperature }} °C</h4>
+                                        <small class="text-muted">Normal: 36.5-37.5°C</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2 text-center">
+                                        <h6 class="text-primary mb-0">Blood Pressure</h6>
+                                        <h4 class="mb-0">{{ latest_vital.blood_pressure }}</h4>
+                                        <small class="text-muted">Normal: 120/80 mmHg</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2 text-center">
+                                        <h6 class="text-primary mb-0">Pulse Rate</h6>
+                                        <h4 class="mb-0">{{ latest_vital.pulse }} bpm</h4>
+                                        <small class="text-muted">Normal: 60-100 bpm</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2 text-center">
+                                        <h6 class="text-primary mb-0">Respiration</h6>
+                                        <h4 class="mb-0">{{ latest_vital.respiration }} bpm</h4>
+                                        <small class="text-muted">Normal: 12-20 bpm</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2 text-center">
+                                        <h6 class="text-primary mb-0">Oxygen Saturation</h6>
+                                        <h4 class="mb-0">{{ latest_vital.oxygen_saturation|default:"--" }}%</h4>
+                                        <small class="text-muted">Normal: 95-100%</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2 text-center">
+                                        <h6 class="text-primary mb-0">Weight</h6>
+                                        <h4 class="mb-0">{{ latest_vital.weight }} kg</h4>
+                                        <small class="text-muted">BMI: {{ latest_vital.bmi|floatformat:1 }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2 text-center">
+                                        <h6 class="text-primary mb-0">Height</h6>
+                                        <h4 class="mb-0">{{ latest_vital.height }} cm</h4>
+                                        <small class="text-muted">&nbsp;</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if latest_vital.notes %}
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <strong>Notes:</strong> {{ latest_vital.notes }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endwith %}
+
+                        <!-- Vitals History Table -->
+                        <h6 class="text-muted mb-3">Vitals History</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Temp (°C)</th>
+                                        <th>BP (mmHg)</th>
+                                        <th>Pulse (bpm)</th>
+                                        <th>Resp (bpm)</th>
+                                        <th>O₂ Sat (%)</th>
+                                        <th>Weight (kg)</th>
+                                        <th>Height (cm)</th>
+                                        <th>BMI</th>
+                                        <th>Recorded By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for vital in vitals %}
+                                    <tr>
+                                        <td>{{ vital.date_time|date:"M d, Y H:i" }}</td>
+                                        <td>{{ vital.temperature }}</td>
+                                        <td>{{ vital.blood_pressure_systolic }}/{{ vital.blood_pressure_diastolic }}</td>
+                                        <td>{{ vital.pulse_rate }}</td>
+                                        <td>{{ vital.respiratory_rate }}</td>
+                                        <td>{{ vital.oxygen_saturation|default:"--" }}</td>
+                                        <td>{{ vital.weight }}</td>
+                                        <td>{{ vital.height }}</td>
+                                        <td>{{ vital.bmi|floatformat:1 }}</td>
+                                        <td>{{ vital.recorded_by }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle mr-2"></i> No vitals recorded yet. Vitals should be recorded before consultation.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Medical History Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Medical History</h6>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#medicalHistoryModal">
+                            <i class="fas fa-plus fa-sm"></i> Add Entry
+                        </button>
+                        <a href="{% url 'patients:medical_history' patient.id %}" class="btn btn-sm btn-secondary">View All</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if medical_histories %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Condition</th>
+                                        <th>Treatment</th>
+                                        <th>Notes</th>
+                                        <th>Recorded By</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for history in medical_histories %}
+                                    <tr>
+                                        <td>{{ history.date|date:"M d, Y" }}</td>
+                                        <td>{{ history.condition }}</td>
+                                        <td>{{ history.treatment }}</td>
+                                        <td>{{ history.notes|truncatechars:50 }}</td>
+                                        <td>
+                                            {% if history.created_by %}
+                                                {{ history.created_by.get_full_name|default:history.created_by.username }}
+                                                <small class="text-muted d-block">{{ history.created_at|date:"M d, Y H:i" }}</small>
+                                            {% else %}
+                                                {{ history.doctor_name }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'patients:edit_medical_history' history.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'patients:delete_medical_history' history.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this entry?');">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No medical history recorded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Appointments Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Appointments</h6>
+                    <a href="{% url 'appointments:list' %}?patient={{ patient.id }}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% with appointments=patient.appointments.all|slice:":5" %}
+                    {% if appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Doctor</th>
+                                        <th>Purpose</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in appointments %}
+                                    <tr>
+                                        <td>{{ appointment.appointment_date|date:"M d, Y" }}</td>
+                                        <td>{{ appointment.appointment_time }}</td>
+                                        <td>Dr. {{ appointment.doctor.get_full_name }}</td>
+                                        <td>{{ appointment.purpose|truncatechars:30 }}</td>
+                                        <td>
+                                            <span class="badge {% if appointment.status == 'scheduled' %}bg-primary{% elif appointment.status == 'confirmed' %}bg-success{% elif appointment.status == 'cancelled' %}bg-danger{% elif appointment.status == 'completed' %}bg-info{% else %}bg-secondary{% endif %}">
+                                                {{ appointment.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No appointments recorded yet.</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+
+            <!-- Prescriptions Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Prescriptions</h6>
+                    <a href="{% url 'pharmacy:prescriptions' %}?patient={{ patient.id }}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% with prescriptions=patient.prescriptions.all|dictsortreversed:"prescription_date"|slice:":5" %}
+                    {% if prescriptions %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Date</th>
+                                        <th>Doctor</th>
+                                        <th>Diagnosis</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for prescription in prescriptions %}
+                                    <tr>
+                                        <td>{{ prescription.id }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>Dr. {{ prescription.doctor.get_full_name }}</td>
+                                        <td>{{ prescription.diagnosis|truncatechars:30 }}</td>
+                                        <td>
+                                            <span class="badge {% if prescription.status == 'pending' %}bg-warning{% elif prescription.status == 'dispensed' %}bg-success{% elif prescription.status == 'partially_dispensed' %}bg-info{% elif prescription.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                {{ prescription.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No prescriptions recorded yet.</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Information -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Record Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                            <p class="mb-1"><strong>Registration Date:</strong> {{ patient.registration_date|date:"F d, Y H:i" }}</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">
+                                <i class="fas fa-edit me-1"></i> Edit Patient
+                            </a>
+                            <a href="{% url 'patients:delete' patient.id %}" class="btn btn-danger ms-2" onclick="return confirm('Are you sure you want to deactivate this patient?');">
+                                <i class="fas fa-user-times me-1"></i> Deactivate Patient
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prescription Modal -->
+    <div class="modal fade" id="prescriptionModal" tabindex="-1" aria-labelledby="prescriptionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="prescriptionModalLabel">Prescribe Medication</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'pharmacy:create_prescription' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="patient" value="{{ patient.id }}">
+                    <input type="hidden" name="prescribing_doctor" value="{{ request.user.id }}">
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="medication" class="form-label">Medication</label>
+                                <select class="form-select medication-select" id="medication" name="medication" required>
+                                    <option value="">Select Medication</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="dosage" class="form-label">Dosage</label>
+                                <input type="text" class="form-control" id="dosage" name="dosage" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="frequency" class="form-label">Frequency</label>
+                                <input type="text" class="form-control" id="frequency" name="frequency" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="duration" class="form-label">Duration (days)</label>
+                                <input type="number" class="form-control" id="duration" name="duration" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="quantity" class="form-label">Quantity</label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="instructions" class="form-label">Instructions</label>
+                                <textarea class="form-control" id="instructions" name="instructions" rows="3" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Prescription</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab Test Modal -->
+    <div class="modal fade" id="labTestModal" tabindex="-1" aria-labelledby="labTestModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="labTestModalLabel">Order Lab Tests</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'laboratory:create_test_request' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="patient" value="{{ patient.id }}">
+                    <input type="hidden" name="doctor" value="{{ request.user.id }}">
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="tests" class="form-label">Select Tests</label>
+                                <select class="form-select select2" id="tests" name="tests" multiple required>
+                                    <!-- Options will be populated via AJAX -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="lab_notes" class="form-label">Clinical Notes</label>
+                                <textarea class="form-control" id="lab_notes" name="notes" rows="3"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="lab_priority" class="form-label">Priority</label>
+                                <select class="form-select" id="lab_priority" name="priority">
+                                    <option value="normal" selected>Normal</option>
+                                    <option value="urgent">Urgent</option>
+                                    <option value="emergency">Emergency</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="lab_request_date" class="form-label">Request Date</label>
+                                <input type="date" class="form-control" id="lab_request_date" name="request_date" value="{{ today|date:'Y-m-d' }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Submit Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Radiology Modal -->
+    <div class="modal fade" id="radiologyModal" tabindex="-1" aria-labelledby="radiologyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="radiologyModalLabel">Order Radiology</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'radiology:order' patient.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="ordering_doctor" value="{{ request.user.id }}">
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="radiology_type" class="form-label">Radiology Type</label>
+                                <select class="form-select" id="radiology_type" name="radiology_type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="xray">X-Ray</option>
+                                    <option value="ct">CT Scan</option>
+                                    <option value="mri">MRI</option>
+                                    <option value="ultrasound">Ultrasound</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="body_part" class="form-label">Body Part</label>
+                                <input type="text" class="form-control" id="body_part" name="body_part" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="clinical_indication" class="form-label">Clinical Indication</label>
+                                <textarea class="form-control" id="clinical_indication" name="clinical_indication" rows="3" required></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="priority" class="form-label">Priority</label>
+                                <select class="form-select" id="radiology_priority" name="priority">
+                                    <option value="routine">Routine</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="scheduled_date" class="form-label">Scheduled Date</label>
+                                <input type="datetime-local" class="form-control" id="scheduled_date" name="scheduled_date" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Submit Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Vitals Modal -->
+    <div class="modal fade" id="vitalsModal" tabindex="-1" aria-labelledby="vitalsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="vitalsModalLabel">Record Vitals</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'patients:detail' patient.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="add_vitals" value="1">
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="temperature" class="form-label">Temperature (°C)</label>
+                                <input type="number" step="0.1" class="form-control" id="temperature" name="temperature" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="blood_pressure_systolic" class="form-label">Blood Pressure (mmHg)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="blood_pressure_systolic" name="blood_pressure_systolic" placeholder="Systolic" required>
+                                    <span class="input-group-text">/</span>
+                                    <input type="number" class="form-control" id="blood_pressure_diastolic" name="blood_pressure_diastolic" placeholder="Diastolic" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="pulse_rate" class="form-label">Pulse Rate (bpm)</label>
+                                <input type="number" class="form-control" id="pulse_rate" name="pulse_rate" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="respiratory_rate" class="form-label">Respiratory Rate (bpm)</label>
+                                <input type="number" class="form-control" id="respiratory_rate" name="respiratory_rate" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="oxygen_saturation" class="form-label">Oxygen Saturation (%)</label>
+                                <input type="number" class="form-control" id="oxygen_saturation" name="oxygen_saturation" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="weight" class="form-label">Weight (kg)</label>
+                                <input type="number" step="0.1" class="form-control" id="weight" name="weight" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="height" class="form-label">Height (cm)</label>
+                                <input type="number" class="form-control" id="height" name="height" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="bmi" class="form-label">BMI</label>
+                                <input type="text" class="form-control" id="bmi" name="bmi" readonly>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="notes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Vitals</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+
+<!-- Medical History Modal -->
+<div class="modal fade" id="medicalHistoryModal" tabindex="-1" aria-labelledby="medicalHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="medicalHistoryModalLabel">Add Medical History for {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'patients:detail' patient.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="add_medical_history" value="1">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_date">Date</label>
+                            {{ medical_history_form.date }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_diagnosis">Diagnosis</label>
+                            {{ medical_history_form.diagnosis }}
+                        </div>
+                        <input type="hidden" name="doctor_name" value="{{ request.user.get_full_name }} ({{ request.user.username }})">
+                        <div class="col-md-12 mb-3">
+                            <label for="id_treatment">Treatment</label>
+                            {{ medical_history_form.treatment }}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="id_notes">Notes</label>
+                            {{ medical_history_form.notes }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Medical History</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+                            <label for="radiology_type" class="form-label">Radiology Type</label>
+                            <select class="form-select" id="radiology_type" name="radiology_type">
+                                <option value="">Select Type</option>
+                                <option value="x-ray">X-Ray</option>
+                                <option value="ultrasound">Ultrasound</option>
+                                <option value="ct-scan">CT Scan</option>
+                                <option value="mri">MRI</option>
+                                <option value="ecg">ECG</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="body_part" class="form-label">Body Part</label>
+                            <input type="text" class="form-control" id="body_part" name="body_part">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="clinical_information" class="form-label">Clinical Information</label>
+                            <textarea class="form-control" id="clinical_information" name="clinical_information" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Consultation Modal -->
+<div class="modal fade" id="consultationModal" tabindex="-1" aria-labelledby="consultationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="consultationModalLabel">New Consultation for {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'consultations:create_consultation' patient.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="chief_complaint" class="form-label">Chief Complaint</label>
+                            <input type="text" class="form-control" id="chief_complaint" name="chief_complaint" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="symptoms" class="form-label">Symptoms</label>
+                            <textarea class="form-control" id="symptoms" name="symptoms" rows="3" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="diagnosis" class="form-label">Diagnosis</label>
+                            <input type="text" class="form-control" id="diagnosis" name="diagnosis" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="consultation_notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="consultation_notes" name="consultation_notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save Consultation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Referral Modal -->
+<div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="referralModalLabel">Refer {{ patient.get_full_name }} to Another Doctor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'consultations:create_referral' %}">
+                {% csrf_token %}
+                <input type="hidden" name="patient" value="{{ patient.id }}">
+                <input type="hidden" name="referring_doctor" value="{{ request.user.id }}">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="referred_to" class="form-label">Refer To</label>
+                            <select class="form-select" id="referred_to" name="referred_to" required>
+                                <option value="">Select Doctor</option>
+                                <!-- This will be populated via AJAX -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="reason" class="form-label">Reason for Referral</label>
+                            <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="notes" class="form-label">Additional Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="urgency" class="form-label">Urgency</label>
+                            <select class="form-select" id="urgency" name="urgency">
+                                <option value="normal">Normal</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="emergency">Emergency</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="referral_date" class="form-label">Referral Date</label>
+                            <input type="date" class="form-control" id="referral_date" name="referral_date" value="{{ today|date:'Y-m-d' }}" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Submit Referral</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Calculate BMI when weight or height changes
+    document.addEventListener('DOMContentLoaded', function() {
+        const weightInput = document.getElementById('id_weight');
+        const heightInput = document.getElementById('id_height');
+
+        if (weightInput && heightInput) {
+            const calculateBMI = function() {
+                const weight = parseFloat(weightInput.value);
+                const height = parseFloat(heightInput.value) / 100; // Convert cm to m
+
+                if (weight > 0 && height > 0) {
+                    const bmi = weight / (height * height);
+                    // You can display this somewhere if needed
+                    console.log('BMI:', bmi.toFixed(2));
+                }
+            };
+
+            weightInput.addEventListener('change', calculateBMI);
+            heightInput.addEventListener('change', calculateBMI);
+        }
+
+        // Load medications for prescription modal
+        if (document.getElementById('prescriptionModal')) {
+            fetch('/pharmacy/api/medications/')
+                .then(response => response.json())
+                .then(data => {
+                    const medicationSelects = document.querySelectorAll('.medication-select');
+                    medicationSelects.forEach(select => {
+                        data.forEach(med => {
+                            const option = document.createElement('option');
+                            option.value = med.id;
+                            option.textContent = `${med.name} (${med.dosage_form}, ${med.strength})`;
+                            select.appendChild(option);
+                        });
+                    });
+                })
+                .catch(error => console.error('Error loading medications:', error));
+
+            // Add medication button functionality
+            document.getElementById('add-medication').addEventListener('click', function() {
+                const container = document.getElementById('medications-container');
+                const newItem = container.querySelector('.medication-item').cloneNode(true);
+
+                // Clear input values
+                newItem.querySelectorAll('input, textarea').forEach(input => {
+                    input.value = '';
+                });
+
+                // Show remove button for all items
+                const items = container.querySelectorAll('.medication-item');
+                items.forEach(item => {
+                    item.querySelector('.remove-medication').style.display = 'block';
+                });
+
+                // Show remove button for new item
+                newItem.querySelector('.remove-medication').style.display = 'block';
+
+                // Add event listener to remove button
+                newItem.querySelector('.remove-medication').addEventListener('click', function() {
+                    newItem.remove();
+
+                    // If only one item left, hide its remove button
+                    const remainingItems = container.querySelectorAll('.medication-item');
+                    if (remainingItems.length === 1) {
+                        remainingItems[0].querySelector('.remove-medication').style.display = 'none';
+                    }
+                });
+
+                container.appendChild(newItem);
+
+                // Initialize select2 for the new medication select
+                $(newItem).find('.medication-select').select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    dropdownParent: $('#prescriptionModal')
+                });
+            });
+
+            // Add event listeners to initial remove buttons
+            document.querySelectorAll('.remove-medication').forEach(button => {
+                button.addEventListener('click', function() {
+                    const item = this.closest('.medication-item');
+                    item.remove();
+
+                    // If only one item left, hide its remove button
+                    const remainingItems = document.querySelectorAll('.medication-item');
+                    if (remainingItems.length === 1) {
+                        remainingItems[0].querySelector('.remove-medication').style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Load lab tests for lab test modal
+        if (document.getElementById('labTestModal')) {
+            fetch('/laboratory/api/tests/') // Ensure this URL is correct as per your laboratory/urls.py
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const testsSelect = document.getElementById('tests');
+                    testsSelect.innerHTML = ''; // Clear existing options
+
+                    if (data && data.length > 0) {
+                        data.forEach(test => {
+                            const option = document.createElement('option');
+                            option.value = test.id;
+                            option.textContent = `${test.name} (${test.category ? test.category : 'Uncategorized'})`;
+                            testsSelect.appendChild(option);
+                        });
+                    } else {
+                        const option = document.createElement('option');
+                        option.textContent = 'No active tests available';
+                        option.disabled = true;
+                        testsSelect.appendChild(option);
+                    }
+                    // Initialize Select2 if it's used for this dropdown
+                    if ($(testsSelect).hasClass('select2')) {
+                        $(testsSelect).select2({
+                            theme: 'bootstrap-5',
+                            width: '100%',
+                            dropdownParent: $('#labTestModal') // Important for modals
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading tests:', error);
+                    const testsSelect = document.getElementById('tests');
+                    if(testsSelect) {
+                        testsSelect.innerHTML = ''; // Clear existing options
+                        const option = document.createElement('option');
+                        option.textContent = 'Error loading tests. See console.';
+                        option.disabled = true;
+                        testsSelect.appendChild(option);
+                         if ($(testsSelect).hasClass('select2')) { // Attempt to init select2 even on error to prevent breakage if it was expected
+                            $(testsSelect).select2({
+                                theme: 'bootstrap-5',
+                                width: '100%',
+                                dropdownParent: $('#labTestModal')
+                            });
+                        }
+                    }
+                });
+        }
+
+        // Load doctors for referral modal
+        if (document.getElementById('referralModal')) {
+            // Get all users with doctor role
+            fetch('/accounts/api/users/?role=doctor')
+                .then(response => response.json())
+                .then(data => {
+                    const doctorsSelect = document.getElementById('referred_to');
+                    if (doctorsSelect) {
+                        data.forEach(doctor => {
+                            const option = document.createElement('option');
+                            option.value = doctor.id;
+                            option.textContent = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                            doctorsSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading doctors:', error);
+                    // Fallback: Add some default options
+                    const doctorsSelect = document.getElementById('referred_to');
+                    if (doctorsSelect) {
+                        const currentUser = document.querySelector('input[name="referring_doctor"]').value;
+                        const users = document.querySelectorAll('.user-option');
+                        users.forEach(user => {
+                            if (user.value !== currentUser) {
+                                const option = document.createElement('option');
+                                option.value = user.value;
+                                option.textContent = user.textContent;
+                                doctorsSelect.appendChild(option);
+                            }
+                        });
+                    }
+                });
+        }
+    });
+</script>
+{% endblock %}

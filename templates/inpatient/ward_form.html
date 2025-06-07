@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">Ward Name</label>
+                                {{ form.name|add_class:"form-control" }}
+                                {% if form.name.errors %}
+                                    <div class="text-danger">
+                                        {{ form.name.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.ward_type.id_for_label }}" class="form-label">Ward Type</label>
+                                {{ form.ward_type|add_class:"form-select" }}
+                                {% if form.ward_type.errors %}
+                                    <div class="text-danger">
+                                        {{ form.ward_type.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.floor.id_for_label }}" class="form-label">Floor</label>
+                                {{ form.floor|add_class:"form-control" }}
+                                {% if form.floor.errors %}
+                                    <div class="text-danger">
+                                        {{ form.floor.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.capacity.id_for_label }}" class="form-label">Capacity (Number of Beds)</label>
+                                {{ form.capacity|add_class:"form-control" }}
+                                {% if form.capacity.errors %}
+                                    <div class="text-danger">
+                                        {{ form.capacity.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.charge_per_day.id_for_label }}" class="form-label">Charge Per Day (₦)</label>
+                                {{ form.charge_per_day|add_class:"form-control" }}
+                                {% if form.charge_per_day.errors %}
+                                    <div class="text-danger">
+                                        {{ form.charge_per_day.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mt-4">
+                                <div class="form-check">
+                                    {{ form.is_active|add_class:"form-check-input" }}
+                                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                        Active
+                                    </label>
+                                </div>
+                                {% if form.is_active.errors %}
+                                    <div class="text-danger">
+                                        {{ form.is_active.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                                {{ form.description|add_class:"form-control" }}
+                                {% if form.description.errors %}
+                                    <div class="text-danger">
+                                        {{ form.description.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'inpatient:wards' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i> Back to Wards
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i> Save Ward
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

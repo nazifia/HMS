@@ -1,0 +1,150 @@
+{% load consultation_tags %}
+<!-- Topbar -->
+<nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow w-100">
+
+    <!-- Sidebar Toggle (Topbar) -->
+    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+        <i class="fa fa-bars"></i>
+    </button>
+
+    <!-- Topbar Search -->
+    {% comment %} <form class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
+        <div class="input-group">
+            <input type="text" class="form-control bg-light border-0 small" placeholder="Search for..." aria-label="Search" aria-describedby="basic-addon2">
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="button">
+                    <i class="fas fa-search fa-sm"></i>
+                </button>
+            </div>
+        </div>
+    </form> {% endcomment %}
+
+    <!-- Topbar Navbar -->
+    <ul class="navbar-nav ml-auto">
+
+        <!-- Nav Item - Search Dropdown (Visible Only XS) -->
+        <li class="nav-item dropdown no-arrow d-sm-none">
+            <a class="nav-link dropdown-toggle" href="#" id="searchDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-search fa-fw"></i>
+            </a>
+            <!-- Dropdown - Messages -->
+            <div class="dropdown-menu dropdown-menu-right p-3 shadow animated--grow-in" aria-labelledby="searchDropdown">
+                <form class="form-inline mr-auto w-100 navbar-search">
+                    <div class="input-group">
+                        <input type="text" class="form-control bg-light border-0 small" placeholder="Search for..." aria-label="Search" aria-describedby="basic-addon2">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="button">
+                                <i class="fas fa-search fa-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </li>
+
+        <!-- Custom: Registration Links -->
+        {% if user.is_authenticated %}
+            <li class="nav-item">
+            <!-- Custom: Staff Management -->
+            {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'inpatient:bed_dashboard' %}">
+                        <i class="fas fa-bed fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Bed Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'pharmacy:dispensing_report' %}">
+                        <i class="fas fa-pills fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Dispensing Report
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'accounts:user_dashboard' %}">
+                        <i class="fas fa-user-shield fa-sm fa-fw mr-2 text-gray-400"></i>
+                        User Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'core:notifications_list' %}">
+                        <i class="fas fa-bell fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Notifications
+                    </a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'accounts:login' %}">
+                        <i class="fas fa-sign-in-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Login
+                    </a>
+                </li>
+            {% endif %}
+        {% endif %}
+            <!-- End Custom: Staff Management -->
+
+        <div class="topbar-divider d-none d-sm-block"></div>
+
+        <!-- Nav Item - User Information -->
+        {% if user.is_authenticated %}
+        <li class="nav-item dropdown no-arrow">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                {% comment %} <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ user.get_full_name|default:user.username }}</span> {% endcomment %}
+                <span class="mr-2 d-none d-lg-inline text-gray-600 small">
+                    {% if user.first_name or user.last_name %}
+                        {{ user.get_full_name }}
+                    {% elif user.username %}
+                        {{ user.username }}
+                    {% else %}
+                        {{ user.phone_number }} {# Fallback to phone_number if all else fails #}
+                    {% endif %}
+                </span>
+                {% if user.profile.profile_picture %}
+                    <img class="img-profile rounded-circle" src="{{ user.profile.profile_picture.url }}">
+                {% else %}
+                    <img class="img-profile rounded-circle" src="/static/img/undraw_profile.svg">
+                {% endif %}
+            </a>
+            <!-- Dropdown - User Information -->
+            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+                <a class="dropdown-item" href="{% url 'accounts:profile' %}">
+                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Profile
+                </a>
+                <a class="dropdown-item" href="#">
+                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Settings
+                </a>
+                <a class="dropdown-item" href="#">
+                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Activity Log
+                </a>
+                <div class="dropdown-divider"></div>
+                <form method="post" action="{% url 'accounts:logout' %}" class="dropdown-item p-0">
+                    {% csrf_token %}
+                    <button type="submit" class="dropdown-item">
+                        <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </li>
+        {% else %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:login' %}">
+                <i class="fas fa-sign-in-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                Login
+            </a>
+        </li>
+        {% endif %}
+
+    </ul>
+    <!-- End of Topbar -->
+    <!-- Custom CSS for Priority Colors -->
+    <style>
+        .bg-emergency-light { background-color: #dc3545; }
+        .bg-urgent-light { background-color: #ffc107; }
+        .bg-normal-light { background-color: #28a745; }
+    </style>
+
+</nav>
+<!-- End of Topbar -->

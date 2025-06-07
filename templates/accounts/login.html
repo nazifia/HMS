@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card auth-form">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Login</h2>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">Phone Number</label>
+                        <input type="text" name="username" id="id_username" class="form-control" placeholder="Enter your phone number" required>
+                        <small class="form-text text-muted">Enter your phone number without spaces or special characters. Username is also supported as a fallback.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label">Password</label>
+                        <input type="password" name="password" id="id_password" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember-me">
+                        <label class="form-check-label" for="remember-me">Remember me</label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <a href="{% url 'accounts:password_reset' %}">Forgot Password?</a>
+                        <span class="mx-2">|</span>
+                        <a href="{% url 'accounts:phone_auth_guide' %}">Phone Authentication Guide</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

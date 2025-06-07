@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}Bed Management Dashboard - Hospital Management System{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Bed Management Dashboard</h2>
+    <!-- Analytics Row -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h4>{{ total_beds }}</h4>
+                    <p class="mb-0">Total Beds</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h4>{{ available_beds }}</h4>
+                    <p class="mb-0">Available</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body">
+                    <h4>{{ occupied_beds }}</h4>
+                    <p class="mb-0">Occupied</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-secondary text-white">
+                <div class="card-body">
+                    <h4>{{ inactive_beds }}</h4>
+                    <p class="mb-0">Inactive</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-info text-dark">
+                <div class="card-body">
+                    <h4>{{ occupancy_rate|floatformat:1 }}%</h4>
+                    <p class="mb-0">Occupancy Rate</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Bulk Actions Form -->
+    <form method="post" class="mb-3">
+        {% csrf_token %}
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <select name="bulk_action" class="form-select">
+                    <option value="">Bulk Action</option>
+                    <option value="mark_available">Mark as Available</option>
+                    <option value="mark_inactive">Mark as Inactive</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-warning">Apply</button>
+            </div>
+        </div>
+        <div class="table-responsive mt-2">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="select-all"></th>
+                        <th>Ward</th>
+                        <th>Bed Number</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th>Current Patient</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bed in page_obj %}
+                    <tr>
+                        <td><input type="checkbox" name="selected_beds" value="{{ bed.id }}"></td>
+                        <td>{{ bed.ward.name }}</td>
+                        <td>{{ bed.bed_number }}</td>
+                        <td>
+                            {% if not bed.is_active %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% elif bed.is_occupied %}
+                                <span class="badge bg-danger">Occupied</span>
+                            {% else %}
+                                <span class="badge bg-success">Available</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ bed.description|default:'-' }}</td>
+                        <td>
+                            {% if bed.is_occupied %}
+                                {% with current_admission=None %}
+                                    {% for admission in bed.admissions.all|dictsortreversed:'admission_date' %}
+                                        {% if admission.status == 'admitted' %}
+                                            {% if not current_admission %}
+                                                {% with current_admission=admission %}
+                                                    <a href="{% url 'inpatient:admission_detail' admission.id %}">{{ admission.patient.get_full_name }}</a>
+                                                {% endwith %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% empty %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endfor %}
+                                    {% if not current_admission %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'inpatient:edit_bed' bed.id %}" class="btn btn-sm btn-secondary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                {% if not bed.is_occupied %}
+                                    <a href="{% url 'inpatient:delete_bed' bed.id %}" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                {% endif %}
+                                {% if not bed.is_occupied and bed.is_active %}
+                                    <a href="{% url 'inpatient:create_admission' %}?bed_id={{ bed.id }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-procedures"></i> Admit Patient
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if ward_id %}&amp;ward={{ ward_id }}{% endif %}{% if bed_status %}&amp;status={{ bed_status }}{% endif %}{% if search %}&amp;search={{ search }}{% endif %}">Previous</a>
+                    </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}{% if ward_id %}&amp;ward={{ ward_id }}{% endif %}{% if bed_status %}&amp;status={{ bed_status }}{% endif %}{% if search %}&amp;search={{ search }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if ward_id %}&amp;ward={{ ward_id }}{% endif %}{% if bed_status %}&amp;status={{ bed_status }}{% endif %}{% if search %}&amp;search={{ search }}{% endif %}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+<script>
+    // Select/Deselect all checkboxes
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('select-all');
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                document.querySelectorAll('input[name="selected_beds"]').forEach(cb => cb.checked = selectAll.checked);
+            });
+        }
+    });
+</script>
+{% endblock %}

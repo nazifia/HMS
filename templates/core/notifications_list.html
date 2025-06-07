@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Notifications</h2>
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Message</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for notification in notifications %}
+      <tr {% if not notification.is_read %}class="table-warning"{% endif %}>
+        <td>{{ notification.message }}</td>
+        <td>{{ notification.created_at|date:'Y-m-d H:i' }}</td>
+        <td>{% if notification.is_read %}Read{% else %}Unread{% endif %}</td>
+        <td>
+          {% if not notification.is_read %}
+          <a href="{% url 'core:mark_notification_read' notification.id %}" class="btn btn-sm btn-success">Mark as Read</a>
+          {% else %}-{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">No notifications.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

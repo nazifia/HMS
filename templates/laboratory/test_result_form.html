@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <!-- Test Request Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Test Request Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Request ID:</div>
+                                    <div class="col-md-8">{{ test_request.id }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Request Date:</div>
+                                    <div class="col-md-8">{{ test_request.request_date|date:"F d, Y" }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Status:</div>
+                                    <div class="col-md-8">
+                                        {% if test_request.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif test_request.status == 'collected' %}
+                                            <span class="badge bg-info">Sample Collected</span>
+                                        {% elif test_request.status == 'processing' %}
+                                            <span class="badge bg-secondary">Processing</span>
+                                        {% elif test_request.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif test_request.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient:</div>
+                                    <div class="col-md-8">
+                                        <a href="{% url 'patients:detail' test_request.patient.id %}">
+                                            {{ test_request.patient.get_full_name }}
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient ID:</div>
+                                    <div class="col-md-8">{{ test_request.patient.patient_id }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Doctor:</div>
+                                    <div class="col-md-8">Dr. {{ test_request.doctor.get_full_name }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test Result Form -->
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.test.id_for_label }}" class="form-label">Test</label>
+                            {{ form.test|add_class:"form-select select2" }}
+                            {% if form.test.errors %}
+                                <div class="text-danger">
+                                    {{ form.test.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.result_date.id_for_label }}" class="form-label">Result Date</label>
+                            {{ form.result_date|add_class:"form-control" }}
+                            {% if form.result_date.errors %}
+                                <div class="text-danger">
+                                    {{ form.result_date.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sample_collection_date.id_for_label }}" class="form-label">Sample Collection Date & Time</label>
+                            {{ form.sample_collection_date|add_class:"form-control" }}
+                            {% if form.sample_collection_date.errors %}
+                                <div class="text-danger">
+                                    {{ form.sample_collection_date.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sample_collected_by.id_for_label }}" class="form-label">Sample Collected By</label>
+                            {{ form.sample_collected_by|add_class:"form-select select2" }}
+                            {% if form.sample_collected_by.errors %}
+                                <div class="text-danger">
+                                    {{ form.sample_collected_by.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.performed_by.id_for_label }}" class="form-label">Performed By</label>
+                            {{ form.performed_by|add_class:"form-select select2" }}
+                            {% if form.performed_by.errors %}
+                                <div class="text-danger">
+                                    {{ form.performed_by.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.verified_by.id_for_label }}" class="form-label">Verified By</label>
+                            {{ form.verified_by|add_class:"form-select select2" }}
+                            {% if form.verified_by.errors %}
+                                <div class="text-danger">
+                                    {{ form.verified_by.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.result_file.id_for_label }}" class="form-label">Result File (Optional)</label>
+                            {{ form.result_file|add_class:"form-control" }}
+                            {% if form.result_file.errors %}
+                                <div class="text-danger">
+                                    {{ form.result_file.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">
+                                    {{ form.notes.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Test Request
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Test Result
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 for dropdowns
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}

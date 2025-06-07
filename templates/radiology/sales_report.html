@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Radiology Report Dashboard</h2>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Tests</h5>
+                    <p class="card-text display-4">{{ todays_tests_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Monthly Tests</h5>
+                    <p class="card-text display-4">{{ monthly_tests_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Revenue</h5>
+                    <p class="card-text display-4">₦{{ todays_revenue|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Monthly Revenue</h5>
+                    <p class="card-text display-4">₦{{ monthly_revenue|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <strong>Tests by User (Today)</strong>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Tests Performed</th>
+                        <th>Total Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user_stat in user_stats_today %}
+                    <tr>
+                        <td>{{ user_stat.user.get_full_name|default:user_stat.user.username }}</td>
+                        <td>{{ user_stat.tests_count }}</td>
+                        <td>₦{{ user_stat.revenue|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3">No data for today.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <strong>Tests by User (This Month)</strong>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Tests Performed</th>
+                        <th>Total Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user_stat in user_stats_month %}
+                    <tr>
+                        <td>{{ user_stat.user.get_full_name|default:user_stat.user.username }}</td>
+                        <td>{{ user_stat.tests_count }}</td>
+                        <td>₦{{ user_stat.revenue|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3">No data for this month.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

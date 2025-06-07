@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load core_form_tags %}
+{% block title %}Radiology Result - Hospital Management System{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">{% if result %}Edit{% else %}Add{% endif %} Radiology Result for Order #{{ order.id }}</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                <div class="mb-3">
+                    <label for="performed_by" class="form-label">Performed By</label>
+                    <input type="text" class="form-control" id="performed_by" value="{{ result.performed_by.get_full_name|default:request.user.get_full_name }}" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="findings" class="form-label">Findings</label>
+                    {{ form.findings|add_class:"form-control" }}
+                    {{ form.findings.errors }}
+                </div>
+                <div class="mb-3">
+                    <label for="impression" class="form-label">Impression</label>
+                    {{ form.impression|add_class:"form-control" }}
+                    {{ form.impression.errors }}
+                </div>
+                <div class="mb-3">
+                    <label for="image_file" class="form-label">Image (optional)</label>
+                    {{ form.image_file|add_class:"form-control" }}
+                    {{ form.image_file.errors }}
+                </div>
+                <div class="form-check mb-3">
+                    {{ form.is_abnormal|add_class:"form-check-input" }}
+                    <label class="form-check-label" for="is_abnormal">Abnormal</label>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Result</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

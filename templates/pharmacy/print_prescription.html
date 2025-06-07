@@ -1,0 +1,120 @@
+{% extends 'base_print.html' %}
+
+{% block title %}Prescription #{{ prescription.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row">
+        <div class="col-12 text-center mb-4">
+            <h2 class="mb-0">{{ hospital_name|default:"Hospital Management System" }}</h2>
+            <p class="mb-0">{{ hospital_address|default:"123 Medical Center Drive" }}</p>
+            <p class="mb-0">{{ hospital_contact|default:"Phone: (123) 456-7890 | Email: info@hospital.com" }}</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h3 class="border-bottom border-top py-2">PRESCRIPTION</h3>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-6">
+            <h5>Patient Information</h5>
+            <p class="mb-1"><strong>Name:</strong> {{ prescription.patient.get_full_name }}</p>
+            <p class="mb-1"><strong>ID:</strong> {{ prescription.patient.patient_id }}</p>
+            <p class="mb-1"><strong>Age:</strong> {{ prescription.patient.get_age }} years</p>
+            <p class="mb-1"><strong>Gender:</strong> {{ prescription.patient.get_gender_display }}</p>
+            <p class="mb-1"><strong>Phone:</strong> {{ prescription.patient.phone_number }}</p>
+        </div>
+        <div class="col-6 text-end">
+            <h5>Prescription Details</h5>
+            <p class="mb-1"><strong>Prescription #:</strong> {{ prescription.id }}</p>
+            <p class="mb-1"><strong>Date:</strong> {{ prescription.prescription_date|date:"F d, Y" }}</p>
+            <p class="mb-1"><strong>Doctor:</strong> Dr. {{ prescription.doctor.get_full_name }}</p>
+            <p class="mb-1"><strong>Specialization:</strong> {{ prescription.doctor.profile.specialization|default:"General Medicine" }}</p>
+        </div>
+    </div>
+    
+    {% if prescription.diagnosis %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Diagnosis</h5>
+                    <p class="card-text">{{ prescription.diagnosis }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3">Prescribed Medications</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 25%">Medication</th>
+                            <th style="width: 15%">Dosage</th>
+                            <th style="width: 15%">Frequency</th>
+                            <th style="width: 15%">Duration</th>
+                            <th style="width: 10%">Quantity</th>
+                            <th style="width: 15%">Instructions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in prescription_items %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ item.medication.name }}</strong><br>
+                                <small>{{ item.medication.strength }} - {{ item.medication.dosage_form }}</small>
+                            </td>
+                            <td>{{ item.dosage }}</td>
+                            <td>{{ item.frequency }}</td>
+                            <td>{{ item.duration }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.instructions }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    {% if prescription.notes %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Notes</h5>
+                    <p class="card-text">{{ prescription.notes }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row mt-5">
+        <div class="col-6">
+            <p class="mb-1">Patient Signature: _________________________</p>
+        </div>
+        <div class="col-6 text-end">
+            <p class="mb-1">Doctor's Signature: _________________________</p>
+            <p class="mb-0">Dr. {{ prescription.doctor.get_full_name }}</p>
+            <p class="mb-0">{{ prescription.doctor.profile.specialization|default:"General Medicine" }}</p>
+        </div>
+    </div>
+    
+    <div class="row mt-5 pt-5 border-top">
+        <div class="col-12 text-center">
+            <p class="small text-muted mb-0">This prescription is valid for 30 days from the date of issue.</p>
+            <p class="small text-muted mb-0">Please bring this prescription for refills.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

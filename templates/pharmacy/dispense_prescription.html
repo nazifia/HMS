@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}Dispense Medications - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <!-- Info: Invoice will be generated after dispensing -->
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> The invoice for dispensed medicines will be generated and sent to billing/Context7 MCP only after you confirm dispensing below.
+                </div>
+                <!-- Prescription Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Prescription Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Prescription ID:</div>
+                                    <div class="col-md-8">{{ prescription.id }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Date:</div>
+                                    <div class="col-md-8">{{ prescription.prescription_date|date:"F d, Y" }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Diagnosis:</div>
+                                    <div class="col-md-8">{{ prescription.diagnosis }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Status:</div>
+                                    <div class="col-md-8">
+                                        {% if prescription.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif prescription.status == 'processing' %}
+                                            <span class="badge bg-info">Processing</span>
+                                        {% elif prescription.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif prescription.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient:</div>
+                                    <div class="col-md-8">
+                                        <a href="{% url 'patients:detail' prescription.patient.id %}">
+                                            {{ prescription.patient.get_full_name }}
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient ID:</div>
+                                    <div class="col-md-8">{{ prescription.patient.patient_id }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Doctor:</div>
+                                    <div class="col-md-8">Dr. {{ prescription.doctor.get_full_name }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Department:</div>
+                                    <div class="col-md-8">{{ prescription.doctor.profile.department|default:"Not specified" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dispense Form -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Dispense Medications</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="dispenseForm">
+                            {% csrf_token %}
+                            {{ formset.management_form }}
+
+                            {% if formset.non_form_errors %}
+                                <div class="alert alert-danger">
+                                    {{ formset.non_form_errors }}
+                                </div>
+                            {% endif %}
+                            <!-- Show per-form errors for debugging -->
+                            {% for form in formset %}
+                                {% if form.errors %}
+                                    <div class="alert alert-danger">
+                                        <strong>Medication #{{ forloop.counter }} error(s):</strong>
+                                        <ul>
+                                            {% for field, errors in form.errors.items %}
+                                                <li>{{ field }}: {{ errors|join:', ' }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th></th>
+                                            <th>Medication</th>
+                                            <th>Prescribed Qty</th>
+                                            <th>Stock</th>
+                                            <th>Unit Price</th>
+                                            <th>Dispense Qty</th>
+                                            <th>Item Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for form in formset %}
+                                            {% with item=undispensed_items_list|get_item:forloop.counter0 %}
+                                            <tr id="item-row-{{ forloop.counter0 }}" data-item-id="{{ item.id }}" data-unit-price="{{ item.medication.price }}">
+                                                <td>
+                                                    {{ form.item_id }}
+                                                    <input type="hidden" name="form-{{ forloop.counter0 }}-dispense_this_item" value="off">
+                                                    <input type="checkbox" class="dispense-checkbox item-checkbox" name="form-{{ forloop.counter0 }}-dispense_this_item" value="on" {% if form.dispense_this_item.value %}checked{% endif %}>
+                                                    {% if form.dispense_this_item.errors %}<div class="text-danger small">{{ form.dispense_this_item.errors|join:", " }}</div>{% endif %}
+                                                    {% if form.dispense_this_item.field.widget.attrs.disabled %}
+                                                        <span class="badge bg-secondary ms-1">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <strong>{{ item.medication.name }}</strong> ({{ item.medication.strength }})
+                                                    <div class="small text-muted">{{ item.medication.dosage_form }}</div>
+                                                </td>
+                                                <td>{{ item.quantity }}</td>
+                                                <td>{{ item.medication.stock_quantity }}</td>
+                                                <td>{{ item.medication.price }}</td>
+                                                <td>
+                                                    {{ form.quantity_to_dispense|add_class:"form-control form-control-sm quantity-input" }}
+                                                    {% if form.quantity_to_dispense.errors %}<div class="text-danger small">{{ form.quantity_to_dispense.errors|join:", " }}</div>{% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="item-total-price">0.00</span>
+                                                </td>
+                                            </tr>
+                                            {% endwith %}
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">
+                                                    {% if prescription.status == 'completed' %}
+                                                        All medications in this prescription have been dispensed.
+                                                    {% else %}
+                                                        No items available for dispensing or all items have zero stock.
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="6" class="text-end"><strong>Overall Total for this Dispense:</strong></td>
+                                            <td id="overall-total-price" class="fw-bold">0.00</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back to Prescription
+                                </a>
+                                <button type="submit" class="btn btn-success" {% if not formset.forms %}disabled{% endif %}>
+                                    <i class="fas fa-prescription-bottle-alt"></i> Dispense Selected Medications
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% if invoice_generated %}
+<div class="alert alert-success mt-4">
+    <i class="fas fa-file-invoice-dollar me-2"></i>
+    Invoice <a href="{% url 'billing:detail' invoice_id %}">#{{ invoice_number }}</a> has been generated and sent to billing/MCP.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const formsetTable = document.getElementById('dispenseForm');
+        if (!formsetTable) return;
+
+        function updateTotals() {
+            let overallTotal = 0;
+            formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach((row, index) => {
+                const dispenseCheckbox = row.querySelector(`.dispense-checkbox`);
+                const quantityInput = row.querySelector(`.quantity-input`);
+                const itemTotalPriceSpan = row.querySelector('.item-total-price');
+                const unitPrice = parseFloat(row.dataset.unitPrice) || 0;
+                let itemTotal = 0;
+                if (dispenseCheckbox && dispenseCheckbox.checked && !dispenseCheckbox.disabled && quantityInput) {
+                    const quantity = parseInt(quantityInput.value) || 0;
+                    itemTotal = quantity * unitPrice;
+                    overallTotal += itemTotal;
+                }
+                itemTotalPriceSpan.textContent = itemTotal.toFixed(2);
+            });
+            document.getElementById('overall-total-price').textContent = overallTotal.toFixed(2);
+        }
+
+        formsetTable.addEventListener('change', function(event) {
+            const target = event.target;
+            if (target.classList.contains('dispense-checkbox')) {
+                const row = target.closest('tr');
+                const quantityInput = row.querySelector('.quantity-input');
+                if (quantityInput && !target.disabled) {
+                    quantityInput.disabled = !target.checked;
+                    if (target.checked && (!quantityInput.value || quantityInput.value == '0')) {
+                        // Auto-fill with prescribed quantity if empty or zero
+                        const prescribedQty = row.querySelector('td:nth-child(3)')?.textContent.trim();
+                        if (prescribedQty && !isNaN(parseInt(prescribedQty))) {
+                            quantityInput.value = parseInt(prescribedQty);
+                        } else {
+                            quantityInput.value = 1;
+                        }
+                    }
+                }
+                updateTotals();
+            } else if (target.classList.contains('quantity-input')) {
+                const row = target.closest('tr');
+                const dispenseCheckbox = row.querySelector('.dispense-checkbox');
+                if (dispenseCheckbox && !dispenseCheckbox.disabled) {
+                    // Auto-check if quantity > 0, uncheck if 0 or empty
+                    if (parseInt(target.value) > 0) {
+                        dispenseCheckbox.checked = true;
+                    } else {
+                        dispenseCheckbox.checked = false;
+                    }
+                    // Trigger change event for checkbox to update disabled state and totals
+                    dispenseCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+
+        // Initial calculation on page load and setup of quantity input disabled state
+        formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
+            const dispenseCheckbox = row.querySelector('.dispense-checkbox');
+            const quantityInput = row.querySelector('.quantity-input');
+            if (dispenseCheckbox && quantityInput) {
+                if (dispenseCheckbox.disabled) {
+                    quantityInput.disabled = true;
+                } else {
+                    quantityInput.disabled = !dispenseCheckbox.checked;
+                }
+            }
+        });
+        updateTotals();
+
+        // Ensure all checked checkboxes and their quantity inputs are enabled before submit
+        formsetTable.addEventListener('submit', function(event) {
+            formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
+                const dispenseCheckbox = row.querySelector('.dispense-checkbox');
+                const quantityInput = row.querySelector('.quantity-input');
+                if (dispenseCheckbox && quantityInput) {
+                    if (dispenseCheckbox.checked) {
+                        quantityInput.disabled = false;
+                    }
+                }
+            });
+        });
+    });
+</script>
+
+{% comment %}
+Helper templatetag to access list item by index. Create this in a templatetags file.
+Example: pharmacy/templatetags/pharmacy_extras.py
+
+from django import template
+register = template.Library()
+
+@register.filter
+def get_item(list_data, index):
+    try:
+        return list_data[index]
+    except IndexError:
+        return None
+{% endcomment %}
+
+{% endblock %}

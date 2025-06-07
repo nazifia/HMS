@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+  {{ title }} | {{ block.super }}
+{% endblock title %}
+
+{% block page_title %}
+  {{ title }}
+{% endblock page_title %}
+
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:detail' patient.id %}">{{ patient.get_full_name }}</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:wallet_dashboard' patient.id %}">Wallet</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Transfer Funds</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Transfer Funds Between Wallets</h6>
+            </div>
+            <div class="card-body">
+                <!-- Sender Info -->
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-user"></i> Transfer From</h6>
+                    <p class="mb-1"><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                    <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                    <p class="mb-0"><strong>Available Balance:</strong> <span class="text-success font-weight-bold">₦{{ wallet.balance|floatformat:2 }}</span></p>
+                </div>
+
+                <!-- Transfer Form -->
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        {{ form.recipient_patient.label_tag }}
+                        {{ form.recipient_patient }}
+                        {% if form.recipient_patient.errors %}
+                            <div class="text-danger">
+                                {% for error in form.recipient_patient.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Select the patient to transfer funds to
+                        </small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ form.amount.label_tag }}
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.amount.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Available balance: ₦{{ wallet.balance|floatformat:2 }}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ form.description.label_tag }}
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.description.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Errors -->
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <p class="mb-0">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Transfer Summary (Hidden by default, shown via JavaScript) -->
+                    <div id="transfer-summary" class="alert alert-warning" style="display: none;">
+                        <h6><i class="fas fa-exchange-alt"></i> Transfer Summary</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>From:</strong> {{ patient.get_full_name }}<br>
+                                <strong>Current Balance:</strong> ₦{{ wallet.balance|floatformat:2 }}<br>
+                                <strong>Balance After:</strong> <span id="balance-after">₦0.00</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>To:</strong> <span id="recipient-name">Select recipient</span><br>
+                                <strong>Amount:</strong> <span id="transfer-amount">₦0.00</span><br>
+                                <strong>Description:</strong> <span id="transfer-description">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-info" id="transfer-btn" disabled>
+                            <i class="fas fa-exchange-alt"></i> Transfer Funds
+                        </button>
+                        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Wallet Summary -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Sender Wallet</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <i class="fas fa-wallet fa-3x text-gray-300 mb-3"></i>
+                    <h4 class="text-primary">₦{{ wallet.balance|floatformat:2 }}</h4>
+                    <p class="text-muted">Current Balance</p>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="text-success">
+                            <i class="fas fa-arrow-up"></i>
+                            <div class="font-weight-bold">₦{{ wallet.get_total_credits|floatformat:2 }}</div>
+                            <small>Total Credits</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-danger">
+                            <i class="fas fa-arrow-down"></i>
+                            <div class="font-weight-bold">₦{{ wallet.get_total_debits|floatformat:2 }}</div>
+                            <small>Total Debits</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Add Funds
+                    </a>
+                    <a href="{% url 'patients:wallet_withdrawal' patient.id %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-minus"></i> Withdraw Funds
+                    </a>
+                    <a href="{% url 'patients:wallet_refund' patient.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-undo"></i> Process Refund
+                    </a>
+                    <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-dark btn-sm">
+                        <i class="fas fa-list"></i> View Transactions
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transfer Guidelines -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">Transfer Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <small>Transfers are processed immediately</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-shield-alt text-primary"></i>
+                        <small>All transfers are secure and audited</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        <small>Cannot transfer to the same patient</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-ban text-danger"></i>
+                        <small>Transfers cannot be reversed</small>
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-receipt text-info"></i>
+                        <small>Both parties will see the transaction</small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for real-time transfer validation and summary -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const amountInput = document.getElementById('id_amount');
+    const recipientSelect = document.getElementById('id_recipient_patient');
+    const descriptionInput = document.getElementById('id_description');
+    const transferSummary = document.getElementById('transfer-summary');
+    const transferBtn = document.getElementById('transfer-btn');
+    const availableBalance = {{ wallet.balance }};
+    
+    function updateTransferSummary() {
+        const amount = parseFloat(amountInput.value) || 0;
+        const recipientOption = recipientSelect.options[recipientSelect.selectedIndex];
+        const recipientName = recipientOption.text;
+        const description = descriptionInput.value || '-';
+        
+        if (amount > 0 && recipientSelect.value) {
+            // Show summary
+            transferSummary.style.display = 'block';
+            
+            // Update summary values
+            document.getElementById('balance-after').textContent = `₦${(availableBalance - amount).toFixed(2)}`;
+            document.getElementById('recipient-name').textContent = recipientName;
+            document.getElementById('transfer-amount').textContent = `₦${amount.toFixed(2)}`;
+            document.getElementById('transfer-description').textContent = description;
+            
+            // Enable/disable transfer button
+            if (amount <= availableBalance) {
+                transferBtn.disabled = false;
+                transferBtn.className = 'btn btn-info';
+            } else {
+                transferBtn.disabled = true;
+                transferBtn.className = 'btn btn-danger';
+            }
+        } else {
+            transferSummary.style.display = 'none';
+            transferBtn.disabled = true;
+        }
+    }
+    
+    function validateAmount() {
+        const amount = parseFloat(amountInput.value) || 0;
+        
+        // Remove existing feedback
+        const existingFeedback = amountInput.parentNode.querySelector('.balance-feedback');
+        if (existingFeedback) {
+            existingFeedback.remove();
+        }
+        
+        // Add new feedback
+        if (amount > 0) {
+            const feedback = document.createElement('small');
+            feedback.className = 'form-text balance-feedback';
+            
+            if (amount > availableBalance) {
+                feedback.className += ' text-danger';
+                feedback.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Insufficient balance!';
+            } else {
+                feedback.className += ' text-info';
+                feedback.innerHTML = `<i class="fas fa-info-circle"></i> Balance after transfer: ₦${(availableBalance - amount).toFixed(2)}`;
+            }
+            
+            amountInput.parentNode.appendChild(feedback);
+        }
+    }
+    
+    // Event listeners
+    if (amountInput) {
+        amountInput.addEventListener('input', function() {
+            validateAmount();
+            updateTransferSummary();
+        });
+    }
+    
+    if (recipientSelect) {
+        recipientSelect.addEventListener('change', updateTransferSummary);
+    }
+    
+    if (descriptionInput) {
+        descriptionInput.addEventListener('input', updateTransferSummary);
+    }
+});
+</script>
+{% endblock content %}

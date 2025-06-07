@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ title }}</h4>
+                <div>
+                    <button onclick="window.print()" class="btn btn-light me-2">
+                        <i class="fas fa-print me-1"></i> Print Report
+                    </button>
+                    <a href="{% url 'pharmacy:inventory' %}" class="btn btn-light">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Inventory
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This report shows medications that are out of stock or have stock levels below their reorder levels.
+                </div>
+                
+                {% if out_of_stock_medications %}
+                    <h5 class="mt-4 mb-3 text-danger">Out of Stock Medications</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Category</th>
+                                    <th>Reorder Level</th>
+                                    <th>Price</th>
+                                    <th>Status</th>
+                                    <th class="no-print">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for medication in out_of_stock_medications %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ medication.name }}</strong>
+                                            {% if medication.generic_name %}
+                                                <br><small class="text-muted">{{ medication.generic_name }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ medication.category.name }}</td>
+                                        <td>{{ medication.reorder_level }}</td>
+                                        <td>₦{{ medication.price }}</td>
+                                        <td>{{ medication|stock_status_badge }}</td>
+                                        <td class="no-print">
+                                            <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+                
+                {% if low_stock_medications %}
+                    <h5 class="mt-4 mb-3 text-warning">Low Stock Medications</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Category</th>
+                                    <th>Current Stock</th>
+                                    <th>Reorder Level</th>
+                                    <th>Price</th>
+                                    <th class="no-print">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for medication in low_stock_medications %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ medication.name }}</strong>
+                                            {% if medication.generic_name %}
+                                                <br><small class="text-muted">{{ medication.generic_name }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ medication.category.name }}</td>
+                                        <td>{{ medication.stock_quantity }}</td>
+                                        <td>{{ medication.reorder_level }}</td>
+                                        <td>₦{{ medication.price }}</td>
+                                        <td class="no-print">
+                                            <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+                
+                {% if not out_of_stock_medications and not low_stock_medications %}
+                    <div class="alert alert-success mt-4">
+                        <i class="fas fa-check-circle me-2"></i>
+                        All medications have sufficient stock levels.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        .card-header {
+            background-color: #fff !important;
+            color: #000 !important;
+            border-bottom: 1px solid #ddd !important;
+        }
+        
+        .table {
+            width: 100% !important;
+        }
+    }
+</style>
+{% endblock %}

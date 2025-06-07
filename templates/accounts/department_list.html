@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Departments - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Departments</h4>
+                <a href="{% url 'accounts:add_department' %}" class="btn btn-light">
+                    <i class="fas fa-plus-circle me-1"></i> Add Department
+                </a>
+            </div>
+            <div class="card-body">
+                {% if departments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Head</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for department in departments %}
+                                    <tr>
+                                        <td>{{ department.name }}</td>
+                                        <td>{{ department.description|truncatechars:50 }}</td>
+                                        <td>
+                                            {% if department.head %}
+                                                {{ department.head.get_full_name }}
+                                            {% else %}
+                                                <span class="text-muted">Not assigned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'accounts:edit_department' department.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                            <a href="{% url 'accounts:delete_department' department.id %}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No departments found. Click the "Add Department" button to create one.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Dashboard</h4>
+            </div>
+            <div class="card-body">
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Patients</h5>
+                                <h2 class="mb-0">{{ total_patients }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Appointments</h5>
+                                <h2 class="mb-0">{{ total_appointments }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Prescriptions</h5>
+                                <h2 class="mb-0">{{ total_prescriptions }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Lab Tests</h5>
+                                <h2 class="mb-0">{{ total_tests }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Revenue Stats -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Revenue</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 text-center">
+                                        <h6 class="text-muted">Today</h6>
+                                        <h3>₦{{ today_revenue }}</h3>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <h6 class="text-muted">This Week</h6>
+                                        <h3>₦{{ this_week_revenue }}</h3>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <h6 class="text-muted">This Month</h6>
+                                        <h3>₦{{ this_month_revenue }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Appointment Stats -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Appointments</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3 text-center">
+                                        <h6 class="text-muted">Today</h6>
+                                        <h3>{{ appointment_stats.today }}</h3>
+                                    </div>
+                                    <div class="col-md-3 text-center">
+                                        <h6 class="text-muted">Scheduled</h6>
+                                        <h3>{{ appointment_stats.scheduled }}</h3>
+                                    </div>
+                                    <div class="col-md-3 text-center">
+                                        <h6 class="text-muted">Completed</h6>
+                                        <h3>{{ appointment_stats.completed }}</h3>
+                                    </div>
+                                    <div class="col-md-3 text-center">
+                                        <h6 class="text-muted">Cancelled</h6>
+                                        <h3>{{ appointment_stats.cancelled }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Today's Appointments -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Today's Appointments</h5>
+                                <a href="{% url 'appointments:list' %}" class="btn btn-sm btn-primary">View All</a>
+                            </div>
+                            <div class="card-body">
+                                {% if today_appointments %}
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Time</th>
+                                                    <th>Patient</th>
+                                                    <th>Doctor</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for appointment in today_appointments %}
+                                                    <tr>
+                                                        <td>{{ appointment.appointment_time }}</td>
+                                                        <td>
+                                                            <a href="{% url 'patients:detail' appointment.patient.id %}">
+                                                                {{ appointment.patient.get_full_name }}
+                                                            </a>
+                                                        </td>
+                                                        <td>Dr. {{ appointment.doctor.get_full_name }}</td>
+                                                        <td>
+                                                            {% if appointment.status == 'scheduled' %}
+                                                                <span class="badge bg-primary">Scheduled</span>
+                                                            {% elif appointment.status == 'confirmed' %}
+                                                                <span class="badge bg-info">Confirmed</span>
+                                                            {% elif appointment.status == 'completed' %}
+                                                                <span class="badge bg-success">Completed</span>
+                                                            {% elif appointment.status == 'cancelled' %}
+                                                                <span class="badge bg-danger">Cancelled</span>
+                                                            {% elif appointment.status == 'no_show' %}
+                                                                <span class="badge bg-warning">No Show</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        No appointments scheduled for today.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pending Prescriptions -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Pending Prescriptions</h5>
+                                <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-sm btn-primary">View All</a>
+                            </div>
+                            <div class="card-body">
+                                {% if pending_prescriptions %}
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Patient</th>
+                                                    <th>Doctor</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for prescription in pending_prescriptions %}
+                                                    <tr>
+                                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                                        <td>
+                                                            <a href="{% url 'patients:detail' prescription.patient.id %}">
+                                                                {{ prescription.patient.get_full_name }}
+                                                            </a>
+                                                        </td>
+                                                        <td>Dr. {{ prescription.doctor.get_full_name }}</td>
+                                                        <td>
+                                                            {% if prescription.status == 'pending' %}
+                                                                <span class="badge bg-warning">Pending</span>
+                                                            {% elif prescription.status == 'processing' %}
+                                                                <span class="badge bg-info">Processing</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        No pending prescriptions.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Pending Lab Tests -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Pending Lab Tests</h5>
+                                <a href="{% url 'laboratory:test_requests' %}" class="btn btn-sm btn-primary">View All</a>
+                            </div>
+                            <div class="card-body">
+                                {% if pending_tests %}
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Patient</th>
+                                                    <th>Tests</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for test_request in pending_tests %}
+                                                    <tr>
+                                                        <td>{{ test_request.request_date|date:"M d, Y" }}</td>
+                                                        <td>
+                                                            <a href="{% url 'patients:detail' test_request.patient.id %}">
+                                                                {{ test_request.patient.get_full_name }}
+                                                            </a>
+                                                        </td>
+                                                        <td>{{ test_request.tests.count }}</td>
+                                                        <td>
+                                                            {% if test_request.status == 'pending' %}
+                                                                <span class="badge bg-warning">Pending</span>
+                                                            {% elif test_request.status == 'collected' %}
+                                                                <span class="badge bg-info">Collected</span>
+                                                            {% elif test_request.status == 'processing' %}
+                                                                <span class="badge bg-secondary">Processing</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        No pending lab tests.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Low Stock Medications -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Low Stock Medications</h5>
+                                <a href="{% url 'pharmacy:inventory' %}" class="btn btn-sm btn-primary">View All</a>
+                            </div>
+                            <div class="card-body">
+                                {% if low_stock_medications %}
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Medication</th>
+                                                    <th>Current Stock</th>
+                                                    <th>Reorder Level</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for medication in low_stock_medications %}
+                                                    <tr>
+                                                        <td>
+                                                            <a href="{% url 'pharmacy:medication_detail' medication.id %}">
+                                                                {{ medication.name }}
+                                                            </a>
+                                                        </td>
+                                                        <td>{{ medication.stock_quantity }}</td>
+                                                        <td>{{ medication.reorder_level }}</td>
+                                                        <td>
+                                                            {% if medication.stock_quantity == 0 %}
+                                                                <span class="badge bg-danger">Out of Stock</span>
+                                                            {% else %}
+                                                                <span class="badge bg-warning">Low Stock</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        No medications with low stock.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

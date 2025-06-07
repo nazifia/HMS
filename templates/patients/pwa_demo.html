@@ -1,0 +1,56 @@
+{% extends 'base_pwa.html' %}
+{% block content %}
+<h2>PWA Demo: Push Notification & Offline Queueing</h2>
+<div>
+    <button id="pushDemoBtn">Send Demo Push Notification</button>
+    <div id="pushResult"></div>
+</div>
+<hr>
+<div>
+    <form id="offlineForm" method="post" action="/patients/pwa-demo/">
+        {% csrf_token %}
+        <label>Name for Offline Queue Demo: <input type="text" name="name" required></label>
+        <button type="submit">Submit (works offline!)</button>
+    </form>
+    <div id="formResult"></div>
+</div>
+<script>
+// Push Notification Demo
+const pushBtn = document.getElementById('pushDemoBtn');
+const pushResult = document.getElementById('pushResult');
+pushBtn.onclick = async function() {
+    pushResult.textContent = 'Sending...';
+    try {
+        const resp = await fetch('/patients/demo-push/');
+        const data = await resp.json();
+        pushResult.textContent = data.success ? 'Push notification triggered (check your device/browser)!' : 'Failed.';
+        // Optionally, show a notification directly (for demo)
+        if (window.Notification && Notification.permission === 'granted') {
+            new Notification(data.title, { body: data.body });
+        }
+    } catch (e) {
+        pushResult.textContent = 'Error: ' + e;
+    }
+};
+// Offline Queueing Demo
+const form = document.getElementById('offlineForm');
+const formResult = document.getElementById('formResult');
+form.onsubmit = async function(e) {
+    e.preventDefault();
+    const formData = new FormData(form);
+    formResult.textContent = 'Submitting...';
+    try {
+        const resp = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await resp.json();
+        formResult.textContent = data.message;
+    } catch (err) {
+        formResult.textContent = 'Submission failed (maybe offline). Will sync when online.';
+        // Optionally, store in IndexedDB/offline queue for background sync (handled by service worker)
+    }
+};
+</script>
+{% endblock %}

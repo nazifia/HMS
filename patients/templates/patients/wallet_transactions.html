@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {{ title }} | {{ block.super }}
+{% endblock title %}
+
+{% block page_title %}
+  {{ title }}
+{% endblock page_title %}
+
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:detail' patient.id %}">{{ patient.get_full_name }}</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:wallet_dashboard' patient.id %}">Wallet</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Transactions</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<!-- Wallet Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Current Balance</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ wallet.balance|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="card shadow">
+            <div class="card-body">
+                <h6 class="font-weight-bold text-primary">{{ patient.get_full_name }} ({{ patient.patient_id }})</h6>
+                <p class="mb-0">Wallet transaction history and search</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Form -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Search & Filter Transactions</h6>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                {{ search_form.search.label_tag }}
+                {{ search_form.search }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.transaction_type.label_tag }}
+                {{ search_form.transaction_type }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.status.label_tag }}
+                {{ search_form.status }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.date_from.label_tag }}
+                {{ search_form.date_from }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.date_to.label_tag }}
+                {{ search_form.date_to }}
+            </div>
+            <div class="col-md-1">
+                <label>&nbsp;</label>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </form>
+        <div class="row mt-3">
+            <div class="col-md-2">
+                {{ search_form.amount_min.label_tag }}
+                {{ search_form.amount_min }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.amount_max.label_tag }}
+                {{ search_form.amount_max }}
+            </div>
+            <div class="col-md-8">
+                <label>&nbsp;</label>
+                <div>
+                    <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </a>
+                    <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-info">
+                        <i class="fas fa-dashboard"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Transaction History</h6>
+        <div>
+            <span class="text-muted">Total: {{ page_obj.paginator.count }} transactions</span>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Balance After</th>
+                            <th>Description</th>
+                            <th>Reference</th>
+                            <th>Status</th>
+                            <th>Created By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in page_obj %}
+                        <tr>
+                            <td>{{ transaction.created_at|date:"Y-m-d H:i:s" }}</td>
+                            <td>
+                                {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
+                                    <span class="badge bg-success">{{ transaction.get_transaction_type_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ transaction.get_transaction_type_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
+                                    <span class="text-success font-weight-bold">+₦{{ transaction.amount|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-danger font-weight-bold">-₦{{ transaction.amount|floatformat:2 }}</span>
+                                {% endif %}
+                            </td>
+                            <td>₦{{ transaction.balance_after|floatformat:2 }}</td>
+                            <td>
+                                <span title="{{ transaction.description }}">
+                                    {{ transaction.description|truncatechars:50 }}
+                                </span>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ transaction.reference_number }}</small>
+                            </td>
+                            <td>
+                                {% if transaction.status == 'completed' %}
+                                    <span class="badge bg-success">{{ transaction.get_status_display }}</span>
+                                {% elif transaction.status == 'pending' %}
+                                    <span class="badge bg-warning">{{ transaction.get_status_display }}</span>
+                                {% elif transaction.status == 'failed' %}
+                                    <span class="badge bg-danger">{{ transaction.get_status_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ transaction.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.created_by %}
+                                    {{ transaction.created_by.get_full_name|default:transaction.created_by.username }}
+                                {% else %}
+                                    <span class="text-muted">System</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Transaction pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.transaction_type %}&transaction_type={{ request.GET.transaction_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.amount_min %}&amount_min={{ request.GET.amount_min }}{% endif %}{% if request.GET.amount_max %}&amount_max={{ request.GET.amount_max }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.transaction_type %}&transaction_type={{ request.GET.transaction_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.amount_min %}&amount_min={{ request.GET.amount_min }}{% endif %}{% if request.GET.amount_max %}&amount_max={{ request.GET.amount_max }}{% endif %}">Previous</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.transaction_type %}&transaction_type={{ request.GET.transaction_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.amount_min %}&amount_min={{ request.GET.amount_min }}{% endif %}{% if request.GET.amount_max %}&amount_max={{ request.GET.amount_max }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.transaction_type %}&transaction_type={{ request.GET.transaction_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.amount_min %}&amount_min={{ request.GET.amount_min }}{% endif %}{% if request.GET.amount_max %}&amount_max={{ request.GET.amount_max }}{% endif %}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-receipt fa-3x text-gray-300 mb-3"></i>
+                <p class="text-muted">No transactions found matching your criteria.</p>
+                <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-primary">
+                    Add First Transaction
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="btn-group" role="group">
+            <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-secondary">
+                <i class="fas fa-dashboard"></i> Dashboard
+            </a>
+            <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Add Funds
+            </a>
+            <a href="{% url 'patients:wallet_withdrawal' patient.id %}" class="btn btn-warning">
+                <i class="fas fa-minus"></i> Withdraw
+            </a>
+            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-info">
+                <i class="fas fa-user"></i> Patient Details
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock content %}

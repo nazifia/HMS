@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Billing Reports - Hospital Management System{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Billing Reports</h2>
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Outstanding Balances</h5>
+                    <p class="card-text display-6">₦{{ outstanding|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Revenue (Last 12 Months)</h5>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Invoice Status Counts</h5>
+                    <table class="table table-bordered">
+                        <thead><tr><th>Status</th><th>Count</th></tr></thead>
+                        <tbody>
+                        {% for row in status_counts %}
+                            <tr><td>{{ row.status|capfirst }}</td><td>{{ row.count }}</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Revenue by Department</h5>
+                    <table class="table table-bordered">
+                        <thead><tr><th>Department</th><th>Total</th></tr></thead>
+                        <tbody>
+                        {% for row in dept_revenue %}
+                            <tr><td>{{ row.service__category__name|default:'Uncategorized' }}</td><td>₦{{ row.total|floatformat:2 }}</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Revenue by Service</h5>
+                    <table class="table table-bordered">
+                        <thead><tr><th>Service</th><th>Total</th></tr></thead>
+                        <tbody>
+                        {% for row in service_revenue %}
+                            <tr><td>{{ row.service__name|default:'Custom/Other' }}</td><td>₦{{ row.total|floatformat:2 }}</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Revenue by Provider</h5>
+                    <table class="table table-bordered">
+                        <thead><tr><th>Provider</th><th>Total</th></tr></thead>
+                        <tbody>
+                        {% for row in provider_revenue %}
+                            <tr><td>{{ row.created_by__username|default:'Unknown' }}</td><td>₦{{ row.total|floatformat:2 }}</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <a href="{% url 'billing:export_report_csv' %}" class="btn btn-outline-primary"><i class="fas fa-file-csv me-1"></i> Export CSV</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ months|safe }},
+            datasets: [{
+                label: 'Revenue',
+                data: {{ revenue_data|safe }},
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
+</script>
+{% endblock %}

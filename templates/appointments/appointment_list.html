@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Appointments - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Appointments</h4>
+                <a href="{% url 'appointments:create' %}" class="btn btn-light">
+                    <i class="fas fa-plus"></i> Schedule Appointment
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Appointments</h5>
+                                <h2 class="mb-0">{{ total_appointments }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Upcoming</h5>
+                                <h2 class="mb-0">{{ upcoming_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Completed</h5>
+                                <h2 class="mb-0">{{ completed_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Cancelled/No-Show</h5>
+                                <h2 class="mb-0">{{ cancelled_count|add:no_show_count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search and Filter Form -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <label for="{{ search_form.search.id_for_label }}" class="form-label">Search</label>
+                                {{ search_form.search|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ search_form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                                {{ search_form.doctor|add_class:"form-select" }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ search_form.status.id_for_label }}" class="form-label">Status</label>
+                                {{ search_form.status|add_class:"form-select" }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ search_form.priority.id_for_label }}" class="form-label">Priority</label>
+                                {{ search_form.priority|add_class:"form-select" }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ search_form.date_from.id_for_label }}" class="form-label">From Date</label>
+                                {{ search_form.date_from|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ search_form.date_to.id_for_label }}" class="form-label">To Date</label>
+                                {{ search_form.date_to|add_class:"form-control" }}
+                            </div>
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- View Options -->
+                <div class="mb-3 d-flex justify-content-end">
+                    <a href="{% url 'appointments:calendar' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-calendar-alt"></i> Calendar View
+                    </a>
+                </div>
+
+                <!-- Appointments Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Date & Time</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appointment in page_obj %}
+                                <tr class="{% if appointment.status == 'cancelled' %}table-danger{% elif appointment.status == 'completed' %}table-success{% elif appointment.status == 'confirmed' %}table-primary{% elif appointment.status == 'no_show' %}table-warning{% endif %}">
+                                    <td>{{ appointment.id }}</td>
+                                    <td>
+                                        <a href="{% url 'patients:detail' appointment.patient.id %}">
+                                            {{ appointment.patient.get_full_name }}
+                                        </a>
+                                    </td>
+                                    <td>Dr. {{ appointment.doctor.get_full_name }}</td>
+                                    <td>
+                                        {{ appointment.appointment_date|date:"M d, Y" }} at
+                                        {{ appointment.appointment_time|time:"h:i A" }}
+                                    </td>
+                                    <td>
+                                        {% if appointment.status == 'scheduled' %}
+                                            <span class="badge bg-secondary">Scheduled</span>
+                                        {% elif appointment.status == 'confirmed' %}
+                                            <span class="badge bg-primary">Confirmed</span>
+                                        {% elif appointment.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif appointment.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% elif appointment.status == 'no_show' %}
+                                            <span class="badge bg-warning">No Show</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if appointment.priority == 'normal' %}
+                                            <span class="badge bg-secondary">Normal</span>
+                                        {% elif appointment.priority == 'urgent' %}
+                                            <span class="badge bg-warning">Urgent</span>
+                                        {% elif appointment.priority == 'emergency' %}
+                                            <span class="badge bg-danger">Emergency</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-info" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if appointment.status != 'cancelled' and appointment.status != 'completed' and appointment.status != 'no_show' %}
+                                                <a href="{% url 'appointments:edit' appointment.id %}" class="btn btn-primary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'appointments:cancel' appointment.id %}" class="btn btn-danger" title="Cancel">
+                                                    <i class="fas fa-times"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No appointments found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 for doctor dropdown
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}

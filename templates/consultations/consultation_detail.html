@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Consultation Details - Hospital Management System{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Consultation Details</h2>
+    <!-- Analytics Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h4>{{ analytics.note_count }}</h4>
+                    <p class="mb-0">Notes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-info text-dark">
+                <div class="card-body">
+                    <h4>{{ analytics.referral_count }}</h4>
+                    <p class="mb-0">Referrals</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h4>{{ analytics.soap_count }}</h4>
+                    <p class="mb-0">SOAP Notes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="mb-2">Actions by Role</h5>
+                    <div class="d-flex flex-wrap justify-content-center">
+                        {% for rc in analytics.actions_by_role %}
+                            <span class="badge bg-light text-dark m-1">{{ rc.user__profile__role|default:'(None)' }}: {{ rc.count }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <h5>Patient: {{ consultation.patient.get_full_name }}</h5>
+            <p><strong>Date:</strong> {{ consultation.consultation_date|date:'M d, Y' }}</p>
+            <p><strong>Doctor:</strong> {{ consultation.doctor.get_full_name }}</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {% if invoice %}
+                <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-outline-primary">
+                    <i class="fas fa-file-invoice"></i> View Latest Invoice
+                </a>
+                <span class="badge bg-{{ 'success' if invoice.status == 'paid' else 'warning' }} ms-2">
+                    Billing: {{ invoice.status|capfirst }}
+                </span>
+            {% else %}
+                <span class="badge bg-secondary">No Invoice</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5>Consultation Notes</h5>
+            {% for note in notes %}
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <p>{{ note.content }}</p>
+                        <small class="text-muted">By {{ note.created_by.get_full_name }} on {{ note.created_at|date:'M d, Y H:i' }}</small>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="alert alert-info">No notes yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5>Referrals</h5>
+            {% for referral in referrals %}
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <p><strong>To:</strong> {{ referral.referred_to.get_full_name }} | <strong>Status:</strong> {{ referral.status|capfirst }}</p>
+                        <p>{{ referral.reason }}</p>
+                        <small class="text-muted">{{ referral.referral_date|date:'M d, Y H:i' }}</small>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="alert alert-info">No referrals yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5>Recent Audit Logs</h5>
+            {% if audit_logs %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in audit_logs|slice:":10" %}
+                                <tr>
+                                    <td>{{ log.timestamp|date:'M d, Y H:i' }}</td>
+                                    <td>{{ log.user.get_full_name|default:log.user.username }}</td>
+                                    <td>{{ log.action_type|capfirst }}</td>
+                                    <td>{{ log.description }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">No audit logs for this consultation.</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5>Notifications</h5>
+            {% if user_notifications %}
+                <ul class="list-group">
+                    {% for n in user_notifications %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ n.message }}
+                            <span class="badge bg-secondary">{{ n.created_at|date:'M d, Y H:i' }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="alert alert-info">No notifications for you related to this consultation.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

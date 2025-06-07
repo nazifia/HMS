@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Add SOAP Note</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save SOAP Note</button>
+    <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

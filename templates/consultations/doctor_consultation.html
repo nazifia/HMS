@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+{% load core_form_tags %}
+
+{% block title %}Patient Consultation - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            Consultation for {{ consultation.patient.get_full_name }}
+            <small class="text-muted">({{ consultation.patient.patient_id }})</small>
+        </h1>
+        <div>
+            <a href="{% url 'consultations:doctor_waiting_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm me-2">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Waiting List
+            </a>
+            <a href="{% url 'patients:detail' consultation.patient.id %}" class="d-none d-sm-inline-block btn btn-sm btn-info shadow-sm">
+                <i class="fas fa-user fa-sm text-white-50"></i> Patient Profile
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Consultation Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Consultation Details</h6>
+                    <div>
+                        <span class="badge {% if consultation.status == 'pending' %}bg-warning{% elif consultation.status == 'in_progress' %}bg-info{% elif consultation.status == 'completed' %}bg-success{% elif consultation.status == 'cancelled' %}bg-danger{% endif %}">
+                            {{ consultation.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="consultationForm">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.consulting_room.id_for_label }}" class="form-label">Consulting Room</label>
+                                {{ form.consulting_room|add_class:"form-control" }}
+                                {% if form.consulting_room.errors %}
+                                    <div class="text-danger">
+                                        {{ form.consulting_room.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
+                                {{ form.status|add_class:"form-control" }}
+                                {% if form.status.errors %}
+                                    <div class="text-danger">
+                                        {{ form.status.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.chief_complaint.id_for_label }}" class="form-label">Chief Complaint</label>
+                            {{ form.chief_complaint|add_class:"form-control" }}
+                            {% if form.chief_complaint.errors %}
+                                <div class="text-danger">
+                                    {{ form.chief_complaint.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.symptoms.id_for_label }}" class="form-label">Symptoms</label>
+                            {{ form.symptoms|add_class:"form-control" }}
+                            {% if form.symptoms.errors %}
+                                <div class="text-danger">
+                                    {{ form.symptoms.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis</label>
+                            {{ form.diagnosis|add_class:"form-control" }}
+                            {% if form.diagnosis.errors %}
+                                <div class="text-danger">
+                                    {{ form.diagnosis.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.consultation_notes.id_for_label }}" class="form-label">Consultation Notes</label>
+                            {{ form.consultation_notes|add_class:"form-control" }}
+                            {% if form.consultation_notes.errors %}
+                                <div class="text-danger">
+                                    {{ form.consultation_notes.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Save Consultation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- SOAP Notes Section -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">SOAP Notes</h6>
+                    <a href="{% url 'consultations:add_soap_note' consultation.id %}" class="btn btn-sm btn-success">Add SOAP Note</a>
+                </div>
+                <div class="card-body">
+                    {% if consultation.soap_notes.all %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Subjective</th>
+                                        <th>Objective</th>
+                                        <th>Assessment</th>
+                                        <th>Plan</th>
+                                        <th>By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for note in consultation.soap_notes.all %}
+                                    <tr>
+                                        <td>{{ note.created_at|date:'Y-m-d H:i' }}</td>
+                                        <td>{{ note.subjective|linebreaksbr }}</td>
+                                        <td>{{ note.objective|linebreaksbr }}</td>
+                                        <td>{{ note.assessment|linebreaksbr }}</td>
+                                        <td>{{ note.plan|linebreaksbr }}</td>
+                                        <td>{{ note.created_by.get_full_name }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="6">No SOAP notes yet.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>No SOAP notes yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <form method="post" action="{% url 'consultations:create_prescription' consultation.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary w-100" name="create_prescription">
+                                    <i class="fas fa-prescription me-1"></i> Prescription
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <form method="post" action="{% url 'consultations:create_lab_request' consultation.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-info w-100" name="create_lab_request">
+                                    <i class="fas fa-flask me-1"></i> Lab Tests
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <form method="post" action="{% url 'consultations:create_radiology_order' consultation.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-warning w-100" name="create_radiology_order">
+                                    <i class="fas fa-x-ray me-1"></i> Radiology
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'consultations:create_referral_from_consultation' consultation.id %}" class="btn btn-secondary w-100">
+                                <i class="fas fa-user-md me-1"></i> Referral
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <a href="#" class="btn btn-success w-100" id="admitPatientBtn">
+                                <i class="fas fa-procedures me-1"></i> Admit Patient
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="completed">
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="fas fa-check-circle me-1"></i> Complete & Discharge
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient Information Sidebar -->
+        <div class="col-lg-4">
+            <!-- Patient Vitals -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Latest Vitals</h6>
+                </div>
+                <div class="card-body">
+                    {% if vitals %}
+                        {% with latest_vitals=vitals.0 %}
+                            <div class="row">
+                                <div class="col-6 mb-2">
+                                    <div class="small text-gray-500">Temperature</div>
+                                    <div class="h5 mb-0 font-weight-bold {% if latest_vitals.temperature > 37.5 %}text-danger{% else %}text-gray-800{% endif %}">
+                                        {{ latest_vitals.temperature|default:"-" }} °C
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <div class="small text-gray-500">Blood Pressure</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ latest_vitals.blood_pressure_systolic|default:"-" }}/{{ latest_vitals.blood_pressure_diastolic|default:"-" }} mmHg
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-2">
+                                    <div class="small text-gray-500">Pulse Rate</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ latest_vitals.pulse_rate|default:"-" }} bpm
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <div class="small text-gray-500">Respiratory Rate</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ latest_vitals.respiratory_rate|default:"-" }} /min
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-2">
+                                    <div class="small text-gray-500">Oxygen Saturation</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ latest_vitals.oxygen_saturation|default:"-" }}%
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <div class="small text-gray-500">BMI</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ latest_vitals.bmi|default:"-" }} kg/m²
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-2">
+                                Recorded on {{ latest_vitals.date_time|date:"M d, Y" }} at {{ latest_vitals.date_time|time:"h:i A" }}
+                            </div>
+                        {% endwith %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <p class="mb-0">No vitals recorded for this patient.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Medical History -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Medical History</h6>
+                    <a href="{% url 'patients:detail' consultation.patient.id %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if medical_history %}
+                        <div class="timeline">
+                            {% for history in medical_history %}
+                                <div class="timeline-item mb-3 pb-3 border-bottom">
+                                    <div class="timeline-date text-muted small">{{ history.date|date:"M d, Y" }}</div>
+                                    <div class="timeline-content">
+                                        <div class="font-weight-bold">{{ history.diagnosis }}</div>
+                                        <div class="small">{{ history.treatment|truncatechars:100 }}</div>
+                                        <div class="text-muted small">Dr. {{ history.doctor_name }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <p class="mb-0">No medical history recorded for this patient.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Prescriptions -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Prescriptions</h6>
+                    <a href="#" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if prescriptions %}
+                        <div class="timeline">
+                            {% for prescription in prescriptions %}
+                                <div class="timeline-item mb-3 pb-3 border-bottom">
+                                    <div class="timeline-date text-muted small">{{ prescription.prescription_date|date:"M d, Y" }}</div>
+                                    <div class="timeline-content">
+                                        <div class="font-weight-bold">
+                                            {{ prescription.diagnosis|default:"No diagnosis" }}
+                                            <span class="badge {% if prescription.status == 'pending' %}bg-warning{% elif prescription.status == 'processing' %}bg-info{% elif prescription.status == 'completed' %}bg-success{% elif prescription.status == 'cancelled' %}bg-danger{% endif %}">
+                                                {{ prescription.get_status_display }}
+                                            </span>
+                                        </div>
+                                        <div class="small">
+                                            {% for item in prescription.items.all %}
+                                                {{ item.medication.name }} - {{ item.dosage }} - {{ item.frequency }}<br>
+                                            {% empty %}
+                                                No medications
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <p class="mb-0">No prescriptions for this patient.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Lab Tests -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Lab Tests</h6>
+                    <a href="#" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if lab_tests %}
+                        <div class="timeline">
+                            {% for test in lab_tests %}
+                                <div class="timeline-item mb-3 pb-3 border-bottom">
+                                    <div class="timeline-date text-muted small">{{ test.request_date|date:"M d, Y" }}</div>
+                                    <div class="timeline-content">
+                                        <div class="font-weight-bold">
+                                            {% for t in test.tests.all %}
+                                                {{ t.name }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                            <span class="badge {% if test.status == 'pending' %}bg-warning{% elif test.status == 'collected' or test.status == 'processing' %}bg-info{% elif test.status == 'completed' %}bg-success{% elif test.status == 'cancelled' %}bg-danger{% endif %}">
+                                                {{ test.get_status_display }}
+                                            </span>
+                                        </div>
+                                        <div class="small">{{ test.notes|truncatechars:100|default:"" }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <p class="mb-0">No lab tests for this patient.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Radiology Orders -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Radiology Orders</h6>
+                    <a href="#" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if radiology_orders %}
+                        <div class="timeline">
+                            {% for order in radiology_orders %}
+                                <div class="timeline-item mb-3 pb-3 border-bottom">
+                                    <div class="timeline-date text-muted small">{{ order.order_date|date:"M d, Y" }}</div>
+                                    <div class="timeline-content">
+                                        <div class="font-weight-bold">
+                                            {{ order.test.name }}
+                                            <span class="badge {% if order.status == 'pending' %}bg-warning{% elif order.status == 'scheduled' %}bg-info{% elif order.status == 'completed' %}bg-success{% elif order.status == 'cancelled' %}bg-danger{% endif %}">
+                                                {{ order.get_status_display }}
+                                            </span>
+                                        </div>
+                                        <div class="small">{{ order.clinical_information|truncatechars:100|default:"" }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <p class="mb-0">No radiology orders for this patient.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admit Patient Modal -->
+<div class="modal fade" id="admitPatientModal" tabindex="-1" aria-labelledby="admitPatientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="admitPatientModalLabel">Admit Patient to Ward</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="admitPatientForm" action="{% url 'inpatient:admit_patient' consultation.patient.id %}" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="consultation_id" value="{{ consultation.id }}">
+
+                    <div class="mb-3">
+                        <label for="ward" class="form-label">Select Ward</label>
+                        <select class="form-control select2" id="ward" name="ward" required>
+                            <option value="">Select Ward</option>
+                            <!-- Ward options will be populated here -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bed" class="form-label">Select Bed</label>
+                        <select class="form-control select2" id="bed" name="bed" required>
+                            <option value="">Select Bed</option>
+                            <!-- Bed options will be populated here -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason_for_admission" class="form-label">Reason for Admission</label>
+                        <textarea class="form-control" id="reason_for_admission" name="reason_for_admission" rows="3" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="admission_notes" class="form-label">Admission Notes</label>
+                        <textarea class="form-control" id="admission_notes" name="admission_notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitAdmitForm">Admit Patient</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize select2 for better dropdown experience
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+
+        // Admit Patient Modal
+        $('#admitPatientBtn').click(function(e) {
+            e.preventDefault();
+            $('#admitPatientModal').modal('show');
+        });
+
+        // Submit Admit Patient Form
+        $('#submitAdmitForm').click(function() {
+            $('#admitPatientForm').submit();
+        });
+
+        // When ward changes, update bed options
+        $('#ward').change(function() {
+            var wardId = $(this).val();
+            if (wardId) {
+                // Make AJAX call to get available beds for this ward
+                $.ajax({
+                    url: '/inpatient/get-available-beds/' + wardId + '/',
+                    type: 'GET',
+                    success: function(data) {
+                        var bedSelect = $('#bed');
+                        bedSelect.empty();
+                        bedSelect.append('<option value="">Select Bed</option>');
+
+                        $.each(data.beds, function(index, bed) {
+                            bedSelect.append('<option value="' + bed.id + '">' + bed.bed_number + '</option>');
+                        });
+
+                        bedSelect.trigger('change');
+                    }
+                });
+            } else {
+                $('#bed').empty().append('<option value="">Select Bed</option>').trigger('change');
+            }
+        });
+    });
+</script>
+{% endblock %}

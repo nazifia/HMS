@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load static %} {# Assuming you might have static files for custom CSS or default images #}
+
+{% block title %}
+    Profile for {{ viewed_user_object.username }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row d-flex justify-content-center">
+        <div class="col-md-10 col-lg-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">User Profile: {{ viewed_user_object.username }}</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3 mb-md-0">
+                            {% if viewed_user_profile.profile_picture %}
+                                <img src="{{ viewed_user_profile.profile_picture.url }}" alt="Profile Picture for {{ viewed_user_object.username }}" class="img-fluid rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                            {% else %}
+                                {# You can use a default placeholder image #}
+                                <img src="{% static 'images/default_profile.png' %}" alt="Default Profile Picture" class="img-fluid rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                                <p class="text-muted small mt-2">No profile picture</p>
+                            {% endif %}
+                            <h5 class="mt-3 mb-0">{{ viewed_user_object.get_full_name|default:viewed_user_object.username }}</h5>
+                            <p class="text-muted small">{{ viewed_user_object.email|default:"No email provided" }}</p>
+                            {% if request.user == viewed_user_object or request.user.is_staff %}
+                                <a href="{% url 'accounts:edit_profile' %}?user_id={{ viewed_user_object.id }}" class="btn btn-outline-primary btn-sm mt-2">
+                                    <i class="fas fa-edit me-1"></i> Edit Profile
+                                </a>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-8">
+                            <h5 class="mb-3 border-bottom pb-2">Account Information</h5>
+                            <div class="row mb-3">
+                                <div class="col-sm-6">
+                                    <p class="mb-1"><strong>Login ID (Phone):</strong></p>
+                                    <p class="text-muted">{{ viewed_user_object.phone_number }}</p>
+                                </div>
+                                <div class="col-sm-6">
+                                    <p class="mb-1"><strong>Username:</strong></p>
+                                    <p class="text-muted">{{ viewed_user_object.username }}</p>
+                                </div>
+                                <div class="col-sm-6">
+                                    <p class="mb-1"><strong>Joined Date:</strong></p>
+                                    <p class="text-muted">{{ viewed_user_object.date_joined|date:"M d, Y" }}</p>
+                                </div>
+                                 <div class="col-sm-6">
+                                    <p class="mb-1"><strong>Status:</strong></p>
+                                    <p class="text-muted">
+                                        {% if viewed_user_object.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {% if viewed_user_profile %}
+                                <h5 class="mt-4 mb-3 border-bottom pb-2">Detailed Information</h5>
+                                <div class="row">
+                                    <div class="col-sm-6 mb-2">
+                                        <p class="mb-1"><strong>Address:</strong></p>
+                                        <p class="text-muted">{{ viewed_user_profile.address|default:"N/A" }}</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <p class="mb-1"><strong>Date of Birth:</strong></p>
+                                        <p class="text-muted">{{ viewed_user_profile.date_of_birth|date:"M d, Y"|default:"N/A" }}</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <p class="mb-1"><strong>Department:</strong></p>
+                                        <p class="text-muted">{{ viewed_user_profile.department|default:"N/A" }}</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <p class="mb-1"><strong>Employee ID:</strong></p>
+                                        <p class="text-muted">{{ viewed_user_profile.employee_id|default:"N/A" }}</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <p class="mb-1"><strong>Specialization:</strong></p>
+                                        <p class="text-muted">{{ viewed_user_profile.specialization|default:"N/A" }}</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <p class="mb-1"><strong>Qualification:</strong></p>
+                                        <p class="text-muted">{{ viewed_user_profile.qualification|default:"N/A" }}</p>
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <p class="mb-1"><strong>Profile Status:</strong></p>
+                                        <p class="text-muted">
+                                            {% if viewed_user_profile.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info mt-3" role="alert">
+                                    No detailed profile information available for this user.
+                                </div>
+                            {% endif %}
+
+                            <h5 class="mt-4 mb-3 border-bottom pb-2">Roles</h5>
+                            <p>
+                                {% for role in viewed_user_object.roles.all %}
+                                    <span class="badge bg-info text-dark me-1 fs-6">{{ role.name }}</span>
+                                {% empty %}
+                                    <span class="text-muted">No roles assigned.</span>
+                                {% endfor %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-muted text-center small">
+                    Last updated: {{ viewed_user_object.custom_profile.updated_at|date:"M d, Y, H:i"|default:"N/A" }}
+                    {# Assuming you add an updated_at field to CustomUserProfile model that auto updates #}
+                    {# models.DateTimeField(auto_now=True) #}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Add this to your base.html or include Font Awesome if you want icons like fas fa-edit #}
+{# <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> #}
+{% endblock %}

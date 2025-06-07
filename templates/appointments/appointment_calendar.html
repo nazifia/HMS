@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}Appointment Calendar - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .calendar th, .calendar td {
+        border: 1px solid #dee2e6;
+        padding: 10px;
+        text-align: center;
+    }
+    
+    .calendar th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    
+    .calendar td {
+        height: 120px;
+        vertical-align: top;
+    }
+    
+    .calendar .day-number {
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-align: right;
+    }
+    
+    .calendar .today {
+        background-color: #e8f4f8;
+    }
+    
+    .calendar .appointment {
+        margin-bottom: 5px;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .calendar .appointment.normal {
+        background-color: #d1e7dd;
+    }
+    
+    .calendar .appointment.urgent {
+        background-color: #fff3cd;
+    }
+    
+    .calendar .appointment.emergency {
+        background-color: #f8d7da;
+    }
+    
+    .calendar .appointment.cancelled {
+        background-color: #f8d7da;
+        text-decoration: line-through;
+    }
+    
+    .calendar .appointment.completed {
+        background-color: #d1e7dd;
+    }
+    
+    .calendar .appointment.no-show {
+        background-color: #f8d7da;
+        font-style: italic;
+    }
+    
+    .calendar .empty-day {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Appointment Calendar</h4>
+                <a href="{% url 'appointments:create' %}" class="btn btn-light">
+                    <i class="fas fa-plus"></i> Schedule Appointment
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Calendar Controls -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="d-flex">
+                            <a href="?month={{ prev_month }}&year={{ prev_year }}{% if selected_doctor %}&doctor={{ selected_doctor.id }}{% endif %}" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-chevron-left"></i> Previous Month
+                            </a>
+                            <a href="?month={{ next_month }}&year={{ next_year }}{% if selected_doctor %}&doctor={{ selected_doctor.id }}{% endif %}" class="btn btn-outline-primary">
+                                Next Month <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <h3>{{ month_name }} {{ year }}</h3>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="get" class="d-flex">
+                            <input type="hidden" name="month" value="{{ month }}">
+                            <input type="hidden" name="year" value="{{ year }}">
+                            <select name="doctor" class="form-select me-2">
+                                <option value="">All Doctors</option>
+                                {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}" {% if selected_doctor.id == doctor.id %}selected{% endif %}>
+                                        Dr. {{ doctor.get_full_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary">Filter</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Calendar View -->
+                <div class="table-responsive">
+                    <table class="calendar">
+                        <thead>
+                            <tr>
+                                <th>Monday</th>
+                                <th>Tuesday</th>
+                                <th>Wednesday</th>
+                                <th>Thursday</th>
+                                <th>Friday</th>
+                                <th>Saturday</th>
+                                <th>Sunday</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for week in cal_data|slice:":7"|dictsort:"day" %}
+                                <tr>
+                                    {% for day in cal_data|slice:":7" %}
+                                        {% if day.day %}
+                                            <td class="{% if day.is_today %}today{% endif %}">
+                                                <div class="day-number">{{ day.day }}</div>
+                                                {% for appointment in day.appointments %}
+                                                    <div class="appointment {{ appointment.priority }} {{ appointment.status }}" title="{{ appointment.patient.get_full_name }} - {{ appointment.appointment_time|time:'h:i A' }} - Dr. {{ appointment.doctor.get_full_name }}">
+                                                        <a href="{% url 'appointments:detail' appointment.id %}">
+                                                            {{ appointment.appointment_time|time:"h:i A" }} - {{ appointment.patient.get_full_name|truncatechars:15 }}
+                                                        </a>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                        {% else %}
+                                            <td class="empty-day"></td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            
+                            {% for week in cal_data|slice:"7:14"|dictsort:"day" %}
+                                <tr>
+                                    {% for day in cal_data|slice:"7:14" %}
+                                        {% if day.day %}
+                                            <td class="{% if day.is_today %}today{% endif %}">
+                                                <div class="day-number">{{ day.day }}</div>
+                                                {% for appointment in day.appointments %}
+                                                    <div class="appointment {{ appointment.priority }} {{ appointment.status }}" title="{{ appointment.patient.get_full_name }} - {{ appointment.appointment_time|time:'h:i A' }} - Dr. {{ appointment.doctor.get_full_name }}">
+                                                        <a href="{% url 'appointments:detail' appointment.id %}">
+                                                            {{ appointment.appointment_time|time:"h:i A" }} - {{ appointment.patient.get_full_name|truncatechars:15 }}
+                                                        </a>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                        {% else %}
+                                            <td class="empty-day"></td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            
+                            {% for week in cal_data|slice:"14:21"|dictsort:"day" %}
+                                <tr>
+                                    {% for day in cal_data|slice:"14:21" %}
+                                        {% if day.day %}
+                                            <td class="{% if day.is_today %}today{% endif %}">
+                                                <div class="day-number">{{ day.day }}</div>
+                                                {% for appointment in day.appointments %}
+                                                    <div class="appointment {{ appointment.priority }} {{ appointment.status }}" title="{{ appointment.patient.get_full_name }} - {{ appointment.appointment_time|time:'h:i A' }} - Dr. {{ appointment.doctor.get_full_name }}">
+                                                        <a href="{% url 'appointments:detail' appointment.id %}">
+                                                            {{ appointment.appointment_time|time:"h:i A" }} - {{ appointment.patient.get_full_name|truncatechars:15 }}
+                                                        </a>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                        {% else %}
+                                            <td class="empty-day"></td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            
+                            {% for week in cal_data|slice:"21:28"|dictsort:"day" %}
+                                <tr>
+                                    {% for day in cal_data|slice:"21:28" %}
+                                        {% if day.day %}
+                                            <td class="{% if day.is_today %}today{% endif %}">
+                                                <div class="day-number">{{ day.day }}</div>
+                                                {% for appointment in day.appointments %}
+                                                    <div class="appointment {{ appointment.priority }} {{ appointment.status }}" title="{{ appointment.patient.get_full_name }} - {{ appointment.appointment_time|time:'h:i A' }} - Dr. {{ appointment.doctor.get_full_name }}">
+                                                        <a href="{% url 'appointments:detail' appointment.id %}">
+                                                            {{ appointment.appointment_time|time:"h:i A" }} - {{ appointment.patient.get_full_name|truncatechars:15 }}
+                                                        </a>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                        {% else %}
+                                            <td class="empty-day"></td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            
+                            {% for week in cal_data|slice:"28:35"|dictsort:"day" %}
+                                <tr>
+                                    {% for day in cal_data|slice:"28:35" %}
+                                        {% if day.day %}
+                                            <td class="{% if day.is_today %}today{% endif %}">
+                                                <div class="day-number">{{ day.day }}</div>
+                                                {% for appointment in day.appointments %}
+                                                    <div class="appointment {{ appointment.priority }} {{ appointment.status }}" title="{{ appointment.patient.get_full_name }} - {{ appointment.appointment_time|time:'h:i A' }} - Dr. {{ appointment.doctor.get_full_name }}">
+                                                        <a href="{% url 'appointments:detail' appointment.id %}">
+                                                            {{ appointment.appointment_time|time:"h:i A" }} - {{ appointment.patient.get_full_name|truncatechars:15 }}
+                                                        </a>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                        {% else %}
+                                            <td class="empty-day"></td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            
+                            {% for week in cal_data|slice:"35:42"|dictsort:"day" %}
+                                <tr>
+                                    {% for day in cal_data|slice:"35:42" %}
+                                        {% if day.day %}
+                                            <td class="{% if day.is_today %}today{% endif %}">
+                                                <div class="day-number">{{ day.day }}</div>
+                                                {% for appointment in day.appointments %}
+                                                    <div class="appointment {{ appointment.priority }} {{ appointment.status }}" title="{{ appointment.patient.get_full_name }} - {{ appointment.appointment_time|time:'h:i A' }} - Dr. {{ appointment.doctor.get_full_name }}">
+                                                        <a href="{% url 'appointments:detail' appointment.id %}">
+                                                            {{ appointment.appointment_time|time:"h:i A" }} - {{ appointment.patient.get_full_name|truncatechars:15 }}
+                                                        </a>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                        {% else %}
+                                            <td class="empty-day"></td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Legend -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Legend</h5>
+                        <div class="d-flex flex-wrap">
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-secondary">Scheduled</span>
+                            </div>
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-primary">Confirmed</span>
+                            </div>
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-success">Completed</span>
+                            </div>
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-danger">Cancelled</span>
+                            </div>
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-warning">No Show</span>
+                            </div>
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-secondary">Normal Priority</span>
+                            </div>
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-warning">Urgent Priority</span>
+                            </div>
+                            <div class="me-3 mb-2">
+                                <span class="badge bg-danger">Emergency Priority</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
+                    <i class="fas fa-list"></i> List View
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

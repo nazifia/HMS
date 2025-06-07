@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Manage Specializations - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Manage Specializations</h1>
+        <a href="{% url 'doctors:manage_doctors' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Doctors
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Add Specialization Form -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Add New Specialization</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Specialization Name *</label>
+                            {{ form.name|add_class:"form-control" }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description|add_class:"form-control" }}
+                            {% if form.description.errors %}
+                                <div class="text-danger">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle mr-1"></i> Add Specialization
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Specializations List -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">All Specializations</h6>
+                </div>
+                <div class="card-body">
+                    {% if specializations %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="specializationsTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>Doctors</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for specialization in specializations %}
+                                        <tr>
+                                            <td>{{ specialization.name }}</td>
+                                            <td>{{ specialization.description|default:"No description" }}</td>
+                                            <td>{{ specialization.doctors.count }}</td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <a href="{% url 'doctors:edit_specialization' specialization.id %}" class="btn btn-primary btn-sm" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'doctors:delete_specialization' specialization.id %}" class="btn btn-danger btn-sm" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-0">No specializations found in the system.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#specializationsTable').DataTable({
+            "order": [[0, "asc"]]
+        });
+    });
+</script>
+{% endblock %}

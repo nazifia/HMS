@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Doctor - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Delete Doctor</h1>
+        <a href="{% url 'doctors:manage_doctors' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Doctors
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Confirm Deletion</h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-danger">
+                <h5 class="alert-heading">Warning!</h5>
+                <p>Are you sure you want to delete the doctor "{{ doctor.get_full_name }}"?</p>
+                <hr>
+                <p class="mb-0">
+                    <strong>This action cannot be undone.</strong> Deleting this doctor will also delete their user account and all associated data.
+                </p>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">Doctor Information</h6>
+                            <p><strong>Name:</strong> {{ doctor.get_full_name }}</p>
+                            <p><strong>Specialization:</strong> {{ doctor.specialization.name }}</p>
+                            <p><strong>Department:</strong> {{ doctor.department.name }}</p>
+                            <p><strong>License Number:</strong> {{ doctor.license_number }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">User Account Information</h6>
+                            <p><strong>Username:</strong> {{ doctor.user.username }}</p>
+                            <p><strong>Email:</strong> {{ doctor.user.email }}</p>
+                            <p><strong>Phone:</strong> {{ doctor.user.profile.phone_number }}</p>
+                            <p><strong>Joined:</strong> {{ doctor.user.date_joined|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="text-center">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash mr-1"></i> Delete Doctor
+                    </button>
+                    <a href="{% url 'doctors:manage_doctors' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2>
+            {% if patient %}
+                <i class="fas fa-user-edit me-2"></i>{{ title }}
+            {% else %}
+                <i class="fas fa-user-plus me-2"></i>{{ title }}
+            {% endif %}
+        </h2>
+    </div>
+    <div class="col-md-4 text-end">
+        {% if patient %}
+            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Patient
+            </a>
+        {% else %}
+            <a href="{% url 'patients:list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Patient List
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Patient Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" class="row g-3">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="col-12">
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Basic Information -->
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2">Basic Information</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name *</label>
+                        {{ form.first_name|add_class:"form-control" }}
+                        {% if form.first_name.errors %}
+                            <div class="text-danger">{{ form.first_name.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name *</label>
+                        {{ form.last_name|add_class:"form-control" }}
+                        {% if form.last_name.errors %}
+                            <div class="text-danger">{{ form.last_name.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.date_of_birth.id_for_label }}" class="form-label">Date of Birth *</label>
+                        {{ form.date_of_birth|add_class:"form-control" }}
+                        {% if form.date_of_birth.errors %}
+                            <div class="text-danger">{{ form.date_of_birth.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.gender.id_for_label }}" class="form-label">Gender *</label>
+                        {{ form.gender|add_class:"form-select" }}
+                        {% if form.gender.errors %}
+                            <div class="text-danger">{{ form.gender.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.blood_group.id_for_label }}" class="form-label">Blood Group</label>
+                        {{ form.blood_group|add_class:"form-select" }}
+                        {% if form.blood_group.errors %}
+                            <div class="text-danger">{{ form.blood_group.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.marital_status.id_for_label }}" class="form-label">Marital Status</label>
+                        {{ form.marital_status|add_class:"form-select" }}
+                        {% if form.marital_status.errors %}
+                            <div class="text-danger">{{ form.marital_status.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div class="col-12 mt-4">
+                        <h5 class="border-bottom pb-2">Contact Information</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                        {{ form.email|add_class:"form-control" }}
+                        {% if form.email.errors %}
+                            <div class="text-danger">{{ form.email.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number *</label>
+                        {{ form.phone_number|add_class:"form-control" }}
+                        {% if form.phone_number.errors %}
+                            <div class="text-danger">{{ form.phone_number.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.occupation.id_for_label }}" class="form-label">Occupation</label>
+                        {{ form.occupation|add_class:"form-control" }}
+                        {% if form.occupation.errors %}
+                            <div class="text-danger">{{ form.occupation.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12">
+                        <label for="{{ form.address.id_for_label }}" class="form-label">Address *</label>
+                        {{ form.address|add_class:"form-control" }}
+                        {% if form.address.errors %}
+                            <div class="text-danger">{{ form.address.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.city.id_for_label }}" class="form-label">City *</label>
+                        {{ form.city|add_class:"form-control" }}
+                        {% if form.city.errors %}
+                            <div class="text-danger">{{ form.city.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.state.id_for_label }}" class="form-label">State *</label>
+                        {{ form.state|add_class:"form-control" }}
+                        {% if form.state.errors %}
+                            <div class="text-danger">{{ form.state.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Postal Code field removed as per requirements -->
+
+                    <div class="col-md-4">
+                        <label for="{{ form.country.id_for_label }}" class="form-label">Country *</label>
+                        {{ form.country|add_class:"form-control" }}
+                        {% if form.country.errors %}
+                            <div class="text-danger">{{ form.country.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Emergency Contact -->
+                    <div class="col-12 mt-4">
+                        <h5 class="border-bottom pb-2">Emergency Contact</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.emergency_contact_name.id_for_label }}" class="form-label">Contact Name</label>
+                        {{ form.emergency_contact_name|add_class:"form-control" }}
+                        {% if form.emergency_contact_name.errors %}
+                            <div class="text-danger">{{ form.emergency_contact_name.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.emergency_contact_relation.id_for_label }}" class="form-label">Relationship</label>
+                        {{ form.emergency_contact_relation|add_class:"form-control" }}
+                        {% if form.emergency_contact_relation.errors %}
+                            <div class="text-danger">{{ form.emergency_contact_relation.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.emergency_contact_phone.id_for_label }}" class="form-label">Contact Phone</label>
+                        {{ form.emergency_contact_phone|add_class:"form-control" }}
+                        {% if form.emergency_contact_phone.errors %}
+                            <div class="text-danger">{{ form.emergency_contact_phone.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Medical Information -->
+                    <div class="col-12 mt-4">
+                        <h5 class="border-bottom pb-2">Medical Information</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.allergies.id_for_label }}" class="form-label">Allergies</label>
+                        {{ form.allergies|add_class:"form-control" }}
+                        {% if form.allergies.errors %}
+                            <div class="text-danger">{{ form.allergies.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.chronic_diseases.id_for_label }}" class="form-label">Chronic Diseases</label>
+                        {{ form.chronic_diseases|add_class:"form-control" }}
+                        {% if form.chronic_diseases.errors %}
+                            <div class="text-danger">{{ form.chronic_diseases.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.current_medications.id_for_label }}" class="form-label">Current Medications</label>
+                        {{ form.current_medications|add_class:"form-control" }}
+                        {% if form.current_medications.errors %}
+                            <div class="text-danger">{{ form.current_medications.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Insurance Information -->
+                    <div class="col-12 mt-4">
+                        <h5 class="border-bottom pb-2">Insurance Information</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.insurance_provider.id_for_label }}" class="form-label">Insurance Provider</label>
+                        {{ form.insurance_provider|add_class:"form-control" }}
+                        {% if form.insurance_provider.errors %}
+                            <div class="text-danger">{{ form.insurance_provider.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.insurance_policy_number.id_for_label }}" class="form-label">Policy Number</label>
+                        {{ form.insurance_policy_number|add_class:"form-control" }}
+                        {% if form.insurance_policy_number.errors %}
+                            <div class="text-danger">{{ form.insurance_policy_number.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="{{ form.insurance_expiry_date.id_for_label }}" class="form-label">Expiry Date</label>
+                        {{ form.insurance_expiry_date|add_class:"form-control" }}
+                        {% if form.insurance_expiry_date.errors %}
+                            <div class="text-danger">{{ form.insurance_expiry_date.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Additional Information -->
+                    <div class="col-12 mt-4">
+                        <h5 class="border-bottom pb-2">Additional Information</h5>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                        {{ form.notes|add_class:"form-control" }}
+                        {% if form.notes.errors %}
+                            <div class="text-danger">{{ form.notes.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.profile_picture.id_for_label }}" class="form-label">Profile Picture</label>
+                        {{ form.profile_picture|add_class:"form-control" }}
+                        {% if form.profile_picture.errors %}
+                            <div class="text-danger">{{ form.profile_picture.errors }}</div>
+                        {% endif %}
+
+                        {% if patient.profile_picture %}
+                            <div class="mt-2">
+                                <img src="{{ patient.profile_picture.url }}" alt="{{ patient.get_full_name }}" class="img-thumbnail" style="max-height: 100px;">
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.photo.id_for_label }}" class="form-label">Photo</label>
+                        {{ form.photo|add_class:"form-control" }}
+                        {% if form.photo.errors %}
+                            <div class="text-danger">{{ form.photo.errors }}</div>
+                        {% endif %}
+                        {% if patient.photo %}
+                            <div class="mt-2">
+                                <img src="{{ patient.photo.url }}" alt="{{ patient.get_full_name }}" class="img-thumbnail" style="max-height: 100px;">
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.id_document.id_for_label }}" class="form-label">ID Document</label>
+                        {{ form.id_document|add_class:"form-control" }}
+                        {% if form.id_document.errors %}
+                            <div class="text-danger">{{ form.id_document.errors }}</div>
+                        {% endif %}
+                        {% if patient.id_document %}
+                            <div class="mt-2">
+                                <a href="{{ patient.id_document.url }}" target="_blank">View Uploaded ID</a>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12 mt-4">
+                        <div class="d-flex justify-content-between">
+                            {% if patient %}
+                                <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
+                            {% else %}
+                                <a href="{% url 'patients:list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
+                            {% endif %}
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                {% if patient %}
+                                    Update Patient
+                                {% else %}
+                                    Register Patient
+                                {% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,324 @@
+from django.contrib.auth.models import AbstractUser, Group, Permission
+# from django.contrib.auth.models import AbstractUser, BaseUserManager # BaseUserManager already imported below
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.base_user import BaseUserManager # explicit import for clarity
+from django.urls import reverse # For redirects
+from django.http import HttpResponseForbidden, HttpResponse # For error responses
+
+
+
+
+class Role(models.Model):
+    name = models.CharField(max_length=150, unique=True)
+    description = models.TextField(blank=True, null=True)
+    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='children', verbose_name=_('parent role'))
+    permissions = models.ManyToManyField(
+        Permission,
+        verbose_name=_('permissions'),
+        blank=True,
+    )
+
+    def __str__(self):
+        return self.name
+
+    def get_all_permissions(self):
+        """Get all permissions including those from parent roles"""
+        permissions = set(self.permissions.all())
+        current = self.parent
+        while current:
+            permissions.update(current.permissions.all())
+            current = current.parent
+        return permissions
+
+    class Meta:
+        verbose_name = _('role')
+        verbose_name_plural = _('roles')
+
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, phone_number, password=None, **extra_fields):
+        if not phone_number:
+            raise ValueError("The phone number must be set")
+
+        # Explicitly extract and validate username, as it's critical
+        # and defined as non-blank in CustomUser.
+        username = extra_fields.pop('username', None)
+        if not username:
+            raise ValueError("The username must be set for user creation.")
+
+        # Normalize email if provided
+        email = extra_fields.get('email')
+        if email:
+            extra_fields['email'] = self.normalize_email(email)
+        
+        # Pass username explicitly to the model constructor, along with other fields
+        user = self.model(phone_number=phone_number, username=username, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, phone_number, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError("Superuser must have is_staff=True")
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError("Superuser must have is_superuser=True")
+        
+        # Ensure 'username' is provided for superuser creation (already in extra_fields for this call).
+        # The create_user method will also validate it.
+        if 'username' not in extra_fields or not extra_fields['username']:
+            raise ValueError('Superuser must have a username.')
+
+        return self.create_user(phone_number, password, **extra_fields)
+
+
+class CustomUser(AbstractUser):
+    phone_number = models.CharField(max_length=15, unique=True)
+    # username is inherited from AbstractUser, but we redefine it here to ensure it's present
+    # (though AbstractUser already has it). If we want different constraints, this is the place.
+    username = models.CharField(max_length=150, unique=True) 
+    
+    USERNAME_FIELD = 'phone_number'
+    REQUIRED_FIELDS = ['username'] # Fields prompted for when creating a superuser, besides password and USERNAME_FIELD.
+
+    objects = CustomUserManager()
+
+    roles = models.ManyToManyField(
+        Role,
+        verbose_name=_('roles'),
+        blank=True,
+        help_text=_('The roles this user has.'),
+        related_name="customuser_roles", # related_name for Role -> CustomUser
+        related_query_name="customuser_role", # related_query_name for CustomUser queries via Role
+    )
+    # groups and user_permissions are inherited from AbstractUser.
+    # Redefining them is only necessary to change related_name or other attributes.
+    # The related_names chosen here ('customuser_groups', 'customuser_user_permissions')
+    # prevent clashes if Django's default 'user_set' would conflict.
+    groups = models.ManyToManyField(
+        'auth.Group', # Standard Django Group
+        related_name='customuser_groups', # Changed from default 'user_set' on Group
+        blank=True,
+        help_text='The groups this user belongs to.',
+        verbose_name='groups',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission', # Standard Django Permission
+        related_name='customuser_user_permissions', # Changed from default 'user_set' on Permission
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions',
+    )
+
+    def get_full_name(self):
+        """
+        Return the first_name plus the last_name, with a space in between.
+        Falls back to username if full name is not available.
+        """
+        full_name = '%s %s' % (self.first_name, self.last_name)
+        name_to_return = full_name.strip()
+        if name_to_return:
+            return name_to_return
+        if self.username:
+            return self.username
+        # As a last resort, return phone number if username is also blank
+        # This case should be rare if username is required.
+        if self.phone_number:
+            return self.phone_number
+        return f"User #{self.pk}"
+
+    def get_short_name(self):
+        "Return the short name for the user (first name or username)." 
+        if self.first_name:
+            return self.first_name
+        if self.username:
+            return self.username
+        return self.phone_number # Fallback
+
+    def __str__(self):
+        # Use get_full_name for string representation if available, else username, else phone_number
+        name = self.get_full_name()
+        if name and name != f"User #{self.pk}": # Avoid returning the generic ID if a name exists
+             return name
+        # Fallback logic similar to get_full_name's last resorts
+        if self.username:
+            return self.username
+        if self.phone_number:
+            return self.phone_number
+        return f"User #{self.pk}"
+
+    @property
+    def profile(self):
+        # This property relies on the related_name 'custom_profile' from CustomUserProfile.user
+        # and the post_save signal ensuring the profile exists.
+        try:
+            # Ensure custom_profile exists, creating if necessary (more robust)
+            profile_instance, created = CustomUserProfile.objects.get_or_create(user=self)
+            if created:
+                # Potentially log this or handle default profile values if needed
+                pass
+            return profile_instance
+        except CustomUserProfile.MultipleObjectsReturned:
+            # Handle case where multiple profiles might exist (data integrity issue)
+            # Log error and return the first one or raise an exception
+            # For now, let's return the first one found.
+            return CustomUserProfile.objects.filter(user=self).first()
+        # Removed DoesNotExist because get_or_create handles it.
+
+
+class CustomUserProfile(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='custom_profile')
+    # phone_number here can be removed if it's always the same as CustomUser.phone_number
+    # If it can be different (e.g., a contact phone vs login phone), keep it.
+    # Given unique=True, it suggests it might be distinct or needs careful syncing.
+    # For simplicity, if it's a duplicate of CustomUser.phone_number, consider removing it.
+    phone_number = models.CharField(max_length=15, blank=True, null=True, unique=True, db_index=True) 
+    address = models.TextField(blank=True, null=True)
+    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    department = models.CharField(max_length=100, blank=True, null=True) # This is a CharField
+    employee_id = models.CharField(max_length=20, blank=True, null=True, unique=True, db_index=True)
+    specialization = models.CharField(max_length=100, blank=True, null=True)  # For doctors
+    qualification = models.CharField(max_length=100, blank=True, null=True)
+    joining_date = models.DateField(auto_now_add=True) # This will set on creation
+    updated_at = models.DateTimeField(auto_now=True) # Add this for the profile.html footer
+    is_active = models.BooleanField(default=True) # Note: CustomUser also has is_active. Keep them synced if necessary.
+
+    def __str__(self):
+        return str(self.user) # Calls CustomUser.__str__
+
+
+@receiver(post_save, sender=CustomUser)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        CustomUserProfile.objects.create(user=instance)
+    else:
+        # Ensure profile exists and save it (e.g., if profile has auto_now fields or other logic on save)
+        # The @property user.profile already implements get_or_create,
+        # but saving here ensures any profile-specific save logic runs.
+        try:
+            instance.custom_profile.save()
+        except CustomUserProfile.DoesNotExist:
+            # This case should be rare if the @property user.profile is robust (uses get_or_create)
+            # or if the created block always succeeds.
+            CustomUserProfile.objects.create(user=instance)
+
+
+# Removed the second post_save receiver 'save_user_profile' as 'create_or_update_user_profile'
+# now handles both creation and ensuring the profile is saved on user update.
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = (
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('deactivate', 'Deactivate'),
+        ('delete', 'Delete'),
+        ('privilege_change', 'Privilege Change'),
+        ('user_dashboard_view', 'User Dashboard View'), # Added for completeness
+        ('user_bulk_action', 'User Bulk Action'), # Added for completeness
+    )
+
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True,
+                             related_name='audit_logs', verbose_name=_('acting user'))
+    target_user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, # blank=True if target_user is not always applicable
+                                   related_name='targeted_logs', verbose_name=_('affected user'))
+    action = models.CharField(max_length=25, choices=ACTION_CHOICES) # Increased max_length for new choices
+    details = models.JSONField(verbose_name=_('change details'))
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = _('audit log')
+        verbose_name_plural = _('audit logs')
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        user_str = str(self.user) if self.user else "System"
+        target_str = str(self.target_user) if self.target_user else "N/A"
+        return f"{user_str} {self.action} {target_str} at {self.timestamp}"
+
+
+class EncryptedField(models.Field):
+    """Base class for encrypted model fields"""
+    def __init__(self, *args, **kwargs):
+        kwargs['max_length'] = 255 # Default, can be overridden by specific fields
+        super().__init__(*args, **kwargs)
+
+    def get_internal_type(self):
+        return 'CharField' # Store as CharField in DB
+
+    def from_db_value(self, value, expression, connection):
+        if value is None:
+            return value
+        return self.decrypt(value)
+
+    def to_python(self, value):
+        if value is None or isinstance(value, str) and not value.startswith('gAAAAA'): # Check if already decrypted
+            return value
+        if isinstance(value, str) and value.startswith('gAAAAA'): # Encrypted string
+             return self.decrypt(value)
+        return value # Or handle other types if necessary
+
+    def get_prep_value(self, value):
+        if value is None:
+            return value
+        return self.encrypt(str(value)) # Ensure value is string before encrypting
+
+    def encrypt(self, value):
+        from cryptography.fernet import Fernet
+        key = getattr(settings, 'ENCRYPTION_KEY', None)
+        if not key:
+            raise ValueError("ENCRYPTION_KEY not set in Django settings.")
+        cipher_suite = Fernet(key.encode()) # Ensure key is bytes
+        return cipher_suite.encrypt(value.encode()).decode()
+
+    def decrypt(self, value):
+        from cryptography.fernet import Fernet
+        key = getattr(settings, 'ENCRYPTION_KEY', None)
+        if not key:
+            raise ValueError("ENCRYPTION_KEY not set in Django settings.")
+        cipher_suite = Fernet(key.encode()) # Ensure key is bytes
+        try:
+            return cipher_suite.decrypt(value.encode()).decode()
+        except Exception: # Broad exception for decryption failure (e.g., invalid token, wrong key)
+            # Log this error appropriately in a real application
+            # print(f"Error decrypting value: {value[:20]}...") # Avoid logging sensitive data
+            return "Error decrypting data" # Or raise a specific error
+
+class EncryptedCharField(EncryptedField, models.CharField):
+    pass
+
+class EncryptedTextField(EncryptedField, models.TextField):
+    # TextField doesn't inherently have max_length. EncryptedField sets it.
+    # For TextField, we might want to store as TextField in DB, not CharField(255)
+    def get_internal_type(self):
+        return 'TextField' # Store as TextField in the database
+    
+    def __init__(self, *args, **kwargs):
+        # EncryptedField adds max_length, which is not valid for TextField's superclass init.
+        # We let EncryptedField's __init__ (which is models.Field's __init__) handle max_length if needed for internal logic,
+        # but get_internal_type ensures it's stored as TextField.
+        original_max_length = kwargs.pop('max_length', None) # Temporarily remove for TextField init
+        super(EncryptedField, self).__init__(*args, **kwargs) # Call models.TextField.__init__ via EncryptedField's MRO parent
+        if original_max_length is not None: # Put it back if it was there for EncryptedField logic
+            self.max_length = original_max_length
+
+
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True) # Make name unique
+    description = models.TextField(blank=True, null=True)
+    head = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='department_head')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

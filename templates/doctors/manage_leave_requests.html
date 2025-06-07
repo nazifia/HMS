@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Leave Requests - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Doctor Leave Requests</h1>
+        <a href="{% url 'doctors:manage_doctors' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Doctors
+        </a>
+    </div>
+
+    <!-- Filter Options -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter Leave Requests</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="btn-group mb-3" role="group">
+                        <a href="{% url 'doctors:manage_leave_requests' %}" class="btn btn-outline-primary {% if not current_status %}active{% endif %}">All</a>
+                        <a href="{% url 'doctors:manage_leave_requests' %}?status=pending" class="btn btn-outline-warning {% if current_status == 'pending' %}active{% endif %}">Pending</a>
+                        <a href="{% url 'doctors:manage_leave_requests' %}?status=approved" class="btn btn-outline-success {% if current_status == 'approved' %}active{% endif %}">Approved</a>
+                        <a href="{% url 'doctors:manage_leave_requests' %}?status=rejected" class="btn btn-outline-danger {% if current_status == 'rejected' %}active{% endif %}">Rejected</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Requests List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Leave Requests</h6>
+        </div>
+        <div class="card-body">
+            {% if leaves %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="leaveRequestsTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Doctor</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Duration</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for leave in leaves %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if leave.doctor.user.profile.profile_picture %}
+                                                <img src="{{ leave.doctor.user.profile.profile_picture.url }}" alt="{{ leave.doctor }}" class="img-profile rounded-circle mr-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                            {% else %}
+                                                <img src="/static/img/undraw_profile.svg" alt="{{ leave.doctor }}" class="img-profile rounded-circle mr-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                            {% endif %}
+                                            <div>
+                                                <div>{{ leave.doctor }}</div>
+                                                <div class="small text-muted">{{ leave.doctor.specialization.name }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ leave.start_date|date:"M d, Y" }}</td>
+                                    <td>{{ leave.end_date|date:"M d, Y" }}</td>
+                                    <td>{{ leave.end_date|timeuntil:leave.start_date }}</td>
+                                    <td>{{ leave.reason|truncatechars:50 }}</td>
+                                    <td>
+                                        {% if leave.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif leave.status == 'approved' %}
+                                            <span class="badge bg-success text-white">Approved</span>
+                                        {% elif leave.status == 'rejected' %}
+                                            <span class="badge bg-danger text-white">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if leave.status == 'pending' %}
+                                            <div class="btn-group">
+                                                <form method="post" action="{% url 'doctors:approve_leave' leave.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-success btn-sm" title="Approve">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="post" action="{% url 'doctors:reject_leave' leave.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="Reject">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">No actions available</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted mb-0">No leave requests found.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#leaveRequestsTable').DataTable({
+            "order": [[1, "desc"]]
+        });
+    });
+</script>
+{% endblock %}

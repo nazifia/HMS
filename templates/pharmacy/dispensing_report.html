@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Pharmacy Dispensing Report{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Pharmacy Dispensing Report</h2>
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-2">
+            <input type="text" name="patient" class="form-control" placeholder="Patient ID" value="{{ filters.patient }}">
+        </div>
+        <div class="col-md-2">
+            <input type="text" name="doctor" class="form-control" placeholder="Doctor ID" value="{{ filters.doctor }}">
+        </div>
+        <div class="col-md-2">
+            <input type="text" name="medication" class="form-control" placeholder="Medication ID" value="{{ filters.medication }}">
+        </div>
+        <div class="col-md-2">
+            <select name="status" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="dispensed" {% if filters.status == 'dispensed' %}selected{% endif %}>Dispensed</option>
+                <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Pending</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="date_from" class="form-control" placeholder="From" value="{{ filters.date_from }}">
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="date_to" class="form-control" placeholder="To" value="{{ filters.date_to }}">
+        </div>
+        <div class="col-md-12 mt-2">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <button type="submit" name="export" value="1" class="btn btn-outline-success ms-2">Export CSV</button>
+        </div>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Patient</th>
+                    <th>Doctor</th>
+                    <th>Medication</th>
+                    <th>Quantity</th>
+                    <th>Dispensed By</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td>{{ log.dispensed_date|date:'Y-m-d H:i' }}</td>
+                    <td>{{ log.prescription_item.prescription.patient.get_full_name }}</td>
+                    <td>{{ log.prescription_item.prescription.doctor.get_full_name }}</td>
+                    <td>{{ log.prescription_item.medication.name }}</td>
+                    <td>{{ log.dispensed_quantity }}</td>
+                    <td>{{ log.dispensed_by.get_full_name|default:'-' }}</td>
+                    <td>
+                        {% if log.prescription_item.is_dispensed %}
+                            <span class="badge bg-success">Dispensed</span>
+                        {% else %}
+                            <span class="badge bg-warning">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center">No records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav>
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?{% if filters.patient %}patient={{ filters.patient }}&{% endif %}{% if filters.doctor %}doctor={{ filters.doctor }}&{% endif %}{% if filters.medication %}medication={{ filters.medication }}&{% endif %}{% if filters.status %}status={{ filters.status }}&{% endif %}{% if filters.date_from %}date_from={{ filters.date_from }}&{% endif %}{% if filters.date_to %}date_to={{ filters.date_to }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?{% if filters.patient %}patient={{ filters.patient }}&{% endif %}{% if filters.doctor %}doctor={{ filters.doctor }}&{% endif %}{% if filters.medication %}medication={{ filters.medication }}&{% endif %}{% if filters.status %}status={{ filters.status }}&{% endif %}{% if filters.date_from %}date_from={{ filters.date_from }}&{% endif %}{% if filters.date_to %}date_to={{ filters.date_to }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h1 class="h3 mb-0">{{ title }}</h1>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Are you sure you want to delete the dashboard "{{ dashboard.name }}"?</p>
+                    <p>This action cannot be undone. All widgets on this dashboard will also be deleted.</p>
+                    
+                    <div class="alert alert-warning">
+                        <h5 class="alert-heading">Dashboard Details</h5>
+                        <ul class="mb-0">
+                            <li><strong>Name:</strong> {{ dashboard.name }}</li>
+                            <li><strong>Description:</strong> {{ dashboard.description|default:"No description" }}</li>
+                            <li><strong>Created:</strong> {{ dashboard.created_at|date:"F j, Y" }}</li>
+                            <li><strong>Widgets:</strong> {{ dashboard.widgets.count }}</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'reporting:dashboard' %}?id={{ dashboard.id }}" class="btn btn-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-danger">Delete Dashboard</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Result - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Test Result: {{ result.test.name }}</h4>
+                <div>
+                    <a href="{% url 'laboratory:edit_test_result' result.id %}" class="btn btn-light me-2">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'laboratory:print_result' result.id %}" class="btn btn-light" target="_blank">
+                        <i class="fas fa-print"></i> Print
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Test Information -->
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Test Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Test:</div>
+                            <div class="col-md-8">{{ result.test.name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Category:</div>
+                            <div class="col-md-8">{{ result.test.category.name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Sample Type:</div>
+                            <div class="col-md-8">{{ result.test.sample_type }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Result Date:</div>
+                            <div class="col-md-8">{{ result.result_date|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Sample Collection:</div>
+                            <div class="col-md-8">
+                                {% if result.sample_collection_date %}
+                                    {{ result.sample_collection_date|date:"F d, Y H:i" }}
+                                {% else %}
+                                    Not recorded
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Collected By:</div>
+                            <div class="col-md-8">
+                                {% if result.sample_collected_by %}
+                                    {{ result.sample_collected_by.get_full_name }}
+                                {% else %}
+                                    Not specified
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Performed By:</div>
+                            <div class="col-md-8">{{ result.performed_by.get_full_name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Verified By:</div>
+                            <div class="col-md-8">
+                                {% if result.verified_by %}
+                                    {{ result.verified_by.get_full_name }}
+                                {% else %}
+                                    <span class="badge bg-warning">Not Verified</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Result File:</div>
+                            <div class="col-md-8">
+                                {% if result.result_file %}
+                                    <a href="{{ result.result_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-file-download"></i> Download File
+                                    </a>
+                                {% else %}
+                                    No file attached
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Notes:</div>
+                            <div class="col-md-8">{{ result.notes|default:"No notes provided." }}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Patient Information -->
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Patient Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient:</div>
+                            <div class="col-md-8">
+                                <a href="{% url 'patients:detail' result.test_request.patient.id %}">
+                                    {{ result.test_request.patient.get_full_name }}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient ID:</div>
+                            <div class="col-md-8">{{ result.test_request.patient.patient_id }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Gender:</div>
+                            <div class="col-md-8">{{ result.test_request.patient.get_gender_display }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Age:</div>
+                            <div class="col-md-8">{{ result.test_request.patient.age }} years</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Doctor:</div>
+                            <div class="col-md-8">Dr. {{ result.test_request.doctor.get_full_name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Request Date:</div>
+                            <div class="col-md-8">{{ result.test_request.request_date|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Request Status:</div>
+                            <div class="col-md-8">
+                                {% if result.test_request.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif result.test_request.status == 'collected' %}
+                                    <span class="badge bg-info">Sample Collected</span>
+                                {% elif result.test_request.status == 'processing' %}
+                                    <span class="badge bg-secondary">Processing</span>
+                                {% elif result.test_request.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif result.test_request.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Priority:</div>
+                            <div class="col-md-8">
+                                {% if result.test_request.priority == 'normal' %}
+                                    <span class="badge bg-success">Normal</span>
+                                {% elif result.test_request.priority == 'urgent' %}
+                                    <span class="badge bg-warning">Urgent</span>
+                                {% elif result.test_request.priority == 'emergency' %}
+                                    <span class="badge bg-danger">Emergency</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test Parameters -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Test Results</h5>
+                        {% if parameters %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Parameter</th>
+                                            <th>Value</th>
+                                            <th>Normal Range</th>
+                                            <th>Unit</th>
+                                            <th>Status</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for parameter in parameters %}
+                                            <tr>
+                                                <td>{{ parameter.parameter.name }}</td>
+                                                <td><strong>{{ parameter.value }}</strong></td>
+                                                <td>{{ parameter.parameter.normal_range }}</td>
+                                                <td>{{ parameter.parameter.unit }}</td>
+                                                <td>
+                                                    {% if parameter.is_normal %}
+                                                        <span class="badge bg-success">Normal</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">Abnormal</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ parameter.notes|default:"-" }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No parameters have been recorded for this test.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'laboratory:test_request_detail' result.test_request.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Test Request
+                    </a>
+                    <a href="{% url 'laboratory:results' %}" class="btn btn-primary">
+                        <i class="fas fa-list"></i> All Results
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

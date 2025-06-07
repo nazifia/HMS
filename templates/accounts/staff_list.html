@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Management - Hospital Management System{% endblock %}
+
+{% block content %}
+<!-- Messages block -->
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+<!-- End messages block -->
+
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Staff Management</h4>
+                <a href="{% url 'accounts:add_staff' %}" class="btn btn-light">
+                    <i class="fas fa-plus"></i> Add Staff
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <input type="text" id="staff-search" class="form-control" placeholder="Search staff...">
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover" id="staff-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for profile in staff %}
+                                <tr>
+                                    <td>{{ profile.employee_id }}</td>
+                                    <td>{{ profile.user.get_full_name }}</td>
+                                    <td>{{ profile.get_role_display }}</td>
+                                    <td>{{ profile.department|default:"-" }}</td>
+                                    <td>{{ profile.phone_number|default:"-" }}</td>
+                                    <td>{{ profile.user.email }}</td>
+                                    <td>
+                                        {% if profile.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'accounts:edit_staff' profile.id %}" class="btn btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'accounts:delete_staff' profile.id %}" class="btn btn-danger delete-confirm">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No staff members found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirm Deactivation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to deactivate this staff member? This action can be reversed later.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Deactivate</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Staff search functionality
+        $('#staff-search').on('keyup', function() {
+            var value = $(this).val().toLowerCase();
+            $('#staff-table tbody tr').filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+            });
+        });
+    });
+</script>
+{% endblock %}

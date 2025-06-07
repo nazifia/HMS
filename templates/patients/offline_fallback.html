@@ -1,0 +1,16 @@
+{# templates/patients/offline_fallback.html #}
+{% extends 'base_pwa.html' %}
+{% block title %}Offline - Hospital Management System{% endblock %}
+{% block content %}
+<div style="margin: 2rem auto; max-width: 500px; text-align: center;">
+    <img src="/static/icons/icon-192x192.png" alt="Offline" style="width:96px;height:96px;">
+    <h2>You are offline</h2>
+    <p>Some features may be unavailable. You can still view cached data and fill forms. Any changes will be synced when you are back online.</p>
+    <ul style="text-align:left;display:inline-block;">
+        <li>View cached patient records (if available)</li>
+        <li>Fill forms (they will be queued and submitted when online)</li>
+        <li>Access basic information</li>
+    </ul>
+    <div id="offline-banner" style="margin-top:2rem;"></div>
+</div>
+{% endblock %}
