@@ -199,11 +199,29 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
+# AUTHENTICATION_BACKENDS = [
+#     'accounts.backends.AdminBackend',  # Admin authentication (username-based)
+#     'accounts.backends.PhoneNumberBackend',  # Application authentication (phone-based)
+#     'django.contrib.auth.backends.ModelBackend',  # Fallback
+# ]
+
+# Authentication Backends Configuration
+# Order matters: Django tries each backend in sequence until one succeeds
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.AdminBackend',  # Admin authentication (username-based)
-    'accounts.backends.PhoneNumberBackend',  # Application authentication (phone-based)
-    'django.contrib.auth.backends.ModelBackend',  # Fallback
+    'accounts.backends.AdminBackend',           # First: Handle admin/username logins
+    'accounts.backends.PhoneNumberBackend',     # Second: Handle phone number logins  
+    'accounts.backends.FallbackModelBackend',   # Third: Fallback for edge cases
 ]
+
+# Login URLs - these remain the same for your application
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = 'dashboard:dashboard'  # Where users go after app login
+LOGOUT_REDIRECT_URL = 'accounts:login'
+
+# Admin site configuration (optional - for customization)
+ADMIN_SITE_HEADER = 'HMS Administration'
+ADMIN_SITE_TITLE = 'HMS Admin'
+ADMIN_INDEX_TITLE = 'Welcome to HMS Administration'
 
 # Media files
 MEDIA_URL = '/media/'

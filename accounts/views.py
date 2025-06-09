@@ -32,23 +32,72 @@ def is_admin(user):
 #     return render(request, 'accounts/user_dashboard.html', {'users': users})
 
 
-def custom_login_view(request):
+# def custom_login_view(request):
 
+#     if request.method == 'POST':
+#         form = CustomLoginForm(request=request, data=request.POST)
+#         if form.is_valid():
+#             username = form.cleaned_data['username']
+#             password = form.cleaned_data['password']
+#             user = authenticate(request, username=username, password=password)
+#             if user is not None:
+#                 login(request, user)  # ✅ This avoids the backend error
+#                 return redirect('dashboard:dashboard')  # Replace with your homepage or dashboard
+#             else:
+#                 form.add_error(None, 'Invalid login credentials')
+#     else:
+#         form = CustomLoginForm()
+
+#     return render(request, 'accounts/login.html', {'form': form})
+
+
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from django.contrib import messages
+from django.urls import reverse
+from .forms import CustomLoginForm
+
+def custom_login_view(request):
+    """
+    Custom login view for application users (using phone numbers).
+    Admin users should use /admin/ directly.
+    """
+    # Redirect if already logged in
+    if request.user.is_authenticated:
+        return redirect('dashboard:dashboard')
+    
     if request.method == 'POST':
         form = CustomLoginForm(request=request, data=request.POST)
         if form.is_valid():
-            username = form.cleaned_data['username']
+            username = form.cleaned_data['username']  # This will be phone number
             password = form.cleaned_data['password']
+            
+            # Authenticate user (will use PhoneNumberBackend)
             user = authenticate(request, username=username, password=password)
+            
             if user is not None:
-                login(request, user)  # ✅ This avoids the backend error
-                return redirect('dashboard:dashboard')  # Replace with your homepage or dashboard
+                if user.is_active:
+                    login(request, user)
+                    messages.success(request, f'Welcome back, {user.get_full_name()}!')
+                    
+                    # Redirect to next page or dashboard
+                    next_page = request.GET.get('next', 'dashboard:dashboard')
+                    return redirect(next_page)
+                else:
+                    messages.error(request, 'Your account has been deactivated. Please contact support.')
             else:
-                form.add_error(None, 'Invalid login credentials')
+                messages.error(request, 'Invalid phone number or password. Please try again.')
     else:
         form = CustomLoginForm()
 
-    return render(request, 'accounts/login.html', {'form': form})
+    context = {
+        'form': form,
+        'title': 'Login',
+        'page_title': 'HMS - Login',
+    }
+    return render(request, 'accounts/login.html', context)
+
 
 
 def dashboard_view(request):
@@ -619,3 +668,6 @@ def user_dashboard(request):
         'inactive_count': inactive_count,
     }
     return render(request, 'accounts/user_dashboard.html', context)
+
+
+

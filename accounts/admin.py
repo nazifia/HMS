@@ -3,6 +3,60 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import AuthenticationForm
 from .models import CustomUser, Role
 
+
+
+
+
+from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class Command(BaseCommand):
+    help = 'Create an admin user'
+
+    def add_arguments(self, parser):
+        parser.add_argument('--username', type=str, required=True, help='Username for the admin user')
+        parser.add_argument('--phone', type=str, required=True, help='Phone number for the admin user')
+        parser.add_argument('--email', type=str, required=True, help='Email for the admin user')
+        parser.add_argument('--password', type=str, required=True, help='Password for the admin user')
+
+    def handle(self, *args, **options):
+        username = options['username']
+        phone = options['phone']
+        email = options['email']
+        password = options['password']
+
+        try:
+            # Check if user already exists
+            if User.objects.filter(username=username).exists():
+                self.stdout.write(
+                    self.style.WARNING(f'User with username "{username}" already exists.')
+                )
+                return
+
+            # Create the admin user
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                phone=phone,
+                password=password
+            )
+            user.is_staff = True
+            user.is_superuser = True
+            user.save()
+
+            self.stdout.write(
+                self.style.SUCCESS(f'Admin user "{username}" created successfully.')
+            )
+
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(f'Error creating user: {e}')
+            )
+            
+
+
 class AdminAuthenticationForm(AuthenticationForm):
     """
     Independent admin authentication form that uses standard Django username field.
