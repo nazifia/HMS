@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 
+
+
 # Load environment variables from .env file
 from core.env_loader import load_env_file
 load_env_file()
@@ -197,6 +199,12 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.AdminBackend',  # Admin authentication (username-based)
+    'accounts.backends.PhoneNumberBackend',  # Application authentication (phone-based)
+    'django.contrib.auth.backends.ModelBackend',  # Fallback
+]
+
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -209,11 +217,6 @@ LOGOUT_REDIRECT_URL = 'accounts:login'
 CRISPY_ALLOWED_TEMPLATE_PACKS = ["bootstrap5"]
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# Authentication Backends
-AUTHENTICATION_BACKENDS = [
-    'accounts.backends.PhoneNumberBackend',  # Custom backend for phone number authentication
-    'django.contrib.auth.backends.ModelBackend',  # Default backend as fallback
-]
 
 # REST framework configuration
 REST_FRAMEWORK = {

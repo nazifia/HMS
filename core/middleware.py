@@ -56,9 +56,9 @@ class RoleBasedAccessMiddleware:
 
         # URL patterns that require specific roles
         # Format: (url_pattern, [allowed_roles])
+        # Note: Django admin URLs are excluded from role-based access control
         self.role_required_urls = [
-            # Admin-only URLs
-            ('admin/', ['admin']),
+            # Application admin URLs (not Django admin)
             ('accounts/staff/', ['admin']),
             ('accounts/department/', ['admin']),
             ('hr/', ['admin']),
@@ -106,13 +106,17 @@ class RoleBasedAccessMiddleware:
         if request.path.startswith(reverse('accounts:login')) or request.path.startswith(reverse('accounts:logout')):
             return self.get_response(request)
 
+        # Skip middleware for Django admin URLs - admin has its own permission system
+        if request.path.startswith('/admin/'):
+            return self.get_response(request)
+
         # Check if the current URL requires a specific role
         for url_pattern, allowed_roles in self.role_required_urls:
             if url_pattern in request.path:
                 # Get user's role
                 user_role = request.user.roles.first()
 
-                # Allow superusers to access everything
+                # Allow superusers to access everything (application level)
                 if request.user.is_superuser:
                     break
 

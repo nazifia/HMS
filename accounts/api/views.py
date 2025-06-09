@@ -165,3 +165,37 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = queryset.filter(timestamp__gte=cutoff)
         
         return queryset.order_by('-timestamp')
+
+from django.contrib.auth import login, authenticate
+from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
+
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        phone_number = request.data.get('phone_number')
+        password = request.data.get('password')
+
+        if not phone_number or not password:
+            return Response({'error': 'Please provide both phone number and password'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Authenticate using the custom backend
+        user = authenticate(request, username=phone_number, password=password)
+
+        if user:
+            if user.is_active:
+                login(request, user)  # This creates a session
+                token, created = Token.objects.get_or_create(user=user)
+                return Response({
+                    'token': token.key,
+                    'user_id': user.pk,
+                    'phone_number': user.phone_number
+                })
+            else:
+                return Response({'error': 'User account is inactive'},
+                                status=status.HTTP_403_FORBIDDEN)
+        else:
+            return Response({'error': 'Invalid Credentials'},
+                            status=status.HTTP_401_UNAUTHORIZED)

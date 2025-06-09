@@ -9,6 +9,8 @@ from .models import CustomUserProfile, Department, CustomUser, Role
 User = CustomUser
 
 
+# Removed AdminUsernameLoginForm - admin now uses independent authentication
+
 class CustomLoginForm(AuthenticationForm):
     """
     Custom login form.
@@ -26,6 +28,10 @@ class CustomLoginForm(AuthenticationForm):
     # you'd need a custom authentication backend. The form itself doesn't handle that.
     # For now, this form submits what's entered in 'username' field as the 'username'
     # parameter to the `authenticate` function.
+
+    def clean(self):
+        cleaned_data = super().clean()
+        return cleaned_data
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -104,22 +110,7 @@ class UserRegistrationForm(CustomUserCreationForm):
     # The save method from CustomUserCreationForm will be inherited and should work correctly.
 
 
-class CustomUserChangeForm(UserChangeForm):
-    """
-    A form for updating users. Includes all the fields on
-    the user, but replaces the password field with admin's
-    password hash display field.
-    """
-    roles = forms.ModelMultipleChoiceField(
-        queryset=Role.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=False
-    )
-    username = forms.CharField(max_length=150, required=True) # Ensure username can be edited
-
-    class Meta(UserChangeForm.Meta):
-        model = User
-        fields = ('phone_number', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'roles')
+# Removed CustomUserChangeForm - admin now uses simplified forms independent of roles
 
 class UserProfileForm(forms.ModelForm):
     """
@@ -279,26 +270,18 @@ class UserProfileForm(forms.ModelForm):
 
         # If this is an existing user (editing profile)
         if user_instance and user_instance.pk:
-            # If submitted username is empty or None, try to use the original username
+            # If submitted username is empty or None, use the original username
             if not username:
-                original_username = getattr(user_instance, 'username', None)
-                if original_username: # Ensure original_username is not None or empty
-                    self.cleaned_data['username'] = original_username
-                    return original_username
-                else:
-                    # This case means submitted is blank AND original is blank/None.
-                    # Let the field's required=True catch this, or raise explicitly.
-                    raise ValidationError("Username cannot be blank. Please provide a username.")
+                username = user_instance.username
+                self.cleaned_data['username'] = username
             
             # If submitted username is different from original, check for uniqueness
-            if username != getattr(user_instance, 'username', None):
+            if username != user_instance.username:
                 if User.objects.filter(username=username).exclude(pk=user_instance.pk).exists():
                     raise ValidationError("This username is already taken. Please choose a different one.")
         # For new users (no instance or instance without pk)
         else:
             if not username:
-                # This will be caught by required=True on the field if it's still blank.
-                # Explicit raise for clarity if it reaches here somehow.
                 raise ValidationError("Username cannot be blank.")
             
             # Check if username is taken for a new user

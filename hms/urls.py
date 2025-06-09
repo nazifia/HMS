@@ -20,6 +20,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from core.views import home_view
 
+# Configure admin site to be independent of application logic
+admin.site.site_header = 'HMS Administration'
+admin.site.site_title = 'HMS Admin'
+admin.site.index_title = 'Hospital Management System Administration'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home_view, name='home'),

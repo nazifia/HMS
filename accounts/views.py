@@ -33,8 +33,9 @@ def is_admin(user):
 
 
 def custom_login_view(request):
+
     if request.method == 'POST':
-        form = CustomLoginForm(request.POST)
+        form = CustomLoginForm(request=request, data=request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']

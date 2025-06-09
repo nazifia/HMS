@@ -18,10 +18,6 @@ def role_required(allowed_roles):
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
-            # Allow superusers to access everything
-            if request.user.is_superuser:
-                return view_func(request, *args, **kwargs)
-
             # Check if user is authenticated
             if not request.user.is_authenticated:
                 messages.error(request, "You must be logged in to access this page.")
@@ -31,6 +27,7 @@ def role_required(allowed_roles):
             user_role = request.user.profile.role
 
             # Check if user has the required role
+            # Note: Django superuser status is independent of application roles
             if user_role not in allowed_roles:
                 messages.error(request, "You don't have permission to access this page.")
                 return redirect('dashboard:dashboard')

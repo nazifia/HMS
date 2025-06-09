@@ -10,4 +10,5 @@ router.register(r'audit-logs', views.AuditLogViewSet, basename='auditlog')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('login/', views.LoginView.as_view(), name='api_login'),
 ]

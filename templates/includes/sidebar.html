@@ -58,8 +58,8 @@
                 <h6 class="collapse-header">Doctor Management:</h6>
                 <a class="collapse-item {% if request.path == '/doctors/' %}active{% endif %}" href="{% url 'doctors:doctor_list' %}">All Doctors</a>
 
-                <!-- Admin-only doctor management options -->
-                {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+                <!-- Application admin-only doctor management options -->
+                {% if user.profile and user.profile.role == 'admin' %}
                 <a class="collapse-item {% if request.path == '/doctors/admin/doctors/' %}active{% endif %}" href="{% url 'doctors:manage_doctors' %}">Manage Doctors</a>
                 <a class="collapse-item {% if request.path == '/doctors/admin/specializations/' %}active{% endif %}" href="{% url 'doctors:manage_specializations' %}">Specializations</a>
                 <a class="collapse-item {% if request.path == '/doctors/admin/leave-requests/' %}active{% endif %}" href="{% url 'doctors:manage_leave_requests' %}">Leave Requests</a>
@@ -297,8 +297,8 @@
     </li>
     {% endif %}
 
-    <!-- Nav Item - Departments (Available to admins only) -->
-    {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+    <!-- Nav Item - Departments (Available to application admins only) -->
+    {% if user.profile and user.profile.role == 'admin' %}
     <li class="nav-item {% if '/accounts/departments/' in request.path %}active{% endif %}">
         <a class="nav-link" href="{% url 'accounts:department_list' %}">
             <i class="fas fa-building text-white"></i>

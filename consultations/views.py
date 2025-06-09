@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 from django.db import models
 
 from .models import ConsultingRoom, WaitingList, Consultation, ConsultationNote, Referral, SOAPNote
@@ -655,7 +655,7 @@ def waiting_list(request):
         )
 
     # Get all doctors and consulting rooms for filters
-    doctors = User.objects.filter(is_active=True, profile__role='doctor')
+    doctors = CustomUser.objects.filter(is_active=True, roles__name='doctor')
     consulting_rooms = ConsultingRoom.objects.filter(is_active=True)
 
     context = {
