@@ -328,7 +328,7 @@ def admission_list(request):
     deceased_count = status_count_dict.get('deceased', 0)
 
     # Advanced: Add role-based analytics for admissions
-    role_counts = Admission.objects.values('attending_doctor__profile__role').annotate(count=models.Count('id')).order_by('-count')
+    role_counts = Admission.objects.values('attending_doctor__roles__name').annotate(count=models.Count('id')).order_by('-count')
     # Advanced: Add audit log and notification fetch (if models exist)
     from core.models import AuditLog, InternalNotification
     audit_logs = AuditLog.objects.filter(

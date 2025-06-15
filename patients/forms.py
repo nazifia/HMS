@@ -2,15 +2,56 @@ from django import forms
 from .models import Patient, MedicalHistory, Vitals
 from django.core.validators import RegexValidator
 from doctors.models import Specialization
+import re
 
 class PatientForm(forms.ModelForm):
-    """Form for patient registration and editing"""
+    """
+    Form for patient registration and editing
+
+    Features:
+    - Automatic special character removal from name, location, and text fields
+    - Phone number validation with international format support
+    - Email and phone number uniqueness validation
+    - Automatic patient ID generation
+    """
 
     # Custom validators
     phone_regex = RegexValidator(
         regex=r'^\+?1?\d{9,15}$',
         message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."
     )
+
+    @staticmethod
+    def clean_special_characters(value, field_type='name'):
+        """
+        Remove special characters from input fields
+
+        Args:
+            value: The input string to clean
+            field_type: Type of field ('name', 'location', 'general')
+
+        Returns:
+            Cleaned string with special characters removed
+        """
+        if not value:
+            return value
+
+        if field_type == 'name':
+            # For names: allow letters, spaces, hyphens, apostrophes, and dots
+            cleaned = re.sub(r"[^a-zA-Z\s\-'.]", '', value)
+        elif field_type == 'location':
+            # For locations: allow letters, spaces, hyphens, and dots
+            cleaned = re.sub(r"[^a-zA-Z\s\-.]", '', value)
+        elif field_type == 'general':
+            # For general text: allow letters, numbers, spaces, hyphens, and basic punctuation
+            cleaned = re.sub(r"[^a-zA-Z0-9\s\-.,']", '', value)
+        else:
+            # Default: remove most special characters but keep basic punctuation
+            cleaned = re.sub(r"[^a-zA-Z0-9\s\-.,']", '', value)
+
+        # Remove multiple spaces and strip
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned
 
     # Override fields for better validation and UI
     phone_number = forms.CharField(validators=[phone_regex], max_length=17)
@@ -45,28 +86,73 @@ class PatientForm(forms.ModelForm):
             raise forms.ValidationError("This phone number is already registered with another patient.")
         return phone_number
 
+    def clean_first_name(self):
+        """Clean special characters from first name"""
+        first_name = self.cleaned_data.get('first_name')
+        return self.clean_special_characters(first_name, 'name')
+
+    def clean_last_name(self):
+        """Clean special characters from last name"""
+        last_name = self.cleaned_data.get('last_name')
+        return self.clean_special_characters(last_name, 'name')
+
+    def clean_emergency_contact_name(self):
+        """Clean special characters from emergency contact name"""
+        emergency_contact_name = self.cleaned_data.get('emergency_contact_name')
+        return self.clean_special_characters(emergency_contact_name, 'name')
+
+    def clean_city(self):
+        """Clean special characters from city name"""
+        city = self.cleaned_data.get('city')
+        return self.clean_special_characters(city, 'location')
+
+    def clean_state(self):
+        """Clean special characters from state name"""
+        state = self.cleaned_data.get('state')
+        return self.clean_special_characters(state, 'location')
+
+    def clean_country(self):
+        """Clean special characters from country name"""
+        country = self.cleaned_data.get('country')
+        return self.clean_special_characters(country, 'location')
+
+    def clean_occupation(self):
+        """Clean special characters from occupation"""
+        occupation = self.cleaned_data.get('occupation')
+        return self.clean_special_characters(occupation, 'general')
+
+    def clean_insurance_provider(self):
+        """Clean special characters from insurance provider name"""
+        insurance_provider = self.cleaned_data.get('insurance_provider')
+        return self.clean_special_characters(insurance_provider, 'general')
+
     def save(self, commit=True):
         patient = super().save(commit=False)
 
         # Generate patient ID if this is a new patient
         if not patient.pk and not patient.patient_id:
-            # Format: PT-YYYYMMDD-XXXX where XXXX is a sequential number
+            # Format: YYYYMMNNNN (numeric only, no letters or hyphens)
             import datetime
-            today = datetime.date.today().strftime('%Y%m%d')
+            year = datetime.date.today().year
+            month = datetime.date.today().month
+            prefix = f"{year}{month:02d}"
 
             # Get the last patient ID with the same date prefix
             last_patient = Patient.objects.filter(
-                patient_id__startswith=f'PT-{today}'
+                patient_id__startswith=prefix
             ).order_by('-patient_id').first()
 
             if last_patient:
-                # Extract the sequential number and increment it
-                last_seq = int(last_patient.patient_id.split('-')[-1])
-                new_seq = last_seq + 1
+                try:
+                    # Extract the sequential number and increment it
+                    last_number = int(last_patient.patient_id[len(prefix):])
+                    new_number = last_number + 1
+                except (IndexError, ValueError):
+                    new_number = 1
             else:
-                new_seq = 1
+                new_number = 1
 
-            patient.patient_id = f'PT-{today}-{new_seq:04d}'
+            patient.patient_id = f"{prefix}{new_number:04d}"
 
         if commit:
             patient.save()

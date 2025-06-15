@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        border: none;
+        overflow: hidden;
+    }
+    
+    .detail-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+    }
+    
+    .info-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-value {
+        color: #212529;
+        font-size: 1.1rem;
+    }
+    
+    .medication-info {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+    }
+    
+    .patient-info {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+    }
+    
+    .prescription-info {
+        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+    }
+    
+    .dispensing-info {
+        background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+    }
+    
+    .related-log {
+        border-left: 4px solid #007bff;
+        background: #f8f9fa;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0 8px 8px 0;
+        transition: all 0.2s;
+    }
+    
+    .related-log:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-left: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.5rem;
+        width: 12px;
+        height: 12px;
+        background: #007bff;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px #007bff;
+    }
+    
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 1.5rem;
+        width: 2px;
+        height: calc(100% - 1rem);
+        background: #dee2e6;
+    }
+    
+    .timeline-item:last-child::after {
+        display: none;
+    }
+    
+    .badge-custom {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-info-circle me-2"></i>{{ title }}</h2>
+        <div>
+            <a href="{% url 'pharmacy:prescription_detail' dispensing_log.prescription_item.prescription.id %}" 
+               class="btn btn-info me-2">
+                <i class="fas fa-file-prescription me-2"></i>View Prescription
+            </a>
+            <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Tracker
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Details -->
+        <div class="col-md-8">
+            <!-- Dispensing Log Details -->
+            <div class="card detail-card mb-4">
+                <div class="detail-header">
+                    <h4><i class="fas fa-pills me-2"></i>Dispensing Details</h4>
+                    <p class="mb-0">Complete information about this dispensing transaction</p>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="dispensing-info">
+                                <h6><i class="fas fa-calendar-alt me-2"></i>Dispensing Information</h6>
+                                <div class="row">
+                                    <div class="col-12 mb-2">
+                                        <div class="info-label">Date & Time:</div>
+                                        <div class="info-value">{{ dispensing_log.dispensed_date|date:"F d, Y H:i:s" }}</div>
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <div class="info-label">Dispensed By:</div>
+                                        <div class="info-value">
+                                            <i class="fas fa-user-md me-1"></i>
+                                            {{ dispensing_log.dispensed_by.get_full_name|default:"Unknown Staff" }}
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <div class="info-label">Quantity Dispensed:</div>
+                                        <div class="info-value">
+                                            <span class="badge badge-custom bg-light text-dark fs-6">
+                                                {{ dispensing_log.dispensed_quantity }} units
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="info-label">Total Price:</div>
+                                        <div class="info-value">
+                                            <span class="badge badge-custom bg-light text-dark fs-6">
+                                                ${{ dispensing_log.total_price_for_this_log|floatformat:2 }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="medication-info">
+                                <h6><i class="fas fa-capsules me-2"></i>Medication Details</h6>
+                                <div class="row">
+                                    <div class="col-12 mb-2">
+                                        <div class="info-label">Name:</div>
+                                        <div class="info-value">{{ dispensing_log.prescription_item.medication.name }}</div>
+                                    </div>
+                                    {% if dispensing_log.prescription_item.medication.generic_name %}
+                                    <div class="col-12 mb-2">
+                                        <div class="info-label">Generic Name:</div>
+                                        <div class="info-value">{{ dispensing_log.prescription_item.medication.generic_name }}</div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="col-12 mb-2">
+                                        <div class="info-label">Category:</div>
+                                        <div class="info-value">
+                                            {% if dispensing_log.prescription_item.medication.category %}
+                                                {{ dispensing_log.prescription_item.medication.category.name }}
+                                            {% else %}
+                                                <em>No category</em>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="info-label">Unit Price at Dispense:</div>
+                                        <div class="info-value">
+                                            <span class="badge badge-custom bg-light text-dark">
+                                                ${{ dispensing_log.unit_price_at_dispense|floatformat:2 }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient Information -->
+            <div class="card detail-card mb-4">
+                <div class="card-body">
+                    <div class="patient-info">
+                        <h6><i class="fas fa-user me-2"></i>Patient Information</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-label">Name:</div>
+                                <div class="info-value">{{ prescription.patient.get_full_name }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Patient ID:</div>
+                                <div class="info-value">{{ prescription.patient.patient_id }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Phone:</div>
+                                <div class="info-value">{{ prescription.patient.phone_number|default:"Not provided" }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Email:</div>
+                                <div class="info-value">{{ prescription.patient.email|default:"Not provided" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prescription Information -->
+            <div class="card detail-card">
+                <div class="card-body">
+                    <div class="prescription-info">
+                        <h6><i class="fas fa-file-prescription me-2"></i>Prescription Information</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-label">Prescription ID:</div>
+                                <div class="info-value">#{{ prescription.id }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Type:</div>
+                                <div class="info-value">{{ prescription.get_prescription_type_display }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Doctor:</div>
+                                <div class="info-value">{{ prescription.doctor.get_full_name }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Status:</div>
+                                <div class="info-value">
+                                    <span class="badge bg-{% if prescription.status == 'completed' %}success{% elif prescription.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                        {{ prescription.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="info-label">Prescribed Quantity:</div>
+                                <div class="info-value">{{ dispensing_log.prescription_item.quantity }} units</div>
+                            </div>
+                            {% if dispensing_log.prescription_item.instructions %}
+                            <div class="col-12">
+                                <div class="info-label">Instructions:</div>
+                                <div class="info-value">{{ dispensing_log.prescription_item.instructions }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Related Dispensing Logs -->
+            {% if related_logs %}
+            <div class="card detail-card mb-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-history me-2"></i>Related Dispensing History</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for log in related_logs %}
+                        <div class="timeline-item">
+                            <div class="related-log">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ log.dispensed_quantity }} units</strong>
+                                        <br><small class="text-muted">{{ log.dispensed_date|date:"M d, Y H:i" }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-primary">${{ log.total_price_for_this_log|floatformat:2 }}</span>
+                                        <br><small class="text-muted">{{ log.dispensed_by.get_full_name|default:"Unknown" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h6><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-outline-primary">
+                            <i class="fas fa-file-prescription me-2"></i>View Full Prescription
+                        </a>
+                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?patient_name={{ prescription.patient.get_full_name|urlencode }}" 
+                           class="btn btn-outline-info">
+                            <i class="fas fa-user me-2"></i>Patient's Dispensing History
+                        </a>
+                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?medication_name={{ dispensing_log.prescription_item.medication.name|urlencode }}" 
+                           class="btn btn-outline-success">
+                            <i class="fas fa-pills me-2"></i>Medication Dispensing History
+                        </a>
+                        {% if dispensing_log.dispensed_by %}
+                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?dispensed_by={{ dispensing_log.dispensed_by.id }}" 
+                           class="btn btn-outline-warning">
+                            <i class="fas fa-user-md me-2"></i>Staff Dispensing History
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add smooth scrolling to anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+    
+    // Add copy to clipboard functionality for IDs
+    const copyableElements = document.querySelectorAll('[data-copy]');
+    copyableElements.forEach(element => {
+        element.style.cursor = 'pointer';
+        element.title = 'Click to copy';
+        element.addEventListener('click', function() {
+            navigator.clipboard.writeText(this.textContent).then(() => {
+                // Show temporary feedback
+                const originalText = this.textContent;
+                this.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.textContent = originalText;
+                }, 1000);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

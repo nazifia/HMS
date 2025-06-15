@@ -7,30 +7,29 @@ from accounts.models import CustomUserProfile
 @receiver(post_save, sender=Doctor)
 def update_user_profile_role(sender, instance, created, **kwargs):
     """
-    When a doctor is created or updated, ensure the user's profile role is set to 'doctor'
+    When a doctor is created or updated, ensure the user has the 'doctor' role
     """
     if instance.user:
-        profile = UserProfile.objects.get(user=instance.user)
-        if profile.role != 'doctor':
-            profile.role = 'doctor'
-            profile.save()
+        from accounts.models import Role
+        doctor_role, _ = Role.objects.get_or_create(name='doctor')
+        if doctor_role not in instance.user.roles.all():
+            instance.user.roles.add(doctor_role)
 
 @receiver(post_delete, sender=Doctor)
 def handle_doctor_delete(sender, instance, **kwargs):
     """
-    When a doctor is deleted, update the user's profile role if needed
+    When a doctor is deleted, remove the 'doctor' role from the user if needed
     """
     # This is only needed if we're not deleting the user along with the doctor
     try:
         if instance.user:
-            profile = UserProfile.objects.get(user=instance.user)
-            # Only change the role if there's no specific reason to keep it as doctor
-            if profile.role == 'doctor':
-                profile.role = None
-                profile.save()
+            from accounts.models import Role
+            doctor_role = Role.objects.get(name='doctor')
+            if doctor_role in instance.user.roles.all():
+                instance.user.roles.remove(doctor_role)
     except User.DoesNotExist:
         # User was already deleted
         pass
-    except UserProfile.DoesNotExist:
-        # Profile was already deleted
+    except Role.DoesNotExist:
+        # Doctor role doesn't exist
         pass

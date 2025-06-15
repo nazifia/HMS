@@ -58,7 +58,7 @@
                                 <h5 class="mb-2">Admissions by Role</h5>
                                 <div class="d-flex flex-wrap justify-content-center">
                                     {% for rc in role_counts %}
-                                        <span class="badge bg-light text-dark m-1">{{ rc.attending_doctor__profile__role|default:'(None)' }}: {{ rc.count }}</span>
+                                        <span class="badge bg-light text-dark m-1">{{ rc.attending_doctor__roles__name|default:'(None)' }}: {{ rc.count }}</span>
                                     {% endfor %}
                                 </div>
                             </div>

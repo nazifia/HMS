@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% block title %}Manage Privileges: {{ target_user.get_full_name }} - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .role-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #28a745;
+    }
+    .role-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .permission-preview {
+        max-height: 150px;
+        overflow-y: auto;
+    }
+    .form-check-input:checked {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-user-cog me-2"></i>Manage User Privileges</h2>
+                <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Users
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- User Information Card -->
+            <div class="card user-info-card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            <i class="fas fa-user-circle fa-4x"></i>
+                        </div>
+                        <div class="col-md-10">
+                            <h3>{{ target_user.get_full_name|default:target_user.username }}</h3>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong>Username:</strong> {{ target_user.username }}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Email:</strong> {{ target_user.email|default:"Not provided" }}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Status:</strong> 
+                                    {% if target_user.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Current Roles:</strong> {{ target_user.roles.count }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Role Assignment Form -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-user-shield me-2"></i>Assign Roles</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-users-cog me-1"></i>Available Roles
+                                    </label>
+                                    <div class="form-text mb-3">
+                                        Select the roles you want to assign to this user. Each role comes with its own set of permissions.
+                                    </div>
+                                    
+                                    <div class="row">
+                                        {% for role in form.roles.field.queryset %}
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card role-card h-100">
+                                                <div class="card-body">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" 
+                                                               type="checkbox" 
+                                                               name="{{ form.roles.name }}" 
+                                                               value="{{ role.id }}" 
+                                                               id="role_{{ role.id }}"
+                                                               {% if role in target_user.roles.all %}checked{% endif %}>
+                                                        <label class="form-check-label w-100" for="role_{{ role.id }}">
+                                                            <h6 class="mb-2">{{ role.name }}</h6>
+                                                            {% if role.description %}
+                                                                <p class="text-muted small mb-2">{{ role.description|truncatechars:100 }}</p>
+                                                            {% endif %}
+                                                            
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <small class="text-info">
+                                                                    <i class="fas fa-key me-1"></i>{{ role.permissions.count }} permissions
+                                                                </small>
+                                                                {% if role.parent %}
+                                                                    <small class="text-warning">
+                                                                        <i class="fas fa-arrow-up me-1"></i>Inherits from {{ role.parent.name }}
+                                                                    </small>
+                                                                {% endif %}
+                                                            </div>
+                                                            
+                                                            {% if role.permissions.exists %}
+                                                                <div class="permission-preview mt-2">
+                                                                    <small class="text-muted d-block mb-1">Sample permissions:</small>
+                                                                    {% for permission in role.permissions.all|slice:":3" %}
+                                                                        <span class="badge bg-light text-dark me-1 mb-1">{{ permission.name|truncatechars:25 }}</span>
+                                                                    {% endfor %}
+                                                                    {% if role.permissions.count > 3 %}
+                                                                        <span class="badge bg-secondary">+{{ role.permissions.count|add:"-3" }} more</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                            {% endif %}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% empty %}
+                                        <div class="col-12">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                No roles available. <a href="{% url 'accounts:create_role' %}">Create a role first</a>.
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Update Privileges
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Privileges Summary -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-list-check me-2"></i>Current Privileges</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if target_user.roles.exists %}
+                                <h6 class="text-primary mb-3">Assigned Roles:</h6>
+                                {% for role in target_user.roles.all %}
+                                    <div class="mb-3 p-2 border rounded">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong>{{ role.name }}</strong>
+                                            <span class="badge bg-primary">{{ role.permissions.count }} perms</span>
+                                        </div>
+                                        {% if role.description %}
+                                            <small class="text-muted">{{ role.description|truncatechars:80 }}</small>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+
+                                <hr>
+                                
+                                <h6 class="text-success mb-3">Effective Permissions:</h6>
+                                <div style="max-height: 300px; overflow-y: auto;">
+                                    {% for role in target_user.roles.all %}
+                                        {% for permission in role.permissions.all %}
+                                            <div class="mb-1">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                                    {{ permission.name }}
+                                                    <span class="text-info">(from {{ role.name }})</span>
+                                                </small>
+                                            </div>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    This user has no roles assigned and therefore no special privileges.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-plus me-2"></i>Create New Role
+                                </a>
+                                <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-cogs me-2"></i>Manage Roles
+                                </a>
+                                <a href="{% url 'accounts:audit_logs' %}?user={{ target_user.id }}" class="btn btn-outline-warning btn-sm">
+                                    <i class="fas fa-history me-2"></i>View User Logs
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add visual feedback when roles are selected/deselected
+    document.querySelectorAll('input[type="checkbox"]').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            const card = this.closest('.role-card');
+            if (this.checked) {
+                card.style.borderLeftColor = '#28a745';
+                card.style.backgroundColor = '#f8fff9';
+            } else {
+                card.style.borderLeftColor = '#dee2e6';
+                card.style.backgroundColor = '';
+            }
+        });
+        
+        // Set initial state
+        if (checkbox.checked) {
+            const card = checkbox.closest('.role-card');
+            card.style.borderLeftColor = '#28a745';
+            card.style.backgroundColor = '#f8fff9';
+        }
+    });
+
+    // Add confirmation for form submission
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const checkedRoles = document.querySelectorAll('input[name="{{ form.roles.name }}"]:checked');
+        const roleNames = Array.from(checkedRoles).map(cb => cb.closest('.role-card').querySelector('h6').textContent);
+        
+        if (roleNames.length === 0) {
+            if (!confirm('This will remove all roles from the user. Are you sure?')) {
+                e.preventDefault();
+            }
+        } else {
+            const message = `Assign the following roles to {{ target_user.get_full_name }}?\n\n${roleNames.join('\n')}`;
+            if (!confirm(message)) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -45,12 +45,12 @@ def user_management(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    role_counts = User.objects.filter(is_active=True).values('custom_profile__role').annotate(count=Count('id'))
-    role_count_dict = {item['custom_profile__role']: item['count'] for item in role_counts}
+    role_counts = User.objects.filter(is_active=True).values('roles__name').annotate(count=Count('id'))
+    role_count_dict = {item['roles__name']: item['count'] for item in role_counts}
     doctors_count = role_count_dict.get('doctor', 0)
     nurses_count = role_count_dict.get('nurse', 0)
     admin_count = role_count_dict.get('admin', 0)
-    other_count = User.objects.filter(is_active=True).exclude(custom_profile__role__in=['doctor', 'nurse', 'admin']).count()
+    other_count = User.objects.filter(is_active=True).exclude(roles__name__in=['doctor', 'nurse', 'admin']).count()
 
     audit_logs = AuditLog.objects.filter(
         user__in=User.objects.all()
@@ -116,9 +116,7 @@ def add_department(request):
                 AuditLog.objects.create(
                     user=request.user,
                     action='create',
-                    object_type='Department',
-                    object_id=department.id,
-                    description=f'Department {department.name} created.'
+                    details=f'Department {department.name} created.'
                 )
                 messages.success(request, f'Department {department.name} has been created successfully.')
                 return redirect('hr:departments')
@@ -175,9 +173,7 @@ def delete_department(request, department_id):
             AuditLog.objects.create(
                 user=request.user,
                 action='delete',
-                object_type='Department',
-                object_id=department_id,
-                description=f'Department {department_name} deleted.'
+                details=f'Department {department_name} deleted.'
             )
             messages.success(request, f'Department {department_name} has been deleted successfully.')
             return redirect('hr:departments')

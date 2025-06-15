@@ -32,7 +32,7 @@
     </div>
 
     <!-- Patients - Available to doctors, nurses, receptionists, health record officers, and application admins -->
-    {% if user.profile.role in 'admin,doctor,nurse,receptionist,health_record_officer' %}
+    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse,receptionist,health_record_officer' %}
     <div class="col-md-4 mb-4">
         <div class="card h-100">
             <div class="card-body text-center">
@@ -116,7 +116,7 @@
     {% endif %}
 
     <!-- HR - Available to application admins only (not Django admin) -->
-    {% if user.profile.role == 'admin' %}
+    {% if user.is_superuser or user.profile.role == 'admin' %}
     <div class="col-md-4 mb-4">
         <div class="card h-100">
             <div class="card-body text-center">

@@ -51,8 +51,11 @@ class DoctorUserCreationForm(UserCreationForm):
         
         if commit:
             user.save()
-            # Set the user's profile role to 'doctor'
-            user.profile.role = 'doctor'
+            # Add the 'doctor' role to the user
+            from accounts.models import Role
+            doctor_role, _ = Role.objects.get_or_create(name='doctor')
+            user.roles.add(doctor_role)
+            # Update profile phone number
             user.profile.phone_number = self.cleaned_data['phone_number']
             user.profile.save()
         

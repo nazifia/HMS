@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% block title %}Role Management - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .role-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #007bff;
+    }
+    .role-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .permission-badge {
+        font-size: 0.75rem;
+        margin: 2px;
+    }
+    .role-actions {
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .role-card:hover .role-actions {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-user-shield me-2"></i>Role Management</h2>
+        <a href="{% url 'accounts:create_role' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create New Role
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        {% for role in roles %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card role-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ role.name }}</h5>
+                    <div class="role-actions">
+                        <a href="{% url 'accounts:edit_role' role.id %}" class="btn btn-sm btn-outline-primary" title="Edit Role">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'accounts:delete_role' role.id %}" class="btn btn-sm btn-outline-danger" title="Delete Role">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if role.description %}
+                        <p class="text-muted">{{ role.description }}</p>
+                    {% endif %}
+                    
+                    {% if role.parent %}
+                        <p class="mb-2">
+                            <small class="text-info">
+                                <i class="fas fa-arrow-up me-1"></i>Inherits from: {{ role.parent.name }}
+                            </small>
+                        </p>
+                    {% endif %}
+
+                    {% if role.children.exists %}
+                        <p class="mb-2">
+                            <small class="text-success">
+                                <i class="fas fa-arrow-down me-1"></i>Parent to: 
+                                {% for child in role.children.all %}
+                                    {{ child.name }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </small>
+                        </p>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-2">
+                            <i class="fas fa-users me-1"></i>Users: {{ role.customuser_roles.count }}
+                        </small>
+                        <small class="text-muted d-block">
+                            <i class="fas fa-key me-1"></i>Permissions: {{ role.permissions.count }}
+                        </small>
+                    </div>
+
+                    {% if role.permissions.exists %}
+                        <div class="permissions-preview">
+                            <small class="text-muted d-block mb-2">Recent Permissions:</small>
+                            {% for permission in role.permissions.all|slice:":3" %}
+                                <span class="badge bg-secondary permission-badge">{{ permission.name|truncatechars:20 }}</span>
+                            {% endfor %}
+                            {% if role.permissions.count > 3 %}
+                                <span class="badge bg-light text-dark permission-badge">+{{ role.permissions.count|add:"-3" }} more</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        {% if role.customuser_roles.exists %}
+                            Last assigned: {{ role.customuser_roles.first.date_joined|date:"M d, Y" }}
+                        {% else %}
+                            Not assigned to any users
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle me-2"></i>
+                No roles found. <a href="{% url 'accounts:create_role' %}">Create your first role</a>.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Role Statistics -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar me-2"></i>Role Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h3 class="text-primary">{{ roles.count }}</h3>
+                                <p class="text-muted">Total Roles</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h3 class="text-success">{{ roles|length }}</h3>
+                                <p class="text-muted">Active Roles</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h3 class="text-info">
+                                    {% for role in roles %}
+                                        {% if role.parent %}{{ role.name }}{% if not forloop.last %}, {% endif %}{% endif %}
+                                    {% empty %}0{% endfor %}
+                                </h3>
+                                <p class="text-muted">Child Roles</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h3 class="text-warning">
+                                    {% for role in roles %}{{ role.permissions.count }}{% if not forloop.last %} + {% endif %}{% endfor %}
+                                </h3>
+                                <p class="text-muted">Total Permissions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-plus me-2"></i>Create Role
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:permission_management' %}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-key me-2"></i>Manage Permissions
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-users me-2"></i>Manage Users
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:audit_logs' %}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-history me-2"></i>Audit Logs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add confirmation for delete actions
+    document.querySelectorAll('a[href*="delete"]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to delete this role? This action cannot be undone.')) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

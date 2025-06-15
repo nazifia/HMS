@@ -104,8 +104,10 @@ def system_overview(request):
     context['superuser_count'] = User.objects.filter(is_superuser=True).count()
     context['staff_count'] = User.objects.filter(is_staff=True, is_superuser=False).count()
     try:
-        context['user_roles'] = CustomUserProfile.objects.values('role').annotate(count=Count('role')).order_by('-count')
-    except Exception: 
+        # Get role counts from the many-to-many relationship
+        from accounts.models import Role
+        context['user_roles'] = Role.objects.annotate(count=Count('customuser_roles')).values('name', 'count').order_by('-count')
+    except Exception:
         context['user_roles'] = []
 
     # Patients App

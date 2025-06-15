@@ -169,6 +169,9 @@
                 <!-- Prescriptions for all pharmacy users -->
                 <a class="collapse-item {% if request.path == '/pharmacy/prescriptions/' %}active{% endif %}" href="{% url 'pharmacy:prescriptions' %}">Prescriptions</a>
 
+                <!-- Dispensed Items Tracker -->
+                <a class="collapse-item {% if '/pharmacy/dispensed-items/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensed_items_tracker' %}">Dispensed Items Tracker</a>
+
                 <!-- Reports for pharmacists and admins -->
                 {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
                 <div class="collapse-divider"></div>
@@ -277,6 +280,34 @@
     </li>
     {% endif %}
 
+    <!-- Nav Item - User & Privilege Management (Available to admins only) -->
+    {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+    <li class="nav-item {% if '/accounts/' in request.path and 'user-dashboard' in request.path or 'role' in request.path or 'privilege' in request.path or 'permission' in request.path or 'audit' in request.path %}active{% endif %}">
+        <a class="nav-link {% if not '/accounts/' in request.path or not 'user-dashboard' in request.path and not 'role' in request.path and not 'privilege' in request.path and not 'permission' in request.path and not 'audit' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseUserManagement" aria-expanded="{% if '/accounts/' in request.path and 'user-dashboard' in request.path or 'role' in request.path or 'privilege' in request.path or 'permission' in request.path or 'audit' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseUserManagement">
+            <i class="fas fa-fw fa-users-cog text-white"></i>
+            <span class="text-white">User Management</span>
+        </a>
+        <div id="collapseUserManagement" class="collapse {% if '/accounts/' in request.path and 'user-dashboard' in request.path or 'role' in request.path or 'privilege' in request.path or 'permission' in request.path or 'audit' in request.path %}show{% endif %}" aria-labelledby="headingUserManagement" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">User Administration:</h6>
+                <a class="collapse-item {% if 'user-dashboard' in request.path %}active{% endif %}" href="{% url 'accounts:user_dashboard' %}">All Users</a>
+                <a class="collapse-item {% if 'create_staff' in request.path %}active{% endif %}" href="{% url 'accounts:create_staff' %}">Add New User</a>
+
+                <div class="collapse-divider"></div>
+                <h6 class="collapse-header">Privilege Management:</h6>
+                <a class="collapse-item {% if 'role_demo' in request.path %}active{% endif %}" href="{% url 'accounts:role_demo' %}">Role System Demo</a>
+                <a class="collapse-item {% if 'role_management' in request.path %}active{% endif %}" href="{% url 'accounts:role_management' %}">Manage Roles</a>
+                <a class="collapse-item {% if 'create_role' in request.path %}active{% endif %}" href="{% url 'accounts:create_role' %}">Create Role</a>
+                <a class="collapse-item {% if 'permission_management' in request.path %}active{% endif %}" href="{% url 'accounts:permission_management' %}">Permissions</a>
+
+                <div class="collapse-divider"></div>
+                <h6 class="collapse-header">Monitoring:</h6>
+                <a class="collapse-item {% if 'audit_logs' in request.path %}active{% endif %}" href="{% url 'accounts:audit_logs' %}">Audit Logs</a>
+            </div>
+        </div>
+    </li>
+    {% endif %}
+
     <!-- Nav Item - HR (Available to admins only) -->
     {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
     <li class="nav-item {% if '/hr/' in request.path %}active{% endif %}">
@@ -298,7 +329,7 @@
     {% endif %}
 
     <!-- Nav Item - Departments (Available to application admins only) -->
-    {% if user.profile and user.profile.role == 'admin' %}
+    {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
     <li class="nav-item {% if '/accounts/departments/' in request.path %}active{% endif %}">
         <a class="nav-link" href="{% url 'accounts:department_list' %}">
             <i class="fas fa-building text-white"></i>

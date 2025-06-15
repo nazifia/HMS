@@ -262,28 +262,35 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label for="{{ form.profile_picture.id_for_label }}" class="form-label">Profile Picture</label>
-                        {{ form.profile_picture|add_class:"form-control" }}
-                        {% if form.profile_picture.errors %}
-                            <div class="text-danger">{{ form.profile_picture.errors }}</div>
-                        {% endif %}
-
-                        {% if patient.profile_picture %}
-                            <div class="mt-2">
-                                <img src="{{ patient.profile_picture.url }}" alt="{{ patient.get_full_name }}" class="img-thumbnail" style="max-height: 100px;">
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-md-6">
-                        <label for="{{ form.photo.id_for_label }}" class="form-label">Photo</label>
+                        <label for="{{ form.photo.id_for_label }}" class="form-label">
+                            Patient Photo <span class="text-primary">(Primary)</span>
+                        </label>
                         {{ form.photo|add_class:"form-control" }}
+                        <small class="form-text text-muted">This will be used as the main profile image</small>
                         {% if form.photo.errors %}
                             <div class="text-danger">{{ form.photo.errors }}</div>
                         {% endif %}
                         {% if patient.photo %}
                             <div class="mt-2">
                                 <img src="{{ patient.photo.url }}" alt="{{ patient.get_full_name }}" class="img-thumbnail" style="max-height: 100px;">
+                                <div class="text-success small mt-1">✓ Current photo</div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.profile_picture.id_for_label }}" class="form-label">
+                            Profile Picture <span class="text-secondary">(Alternative)</span>
+                        </label>
+                        {{ form.profile_picture|add_class:"form-control" }}
+                        <small class="form-text text-muted">Used if no primary photo is available</small>
+                        {% if form.profile_picture.errors %}
+                            <div class="text-danger">{{ form.profile_picture.errors }}</div>
+                        {% endif %}
+                        {% if patient.profile_picture %}
+                            <div class="mt-2">
+                                <img src="{{ patient.profile_picture.url }}" alt="{{ patient.get_full_name }}" class="img-thumbnail" style="max-height: 100px;">
+                                <div class="text-info small mt-1">✓ Alternative picture</div>
                             </div>
                         {% endif %}
                     </div>

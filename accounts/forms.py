@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth.forms import (
     UserCreationForm, AuthenticationForm, PasswordResetForm, UserChangeForm
 )
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import CustomUserProfile, Department, CustomUser, Role
 
@@ -604,3 +606,171 @@ class PhoneNumberPasswordResetForm(PasswordResetForm):
             html_email_template_name=html_email_template_name,
             extra_email_context=extra_email_context
         )
+
+
+# ============================================================================
+# PRIVILEGE MANAGEMENT FORMS
+# ============================================================================
+
+class RoleForm(forms.ModelForm):
+    """Form for creating and editing roles"""
+    permissions = forms.ModelMultipleChoiceField(
+        queryset=Permission.objects.all(),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        required=False,
+        help_text="Select permissions for this role"
+    )
+
+    class Meta:
+        model = Role
+        fields = ['name', 'description', 'parent', 'permissions']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'parent': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Exclude self from parent choices to prevent circular references
+        if self.instance.pk:
+            self.fields['parent'].queryset = Role.objects.exclude(pk=self.instance.pk)
+        else:
+            self.fields['parent'].queryset = Role.objects.all()
+
+        # Group permissions by content type for better organization
+        self.fields['permissions'].queryset = Permission.objects.select_related('content_type').order_by(
+            'content_type__app_label', 'content_type__model', 'codename'
+        )
+
+    def clean_parent(self):
+        parent = self.cleaned_data.get('parent')
+        if parent and self.instance.pk and parent.pk == self.instance.pk:
+            raise ValidationError("A role cannot be its own parent")
+        return parent
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            # Check for uniqueness
+            qs = Role.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError("A role with this name already exists")
+        return name
+
+
+class UserRoleAssignmentForm(forms.ModelForm):
+    """Form for assigning roles to users"""
+    roles = forms.ModelMultipleChoiceField(
+        queryset=Role.objects.all(),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        required=False,
+        help_text="Select roles for this user"
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = ['roles']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['roles'].queryset = Role.objects.all().order_by('name')
+
+
+class BulkUserActionForm(forms.Form):
+    """Form for bulk actions on users"""
+    ACTION_CHOICES = [
+        ('activate', 'Activate Users'),
+        ('deactivate', 'Deactivate Users'),
+        ('assign_role', 'Assign Role'),
+        ('remove_role', 'Remove Role'),
+        ('delete', 'Delete Users'),
+    ]
+
+    action = forms.ChoiceField(
+        choices=ACTION_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Required for role assignment/removal actions"
+    )
+    confirm = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Confirm that you want to perform this action"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        action = cleaned_data.get('action')
+        role = cleaned_data.get('role')
+
+        if action in ['assign_role', 'remove_role'] and not role:
+            raise ValidationError("Role is required for role assignment/removal actions")
+
+        return cleaned_data
+
+
+class PermissionFilterForm(forms.Form):
+    """Form for filtering permissions"""
+    content_type = forms.ModelChoiceField(
+        queryset=ContentType.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        empty_label="All Content Types"
+    )
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search permissions...'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show content types that have permissions
+        self.fields['content_type'].queryset = ContentType.objects.filter(
+            permission__isnull=False
+        ).distinct().order_by('app_label', 'model')
+
+
+class AdvancedUserSearchForm(forms.Form):
+    """Advanced search form for users"""
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by name, username, email, or phone...'
+        })
+    )
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        empty_label="All Roles"
+    )
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        empty_label="All Departments"
+    )
+    is_active = forms.ChoiceField(
+        choices=[('', 'All'), ('true', 'Active'), ('false', 'Inactive')],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    date_joined_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    date_joined_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )

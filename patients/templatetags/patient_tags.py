@@ -102,7 +102,7 @@ def bmi_category_class(bmi):
     """
     if not bmi:
         return ''
-    
+
     try:
         bmi = float(bmi)
         if bmi < 18.5:
@@ -115,3 +115,32 @@ def bmi_category_class(bmi):
             return 'text-danger'
     except (ValueError, TypeError):
         return ''
+
+@register.inclusion_tag('patients/tags/patient_image.html')
+def patient_image(patient, size='medium', css_class=''):
+    """
+    Render patient profile image with fallback
+    Usage: {% patient_image patient size="large" css_class="border" %}
+
+    Sizes:
+    - small: 40x40px (for lists)
+    - medium: 100x100px (default)
+    - large: 150x150px (for profiles)
+    - xlarge: 200x200px (for detailed views)
+    """
+    size_map = {
+        'small': '40px',
+        'medium': '100px',
+        'large': '150px',
+        'xlarge': '200px'
+    }
+
+    image_size = size_map.get(size, '100px')
+
+    return {
+        'patient': patient,
+        'image_size': image_size,
+        'css_class': css_class,
+        'has_image': patient.has_profile_image() if patient else False,
+        'image_url': patient.get_profile_image_url() if patient else None,
+    }

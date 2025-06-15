@@ -104,15 +104,37 @@
 
     </div>
     <div class="col-md-4">
-        <!-- Sidebar or Additional Info (Placeholder) -->
+        <!-- Patient Profile Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">Patient Profile</h5>
+            </div>
+            <div class="card-body text-center">
+                {% if patient.has_profile_image %}
+                    <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                {% else %}
+                    <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                {% endif %}
+                <h5>{{ patient.get_full_name }}</h5>
+                <p class="text-muted">ID: {{ patient.patient_id }}</p>
+                {% if patient.is_active %}
+                    <span class="badge bg-success">Active Patient</span>
+                {% else %}
+                    <span class="badge bg-danger">Inactive Patient</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions Card -->
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title">Quick Actions</h5>
             </div>
             <div class="card-body">
-                <p><em>Quick action links can be placed here.</em></p>
                 <a href="#" class="btn btn-info btn-block mb-2">New Appointment</a>
                 <a href="#" class="btn btn-warning btn-block mb-2">New Consultation</a>
+                <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-block mb-2">Edit Patient</a>
+                <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success btn-block mb-2">Wallet Dashboard</a>
             </div>
         </div>
     </div>

@@ -26,10 +26,10 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-2 text-center">
-                    {% if patient.profile_picture %}
-                        <img src="{{ patient.profile_picture.url }}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                    {% if patient.has_profile_image %}
+                        <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;">
                     {% else %}
-                        <img src="{% static 'img/undraw_profile.svg' %}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                        <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;">
                     {% endif %}
                 </div>
                 <div class="col-md-5">

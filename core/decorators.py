@@ -6,6 +6,7 @@ from django.http import HttpResponseForbidden
 def role_required(allowed_roles):
     """
     Decorator to restrict view access based on user role.
+    Superusers have unrestricted access to all views.
 
     Args:
         allowed_roles: List of role names that are allowed to access the view
@@ -23,12 +24,15 @@ def role_required(allowed_roles):
                 messages.error(request, "You must be logged in to access this page.")
                 return redirect('accounts:login')
 
-            # Get user's role
-            user_role = request.user.profile.role
+            # Allow superusers to access everything without role restrictions
+            if request.user.is_superuser:
+                return view_func(request, *args, **kwargs)
 
-            # Check if user has the required role
-            # Note: Django superuser status is independent of application roles
-            if user_role not in allowed_roles:
+            # Get user's roles (many-to-many relationship)
+            user_roles = list(request.user.roles.values_list('name', flat=True))
+
+            # Check if user has any of the required roles
+            if not any(role in allowed_roles for role in user_roles):
                 messages.error(request, "You don't have permission to access this page.")
                 return redirect('dashboard:dashboard')
 
@@ -148,11 +152,11 @@ def api_role_required(allowed_roles):
             if not request.user.is_authenticated:
                 return HttpResponseForbidden("Authentication required")
 
-            # Get user's role
-            user_role = request.user.profile.role
+            # Get user's roles (many-to-many relationship)
+            user_roles = list(request.user.roles.values_list('name', flat=True))
 
-            # Check if user has the required role
-            if user_role not in allowed_roles:
+            # Check if user has any of the required roles
+            if not any(role in allowed_roles for role in user_roles):
                 return HttpResponseForbidden("Permission denied")
 
             return view_func(request, *args, **kwargs)

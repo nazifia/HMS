@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% block title %}Audit Logs - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .audit-log-item {
+        border-left: 4px solid #007bff;
+        transition: all 0.2s;
+    }
+    .audit-log-item:hover {
+        transform: translateX(2px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .audit-log-item.create {
+        border-left-color: #28a745;
+    }
+    .audit-log-item.update {
+        border-left-color: #ffc107;
+    }
+    .audit-log-item.delete {
+        border-left-color: #dc3545;
+    }
+    .audit-log-item.privilege_change {
+        border-left-color: #6f42c1;
+    }
+    .audit-log-item.user_bulk_action {
+        border-left-color: #fd7e14;
+    }
+    .log-details {
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+    }
+    .filter-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-history me-2"></i>Audit Logs</h2>
+        <div>
+            <a href="{% url 'accounts:role_management' %}" class="btn btn-primary me-2">
+                <i class="fas fa-user-shield me-2"></i>Manage Roles
+            </a>
+            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-users me-2"></i>Manage Users
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Filter Form -->
+    <div class="card filter-card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-filter me-2"></i>Filter Audit Logs</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label for="action" class="form-label">Action</label>
+                    <select name="action" id="action" class="form-control">
+                        <option value="">All Actions</option>
+                        {% for choice in action_choices %}
+                            <option value="{{ choice.0 }}" {% if request.GET.action == choice.0 %}selected{% endif %}>
+                                {{ choice.1 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="user" class="form-label">User</label>
+                    <select name="user" id="user" class="form-control">
+                        <option value="">All Users</option>
+                        {% for user in users %}
+                            <option value="{{ user.id }}" {% if request.GET.user == user.id|stringformat:"s" %}selected{% endif %}>
+                                {{ user.get_full_name|default:user.username }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" name="date_from" id="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" name="date_to" id="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-light w-100">
+                        <i class="fas fa-search me-1"></i>Filter
+                    </button>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <a href="{% url 'accounts:audit_logs' %}" class="btn btn-outline-light w-100">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Audit Log Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h4>{{ page_obj.paginator.count }}</h4>
+                    <p class="mb-0">Total Logs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h4>{{ users.count }}</h4>
+                    <p class="mb-0">Active Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body">
+                    <h4>{{ action_choices|length }}</h4>
+                    <p class="mb-0">Action Types</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-warning text-white">
+                <div class="card-body">
+                    <h4>{{ page_obj.number }}</h4>
+                    <p class="mb-0">Current Page</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Logs -->
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-list me-2"></i>Audit Log Entries</h5>
+        </div>
+        <div class="card-body">
+            {% for log in page_obj %}
+            <div class="card audit-log-item {{ log.action }} mb-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center mb-2">
+                                {% if log.action == 'create' %}
+                                    <i class="fas fa-plus-circle text-success me-2"></i>
+                                {% elif log.action == 'update' %}
+                                    <i class="fas fa-edit text-warning me-2"></i>
+                                {% elif log.action == 'delete' %}
+                                    <i class="fas fa-trash text-danger me-2"></i>
+                                {% elif log.action == 'privilege_change' %}
+                                    <i class="fas fa-user-cog text-purple me-2"></i>
+                                {% elif log.action == 'user_bulk_action' %}
+                                    <i class="fas fa-tasks text-orange me-2"></i>
+                                {% else %}
+                                    <i class="fas fa-info-circle text-primary me-2"></i>
+                                {% endif %}
+                                
+                                <h6 class="mb-0">
+                                    {{ log.get_action_display }}
+                                    {% if log.target_user %}
+                                        - {{ log.target_user.get_full_name|default:log.target_user.username }}
+                                    {% endif %}
+                                </h6>
+                            </div>
+                            
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-user me-1"></i>
+                                <strong>{{ log.user.get_full_name|default:log.user.username }}</strong>
+                                {% if log.ip_address %}
+                                    <span class="ms-2">
+                                        <i class="fas fa-globe me-1"></i>{{ log.ip_address }}
+                                    </span>
+                                {% endif %}
+                            </p>
+                            
+                            {% if log.details %}
+                            <div class="log-details">
+                                <strong>Details:</strong><br>
+                                {% for key, value in log.details.items %}
+                                    <strong>{{ key|title }}:</strong> 
+                                    {% if value is list %}
+                                        {% for item in value %}{{ item }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                    <br>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4 text-end">
+                            <div class="mb-2">
+                                <span class="badge bg-{{ log.action|default:'primary' }} fs-6">
+                                    {{ log.get_action_display }}
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                {{ log.timestamp|date:"M d, Y H:i:s" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle me-2"></i>
+                No audit logs found matching your criteria.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Audit log pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for i in page_obj.paginator.page_range %}
+                {% if page_obj.number == i %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ i }}</span>
+                    </li>
+                {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ i }}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">{{ i }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Export Options -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-download me-2"></i>Export Options</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a href="?{% for key, value in request.GET.items %}{{ key }}={{ value }}&{% endfor %}export=csv" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-file-csv me-2"></i>Export as CSV
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="?{% for key, value in request.GET.items %}{{ key }}={{ value }}&{% endfor %}export=json" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-file-code me-2"></i>Export as JSON
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <button onclick="window.print()" class="btn btn-outline-secondary w-100 mb-2">
+                                <i class="fas fa-print me-2"></i>Print Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh functionality
+    let autoRefresh = false;
+    const refreshInterval = 30000; // 30 seconds
+    
+    function toggleAutoRefresh() {
+        autoRefresh = !autoRefresh;
+        const btn = document.getElementById('autoRefreshBtn');
+        if (autoRefresh) {
+            btn.textContent = 'Stop Auto Refresh';
+            btn.className = 'btn btn-warning btn-sm';
+            setTimeout(refreshPage, refreshInterval);
+        } else {
+            btn.textContent = 'Auto Refresh';
+            btn.className = 'btn btn-outline-primary btn-sm';
+        }
+    }
+    
+    function refreshPage() {
+        if (autoRefresh) {
+            location.reload();
+        }
+    }
+    
+    // Add auto-refresh button to header
+    const header = document.querySelector('.d-flex.justify-content-between.align-items-center.mb-4');
+    if (header) {
+        const autoRefreshBtn = document.createElement('button');
+        autoRefreshBtn.id = 'autoRefreshBtn';
+        autoRefreshBtn.className = 'btn btn-outline-primary btn-sm ms-2';
+        autoRefreshBtn.innerHTML = '<i class="fas fa-sync me-1"></i>Auto Refresh';
+        autoRefreshBtn.onclick = toggleAutoRefresh;
+        header.querySelector('div').appendChild(autoRefreshBtn);
+    }
+});
+</script>
+{% endblock %}

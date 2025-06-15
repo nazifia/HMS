@@ -107,6 +107,33 @@ class Patient(models.Model):
         """Property to easily access patient's age"""
         return self.get_age()
 
+    def get_profile_image(self):
+        """
+        Get the best available profile image for the patient.
+        Prioritizes 'photo' field over 'profile_picture' field.
+        Returns the image field object or None if no image is available.
+        """
+        if self.photo:
+            return self.photo
+        elif self.profile_picture:
+            return self.profile_picture
+        return None
+
+    def get_profile_image_url(self):
+        """
+        Get the URL of the best available profile image.
+        Returns the image URL or None if no image is available.
+        """
+        image = self.get_profile_image()
+        return image.url if image else None
+
+    def has_profile_image(self):
+        """
+        Check if the patient has any profile image available.
+        Returns True if either photo or profile_picture is available.
+        """
+        return bool(self.photo or self.profile_picture)
+
 class MedicalHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_histories')
     diagnosis = models.CharField(max_length=200)

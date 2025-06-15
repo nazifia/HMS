@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+{% block title %}Permission Management - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .permission-group {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+        transition: box-shadow 0.2s;
+    }
+    .permission-group:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .permission-group-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.375rem 0.375rem 0 0;
+        font-weight: 600;
+    }
+    .permission-list {
+        padding: 1rem;
+    }
+    .permission-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid #f8f9fa;
+        transition: background-color 0.2s;
+    }
+    .permission-item:hover {
+        background-color: #f8f9fa;
+    }
+    .permission-item:last-child {
+        border-bottom: none;
+    }
+    .permission-badge {
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-key me-2"></i>Permission Management</h2>
+        <div>
+            <a href="{% url 'accounts:role_management' %}" class="btn btn-primary me-2">
+                <i class="fas fa-user-shield me-2"></i>Manage Roles
+            </a>
+            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-users me-2"></i>Manage Users
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Filter Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-filter me-2"></i>Filter Permissions</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    {{ form.content_type.label_tag }}
+                    {{ form.content_type }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.search.label_tag }}
+                    {{ form.search }}
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-1"></i>Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Permission Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h4>{{ grouped_permissions|length }}</h4>
+                    <p class="mb-0">Content Types</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h4>
+                        {% for app_permissions in grouped_permissions.values %}
+                            {{ app_permissions|length }}{% if not forloop.last %} + {% endif %}
+                        {% endfor %}
+                    </h4>
+                    <p class="mb-0">Total Permissions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body">
+                    <h4>{{ form.content_type.field.queryset.count }}</h4>
+                    <p class="mb-0">Available Models</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-warning text-white">
+                <div class="card-body">
+                    <h4>
+                        {% for app_permissions in grouped_permissions.values %}
+                            {% for permission in app_permissions %}
+                                {% if 'add' in permission.codename %}1{% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    </h4>
+                    <p class="mb-0">Create Permissions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permissions by Content Type -->
+    <div class="row">
+        {% for app_model, permissions in grouped_permissions.items %}
+        <div class="col-md-6 mb-4">
+            <div class="permission-group">
+                <div class="permission-group-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-cube me-2"></i>{{ app_model|title }}
+                        </h6>
+                        <span class="badge bg-light text-dark">{{ permissions|length }} permissions</span>
+                    </div>
+                </div>
+                <div class="permission-list">
+                    {% for permission in permissions %}
+                    <div class="permission-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ permission.name }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-code me-1"></i>{{ permission.codename }}
+                                </small>
+                            </div>
+                            <div>
+                                {% if 'add' in permission.codename %}
+                                    <span class="badge bg-success permission-badge">Create</span>
+                                {% elif 'change' in permission.codename %}
+                                    <span class="badge bg-primary permission-badge">Update</span>
+                                {% elif 'delete' in permission.codename %}
+                                    <span class="badge bg-danger permission-badge">Delete</span>
+                                {% elif 'view' in permission.codename %}
+                                    <span class="badge bg-info permission-badge">View</span>
+                                {% else %}
+                                    <span class="badge bg-secondary permission-badge">Custom</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle me-2"></i>
+                No permissions found matching your criteria.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Permission Usage Information -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle me-2"></i>Permission System Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Permission Types:</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-success me-2">Create</span> Add new records</li>
+                                <li><span class="badge bg-primary me-2">Update</span> Modify existing records</li>
+                                <li><span class="badge bg-danger me-2">Delete</span> Remove records</li>
+                                <li><span class="badge bg-info me-2">View</span> Read/view records</li>
+                                <li><span class="badge bg-secondary me-2">Custom</span> Special permissions</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>How to Use:</h6>
+                            <ol>
+                                <li>Permissions are automatically created for each model</li>
+                                <li>Assign permissions to roles in <a href="{% url 'accounts:role_management' %}">Role Management</a></li>
+                                <li>Assign roles to users to grant permissions</li>
+                                <li>Use decorators in views to check permissions</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-plus me-2"></i>Create New Role
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-user-shield me-2"></i>Manage Roles
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-users me-2"></i>Manage Users
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:audit_logs' %}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-history me-2"></i>View Audit Logs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add search functionality
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const permissionItems = document.querySelectorAll('.permission-item');
+            
+            permissionItems.forEach(function(item) {
+                const text = item.textContent.toLowerCase();
+                const group = item.closest('.permission-group');
+                
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Hide empty groups
+            document.querySelectorAll('.permission-group').forEach(function(group) {
+                const visibleItems = group.querySelectorAll('.permission-item[style="display: block"], .permission-item:not([style*="display: none"])');
+                if (visibleItems.length === 0 && searchTerm) {
+                    group.style.display = 'none';
+                } else {
+                    group.style.display = 'block';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

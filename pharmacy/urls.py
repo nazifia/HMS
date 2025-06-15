@@ -56,4 +56,12 @@ urlpatterns = [
     # Pharmacy Sales Report
     path('reports/pharmacy-sales/', pharmacy_sales_report, name='pharmacy_sales_report'),
     path('sales-report/', pharmacy_sales_report, name='pharmacy_sales_report'),
+
+    # Dispensed Items Tracking
+    path('dispensed-items/', views.dispensed_items_tracker, name='dispensed_items_tracker'),
+    path('dispensed-items/<int:log_id>/', views.dispensed_item_detail, name='dispensed_item_detail'),
+    path('dispensed-items/export/', views.dispensed_items_export, name='dispensed_items_export'),
+
+    # AJAX Endpoints
+    path('api/medication-autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),
 ]

@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
 from accounts.models import CustomUser
+from django.contrib.auth.models import User
 from django.db import models
 
 from .models import ConsultingRoom, WaitingList, Consultation, ConsultationNote, Referral, SOAPNote
@@ -264,11 +265,10 @@ def consultation_detail(request, consultation_id):
 
     # Advanced: Fetch audit logs related to this consultation
     from core.models import AuditLog
+    # Note: Current AuditLog model doesn't have object_id/content_type fields
+    # Filtering by details that might contain consultation information
     audit_logs = AuditLog.objects.filter(
-        Q(object_id=consultation.id, content_type__model='consultation') |
-        Q(object_id__in=notes.values_list('id', flat=True), content_type__model='consultationnote') |
-        Q(object_id__in=referrals.values_list('id', flat=True), content_type__model='referral') |
-        Q(object_id__in=consultation.soapnote_set.values_list('id', flat=True), content_type__model='soapnote')
+        details__icontains=f'consultation {consultation.id}'
     ).order_by('-timestamp')
 
     # Advanced: Fetch internal notifications for the current user related to this consultation
@@ -284,11 +284,8 @@ def consultation_detail(request, consultation_id):
         'referral_count': referrals.count(),
         'soap_count': consultation.soapnote_set.count(),
         'actions_by_role': AuditLog.objects.filter(
-            Q(object_id=consultation.id, content_type__model='consultation') |
-            Q(object_id__in=notes.values_list('id', flat=True), content_type__model='consultationnote') |
-            Q(object_id__in=referrals.values_list('id', flat=True), content_type__model='referral') |
-            Q(object_id__in=consultation.soapnote_set.values_list('id', flat=True), content_type__model='soapnote')
-        ).values('user__profile__role').annotate(count=models.Count('id')).order_by('-count')
+            details__icontains=f'consultation {consultation.id}'
+        ).values('user__first_name', 'user__last_name').annotate(count=models.Count('id')).order_by('-count')
     }
 
     context = {

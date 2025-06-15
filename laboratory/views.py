@@ -286,13 +286,13 @@ def test_request_list(request):
     awaiting_payment_count = TestRequest.objects.filter(status='awaiting_payment').count()
 
     # Advanced: Add role-based analytics for test requests
-    from hr.models import Profile
-    role_counts = TestRequest.objects.values('doctor__profile__role').annotate(count=models.Count('id')).order_by('-count')
+    role_counts = TestRequest.objects.values('doctor__first_name', 'doctor__last_name').annotate(count=models.Count('id')).order_by('-count')
     # Advanced: Add audit log and notification fetch (if models exist)
     from core.models import AuditLog, InternalNotification
+    # Note: Current AuditLog model doesn't have object_type/object_id fields
+    # Filtering by action that might be related to test requests
     audit_logs = AuditLog.objects.filter(
-        object_type='TestRequest',
-        object_id__in=test_requests.values_list('id', flat=True)
+        action__icontains='test'
     ).order_by('-timestamp')[:10]
     user_notifications = InternalNotification.objects.filter(
         user=request.user,
@@ -551,10 +551,10 @@ def create_test_result(request, request_id):
                     recipient_list=[test_request.doctor.email]
                 )
                 # SMS notification stub for doctor (if phone number is available)
-                if hasattr(test_request.doctor, 'profile') and getattr(test_request.doctor.profile, 'phone_number', None):
+                if test_request.doctor.phone_number:
                     from core.utils import send_sms_notification
                     send_sms_notification(
-                        test_request.doctor.profile.phone_number,
+                        test_request.doctor.phone_number,
                         f"Lab result for {test_result.test.name} is now available for {test_request.patient.get_full_name()}"
                     )
             if hasattr(test_request.patient, 'user') and getattr(test_request.patient.user, 'email', None):

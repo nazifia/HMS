@@ -313,9 +313,10 @@ def report_list(request):
     operational_count = reports.filter(category='operational').count()
     administrative_count = reports.filter(category='administrative').count()
 
+    # Note: Current AuditLog model doesn't have object_type/object_id fields
+    # Filtering by details that might contain report information
     audit_logs = AuditLog.objects.filter(
-        object_type='Report',
-        object_id__in=Report.objects.values_list('id', flat=True)
+        details__icontains='Report'
     ).order_by('-timestamp')[:10]
     user_notifications = InternalNotification.objects.filter(
         user=request.user,
@@ -392,9 +393,10 @@ def view_report(request, report_id):
     # Get recent executions of this report
     recent_executions = ReportExecution.objects.filter(report=report).order_by('-executed_at')[:5]
 
+    # Note: Current AuditLog model doesn't have object_type/object_id fields
+    # Filtering by details that might contain report information
     audit_logs = AuditLog.objects.filter(
-        object_type='Report',
-        object_id__in=Report.objects.values_list('id', flat=True)
+        details__icontains='Report'
     ).order_by('-timestamp')[:10]
     user_notifications = InternalNotification.objects.filter(
         user=request.user,
@@ -498,9 +500,10 @@ def dashboard_list(request):
     public_dashboards_count = Dashboard.objects.filter(is_public=True).exclude(created_by=request.user).count()
     default_dashboards_count = Dashboard.objects.filter(is_default=True).count()
 
+    # Note: Current AuditLog model doesn't have object_type/object_id fields
+    # Filtering by details that might contain report information
     audit_logs = AuditLog.objects.filter(
-        object_type='Report',
-        object_id__in=Report.objects.values_list('id', flat=True)
+        details__icontains='Report'
     ).order_by('-timestamp')[:10]
     user_notifications = InternalNotification.objects.filter(
         user=request.user,

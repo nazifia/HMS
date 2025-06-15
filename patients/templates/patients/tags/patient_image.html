@@ -1,0 +1,14 @@
+{% load static %}
+{% if has_image %}
+    <img src="{{ image_url }}" 
+         alt="{{ patient.get_full_name }}" 
+         class="rounded-circle {{ css_class }}" 
+         style="width: {{ image_size }}; height: {{ image_size }}; object-fit: cover; border: 2px solid #dee2e6;"
+         loading="lazy">
+{% else %}
+    <img src="{% static 'img/undraw_profile.svg' %}" 
+         alt="Default Profile" 
+         class="rounded-circle {{ css_class }}" 
+         style="width: {{ image_size }}; height: {{ image_size }}; object-fit: cover; border: 2px solid #dee2e6;"
+         loading="lazy">
+{% endif %}

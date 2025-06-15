@@ -12,7 +12,8 @@ from .models import (
 from .forms import (
     MedicationCategoryForm, MedicationForm, SupplierForm, PurchaseForm,
     PurchaseItemForm, PrescriptionForm, PrescriptionItemForm,
-    DispenseItemForm, BaseDispenseItemFormSet, MedicationSearchForm, PrescriptionSearchForm
+    DispenseItemForm, BaseDispenseItemFormSet, MedicationSearchForm, PrescriptionSearchForm,
+    DispensedItemsSearchForm
 )
 from patients.models import Patient
 from django.contrib.auth.models import User
@@ -1427,3 +1428,298 @@ def pharmacy_sales_report(request):
         'title': 'Pharmacy Sales Report',
     }
     return render(request, 'pharmacy/sales_report.html', context)
+
+
+# ============================================================================
+# DISPENSED ITEMS TRACKING VIEWS
+# ============================================================================
+
+@login_required
+def dispensed_items_tracker(request):
+    """
+    Main view for tracking dispensed items with advanced search capabilities.
+    Allows searching by medication name (first few letters), date range, and other filters.
+    """
+    search_form = DispensedItemsSearchForm(request.GET or None)
+
+    # Base queryset with optimized joins
+    dispensing_logs = DispensingLog.objects.select_related(
+        'prescription_item__medication__category',
+        'prescription_item__prescription__patient',
+        'prescription_item__prescription__doctor',
+        'dispensed_by'
+    ).order_by('-dispensed_date')
+
+    # Apply search filters
+    if search_form.is_valid():
+        medication_name = search_form.cleaned_data.get('medication_name')
+        date_from = search_form.cleaned_data.get('date_from')
+        date_to = search_form.cleaned_data.get('date_to')
+        patient_name = search_form.cleaned_data.get('patient_name')
+        dispensed_by = search_form.cleaned_data.get('dispensed_by')
+        category = search_form.cleaned_data.get('category')
+        min_quantity = search_form.cleaned_data.get('min_quantity')
+        max_quantity = search_form.cleaned_data.get('max_quantity')
+        prescription_type = search_form.cleaned_data.get('prescription_type')
+
+        # Search by medication name (supports partial matching from first letters)
+        if medication_name:
+            dispensing_logs = dispensing_logs.filter(
+                Q(prescription_item__medication__name__istartswith=medication_name) |
+                Q(prescription_item__medication__generic_name__istartswith=medication_name)
+            )
+
+        # Date range filter
+        if date_from:
+            dispensing_logs = dispensing_logs.filter(dispensed_date__date__gte=date_from)
+        if date_to:
+            dispensing_logs = dispensing_logs.filter(dispensed_date__date__lte=date_to)
+
+        # Patient name filter
+        if patient_name:
+            dispensing_logs = dispensing_logs.filter(
+                Q(prescription_item__prescription__patient__first_name__icontains=patient_name) |
+                Q(prescription_item__prescription__patient__last_name__icontains=patient_name)
+            )
+
+        # Staff filter
+        if dispensed_by:
+            dispensing_logs = dispensing_logs.filter(dispensed_by=dispensed_by)
+
+        # Category filter
+        if category:
+            dispensing_logs = dispensing_logs.filter(
+                prescription_item__medication__category=category
+            )
+
+        # Quantity range filters
+        if min_quantity:
+            dispensing_logs = dispensing_logs.filter(dispensed_quantity__gte=min_quantity)
+        if max_quantity:
+            dispensing_logs = dispensing_logs.filter(dispensed_quantity__lte=max_quantity)
+
+        # Prescription type filter
+        if prescription_type:
+            dispensing_logs = dispensing_logs.filter(
+                prescription_item__prescription__prescription_type=prescription_type
+            )
+
+    # Calculate summary statistics
+    total_logs = dispensing_logs.count()
+    total_quantity_dispensed = dispensing_logs.aggregate(
+        total=Sum('dispensed_quantity')
+    )['total'] or 0
+    total_value_dispensed = dispensing_logs.aggregate(
+        total=Sum('total_price_for_this_log')
+    )['total'] or 0
+
+    # Get unique medications dispensed count
+    unique_medications = dispensing_logs.values(
+        'prescription_item__medication'
+    ).distinct().count()
+
+    # Get top dispensed medications
+    top_medications = dispensing_logs.values(
+        'prescription_item__medication__name'
+    ).annotate(
+        total_quantity=Sum('dispensed_quantity'),
+        total_value=Sum('total_price_for_this_log'),
+        dispense_count=Count('id')
+    ).order_by('-total_quantity')[:10]
+
+    # Pagination
+    paginator = Paginator(dispensing_logs, 25)  # Show 25 logs per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'search_form': search_form,
+        'page_obj': page_obj,
+        'total_logs': total_logs,
+        'total_quantity_dispensed': total_quantity_dispensed,
+        'total_value_dispensed': total_value_dispensed,
+        'unique_medications': unique_medications,
+        'top_medications': top_medications,
+        'title': 'Dispensed Items Tracker'
+    }
+
+    return render(request, 'pharmacy/dispensed_items_tracker.html', context)
+
+
+@login_required
+def dispensed_item_detail(request, log_id):
+    """
+    Detailed view for a specific dispensing log entry.
+    Shows complete information about the dispensed item.
+    """
+    dispensing_log = get_object_or_404(
+        DispensingLog.objects.select_related(
+            'prescription_item__medication__category',
+            'prescription_item__prescription__patient',
+            'prescription_item__prescription__doctor',
+            'dispensed_by'
+        ),
+        id=log_id
+    )
+
+    # Get related dispensing logs for the same prescription item
+    related_logs = DispensingLog.objects.filter(
+        prescription_item=dispensing_log.prescription_item
+    ).exclude(id=log_id).order_by('-dispensed_date')
+
+    # Get prescription details
+    prescription = dispensing_log.prescription_item.prescription
+
+    context = {
+        'dispensing_log': dispensing_log,
+        'related_logs': related_logs,
+        'prescription': prescription,
+        'title': f'Dispensing Log #{dispensing_log.id}'
+    }
+
+    return render(request, 'pharmacy/dispensed_item_detail.html', context)
+
+
+@login_required
+def medication_autocomplete(request):
+    """
+    AJAX endpoint for medication name autocomplete.
+    Returns JSON list of medications matching the search term.
+    """
+    term = request.GET.get('term', '').strip()
+
+    if len(term) < 2:  # Require at least 2 characters
+        return JsonResponse([], safe=False)
+
+    # Search medications by name or generic name (case-insensitive, starts with)
+    medications = Medication.objects.filter(
+        Q(name__istartswith=term) | Q(generic_name__istartswith=term),
+        is_active=True
+    ).values('name', 'generic_name').distinct()[:10]
+
+    # Format results for autocomplete
+    results = []
+    for med in medications:
+        # Add both name and generic name if different
+        if med['name']:
+            results.append({
+                'label': med['name'],
+                'value': med['name']
+            })
+        if med['generic_name'] and med['generic_name'] != med['name']:
+            results.append({
+                'label': f"{med['generic_name']} (Generic)",
+                'value': med['generic_name']
+            })
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_results = []
+    for item in results:
+        if item['value'] not in seen:
+            seen.add(item['value'])
+            unique_results.append(item)
+
+    return JsonResponse(unique_results[:10], safe=False)
+
+
+@login_required
+def dispensed_items_export(request):
+    """
+    Export dispensed items data to CSV format.
+    Applies the same filters as the main tracker view.
+    """
+    search_form = DispensedItemsSearchForm(request.GET or None)
+
+    # Base queryset with optimized joins
+    dispensing_logs = DispensingLog.objects.select_related(
+        'prescription_item__medication__category',
+        'prescription_item__prescription__patient',
+        'prescription_item__prescription__doctor',
+        'dispensed_by'
+    ).order_by('-dispensed_date')
+
+    # Apply the same filters as the main view
+    if search_form.is_valid():
+        medication_name = search_form.cleaned_data.get('medication_name')
+        date_from = search_form.cleaned_data.get('date_from')
+        date_to = search_form.cleaned_data.get('date_to')
+        patient_name = search_form.cleaned_data.get('patient_name')
+        dispensed_by = search_form.cleaned_data.get('dispensed_by')
+        category = search_form.cleaned_data.get('category')
+        min_quantity = search_form.cleaned_data.get('min_quantity')
+        max_quantity = search_form.cleaned_data.get('max_quantity')
+        prescription_type = search_form.cleaned_data.get('prescription_type')
+
+        if medication_name:
+            dispensing_logs = dispensing_logs.filter(
+                Q(prescription_item__medication__name__istartswith=medication_name) |
+                Q(prescription_item__medication__generic_name__istartswith=medication_name)
+            )
+        if date_from:
+            dispensing_logs = dispensing_logs.filter(dispensed_date__date__gte=date_from)
+        if date_to:
+            dispensing_logs = dispensing_logs.filter(dispensed_date__date__lte=date_to)
+        if patient_name:
+            dispensing_logs = dispensing_logs.filter(
+                Q(prescription_item__prescription__patient__first_name__icontains=patient_name) |
+                Q(prescription_item__prescription__patient__last_name__icontains=patient_name)
+            )
+        if dispensed_by:
+            dispensing_logs = dispensing_logs.filter(dispensed_by=dispensed_by)
+        if category:
+            dispensing_logs = dispensing_logs.filter(
+                prescription_item__medication__category=category
+            )
+        if min_quantity:
+            dispensing_logs = dispensing_logs.filter(dispensed_quantity__gte=min_quantity)
+        if max_quantity:
+            dispensing_logs = dispensing_logs.filter(dispensed_quantity__lte=max_quantity)
+        if prescription_type:
+            dispensing_logs = dispensing_logs.filter(
+                prescription_item__prescription__prescription_type=prescription_type
+            )
+
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="dispensed_items_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+
+    import csv
+    writer = csv.writer(response)
+
+    # Write header
+    writer.writerow([
+        'Date & Time',
+        'Medication Name',
+        'Generic Name',
+        'Category',
+        'Quantity Dispensed',
+        'Unit Price',
+        'Total Price',
+        'Patient Name',
+        'Patient ID',
+        'Doctor',
+        'Dispensed By',
+        'Prescription Type',
+        'Prescription ID'
+    ])
+
+    # Write data rows
+    for log in dispensing_logs:
+        writer.writerow([
+            log.dispensed_date.strftime('%Y-%m-%d %H:%M:%S'),
+            log.prescription_item.medication.name,
+            log.prescription_item.medication.generic_name or '',
+            log.prescription_item.medication.category.name if log.prescription_item.medication.category else '',
+            log.dispensed_quantity,
+            f"{log.unit_price_at_dispense:.2f}",
+            f"{log.total_price_for_this_log:.2f}",
+            log.prescription_item.prescription.patient.get_full_name(),
+            log.prescription_item.prescription.patient.patient_id,
+            log.prescription_item.prescription.doctor.get_full_name(),
+            log.dispensed_by.get_full_name() if log.dispensed_by else '',
+            log.prescription_item.prescription.get_prescription_type_display(),
+            log.prescription_item.prescription.id
+        ])
+
+    return response

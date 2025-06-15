@@ -258,8 +258,9 @@ def doctor_profile(request):
     try:
         doctor = request.user.doctor_profile
     except Doctor.DoesNotExist:
-        # If the user is a doctor in role but doesn't have a doctor profile yet
-        if request.user.custom_profile.role == 'doctor':
+        # If the user has the doctor role but doesn't have a doctor profile yet
+        user_roles = list(request.user.roles.values_list('name', flat=True))
+        if 'doctor' in user_roles:
             # Create a basic doctor profile
             doctor = Doctor.objects.create(
                 user=request.user,

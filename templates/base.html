@@ -42,18 +42,23 @@
             transition: transform 0.3s cubic-bezier(.4,0,.2,1);
             z-index: 1050;
             min-height: 100vh;
-            height: auto;
+            height: 100vh;
             background-repeat: repeat-y;
+            background-attachment: local;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
         }
         .sidebar-collapsed {
             transform: translateX(-100%);
             position: absolute;
             left: 0;
             top: 0;
-            height: auto;
+            height: 100vh;
             min-height: 100vh;
             background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
             background-repeat: repeat-y;
+            background-attachment: local;
         }
         .sidebar-overlay {
             display: none;
@@ -78,18 +83,22 @@
             flex-direction: column;
             background: #f8f9fc;
             min-height: 100vh;
+            overflow-y: auto;
         }
         #content {
             flex: 1 0 auto;
             width: 100%;
             display: flex;
             flex-direction: column;
-            padding-bottom: 1rem;
+            padding-bottom: 80px; /* Space for footer */
+            overflow-y: auto;
         }
         .container-fluid {
             flex: 1 0 auto;
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
+            padding: 1rem;
         }
         @media (max-width: 991.98px) {
             .main-layout {
@@ -99,12 +108,14 @@
                 position: fixed;
                 left: 0;
                 top: 0;
-                height: auto;
+                height: 100vh;
                 min-height: 100vh;
                 transform: translateX(-100%);
                 box-shadow: 2px 0 8px rgba(0,0,0,0.08);
                 background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
                 background-repeat: repeat-y;
+                background-attachment: local;
+                overflow-y: auto;
             }
             .sidebar-open {
                 transform: translateX(0);
@@ -115,6 +126,31 @@
             .sidebar-toggle-btn {
                 display: inline-block;
             }
+        }
+
+        /* Ensure bg-gradient-primary extends full height */
+        .bg-gradient-primary {
+            min-height: 100vh !important;
+            height: 100vh !important;
+            background-attachment: local !important;
+        }
+
+        /* Ensure user dashboard and other pages are scrollable */
+        .main-layout {
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .content-area {
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        /* Specific styles for user dashboard scrollability */
+        .user-dashboard-content {
+            max-height: calc(100vh - 140px); /* Account for topbar and footer */
+            overflow-y: auto;
+            padding-bottom: 2rem;
         }
         /* Topbar custom style */
         .topbar {
@@ -219,7 +255,7 @@
                     
                 </div>
                 <!-- Begin Page Content -->
-                <div class="container-fluid px-0">
+                <div class="container-fluid px-0" style="overflow-y: auto; flex: 1;">
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">

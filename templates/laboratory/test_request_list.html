@@ -74,7 +74,7 @@
                                 <h5 class="mb-2">Requests by Doctor Role</h5>
                                 <div class="d-flex flex-wrap">
                                     {% for rc in role_counts %}
-                                        <span class="badge bg-secondary m-1">{{ rc.doctor__profile__role|default:'(None)' }}: {{ rc.count }}</span>
+                                        <span class="badge bg-secondary m-1">{{ rc.doctor__roles__name|default:'(None)' }}: {{ rc.count }}</span>
                                     {% endfor %}
                                 </div>
                             </div>

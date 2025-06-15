@@ -2,7 +2,7 @@ from django import forms
 from django.utils import timezone
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
-    PurchaseItem, Prescription, PrescriptionItem
+    PurchaseItem, Prescription, PrescriptionItem, DispensingLog
 )
 from patients.models import Patient
 from django.contrib.auth import get_user_model
@@ -324,3 +324,106 @@ class PrescriptionSearchForm(forms.Form):
         required=False,
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+
+
+class DispensedItemsSearchForm(forms.Form):
+    """Form for searching dispensed items with advanced filters"""
+
+    medication_name = forms.CharField(
+        required=False,
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Type first few letters of medication name...',
+            'class': 'form-control',
+            'autocomplete': 'off'
+        }),
+        help_text='Search by medication name (supports partial matching)'
+    )
+
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        help_text='Start date for dispensing period'
+    )
+
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        help_text='End date for dispensing period'
+    )
+
+    patient_name = forms.CharField(
+        required=False,
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Patient name...',
+            'class': 'form-control'
+        }),
+        help_text='Search by patient name'
+    )
+
+    dispensed_by = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_active=True).order_by('first_name', 'last_name'),
+        required=False,
+        empty_label="All Staff",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Filter by staff member who dispensed'
+    )
+
+    category = forms.ModelChoiceField(
+        queryset=MedicationCategory.objects.all().order_by('name'),
+        required=False,
+        empty_label="All Categories",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Filter by medication category'
+    )
+
+    min_quantity = forms.IntegerField(
+        required=False,
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Min quantity'
+        }),
+        help_text='Minimum dispensed quantity'
+    )
+
+    max_quantity = forms.IntegerField(
+        required=False,
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Max quantity'
+        }),
+        help_text='Maximum dispensed quantity'
+    )
+
+    prescription_type = forms.ChoiceField(
+        choices=[('', 'All Types')] + list(Prescription.PRESCRIPTION_TYPE_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Filter by prescription type'
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        date_from = cleaned_data.get('date_from')
+        date_to = cleaned_data.get('date_to')
+        min_quantity = cleaned_data.get('min_quantity')
+        max_quantity = cleaned_data.get('max_quantity')
+
+        # Validate date range
+        if date_from and date_to and date_from > date_to:
+            raise forms.ValidationError("Start date cannot be after end date.")
+
+        # Validate quantity range
+        if min_quantity and max_quantity and min_quantity > max_quantity:
+            raise forms.ValidationError("Minimum quantity cannot be greater than maximum quantity.")
+
+        return cleaned_data

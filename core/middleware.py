@@ -113,15 +113,15 @@ class RoleBasedAccessMiddleware:
         # Check if the current URL requires a specific role
         for url_pattern, allowed_roles in self.role_required_urls:
             if url_pattern in request.path:
-                # Get user's role
-                user_role = request.user.roles.first()
+                # Get user's roles (many-to-many relationship)
+                user_roles = list(request.user.roles.values_list('name', flat=True))
 
                 # Allow superusers to access everything (application level)
                 if request.user.is_superuser:
                     break
 
-                # Check if user has the required role
-                if user_role not in allowed_roles:
+                # Check if user has any of the required roles
+                if not any(role in allowed_roles for role in user_roles):
                     messages.error(request, "You don't have permission to access this page.")
                     return redirect('dashboard:dashboard')
 

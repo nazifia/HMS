@@ -1,18 +1,22 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Permission
+from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from .models import CustomUserProfile, Department, Role, AuditLog
-from .forms import CustomLoginForm, UserProfileForm, StaffCreationForm, DepartmentForm, UserRegistrationForm
+from .forms import (
+    CustomLoginForm, UserProfileForm, StaffCreationForm, DepartmentForm,
+    UserRegistrationForm, RoleForm, UserRoleAssignmentForm, BulkUserActionForm,
+    PermissionFilterForm, AdvancedUserSearchForm
+)
 from core.models import AuditLog, InternalNotification
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth import authenticate, login
-from .forms import UserProfileForm
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 User = get_user_model()
@@ -380,20 +384,21 @@ def api_users(request):
     users_query = User.objects.filter(is_active=True)
 
     if role:
-        users_query = users_query.filter(profile__role=role)
+        users_query = users_query.filter(roles__name=role)
 
-    users = users_query.select_related('profile')
+    users = users_query.select_related('custom_profile').prefetch_related('roles')
 
     results = []
     for user in users:
+        user_roles = list(user.roles.values_list('name', flat=True))
         results.append({
             'id': user.id,
             'username': user.username,
             'first_name': user.first_name,
             'last_name': user.last_name,
             'full_name': user.get_full_name(),
-            'role': user.get_profile.role,
-            'department': user.get_profile.department.name if user.get_profile.department else None
+            'roles': user_roles,
+            'department': user.custom_profile.department if user.custom_profile else None
         })
 
     return JsonResponse(results, safe=False)
@@ -670,4 +675,351 @@ def user_dashboard(request):
     return render(request, 'accounts/user_dashboard.html', context)
 
 
+# ============================================================================
+# PRIVILEGE MANAGEMENT VIEWS
+# ============================================================================
 
+@login_required
+@user_passes_test(is_admin)
+def role_management(request):
+    """View for managing roles and permissions"""
+    roles = Role.objects.all().prefetch_related('permissions', 'children').order_by('name')
+
+    context = {
+        'roles': roles,
+        'page_title': 'Role Management',
+        'active_nav': 'role_management',
+    }
+    return render(request, 'accounts/role_management.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def create_role(request):
+    """View for creating a new role"""
+    if request.method == 'POST':
+        form = RoleForm(request.POST)
+        if form.is_valid():
+            role = form.save()
+
+            # Log the action
+            AuditLog.objects.create(
+                user=request.user,
+                action='create',
+                details={
+                    'role_name': role.name,
+                    'permissions': list(role.permissions.values_list('name', flat=True))
+                },
+                ip_address=request.META.get('REMOTE_ADDR'),
+                timestamp=timezone.now()
+            )
+
+            messages.success(request, f'Role "{role.name}" created successfully.')
+            return redirect('accounts:role_management')
+    else:
+        form = RoleForm()
+
+    context = {
+        'form': form,
+        'page_title': 'Create Role',
+        'active_nav': 'role_management',
+    }
+    return render(request, 'accounts/create_role.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def edit_role(request, role_id):
+    """View for editing an existing role"""
+    role = get_object_or_404(Role, id=role_id)
+
+    if request.method == 'POST':
+        form = RoleForm(request.POST, instance=role)
+        if form.is_valid():
+            old_permissions = list(role.permissions.values_list('name', flat=True))
+            role = form.save()
+            new_permissions = list(role.permissions.values_list('name', flat=True))
+
+            # Log the action
+            AuditLog.objects.create(
+                user=request.user,
+                action='update',
+                details={
+                    'role_name': role.name,
+                    'old_permissions': old_permissions,
+                    'new_permissions': new_permissions
+                },
+                ip_address=request.META.get('REMOTE_ADDR'),
+                timestamp=timezone.now()
+            )
+
+            messages.success(request, f'Role "{role.name}" updated successfully.')
+            return redirect('accounts:role_management')
+    else:
+        form = RoleForm(instance=role)
+
+    context = {
+        'form': form,
+        'role': role,
+        'page_title': f'Edit Role: {role.name}',
+        'active_nav': 'role_management',
+    }
+    return render(request, 'accounts/edit_role.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def delete_role(request, role_id):
+    """View for deleting a role"""
+    role = get_object_or_404(Role, id=role_id)
+
+    if request.method == 'POST':
+        role_name = role.name
+        users_with_role = role.customuser_roles.count()
+
+        if users_with_role > 0:
+            messages.error(request, f'Cannot delete role "{role_name}" because it is assigned to {users_with_role} user(s).')
+        else:
+            # Log the action before deletion
+            AuditLog.objects.create(
+                user=request.user,
+                action='delete',
+                details={
+                    'role_name': role_name,
+                    'permissions': list(role.permissions.values_list('name', flat=True))
+                },
+                ip_address=request.META.get('REMOTE_ADDR'),
+                timestamp=timezone.now()
+            )
+
+            role.delete()
+            messages.success(request, f'Role "{role_name}" deleted successfully.')
+
+        return redirect('accounts:role_management')
+
+    context = {
+        'role': role,
+        'users_with_role': role.customuser_roles.count(),
+        'page_title': f'Delete Role: {role.name}',
+        'active_nav': 'role_management',
+    }
+    return render(request, 'accounts/delete_role.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def user_privileges(request, user_id):
+    """View for managing user privileges (role assignments)"""
+    target_user = get_object_or_404(User, id=user_id)
+
+    if request.method == 'POST':
+        form = UserRoleAssignmentForm(request.POST, instance=target_user)
+        if form.is_valid():
+            old_roles = list(target_user.roles.values_list('name', flat=True))
+            form.save()
+            new_roles = list(target_user.roles.values_list('name', flat=True))
+
+            # Log the action
+            AuditLog.objects.create(
+                user=request.user,
+                target_user=target_user,
+                action='privilege_change',
+                details={
+                    'old_roles': old_roles,
+                    'new_roles': new_roles
+                },
+                ip_address=request.META.get('REMOTE_ADDR'),
+                timestamp=timezone.now()
+            )
+
+            messages.success(request, f'Privileges updated for user "{target_user.get_full_name()}".')
+            return redirect('accounts:user_dashboard')
+    else:
+        form = UserRoleAssignmentForm(instance=target_user)
+
+    context = {
+        'form': form,
+        'target_user': target_user,
+        'page_title': f'Manage Privileges: {target_user.get_full_name()}',
+        'active_nav': 'user_dashboard',
+    }
+    return render(request, 'accounts/user_privileges.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def bulk_user_actions(request):
+    """View for performing bulk actions on users"""
+    if request.method == 'POST':
+        form = BulkUserActionForm(request.POST)
+        selected_users = request.POST.getlist('selected_users')
+
+        if form.is_valid() and selected_users:
+            action = form.cleaned_data['action']
+            role = form.cleaned_data.get('role')
+
+            users = User.objects.filter(id__in=selected_users)
+            affected_count = users.count()
+
+            if action == 'activate':
+                users.update(is_active=True)
+                messages.success(request, f'Activated {affected_count} user(s).')
+
+            elif action == 'deactivate':
+                users.update(is_active=False)
+                messages.success(request, f'Deactivated {affected_count} user(s).')
+
+            elif action == 'assign_role' and role:
+                for user in users:
+                    user.roles.add(role)
+                messages.success(request, f'Assigned role "{role.name}" to {affected_count} user(s).')
+
+            elif action == 'remove_role' and role:
+                for user in users:
+                    user.roles.remove(role)
+                messages.success(request, f'Removed role "{role.name}" from {affected_count} user(s).')
+
+            elif action == 'delete':
+                # Don't allow deletion of superusers or current user
+                safe_users = users.exclude(is_superuser=True).exclude(id=request.user.id)
+                deleted_count = safe_users.count()
+                safe_users.delete()
+                messages.success(request, f'Deleted {deleted_count} user(s).')
+
+            # Log the bulk action
+            AuditLog.objects.create(
+                user=request.user,
+                action='user_bulk_action',
+                details={
+                    'action': action,
+                    'affected_users': affected_count,
+                    'role': role.name if role else None
+                },
+                ip_address=request.META.get('REMOTE_ADDR'),
+                timestamp=timezone.now()
+            )
+
+        else:
+            messages.error(request, 'Please select users and provide valid action details.')
+
+    return redirect('accounts:user_dashboard')
+
+
+@login_required
+@user_passes_test(is_admin)
+def permission_management(request):
+    """View for managing permissions"""
+    from django.contrib.auth.models import Permission
+
+    form = PermissionFilterForm(request.GET)
+    permissions = Permission.objects.select_related('content_type').order_by(
+        'content_type__app_label', 'content_type__model', 'codename'
+    )
+
+    if form.is_valid():
+        content_type = form.cleaned_data.get('content_type')
+        search = form.cleaned_data.get('search')
+
+        if content_type:
+            permissions = permissions.filter(content_type=content_type)
+
+        if search:
+            permissions = permissions.filter(
+                Q(name__icontains=search) |
+                Q(codename__icontains=search) |
+                Q(content_type__model__icontains=search)
+            )
+
+    # Group permissions by content type
+    grouped_permissions = {}
+    for permission in permissions:
+        app_model = f"{permission.content_type.app_label}.{permission.content_type.model}"
+        if app_model not in grouped_permissions:
+            grouped_permissions[app_model] = []
+        grouped_permissions[app_model].append(permission)
+
+    context = {
+        'form': form,
+        'grouped_permissions': grouped_permissions,
+        'page_title': 'Permission Management',
+        'active_nav': 'permission_management',
+    }
+    return render(request, 'accounts/permission_management.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def audit_logs(request):
+    """View for displaying audit logs"""
+    logs = AuditLog.objects.select_related('user', 'target_user').order_by('-timestamp')
+
+    # Filter by action type
+    action_filter = request.GET.get('action')
+    if action_filter:
+        logs = logs.filter(action=action_filter)
+
+    # Filter by user
+    user_filter = request.GET.get('user')
+    if user_filter:
+        logs = logs.filter(user_id=user_filter)
+
+    # Filter by date range
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    if date_from:
+        logs = logs.filter(timestamp__date__gte=date_from)
+    if date_to:
+        logs = logs.filter(timestamp__date__lte=date_to)
+
+    # Pagination
+    paginator = Paginator(logs, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'action_choices': AuditLog.ACTION_CHOICES,
+        'users': User.objects.filter(is_active=True).order_by('username'),
+        'page_title': 'Audit Logs',
+        'active_nav': 'audit_logs',
+    }
+    return render(request, 'accounts/audit_logs.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def role_demo(request):
+    """Demo view showing the role system in action"""
+    # Get all roles with user counts
+    roles = Role.objects.annotate(
+        user_count=Count('customuser_roles')
+    ).prefetch_related('permissions', 'customuser_roles__custom_profile')
+
+    # Get users by role
+    users_by_role = {}
+    for role in roles:
+        users_by_role[role.name] = role.customuser_roles.select_related('custom_profile').all()
+
+    # Get role statistics
+    total_roles = roles.count()
+    total_users = User.objects.count()
+    users_with_roles = User.objects.filter(roles__isnull=False).distinct().count()
+    users_without_roles = total_users - users_with_roles
+
+    # Get permission statistics
+    total_permissions = Permission.objects.count()
+    permissions_in_use = Permission.objects.filter(role__isnull=False).distinct().count()
+
+    context = {
+        'roles': roles,
+        'users_by_role': users_by_role,
+        'total_roles': total_roles,
+        'total_users': total_users,
+        'users_with_roles': users_with_roles,
+        'users_without_roles': users_without_roles,
+        'total_permissions': total_permissions,
+        'permissions_in_use': permissions_in_use,
+        'page_title': 'HMS Role System Demo',
+        'active_nav': 'role_demo',
+    }
+    return render(request, 'accounts/role_demo.html', context)
