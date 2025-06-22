@@ -56,6 +56,15 @@
                             <div class="text-danger">{{ form.email.errors }}</div>
                         {% endif %}
                     </div>
+                    <!-- Module selection field -->
+                    <div class="mb-3">
+                        <label for="id_module" class="form-label">Module</label>
+                        {{ form.module|add_class:'form-select' }}
+                        <div class="form-text">Select the module this user will be registered for. This determines their privileges.</div>
+                        {% if form.module.errors %}
+                            <div class="text-danger">{{ form.module.errors }}</div>
+                        {% endif %}
+                    </div>
                     <div class="mb-3">
                         <label for="id_password1" class="form-label">Password</label>
                         {{ form.password1|add_class:'form-control' }}

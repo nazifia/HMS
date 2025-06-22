@@ -43,6 +43,7 @@ urlpatterns = [
     path('consultations/', include('consultations.urls')),
     path('radiology/', include('radiology.urls', namespace='radiology')),
     path('core/', include(('core.urls', 'core'), namespace='core')),
+
 ]
 
 # Serve media files in development

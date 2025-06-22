@@ -104,12 +104,44 @@ class UserRegistrationForm(CustomUserCreationForm):
     first_name = forms.CharField(max_length=150, required=True, label="First Name")
     last_name = forms.CharField(max_length=150, required=True, label="Last Name")
 
+    # Add module selection (Role as module)
+    module = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        required=True,
+        label="Module",
+        help_text="Select the module this user will be registered for."
+    )
+
     class Meta(CustomUserCreationForm.Meta): # Inherit Meta from CustomUserCreationForm
         model = User
-        fields = ("phone_number", "username", "email", "first_name", "last_name")
+        fields = ("phone_number", "username", "email", "first_name", "last_name", "module")
         # Password fields are handled by UserCreationForm
 
-    # The save method from CustomUserCreationForm will be inherited and should work correctly.
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # UserCreationForm's save() handles setting the password.
+        # It also sets user.username to the value from the form field named 'username'
+        # IF User.USERNAME_FIELD is 'username'.
+        # Since our User.USERNAME_FIELD is 'phone_number', the field UserCreationForm
+        # treats as the primary identifier is what we've named 'phone_number' in Meta.fields.
+        # The actual 'username' field of our CustomUser model needs to be explicitly set
+        # if it's different from the USERNAME_FIELD.
+
+        # The base UserCreationForm will use the field designated as USERNAME_FIELD
+        # (which is 'phone_number' for CustomUser) from the form.
+        # It will also try to set `user.username` from a field named `username` if User.USERNAME_FIELD is 'username'.
+        # To be absolutely sure our `CustomUser.username` (the charfield) is set from `self.cleaned_data['username']`:
+        user.username = self.cleaned_data['username'] # Ensure our specific username field is saved
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data.get('first_name', '')
+        user.last_name = self.cleaned_data.get('last_name', '')
+
+        if commit:
+            user.save()
+            # If you have M2M fields like roles to save immediately:
+            # self.save_m2m() # UserCreationForm doesn't have this, but ModelForm does.
+            # If roles need to be assigned, it's usually done in the view after user.save()
+        return user
 
 
 # Removed CustomUserChangeForm - admin now uses simplified forms independent of roles
@@ -463,7 +495,7 @@ class UserProfileForm(forms.ModelForm):
 
 
 class StaffCreationForm(UserCreationForm): # Base on UserCreationForm for password handling
-    """Form for creating new staff members. Ensures username is set."""
+    """Form for creating new staff members. Ensures username is set and at least one role is selected."""
     username = forms.CharField(max_length=150, required=True, label="Username (for display & records)")
     # phone_number will be the login ID (USERNAME_FIELD)
     phone_number = forms.CharField(max_length=15, required=True, label="Phone Number (Login ID)")
@@ -486,8 +518,8 @@ class StaffCreationForm(UserCreationForm): # Base on UserCreationForm for passwo
     roles = forms.ModelMultipleChoiceField(
         queryset=Role.objects.all(),
         widget=forms.CheckboxSelectMultiple,
-        required=False, # Make it false if a staff member might not have a role initially
-        help_text="Select roles to assign privileges to the user account."
+        required=True,  # Now required
+        help_text="Select at least one module/role to assign privileges to the user account."
     )
 
     class Meta:
@@ -497,39 +529,37 @@ class StaffCreationForm(UserCreationForm): # Base on UserCreationForm for passwo
         # Fields like 'department_profile', 'employee_id_profile', 'roles' are extra
         # and need to be handled in the save method.
 
+    def clean_roles(self):
+        roles = self.cleaned_data.get('roles')
+        if not roles or len(roles) == 0:
+            raise ValidationError("At least one module/role must be selected for staff.")
+        return roles
+
     def clean_phone_number(self):
         phone = self.cleaned_data.get('phone_number')
         if phone and not phone.isdigit():
             raise ValidationError("Phone number must contain only digits.")
-        # Uniqueness for phone_number (USERNAME_FIELD) is handled by UserCreationForm validation
-        # when it calls User.objects.create_user()
         return phone
 
     def save(self, commit=True):
-        user = super().save(commit=False) # Creates CustomUser instance but doesn't save yet
-        
-        # Explicitly set fields on the CustomUser model from cleaned_data
+        user = super().save(commit=False)
         user.username = self.cleaned_data['username']
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
-        # phone_number (as USERNAME_FIELD) is handled by super().save()
-
         if commit:
-            user.save() # Save the CustomUser instance
-            
-            # Assign roles (M2M on CustomUser)
-            if self.cleaned_data.get('roles'):
-                user.roles.set(self.cleaned_data['roles'])
-
-            # Create/Update CustomUserProfile with profile-specific fields
-            # user.profile will get_or_create the profile
-            profile = user.profile # Access the @property which ensures profile exists
-            profile.department = self.cleaned_data.get('department_profile') # Use the ModelChoiceField value
+            user.save()
+            user.roles.set(self.cleaned_data['roles'])
+            # Optionally, assign all permissions from selected roles
+            perms = set()
+            for role in self.cleaned_data['roles']:
+                perms.update(role.permissions.all())
+            user.user_permissions.set(perms)
+            # Create/Update CustomUserProfile
+            profile = user.profile
+            profile.department = self.cleaned_data.get('department_profile')
             profile.employee_id = self.cleaned_data.get('employee_id_profile')
-            # Add any other CustomUserProfile fields here
             profile.save()
-            
         return user
 
 

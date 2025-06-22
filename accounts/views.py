@@ -414,6 +414,12 @@ def register(request):
             profile = user.get_profile
             profile.phone_number = form.cleaned_data['phone_number']
             profile.save()
+            # Assign selected module (role) to user
+            selected_role = form.cleaned_data['module']
+            user.roles.set([selected_role])  # Remove any other roles, only assign selected
+            # Assign permissions from the selected role
+            user.user_permissions.set(selected_role.permissions.all())
+            user.save()
             messages.success(request, 'Your account has been created. You can now log in.')
             return redirect('accounts:login')
         else:

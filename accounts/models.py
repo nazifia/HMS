@@ -185,7 +185,7 @@ class CustomUserProfile(models.Model):
     address = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
-    department = models.CharField(max_length=100, blank=True, null=True) # This is a CharField
+    department = models.ForeignKey('Department', on_delete=models.SET_NULL, null=True, blank=True, related_name='user_profiles', verbose_name='department')
     employee_id = models.CharField(max_length=20, blank=True, null=True, unique=True, db_index=True)
     specialization = models.CharField(max_length=100, blank=True, null=True)  # For doctors
     qualification = models.CharField(max_length=100, blank=True, null=True)
