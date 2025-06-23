@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if form.instance.pk %}
+Edit Surgery Schedule
+{% else %}
+Create Surgery Schedule
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            {% if form.instance.pk %}
+            Edit Surgery Schedule
+            {% else %}
+            Create Surgery Schedule
+            {% endif %}
+        </h1>
+        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Surgery
+        </a>
+    </div>
+
+    <!-- Surgery Schedule Form Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                Schedule for {{ surgery.patient }} - {{ surgery.surgery_type }}
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                    {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.start_time.id_for_label }}">Start Time *</label>
+                            {% render_field form.start_time class="form-control" %}
+                            {% if form.start_time.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.start_time.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.end_time.id_for_label }}">End Time *</label>
+                            {% render_field form.end_time class="form-control" %}
+                            {% if form.end_time.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.end_time.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.pre_op_preparation_start.id_for_label }}">Pre-Op Preparation Start *</label>
+                            {% render_field form.pre_op_preparation_start class="form-control" %}
+                            {% if form.pre_op_preparation_start.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.pre_op_preparation_start.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.post_op_recovery_end.id_for_label }}">Post-Op Recovery End *</label>
+                            {% render_field form.post_op_recovery_end class="form-control" %}
+                            {% if form.post_op_recovery_end.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.post_op_recovery_end.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.status.id_for_label }}">Status *</label>
+                            {% render_field form.status class="form-control" %}
+                            {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.status.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.delay_reason.id_for_label }}">Delay Reason</label>
+                            {% render_field form.delay_reason class="form-control" %}
+                            {% if form.delay_reason.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.delay_reason.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Required only if status is set to 'Delayed'.</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group text-center mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-2"></i>
+                        {% if form.instance.pk %}
+                        Update Schedule
+                        {% else %}
+                        Save Schedule
+                        {% endif %}
+                    </button>
+                    <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-secondary ml-2">
+                        <i class="fas fa-times mr-2"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Show/hide delay reason field based on status
+        $('#{{ form.status.id_for_label }}').change(function() {
+            if ($(this).val() === 'delayed') {
+                $('#{{ form.delay_reason.id_for_label }}').parent().parent().show();
+            } else {
+                $('#{{ form.delay_reason.id_for_label }}').parent().parent().hide();
+            }
+        });
+        
+        // Trigger change event on page load
+        $('#{{ form.status.id_for_label }}').trigger('change');
+    });
+</script>
+{% endblock %}

@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'dashboard',
     'consultations',
     'radiology',
+    'theatre.apps.TheatreConfig',
 
 ]
 

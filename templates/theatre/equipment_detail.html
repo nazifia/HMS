@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Equipment Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{{ object.name }}</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ object.name }}</p>
+            <p><strong>Quantity:</strong> {{ object.quantity }}</p>
+            <p><strong>Status:</strong> {{ object.get_status_display }}</p>
+            <p><strong>Maintenance Schedule:</strong> {{ object.maintenance_schedule|default:"Not specified" }}</p>
+        </div>
+        <div class="card-footer text-end">
+            <a href="{% url 'theatre:equipment_update' object.pk %}" class="btn btn-warning">Edit</a>
+            <a href="{% url 'theatre:equipment_delete' object.pk %}" class="btn btn-danger">Delete</a>
+            <a href="{% url 'theatre:equipment_list' %}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

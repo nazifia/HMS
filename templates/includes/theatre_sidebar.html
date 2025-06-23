@@ -1,0 +1,22 @@
+<!-- Theatre Module Sidebar Item -->
+<li class="nav-item {% if '/theatre/' in request.path %}active{% endif %}">
+    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTheatre" aria-expanded="false" aria-controls="collapseTheatre">
+        <i class="fas fa-fw fa-procedures text-white"></i>
+        <span class="text-white">Operation Theatre</span>
+    </a>
+    <div id="collapseTheatre" class="collapse {% if '/theatre/' in request.path %}show{% endif %}" aria-labelledby="headingTheatre" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+            <h6 class="collapse-header">Theatre Management:</h6>
+            <a class="collapse-item" href="{% url 'theatre:theatre_list' %}">Operation Theatres</a>
+            <a class="collapse-item" href="{% url 'theatre:surgery_type_list' %}">Surgery Types</a>
+            <a class="collapse-item" href="{% url 'theatre:surgery_list' %}">Surgeries</a>
+            <a class="collapse-item" href="{% url 'theatre:equipment_list' %}">Equipment</a>
+            
+            {% if user.is_superuser %}
+            <div class="collapse-divider"></div>
+            <h6 class="collapse-header">Administration:</h6>
+
+            {% endif %}
+        </div>
+    </div>
+</li>

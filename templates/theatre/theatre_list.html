@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Operation Theatres{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Operation Theatres</h1>
+        <a href="{% url 'theatre:theatre_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Theatre
+        </a>
+    </div>
+
+    <!-- Theatre List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">All Operation Theatres</h6>
+        </div>
+        <div class="card-body">
+            {% if theatres %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Theatre Number</th>
+                            <th>Floor</th>
+                            <th>Capacity</th>
+                            <th>Status</th>
+                            <th>Last Sanitized</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for theatre in theatres %}
+                        <tr>
+                            <td>{{ theatre.name }}</td>
+                            <td>{{ theatre.theatre_number }}</td>
+                            <td>{{ theatre.floor }}</td>
+                            <td>{{ theatre.capacity }}</td>
+                            <td>
+                                {% if theatre.is_available %}
+                                <span class="badge badge-success">Available</span>
+                                {% else %}
+                                <span class="badge badge-danger">Not Available</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if theatre.last_sanitized %}
+                                {{ theatre.last_sanitized|date:"d/m/Y H:i" }}
+                                {% else %}
+                                <span class="text-danger">Not recorded</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'theatre:theatre_detail' theatre.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'theatre:theatre_update' theatre.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'theatre:theatre_delete' theatre.id %}" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <p>No operation theatres available.</p>
+                <a href="{% url 'theatre:theatre_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i> Add New Theatre
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#dataTable').DataTable();
+    });
+</script>
+{% endblock %}

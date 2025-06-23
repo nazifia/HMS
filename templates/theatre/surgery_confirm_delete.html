@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirm Delete{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Confirm Deletion</h3>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the surgery "{{ surgery.surgery_type.name }} for {{ surgery.patient.get_full_name }}"?</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                        <a href="{% url 'theatre:surgery_detail' surgery.pk %}" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

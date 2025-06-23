@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Theatre Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Operation Theatre Dashboard</h1>
+        <div>
+            <a href="{% url 'theatre:surgery_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Schedule New Surgery
+            </a>
+            <a href="{% url 'theatre:theatre_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Add New Theatre
+            </a>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Theatre Availability Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Theatre Availability</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ available_theatres }} / {{ total_theatres }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hospital-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Surgeries Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Surgeries</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_surgeries }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-procedures fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Surgeries Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Completed Surgeries</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_surgeries }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equipment Status Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Equipment Available</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ available_equipment }} / {{ total_equipment }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tools fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Today's Surgeries -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Today's Surgeries</h6>
+                </div>
+                <div class="card-body">
+                    {% if todays_surgeries %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Patient</th>
+                                    <th>Surgery Type</th>
+                                    <th>Theatre</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for surgery in todays_surgeries %}
+                                <tr>
+                                    <td>{{ surgery.scheduled_date|date:"H:i" }}</td>
+                                    <td>{{ surgery.patient }}</td>
+                                    <td>{{ surgery.surgery_type }}</td>
+                                    <td>{{ surgery.theatre }}</td>
+                                    <td>
+                                        {% if surgery.status == 'scheduled' %}
+                                        <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
+                                        {% elif surgery.status == 'in_progress' %}
+                                        <span class="badge badge-warning">{{ surgery.get_status_display }}</span>
+                                        {% elif surgery.status == 'completed' %}
+                                        <span class="badge badge-success">{{ surgery.get_status_display }}</span>
+                                        {% elif surgery.status == 'cancelled' %}
+                                        <span class="badge badge-danger">{{ surgery.get_status_display }}</span>
+                                        {% elif surgery.status == 'postponed' %}
+                                        <span class="badge badge-secondary">{{ surgery.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No surgeries scheduled for today.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Surgeries -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Upcoming Surgeries (Next 7 Days)</h6>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_surgeries %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Patient</th>
+                                    <th>Surgery Type</th>
+                                    <th>Theatre</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for surgery in upcoming_surgeries %}
+                                <tr>
+                                    <td>{{ surgery.scheduled_date|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ surgery.patient }}</td>
+                                    <td>{{ surgery.surgery_type }}</td>
+                                    <td>{{ surgery.theatre }}</td>
+                                    <td>
+                                        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No upcoming surgeries in the next 7 days.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Quick Links -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Links</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'theatre:theatre_list' %}" class="btn btn-block btn-primary">
+                                <i class="fas fa-hospital-alt mr-2"></i> Manage Theatres
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'theatre:surgery_list' %}" class="btn btn-block btn-success">
+                                <i class="fas fa-procedures mr-2"></i> Manage Surgeries
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'theatre:surgery_type_list' %}" class="btn btn-block btn-info">
+                                <i class="fas fa-list-alt mr-2"></i> Surgery Types
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'theatre:equipment_list' %}" class="btn btn-block btn-warning">
+                                <i class="fas fa-tools mr-2"></i> Manage Equipment
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

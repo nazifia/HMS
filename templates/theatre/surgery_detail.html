@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Surgery Details - {{ object.surgery_type }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Surgery Details: {{ object.surgery_type }}</h1>
+        <div>
+            <a href="{% url 'theatre:surgery_update' object.id %}" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-edit fa-sm text-white-50"></i> Edit Surgery
+            </a>
+            <a href="{% url 'theatre:surgery_list' %}" class="btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Surgery Details Card -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Surgery Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Patient:</strong> {{ object.patient }}</p>
+                            <p><strong>Surgery Type:</strong> {{ object.surgery_type }}</p>
+                            <p><strong>Theatre:</strong> {{ object.theatre }}</p>
+                            <p><strong>Scheduled Date:</strong> {{ object.scheduled_date|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p>
+                                <strong>Status:</strong>
+                                {% if object.status == 'scheduled' %}
+                                <span class="badge badge-primary">{{ object.get_status_display }}</span>
+                                {% elif object.status == 'in_progress' %}
+                                <span class="badge badge-warning">{{ object.get_status_display }}</span>
+                                {% elif object.status == 'completed' %}
+                                <span class="badge badge-success">{{ object.get_status_display }}</span>
+                                {% elif object.status == 'cancelled' %}
+                                <span class="badge badge-danger">{{ object.get_status_display }}</span>
+                                {% elif object.status == 'postponed' %}
+                                <span class="badge badge-secondary">{{ object.get_status_display }}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Primary Surgeon:</strong> {{ object.primary_surgeon }}</p>
+                            <p><strong>Anesthetist:</strong> {{ object.anesthetist|default:"Not assigned" }}</p>
+                            <p><strong>Expected Duration:</strong> {{ object.expected_duration }}</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6 class="font-weight-bold">Pre-Surgery Notes</h6>
+                    <p>{{ object.pre_surgery_notes|default:"No pre-surgery notes provided." }}</p>
+                    
+                    <hr>
+                    
+                    <h6 class="font-weight-bold">Post-Surgery Notes</h6>
+                    <p>{{ object.post_surgery_notes|default:"No post-surgery notes provided." }}</p>
+                </div>
+            </div>
+
+            <!-- Surgical Team Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Surgical Team</h6>
+                </div>
+                <div class="card-body">
+                    {% if object.team_members.all %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Staff Member</th>
+                                    <th>Role</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in object.team_members.all %}
+                                <tr>
+                                    <td>{{ member.staff }}</td>
+                                    <td>{{ member.get_role_display }}</td>
+                                    <td>{{ member.notes|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No team members assigned to this surgery.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Equipment Used Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Equipment Used</h6>
+                </div>
+                <div class="card-body">
+                    {% if object.equipment_used.all %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Equipment</th>
+                                    <th>Type</th>
+                                    <th>Quantity Used</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for usage in object.equipment_used.all %}
+                                <tr>
+                                    <td>{{ usage.equipment.name }}</td>
+                                    <td>{{ usage.equipment.get_equipment_type_display }}</td>
+                                    <td>{{ usage.quantity_used }}</td>
+                                    <td>{{ usage.notes|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No equipment usage recorded for this surgery.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Surgery Schedule Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Surgery Schedule</h6>
+                </div>
+                <div class="card-body">
+                    {% if object.schedule %}
+                    <p><strong>Start Time:</strong> {{ object.schedule.start_time|date:"d/m/Y H:i" }}</p>
+                    <p><strong>End Time:</strong> {{ object.schedule.end_time|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Pre-Op Preparation:</strong> {{ object.schedule.pre_op_preparation_start|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Post-Op Recovery End:</strong> {{ object.schedule.post_op_recovery_end|date:"d/m/Y H:i" }}</p>
+                    <p>
+                        <strong>Schedule Status:</strong>
+                        {% if object.schedule.status == 'scheduled' %}
+                        <span class="badge badge-primary">{{ object.schedule.get_status_display }}</span>
+                        {% elif object.schedule.status == 'in_progress' %}
+                        <span class="badge badge-warning">{{ object.schedule.get_status_display }}</span>
+                        {% elif object.schedule.status == 'completed' %}
+                        <span class="badge badge-success">{{ object.schedule.get_status_display }}</span>
+                        {% elif object.schedule.status == 'delayed' %}
+                        <span class="badge badge-warning">{{ object.schedule.get_status_display }}</span>
+                        {% elif object.schedule.status == 'cancelled' %}
+                        <span class="badge badge-danger">{{ object.schedule.get_status_display }}</span>
+                        {% endif %}
+                    </p>
+                    {% if object.schedule.delay_reason %}
+                    <p><strong>Delay Reason:</strong> {{ object.schedule.delay_reason }}</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-center">No detailed schedule available for this surgery.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Post-Operative Notes Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Post-Operative Notes</h6>
+                    <a href="{% url 'theatre:post_op_note_create' object.id %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus fa-sm"></i> Add Note
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if object.post_op_notes.all %}
+                    <div class="list-group">
+                        {% for note in object.post_op_notes.all %}
+                        <div class="list-group-item list-group-item-action flex-column align-items-start">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Note by {{ note.created_by }}</h6>
+                                <div>
+                                    <small class="mr-2">{{ note.created_at|date:"d/m/Y H:i" }}</small>
+                                    <a href="{% url 'theatre:post_op_note_update' note.id %}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'theatre:post_op_note_delete' note.id %}" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <p class="mb-1">{{ note.notes }}</p>
+                            {% if note.complications %}
+                            <small class="text-danger">Complications: {{ note.complications }}</small><br>
+                            {% endif %}
+                            {% if note.follow_up_instructions %}
+                            <small class="text-primary">Follow-up: {{ note.follow_up_instructions }}</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-center">No post-operative notes recorded for this surgery.</p>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'theatre:post_op_note_create' object.id %}" class="btn btn-primary">
+                            <i class="fas fa-plus mr-2"></i> Add Post-Operative Note
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Actions Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'theatre:surgery_update' object.id %}" class="btn btn-primary btn-block">
+                        <i class="fas fa-edit mr-2"></i> Edit Surgery
+                    </a>
+                    {% if object.status == 'scheduled' %}
+                    <a href="#" class="btn btn-warning btn-block">
+                        <i class="fas fa-play-circle mr-2"></i> Start Surgery
+                    </a>
+                    {% elif object.status == 'in_progress' %}
+                    <a href="#" class="btn btn-success btn-block">
+                        <i class="fas fa-check-circle mr-2"></i> Complete Surgery
+                    </a>
+                    {% endif %}
+                    {% if object.status == 'completed' %}
+                    <a href="{% url 'theatre:post_op_note_create' object.id %}" class="btn btn-info btn-block">
+                        <i class="fas fa-notes-medical mr-2"></i> Add Post-Op Note
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'theatre:surgery_delete' object.id %}" class="btn btn-danger btn-block">
+                        <i class="fas fa-trash mr-2"></i> Delete Surgery
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

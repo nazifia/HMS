@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Theatre Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Theatre Details: {{ object.name }}</h1>
+        <div>
+            <a href="{% url 'theatre:theatre_update' object.id %}" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-edit fa-sm text-white-50"></i> Edit Theatre
+            </a>
+            <a href="{% url 'theatre:theatre_list' %}" class="btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Theatre Details Card -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Theatre Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong> {{ object.name }}</p>
+                            <p><strong>Theatre Number:</strong> {{ object.theatre_number }}</p>
+                            <p><strong>Floor:</strong> {{ object.floor }}</p>
+                            <p><strong>Capacity:</strong> {{ object.capacity }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p>
+                                <strong>Status:</strong>
+                                {% if object.is_available %}
+                                <span class="badge badge-success">Available</span>
+                                {% else %}
+                                <span class="badge badge-danger">Not Available</span>
+                                {% endif %}
+                            </p>
+                            <p>
+                                <strong>Last Sanitized:</strong>
+                                {% if object.last_sanitized %}
+                                {{ object.last_sanitized|date:"d/m/Y H:i" }}
+                                {% else %}
+                                <span class="text-danger">Not recorded</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6 class="font-weight-bold">Description</h6>
+                    <p>{{ object.description|default:"No description provided." }}</p>
+                    
+                    <hr>
+                    
+                    <h6 class="font-weight-bold">Equipment List</h6>
+                    <p>{{ object.equipment_list|default:"No equipment list provided." }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Upcoming Surgeries</h6>
+                </div>
+                <div class="card-body">
+                    {% with upcoming_surgeries=object.surgeries.filter.order_by 'scheduled_date' %}
+                    {% if upcoming_surgeries %}
+                    <div class="list-group">
+                        {% for surgery in upcoming_surgeries|slice:":5" %}
+                        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ surgery.surgery_type }}</h6>
+                                <small>{{ surgery.scheduled_date|date:"d/m/Y H:i" }}</small>
+                            </div>
+                            <p class="mb-1">Patient: {{ surgery.patient }}</p>
+                            <small>
+                                Status: 
+                                {% if surgery.status == 'scheduled' %}
+                                <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'in_progress' %}
+                                <span class="badge badge-warning">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'completed' %}
+                                <span class="badge badge-success">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'cancelled' %}
+                                <span class="badge badge-danger">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'postponed' %}
+                                <span class="badge badge-secondary">{{ surgery.get_status_display }}</span>
+                                {% endif %}
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% if upcoming_surgeries.count > 5 %}
+                    <div class="text-center mt-3">
+                        <a href="{% url 'theatre:surgery_list' %}?theatre={{ object.id }}" class="btn btn-sm btn-primary">
+                            View All Surgeries
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-center">No upcoming surgeries scheduled for this theatre.</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'theatre:theatre_update' object.id %}" class="btn btn-primary btn-block">
+                        <i class="fas fa-edit mr-2"></i> Edit Theatre
+                    </a>
+                    <a href="{% url 'theatre:surgery_create' %}" class="btn btn-success btn-block">
+                        <i class="fas fa-plus mr-2"></i> Schedule Surgery
+                    </a>
+                    <a href="{% url 'theatre:theatre_delete' object.id %}" class="btn btn-danger btn-block">
+                        <i class="fas fa-trash mr-2"></i> Delete Theatre
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
