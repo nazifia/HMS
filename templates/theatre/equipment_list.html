@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Surgical Equipment{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Surgical Equipment</h2>
+        <a href="{% url 'theatre:equipment_create' %}" class="btn btn-primary">Add New Equipment</a>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for equipment in object_list %}
+                    <tr>
+                        <td>{{ equipment.name }}</td>
+                        <td>{{ equipment.quantity }}</td>
+                        <td>{{ equipment.get_status_display }}</td>
+                        <td>
+                            <a href="{% url 'theatre:equipment_detail' equipment.pk %}" class="btn btn-info btn-sm">View</a>
+                            <a href="{% url 'theatre:equipment_update' equipment.pk %}" class="btn btn-warning btn-sm">Edit</a>
+                            <a href="{% url 'theatre:equipment_delete' equipment.pk %}" class="btn btn-danger btn-sm">Delete</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center">No equipment found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

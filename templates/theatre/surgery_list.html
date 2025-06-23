@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Surgeries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Surgeries</h1>
+        <a href="{% url 'theatre:surgery_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Schedule New Surgery
+        </a>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter Surgeries</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="form-inline">
+                <div class="form-group mb-2 mr-2">
+                    <label for="{{ filter_form.start_date.id_for_label }}" class="sr-only">From Date</label>
+                    {% render_field filter_form.start_date class="form-control" placeholder="From Date" %}
+                </div>
+                <div class="form-group mb-2 mr-2">
+                    <label for="{{ filter_form.end_date.id_for_label }}" class="sr-only">To Date</label>
+                    {% render_field filter_form.end_date class="form-control" placeholder="To Date" %}
+                </div>
+                <div class="form-group mb-2 mr-2">
+                    <label for="{{ filter_form.status.id_for_label }}" class="sr-only">Status</label>
+                    {% render_field filter_form.status class="form-control" %}
+                </div>
+                <div class="form-group mb-2 mr-2">
+                    <label for="{{ filter_form.surgeon.id_for_label }}" class="sr-only">Surgeon</label>
+                    {% render_field filter_form.surgeon class="form-control" %}
+                </div>
+                <div class="form-group mb-2 mr-2">
+                    <label for="{{ filter_form.theatre.id_for_label }}" class="sr-only">Theatre</label>
+                    {% render_field filter_form.theatre class="form-control" %}
+                </div>
+                <button type="submit" class="btn btn-primary mb-2">Apply Filters</button>
+                <a href="{% url 'theatre:surgery_list' %}" class="btn btn-secondary mb-2 ml-2">Clear Filters</a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Surgery List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">All Surgeries</h6>
+        </div>
+        <div class="card-body">
+            {% if surgeries %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Patient</th>
+                            <th>Surgery Type</th>
+                            <th>Theatre</th>
+                            <th>Primary Surgeon</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for surgery in surgeries %}
+                        <tr>
+                            <td>{{ surgery.scheduled_date|date:"d/m/Y H:i" }}</td>
+                            <td>{{ surgery.patient }}</td>
+                            <td>{{ surgery.surgery_type }}</td>
+                            <td>{{ surgery.theatre }}</td>
+                            <td>{{ surgery.primary_surgeon }}</td>
+                            <td>
+                                {% if surgery.status == 'scheduled' %}
+                                <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'in_progress' %}
+                                <span class="badge badge-warning">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'completed' %}
+                                <span class="badge badge-success">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'cancelled' %}
+                                <span class="badge badge-danger">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'postponed' %}
+                                <span class="badge badge-secondary">{{ surgery.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'theatre:surgery_update' surgery.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'theatre:surgery_delete' surgery.id %}" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="mt-4">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                                <span aria-hidden="true">&laquo;&laquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                                <span aria-hidden="true">&raquo;&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="text-center py-4">
+                <p>No surgeries found matching your criteria.</p>
+                <a href="{% url 'theatre:surgery_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i> Schedule New Surgery
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize select2 for dropdown filters
+        $('select').select2({
+            placeholder: "Select an option",
+            allowClear: true
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Surgery Type Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{{ object.name }}</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ object.name }}</p>
+            <p><strong>Category:</strong> {{ object.category }}</p>
+            <p><strong>Description:</strong> {{ object.description|default:"No description provided." }}</p>
+        </div>
+        <div class="card-footer text-end">
+            <a href="{% url 'theatre:surgery_type_update' object.pk %}" class="btn btn-warning">Edit</a>
+            <a href="{% url 'theatre:surgery_type_delete' object.pk %}" class="btn btn-danger">Delete</a>
+            <a href="{% url 'theatre:surgery_type_list' %}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

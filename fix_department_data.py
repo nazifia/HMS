@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
-This script is a wrapper to run the fix_departments management command.
-It fixes all department-related issues in the accounts_customuserprofile table:
-1. Fixes invalid department_id values (setting them to NULL)
-2. Migrates string department names to proper foreign key relationships
+This script fixes department data issues in the accounts_customuserprofile table.
+It handles both:
+1. Converting string department names to proper foreign key relationships
+2. Cleaning up invalid department_id values
 
-Run this script directly with: python fix_departments.py
+Run this with: python fix_department_data.py
 """
 import os
 import django
@@ -25,13 +25,13 @@ django.setup()
 from django.core.management import call_command
 
 if __name__ == "__main__":
-    print("Starting department data fixes...")
+    print("Starting department data cleanup...")
     try:
         # Call the management command with appropriate options
         options = {'dry_run': args.dry_run}
         call_command('fix_departments', **options)
-        print("Department data fixes completed successfully!")
+        print("Department data cleanup complete!")
     except Exception as e:
         print(f"Error: {e}")
-        print("Department data fixes failed. See error message above.")
+        print("Department data cleanup failed. See error message above.")
         sys.exit(1)

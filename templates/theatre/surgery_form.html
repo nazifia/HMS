@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+{% if form.instance.pk %}
+Edit Surgery
+{% else %}
+Create Surgery
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{% if form.instance.pk %}Edit Surgery{% else %}Create Surgery{% endif %}</h2>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ form.patient_search|as_crispy_field }}
+                        {{ form.patient }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.surgery_type|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ form.primary_surgeon|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.anesthetist|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ form.theatre|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.status|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ form.scheduled_date|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.expected_duration|as_crispy_field }}
+                    </div>
+                </div>
+                {{ form.notes|as_crispy_field }}
+
+                <hr>
+
+                <h3>Surgical Team</h3>
+                {{ team_formset.management_form }}
+                <div id="team-form-list">
+                    {% for form in team_formset %}
+                        <div class="team-form">
+                            <div class="row">
+                                <div class="col-md-5">{{ form.staff|as_crispy_field }}</div>
+                                <div class="col-md-5">{{ form.role|as_crispy_field }}</div>
+                                <div class="col-md-2 d-flex align-items-center">
+                                    {% if form.instance.pk %}
+                                        {{ form.DELETE }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {{ form.pre_surgery_notes|as_crispy_field }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-team-form" class="btn btn-info btn-sm">Add Team Member</button>
+                <div id="empty-team-form" style="display:none;">
+                    <div class="team-form">
+                        <div class="row">
+                            <div class="col-md-5">{{ team_formset.empty_form.staff|as_crispy_field }}</div>
+                            <div class="col-md-5">{{ team_formset.empty_form.role|as_crispy_field }}</div>
+                        </div>
+                        {{ team_formset.empty_form.usage_notes|as_crispy_field }}
+                    </div>
+                </div>
+
+                <hr>
+
+                <h3>Surgical Equipment</h3>
+                {{ equipment_formset.management_form }}
+                <div id="equipment-form-list">
+                    {% for form in equipment_formset %}
+                        <div class="equipment-form">
+                            <div class="row">
+                                <div class="col-md-5">{{ form.equipment|as_crispy_field }}</div>
+                                <div class="col-md-5">{{ form.quantity_used|as_crispy_field }}</div>
+                                <div class="col-md-2 d-flex align-items-center">
+                                    {% if form.instance.pk %}
+                                        {{ form.DELETE }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {{ form.usage_notes|as_crispy_field }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-equipment-form" class="btn btn-info btn-sm">Add Equipment</button>
+                <div id="empty-equipment-form" style="display:none;">
+                    <div class="equipment-form">
+                        <div class="row">
+                            <div class="col-md-5">{{ equipment_formset.empty_form.equipment|as_crispy_field }}</div>
+                            <div class="col-md-5">{{ equipment_formset.empty_form.quantity_used|as_crispy_field }}</div>
+                        </div>
+                        {{ equipment_formset.empty_form.notes|as_crispy_field }}
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <a href="{% url 'theatre:surgery_list' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Patient search functionality
+    const patientSearchField = document.getElementById('id_patient_search');
+    const patientIdField = document.getElementById('id_patient');
+    
+    if (patientSearchField) {
+        patientSearchField.addEventListener('input', function() {
+            // Here you would typically implement AJAX search functionality
+            // For now, we'll just log the search term
+            console.log('Searching for patient:', patientSearchField.value);
+        });
+    }
+    
+    // Team Formset
+    const addTeamFormBtn = document.getElementById('add-team-form');
+    const teamFormList = document.getElementById('team-form-list');
+    const emptyTeamForm = document.getElementById('empty-team-form').innerHTML;
+    const teamTotalForms = document.querySelector('input[name="team_members-TOTAL_FORMS"]');
+
+    if (addTeamFormBtn && teamFormList && teamTotalForms) {
+        addTeamFormBtn.addEventListener('click', function() {
+            let formNum = parseInt(teamTotalForms.value);
+            let newForm = emptyTeamForm.replace(/__prefix__/g, formNum);
+            teamFormList.insertAdjacentHTML('beforeend', newForm);
+            teamTotalForms.value = formNum + 1;
+        });
+    }
+
+    // Equipment Formset
+    const addEquipmentFormBtn = document.getElementById('add-equipment-form');
+    const equipmentFormList = document.getElementById('equipment-form-list');
+    const emptyEquipmentForm = document.getElementById('empty-equipment-form').innerHTML;
+    const equipmentTotalForms = document.querySelector('input[name="equipment_used-TOTAL_FORMS"]');
+
+    if (addEquipmentFormBtn && equipmentFormList && equipmentTotalForms) {
+        addEquipmentFormBtn.addEventListener('click', function() {
+            let formNum = parseInt(equipmentTotalForms.value);
+            let newForm = emptyEquipmentForm.replace(/__prefix__/g, formNum);
+            equipmentFormList.insertAdjacentHTML('beforeend', newForm);
+            equipmentTotalForms.value = formNum + 1;
+        });
+    }
+});
+</script>
+{% endblock %}

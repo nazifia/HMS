@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Add Post-Operative Note{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            {% if form.instance.pk %}
+            Edit Post-Operative Note
+            {% else %}
+            Add Post-Operative Note
+            {% endif %}
+        </h1>
+        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Surgery
+        </a>
+    </div>
+
+    <!-- Post-Op Note Form Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                Post-Operative Note for {{ surgery.patient }} - {{ surgery.surgery_type }}
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                    {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="form-group">
+                    <label for="{{ form.notes.id_for_label }}">Notes *</label>
+                    {% render_field form.notes class="form-control" placeholder="Enter detailed post-operative notes" %}
+                    {% if form.notes.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.notes.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Provide detailed information about the surgery outcome.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.complications.id_for_label }}">Complications</label>
+                    {% render_field form.complications class="form-control" placeholder="Enter any complications (if any)" %}
+                    {% if form.complications.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.complications.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Document any complications that occurred during or after the surgery.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.follow_up_instructions.id_for_label }}">Follow-up Instructions</label>
+                    {% render_field form.follow_up_instructions class="form-control" placeholder="Enter follow-up instructions" %}
+                    {% if form.follow_up_instructions.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.follow_up_instructions.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Provide instructions for post-surgery care and follow-up appointments.</small>
+                </div>
+                
+                <div class="form-group text-center mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-2"></i>
+                        {% if form.instance.pk %}
+                        Update Note
+                        {% else %}
+                        Save Note
+                        {% endif %}
+                    </button>
+                    <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-secondary ml-2">
+                        <i class="fas fa-times mr-2"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

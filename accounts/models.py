@@ -176,6 +176,18 @@ class CustomUser(AbstractUser):
 
 
 class CustomUserProfile(models.Model):
+    ROLE_CHOICES = (
+        ('admin', 'Administrator'),
+        ('doctor', 'Doctor'),
+        ('nurse', 'Nurse'),
+        ('receptionist', 'Receptionist'),
+        ('pharmacist', 'Pharmacist'),
+        ('lab_technician', 'Lab Technician'),
+        ('radiology_staff', 'Radiology Staff'),
+        ('accountant', 'Accountant'),
+        ('health_record_officer', 'Health Record Officer'),
+    )
+    
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='custom_profile')
     # phone_number here can be removed if it's always the same as CustomUser.phone_number
     # If it can be different (e.g., a contact phone vs login phone), keep it.
@@ -192,9 +204,17 @@ class CustomUserProfile(models.Model):
     joining_date = models.DateField(auto_now_add=True) # This will set on creation
     updated_at = models.DateTimeField(auto_now=True) # Add this for the profile.html footer
     is_active = models.BooleanField(default=True) # Note: CustomUser also has is_active. Keep them synced if necessary.
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, blank=True, null=True)
 
     def __str__(self):
         return str(self.user) # Calls CustomUser.__str__
+        
+    @property
+    def get_role(self):
+        """Get the first role name from the user's roles"""
+        if self.user.roles.exists():
+            return self.user.roles.first().name
+        return self.role
 
 
 @receiver(post_save, sender=CustomUser)

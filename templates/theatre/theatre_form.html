@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if form.instance.pk %}Edit Theatre{% else %}Add New Theatre{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            {% if form.instance.pk %}Edit Theatre: {{ form.instance.name }}{% else %}Add New Theatre{% endif %}
+        </h1>
+        <a href="{% url 'theatre:theatre_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Theatre Form Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                {% if form.instance.pk %}Edit Theatre Details{% else %}Theatre Details{% endif %}
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.name.id_for_label }}">Theatre Name</label>
+                        {% render_field form.name class="form-control" placeholder="Enter theatre name" %}
+                        {% if form.name.errors %}
+                        <div class="text-danger">
+                            {% for error in form.name.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.theatre_number.id_for_label }}">Theatre Number</label>
+                        {% render_field form.theatre_number class="form-control" placeholder="Enter theatre number" %}
+                        {% if form.theatre_number.errors %}
+                        <div class="text-danger">
+                            {% for error in form.theatre_number.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.floor.id_for_label }}">Floor</label>
+                        {% render_field form.floor class="form-control" placeholder="Enter floor" %}
+                        {% if form.floor.errors %}
+                        <div class="text-danger">
+                            {% for error in form.floor.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.capacity.id_for_label }}">Capacity</label>
+                        {% render_field form.capacity class="form-control" placeholder="Enter capacity" %}
+                        {% if form.capacity.errors %}
+                        <div class="text-danger">
+                            {% for error in form.capacity.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.is_available.id_for_label }}">Availability Status</label>
+                        <div class="form-check">
+                            {% render_field form.is_available class="form-check-input" %}
+                            <label class="form-check-label" for="{{ form.is_available.id_for_label }}">
+                                Available for use
+                            </label>
+                        </div>
+                        {% if form.is_available.errors %}
+                        <div class="text-danger">
+                            {% for error in form.is_available.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.last_sanitized.id_for_label }}">Last Sanitized</label>
+                        {% render_field form.last_sanitized class="form-control" %}
+                        {% if form.last_sanitized.errors %}
+                        <div class="text-danger">
+                            {% for error in form.last_sanitized.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Date and time when the theatre was last sanitized</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}">Description</label>
+                    {% render_field form.description class="form-control" rows="3" placeholder="Enter theatre description" %}
+                    {% if form.description.errors %}
+                    <div class="text-danger">
+                        {% for error in form.description.errors %}
+                        <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.equipment_list.id_for_label }}">Equipment List</label>
+                    {% render_field form.equipment_list class="form-control" rows="3" placeholder="List the equipment available in this theatre" %}
+                    {% if form.equipment_list.errors %}
+                    <div class="text-danger">
+                        {% for error in form.equipment_list.errors %}
+                        <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        {% if form.instance.pk %}Update Theatre{% else %}Create Theatre{% endif %}
+                    </button>
+                    <a href="{% url 'theatre:theatre_list' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

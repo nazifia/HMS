@@ -5,7 +5,7 @@ It fixes all department-related issues in the accounts_customuserprofile table:
 1. Fixes invalid department_id values (setting them to NULL)
 2. Migrates string department names to proper foreign key relationships
 
-Run this script directly with: python fix_departments.py
+Run this script directly with: python fix_all_department_issues.py
 """
 import os
 import django
@@ -13,7 +13,7 @@ import sys
 import argparse
 
 # Parse command line arguments
-parser = argparse.ArgumentParser(description='Fix department data issues')
+parser = argparse.ArgumentParser(description='Fix all department data issues')
 parser.add_argument('--dry-run', action='store_true', help='Show what would be done without making changes')
 args = parser.parse_args()
 
@@ -25,12 +25,12 @@ django.setup()
 from django.core.management import call_command
 
 if __name__ == "__main__":
-    print("Starting department data fixes...")
+    print("Starting comprehensive department data cleanup...")
     try:
         # Call the management command with appropriate options
         options = {'dry_run': args.dry_run}
         call_command('fix_departments', **options)
-        print("Department data fixes completed successfully!")
+        print("All department data fixes completed successfully!")
     except Exception as e:
         print(f"Error: {e}")
         print("Department data fixes failed. See error message above.")
