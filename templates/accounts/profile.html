@@ -115,7 +115,7 @@
                     </div>
                 </div>
                 <div class="card-footer text-muted text-center small">
-                    Last updated: {{ viewed_user_object.custom_profile.updated_at|date:"M d, Y, H:i"|default:"N/A" }}
+                    Last updated: {{ viewed_user_object.profile.updated_at|date:"M d, Y, H:i"|default:"N/A" }}
                     {# Assuming you add an updated_at field to CustomUserProfile model that auto updates #}
                     {# models.DateTimeField(auto_now=True) #}
                 </div>

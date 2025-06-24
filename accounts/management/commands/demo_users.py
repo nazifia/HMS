@@ -163,8 +163,8 @@ class Command(BaseCommand):
             self.stdout.write(f'\n{role.name.upper()} ({users.count()} users):')
             for user in users:
                 profile_info = ""
-                if hasattr(user, 'custom_profile') and user.custom_profile:
-                    profile_info = f" - {user.custom_profile.department or 'No Dept'}"
+                if hasattr(user, 'profile') and user.profile:
+                    profile_info = f" - {user.profile.department or 'No Dept'}"
                 self.stdout.write(f'  • {user.get_full_name()} ({user.username}){profile_info}')
         
         total_users = User.objects.count()

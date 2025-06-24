@@ -123,29 +123,46 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        if self.request.POST:
-            data['team_formset'] = SurgicalTeamFormSet(self.request.POST)
-            data['equipment_formset'] = EquipmentUsageFormSet(self.request.POST)
-        else:
-            data['team_formset'] = SurgicalTeamFormSet()
-            data['equipment_formset'] = EquipmentUsageFormSet()
+        if 'team_formset' not in kwargs:
+            if self.request.POST:
+                data['team_formset'] = SurgicalTeamFormSet(self.request.POST)
+            else:
+                data['team_formset'] = SurgicalTeamFormSet()
+        if 'equipment_formset' not in kwargs:
+            if self.request.POST:
+                data['equipment_formset'] = EquipmentUsageFormSet(self.request.POST)
+            else:
+                data['equipment_formset'] = EquipmentUsageFormSet()
         return data
 
-    def form_valid(self, form):
-        context = self.get_context_data()
-        team_formset = context['team_formset']
-        equipment_formset = context['equipment_formset']
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        team_formset = SurgicalTeamFormSet(self.request.POST)
+        equipment_formset = EquipmentUsageFormSet(self.request.POST)
+        if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
+            return self.form_valid(form, team_formset, equipment_formset)
+        else:
+            return self.form_invalid(form, team_formset, equipment_formset)
+
+    def form_valid(self, form, team_formset, equipment_formset):
         with transaction.atomic():
             self.object = form.save()
-            if team_formset.is_valid() and equipment_formset.is_valid():
-                team_formset.instance = self.object
-                team_formset.save()
-                equipment_formset.instance = self.object
-                equipment_formset.save()
-                messages.success(self.request, 'Surgery created successfully.')
-                return super().form_valid(form)
-            else:
-                return self.form_invalid(form)
+            team_formset.instance = self.object
+            team_formset.save()
+            equipment_formset.instance = self.object
+            equipment_formset.save()
+        messages.success(self.request, 'Surgery created successfully.')
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form, team_formset, equipment_formset):
+        return self.render_to_response(
+            self.get_context_data(
+                form=form,
+                team_formset=team_formset,
+                equipment_formset=equipment_formset
+            )
+        )
 
 class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
     model = Surgery
@@ -155,27 +172,44 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        if self.request.POST:
-            data['team_formset'] = SurgicalTeamFormSet(self.request.POST, instance=self.object)
-            data['equipment_formset'] = EquipmentUsageFormSet(self.request.POST, instance=self.object)
-        else:
-            data['team_formset'] = SurgicalTeamFormSet(instance=self.object)
-            data['equipment_formset'] = EquipmentUsageFormSet(instance=self.object)
+        if 'team_formset' not in kwargs:
+            if self.request.POST:
+                data['team_formset'] = SurgicalTeamFormSet(self.request.POST, instance=self.object)
+            else:
+                data['team_formset'] = SurgicalTeamFormSet(instance=self.object)
+        if 'equipment_formset' not in kwargs:
+            if self.request.POST:
+                data['equipment_formset'] = EquipmentUsageFormSet(self.request.POST, instance=self.object)
+            else:
+                data['equipment_formset'] = EquipmentUsageFormSet(instance=self.object)
         return data
 
-    def form_valid(self, form):
-        context = self.get_context_data()
-        team_formset = context['team_formset']
-        equipment_formset = context['equipment_formset']
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        team_formset = SurgicalTeamFormSet(self.request.POST, instance=self.object)
+        equipment_formset = EquipmentUsageFormSet(self.request.POST, instance=self.object)
+        if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
+            return self.form_valid(form, team_formset, equipment_formset)
+        else:
+            return self.form_invalid(form, team_formset, equipment_formset)
+
+    def form_valid(self, form, team_formset, equipment_formset):
         with transaction.atomic():
             self.object = form.save()
-            if team_formset.is_valid() and equipment_formset.is_valid():
-                team_formset.save()
-                equipment_formset.save()
-                messages.success(self.request, 'Surgery updated successfully.')
-                return super().form_valid(form)
-            else:
-                return self.form_invalid(form)
+            team_formset.save()
+            equipment_formset.save()
+        messages.success(self.request, 'Surgery updated successfully.')
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form, team_formset, equipment_formset):
+        return self.render_to_response(
+            self.get_context_data(
+                form=form,
+                team_formset=team_formset,
+                equipment_formset=equipment_formset
+            )
+        )
 
 class SurgeryDeleteView(LoginRequiredMixin, DeleteView):
     model = Surgery

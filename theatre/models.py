@@ -68,18 +68,18 @@ class Surgery(models.Model):
     surgery_type = models.ForeignKey(SurgeryType, on_delete=models.PROTECT, related_name='surgeries')
     theatre = models.ForeignKey(OperationTheatre, on_delete=models.SET_NULL, null=True, related_name='surgeries')
     primary_surgeon = models.ForeignKey(
-        CustomUser, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='primary_surgeries',
-        limit_choices_to={'custom_profile__specialization__icontains': 'surgeon'}
+        limit_choices_to={'profile__specialization__icontains': 'surgeon'}
     )
     anesthetist = models.ForeignKey(
-        CustomUser, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='anesthetist_surgeries',
-        limit_choices_to={'custom_profile__specialization__icontains': 'anesthetist'}
+        limit_choices_to={'profile__specialization__icontains': 'anesthetist'}
     )
     scheduled_date = models.DateTimeField()
     expected_duration = models.DurationField()

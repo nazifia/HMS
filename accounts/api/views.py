@@ -17,7 +17,7 @@ from ..models import CustomUser, Role, AuditLog, CustomUserProfile
 import json
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all().select_related('custom_profile')
+    queryset = CustomUser.objects.all().select_related('profile')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
