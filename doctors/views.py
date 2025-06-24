@@ -209,7 +209,7 @@ def edit_doctor(request, doctor_id):
             user.save()
 
             # Update user profile
-            profile = user.custom_profile
+            profile = user.profile
             profile.phone_number = request.POST.get('phone_number')
             profile.save()
 

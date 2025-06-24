@@ -51,7 +51,7 @@ class TestRequestForm(forms.ModelForm):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -268,7 +268,7 @@ class TestRequestSearchForm(forms.Form):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         required=False,
         empty_label="All Doctors"
     )

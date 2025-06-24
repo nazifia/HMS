@@ -68,7 +68,7 @@ class AdmissionForm(forms.ModelForm):
             self.fields['bed'].queryset = Bed.objects.filter(is_occupied=False, is_active=True)
         
         # Filter doctors (users with doctor role)
-        self.fields['attending_doctor'].queryset = User.objects.filter(custom_profile__specialization__isnull=False)
+        self.fields['attending_doctor'].queryset = User.objects.filter(profile__specialization__isnull=False)
         
         # Set initial admission date to now
         if not self.instance.pk and not self.initial.get('admission_date'):
@@ -114,7 +114,7 @@ class DailyRoundForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter doctors (users with doctor role)
-        self.fields['doctor'].queryset = User.objects.filter(custom_profile__specialization__isnull=False)
+        self.fields['doctor'].queryset = User.objects.filter(profile__specialization__isnull=False)
         
         # Set initial date_time to now
         if not self.instance.pk and not self.initial.get('date_time'):
@@ -135,7 +135,7 @@ class NursingNoteForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter nurses (users with nurse role)
-        self.fields['nurse'].queryset = User.objects.filter(custom_profile__department='Nursing')
+        self.fields['nurse'].queryset = User.objects.filter(profile__department='Nursing')
         
         # Set initial date_time to now
         if not self.instance.pk and not self.initial.get('date_time'):
@@ -164,7 +164,7 @@ class AdmissionSearchForm(forms.Form):
     
     doctor = forms.ModelChoiceField(
         required=False,
-        queryset=User.objects.filter(custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'})
     )
     

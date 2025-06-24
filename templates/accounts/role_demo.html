@@ -142,8 +142,8 @@
                                         </div>
                                         <div class="flex-grow-1">
                                             <div class="fw-bold">{{ user.get_full_name|default:user.username }}</div>
-                                            {% if user.custom_profile.department %}
-                                                <small class="text-muted">{{ user.custom_profile.department }}</small>
+                                            {% if user.profile.department %}
+                                                <small class="text-muted">{{ user.profile.department }}</small>
                                             {% endif %}
                                         </div>
                                         <a href="{% url 'accounts:user_privileges' user.id %}" 

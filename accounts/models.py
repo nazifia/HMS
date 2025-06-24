@@ -156,23 +156,17 @@ class CustomUser(AbstractUser):
             return self.phone_number
         return f"User #{self.pk}"
 
-    @property
-    def profile(self):
-        # This property relies on the related_name 'custom_profile' from CustomUserProfile.user
-        # and the post_save signal ensuring the profile exists.
+    def get_profile(self):
+        # Helper method to get or create profile with error handling
         try:
-            # Ensure custom_profile exists, creating if necessary (more robust)
-            profile_instance, created = CustomUserProfile.objects.get_or_create(user=self)
-            if created:
-                # Potentially log this or handle default profile values if needed
-                pass
-            return profile_instance
+            # Use the Django reverse relationship (now that related_name='profile')
+            return self.profile
+        except CustomUserProfile.DoesNotExist:
+            # Create profile if it doesn't exist
+            return CustomUserProfile.objects.create(user=self)
         except CustomUserProfile.MultipleObjectsReturned:
             # Handle case where multiple profiles might exist (data integrity issue)
-            # Log error and return the first one or raise an exception
-            # For now, let's return the first one found.
             return CustomUserProfile.objects.filter(user=self).first()
-        # Removed DoesNotExist because get_or_create handles it.
 
 
 class CustomUserProfile(models.Model):
@@ -188,7 +182,7 @@ class CustomUserProfile(models.Model):
         ('health_record_officer', 'Health Record Officer'),
     )
     
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='custom_profile')
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
     # phone_number here can be removed if it's always the same as CustomUser.phone_number
     # If it can be different (e.g., a contact phone vs login phone), keep it.
     # Given unique=True, it suggests it might be distinct or needs careful syncing.
@@ -226,7 +220,7 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
         # The @property user.profile already implements get_or_create,
         # but saving here ensures any profile-specific save logic runs.
         try:
-            instance.custom_profile.save()
+            instance.profile.save()
         except CustomUserProfile.DoesNotExist:
             # This case should be rare if the @property user.profile is robust (uses get_or_create)
             # or if the created block always succeeds.

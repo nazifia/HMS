@@ -86,10 +86,10 @@ class SurgeryForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Filter surgeons and anesthetists
         self.fields['primary_surgeon'].queryset = CustomUser.objects.filter(
-            custom_profile__specialization__icontains='surgeon'
+            profile__specialization__icontains='surgeon'
         )
         self.fields['anesthetist'].queryset = CustomUser.objects.filter(
-            custom_profile__specialization__icontains='anesthetist'
+            profile__specialization__icontains='anesthetist'
         )
         
         # If editing an existing surgery, populate the patient search field
@@ -109,8 +109,9 @@ class SurgicalTeamForm(forms.ModelForm):
 SurgicalTeamFormSet = inlineformset_factory(
     Surgery, SurgicalTeam,
     form=SurgicalTeamForm,
-    extra=3,
-    can_delete=True
+    extra=1,
+    can_delete=True,
+    fk_name='surgery'
 )
 
 
@@ -137,8 +138,9 @@ class EquipmentUsageForm(forms.ModelForm):
 EquipmentUsageFormSet = inlineformset_factory(
     Surgery, EquipmentUsage,
     form=EquipmentUsageForm,
-    extra=3,
-    can_delete=True
+    extra=1,
+    can_delete=True,
+    fk_name='surgery'
 )
 
 
@@ -190,7 +192,7 @@ class SurgeryFilterForm(forms.Form):
         label="Status"
     )
     surgeon = forms.ModelChoiceField(
-        queryset=CustomUser.objects.filter(custom_profile__specialization__icontains='surgeon'),
+        queryset=CustomUser.objects.filter(profile__specialization__icontains='surgeon'),
         required=False,
         label="Surgeon"
     )

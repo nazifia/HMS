@@ -125,15 +125,15 @@ def profile(request):
 
         try:
             # Fetch the user whose profile is being viewed
-            target_user_for_view = User.objects.select_related('custom_profile').get(pk=user_id_param)
+            target_user_for_view = User.objects.select_related('profile').get(pk=user_id_param)
         except User.DoesNotExist:
             messages.error(request, "The requested user profile was not found.")
             return redirect('dashboard:dashboard') # Or a more appropriate redirect
     else:
         # Viewing own profile, ensure request.user is fully loaded with profile relation
         # Note: request.user is a SimpleLazyObject. Accessing its attributes resolves it.
-        # We fetch it again with select_related to ensure custom_profile is efficiently loaded.
-        target_user_for_view = User.objects.select_related('custom_profile').get(pk=request.user.pk)
+        # We fetch it again with select_related to ensure profile is efficiently loaded.
+        target_user_for_view = User.objects.select_related('profile').get(pk=request.user.pk)
 
     # At this point, target_user_for_view is a CustomUser instance.
     # Access its profile using the @property 'profile'
@@ -386,7 +386,7 @@ def api_users(request):
     if role:
         users_query = users_query.filter(roles__name=role)
 
-    users = users_query.select_related('custom_profile').prefetch_related('roles')
+    users = users_query.select_related('profile').prefetch_related('roles')
 
     results = []
     for user in users:
@@ -398,7 +398,7 @@ def api_users(request):
             'last_name': user.last_name,
             'full_name': user.get_full_name(),
             'roles': user_roles,
-            'department': user.custom_profile.department if user.custom_profile else None
+            'department': user.profile.department if user.profile else None
         })
 
     return JsonResponse(results, safe=False)
@@ -564,7 +564,7 @@ def is_admin_or_staff(user):
 @login_required # Added @login_required as it's a dashboard
 @user_passes_test(is_admin_or_staff)
 def user_dashboard(request):
-    users_query = User.objects.all().prefetch_related('roles', 'custom_profile') 
+    users_query = User.objects.all().prefetch_related('roles', 'profile') 
     
     search_query = request.GET.get('search', '')
     role_filter = request.GET.get('role', '')
@@ -999,12 +999,12 @@ def role_demo(request):
     # Get all roles with user counts
     roles = Role.objects.annotate(
         user_count=Count('customuser_roles')
-    ).prefetch_related('permissions', 'customuser_roles__custom_profile')
+    ).prefetch_related('permissions', 'customuser_roles__profile')
 
     # Get users by role
     users_by_role = {}
     for role in roles:
-        users_by_role[role.name] = role.customuser_roles.select_related('custom_profile').all()
+        users_by_role[role.name] = role.customuser_roles.select_related('profile').all()
 
     # Get role statistics
     total_roles = roles.count()

@@ -16,7 +16,7 @@ from core.models import AuditLog, InternalNotification
 def user_management(request):
     """User Management Page (formerly staff_list)"""
     search_form = StaffSearchForm(request.GET)
-    staff_members = User.objects.filter(is_active=True).select_related('custom_profile').order_by('first_name', 'last_name')
+    staff_members = User.objects.filter(is_active=True).select_related('profile').order_by('first_name', 'last_name')
 
     if search_form.is_valid():
         search_query = search_form.cleaned_data.get('search')
@@ -32,10 +32,10 @@ def user_management(request):
             )
 
         if department:
-            staff_members = staff_members.filter(custom_profile__department=department)
+            staff_members = staff_members.filter(profile__department=department)
 
         if role:
-            staff_members = staff_members.filter(custom_profile__role=role)
+            staff_members = staff_members.filter(profile__role=role)
 
         if is_active:
             is_active_bool = is_active == 'true'
@@ -90,7 +90,7 @@ def department_list(request):
     page_obj = paginator.get_page(page_number)
 
     for department in page_obj:
-        department.staff_count = User.objects.filter(custom_profile__department=department, is_active=True).count()
+        department.staff_count = User.objects.filter(profile__department=department, is_active=True).count()
 
     context = {
         'page_obj': page_obj,
@@ -162,7 +162,7 @@ def delete_department(request, department_id):
     """View for deleting a department"""
     department = get_object_or_404(Department, id=department_id)
 
-    staff_count = User.objects.filter(custom_profile__department=department).count()
+    staff_count = User.objects.filter(profile__department=department).count()
 
     if request.method == 'POST':
         if staff_count > 0:
@@ -371,7 +371,7 @@ def attendance_list(request):
             attendance_records = attendance_records.filter(date__lte=date_to)
 
         if department and (request.user.is_superuser or request.user.profile.role == 'admin'):
-            attendance_records = attendance_records.filter(staff__custom_profile__department=department)
+            attendance_records = attendance_records.filter(staff__profile__department=department)
 
     paginator = Paginator(attendance_records, 20)
     page_number = request.GET.get('page')
@@ -497,7 +497,7 @@ def payroll_list(request):
             payroll_records = payroll_records.filter(status=status)
 
         if department:
-            payroll_records = payroll_records.filter(staff__custom_profile__department=department)
+            payroll_records = payroll_records.filter(staff__profile__department=department)
 
     paginator = Paginator(payroll_records, 20)
     page_number = request.GET.get('page')

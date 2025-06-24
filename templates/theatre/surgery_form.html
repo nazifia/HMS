@@ -52,7 +52,7 @@ Create Surgery
                         {{ form.expected_duration|as_crispy_field }}
                     </div>
                 </div>
-                {{ form.notes|as_crispy_field }}
+                {{ form.pre_surgery_notes|as_crispy_field }}
 
                 <hr>
 
@@ -70,7 +70,7 @@ Create Surgery
                                     {% endif %}
                                 </div>
                             </div>
-                            {{ form.pre_surgery_notes|as_crispy_field }}
+                            {{ form.usage_notes|as_crispy_field }}
                         </div>
                     {% endfor %}
                 </div>
@@ -101,7 +101,7 @@ Create Surgery
                                     {% endif %}
                                 </div>
                             </div>
-                            {{ form.usage_notes|as_crispy_field }}
+                            {{ form.notes|as_crispy_field }}
                         </div>
                     {% endfor %}
                 </div>

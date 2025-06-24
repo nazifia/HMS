@@ -15,7 +15,7 @@ class AppointmentForm(forms.ModelForm):
     )
     
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -212,7 +212,7 @@ class AppointmentSearchForm(forms.Form):
     search = forms.CharField(required=False, label='Search',
                            widget=forms.TextInput(attrs={'placeholder': 'Patient name or ID'}))
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         required=False,
         empty_label="All Doctors"
     )

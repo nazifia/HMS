@@ -21,7 +21,7 @@ class ConsultationForm(forms.ModelForm):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -76,7 +76,7 @@ class ReferralForm(forms.ModelForm):
     """Form for creating patient referrals"""
 
     referred_to = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -137,7 +137,7 @@ class WaitingListForm(forms.ModelForm):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, custom_profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
