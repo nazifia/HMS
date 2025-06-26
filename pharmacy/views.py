@@ -27,6 +27,32 @@ from core.models import send_notification_email, InternalNotification
 from django.db.models import Q, Sum, Count
 from django.http import HttpResponse
 
+@login_required
+def pharmacy_dashboard(request):
+    total_medications = Medication.objects.filter(is_active=True).count()
+    low_stock_count = Medication.objects.filter(stock_quantity__lte=F('reorder_level'), stock_quantity__gt=0, is_active=True).count()
+    out_of_stock_count = Medication.objects.filter(stock_quantity=0, is_active=True).count()
+    expired_count = Medication.objects.filter(expiry_date__lt=timezone.now().date(), is_active=True).count()
+
+    pending_prescriptions = Prescription.objects.filter(status='pending').count()
+    dispensed_today = DispensingLog.objects.filter(dispensed_date__date=timezone.now().date()).count()
+
+    recent_prescriptions = Prescription.objects.order_by('-created_at')[:5]
+    low_stock_medications = Medication.objects.filter(stock_quantity__lte=F('reorder_level'), stock_quantity__gt=0, is_active=True)[:5]
+
+    context = {
+        'total_medications': total_medications,
+        'low_stock_count': low_stock_count,
+        'out_of_stock_count': out_of_stock_count,
+        'expired_count': expired_count,
+        'pending_prescriptions': pending_prescriptions,
+        'dispensed_today': dispensed_today,
+        'recent_prescriptions': recent_prescriptions,
+        'low_stock_medications': low_stock_medications,
+    }
+    return render(request, 'pharmacy/dashboard.html', context)
+
+
 # Helper function to create an invoice for a prescription (with logging)
 
 

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{{ title }}</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter Staff</h6>
+        </div>
+        <div class="card-body">
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-6">{{ form.department.label_tag }} {{ form.department }}</div>
+                    <div class="col-md-6">{{ form.designation.label_tag }} {{ form.designation }}</div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Filter</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Staff List</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Designation</th>
+                            <th>Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for staff in page_obj %}
+                        <tr>
+                            <td>{{ staff.user.id }}</td>
+                            <td>{{ staff.user.get_full_name }}</td>
+                            <td>{{ staff.department }}</td>
+                            <td>{{ staff.designation }}</td>
+                            <td>{{ staff.user.phone_number }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No staff found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% include 'pagination.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

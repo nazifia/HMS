@@ -5,6 +5,8 @@ from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 from .models import Designation, Shift, StaffSchedule, Leave, Attendance, Payroll
 from .forms import (DesignationForm, ShiftForm, StaffScheduleForm, LeaveForm, LeaveApprovalForm,
                     AttendanceForm, PayrollForm, StaffSearchForm, LeaveSearchForm,
@@ -188,19 +190,84 @@ def delete_department(request, department_id):
 
 @login_required
 def schedule_list(request):
-    return render(request, 'hr/schedule_list.html')
+    """View for listing all staff schedules"""
+    schedules = StaffSchedule.objects.all().select_related('staff', 'shift').order_by('staff__first_name', 'weekday')
+
+    search_query = request.GET.get('search', '')
+    if search_query:
+        schedules = schedules.filter(
+            Q(staff__first_name__icontains=search_query) |
+            Q(staff__last_name__icontains=search_query) |
+            Q(shift__name__icontains=search_query)
+        )
+
+    paginator = Paginator(schedules, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'total_schedules': schedules.count(),
+        'title': 'Staff Schedules'
+    }
+
+    return render(request, 'hr/schedule_list.html', context)
 
 @login_required
 def create_schedule(request):
-    return render(request, 'hr/create_schedule.html')
+    """View for creating a new staff schedule"""
+    if request.method == 'POST':
+        form = StaffScheduleForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Schedule created successfully.')
+            return redirect('hr:schedules')
+    else:
+        form = StaffScheduleForm()
+
+    context = {
+        'form': form,
+        'title': 'Create New Schedule'
+    }
+
+    return render(request, 'hr/schedule_form.html', context)
 
 @login_required
 def edit_schedule(request, schedule_id):
-    return render(request, 'hr/edit_schedule.html')
+    """View for editing an existing staff schedule"""
+    schedule = get_object_or_404(StaffSchedule, id=schedule_id)
+    if request.method == 'POST':
+        form = StaffScheduleForm(request.POST, instance=schedule)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Schedule updated successfully.')
+            return redirect('hr:schedules')
+    else:
+        form = StaffScheduleForm(instance=schedule)
+
+    context = {
+        'form': form,
+        'title': 'Edit Schedule'
+    }
+
+    return render(request, 'hr/schedule_form.html', context)
 
 @login_required
 def delete_schedule(request, schedule_id):
-    return render(request, 'hr/delete_schedule.html')
+    """View for deleting an existing staff schedule"""
+    schedule = get_object_or_404(StaffSchedule, id=schedule_id)
+    if request.method == 'POST':
+        schedule.delete()
+        messages.success(request, 'Schedule deleted successfully.')
+        return redirect('hr:schedules')
+
+    context = {
+        'schedule': schedule,
+        'title': 'Delete Schedule'
+    }
+
+    return render(request, 'hr/delete_schedule.html', context)
 
 @login_required
 def leave_list(request):
@@ -340,6 +407,50 @@ def reject_leave(request, leave_id):
     }
 
     return render(request, 'hr/reject_leave.html', context)
+
+
+@login_required
+def hr_dashboard(request):
+    today = timezone.now().date()
+
+    # Staff Metrics
+    total_staff = User.objects.filter(is_active=True).count()
+    new_staff_this_month = User.objects.filter(date_joined__month=today.month, date_joined__year=today.year).count()
+    staff_on_leave_today = Leave.objects.filter(start_date__lte=today, end_date__gte=today, status='approved').count()
+
+    # Attendance Metrics
+    present_today = Attendance.objects.filter(date=today, status='present').count()
+    absent_today = total_staff - present_today - staff_on_leave_today
+    late_today = Attendance.objects.filter(date=today, status='late').count()
+
+    # Leave Metrics
+    pending_leaves = Leave.objects.filter(status='pending').count()
+    approved_leaves_this_month = Leave.objects.filter(status='approved', start_date__month=today.month, start_date__year=today.year).count()
+
+    # Upcoming events
+    upcoming_leaves = Leave.objects.filter(start_date__gte=today, start_date__lte=today + timedelta(days=7), status='approved').order_by('start_date')
+
+    # Recent Activities
+    recent_leaves = Leave.objects.order_by('-created_at')[:5]
+    recent_attendance = Attendance.objects.order_by('-date', '-time_in')[:5]
+
+    context = {
+        'title': 'HR Dashboard',
+        'total_staff': total_staff,
+        'new_staff_this_month': new_staff_this_month,
+        'staff_on_leave_today': staff_on_leave_today,
+        'present_today': present_today,
+        'absent_today': absent_today,
+        'late_today': late_today,
+        'pending_leaves': pending_leaves,
+        'approved_leaves_this_month': approved_leaves_this_month,
+        'upcoming_leaves': upcoming_leaves,
+        'recent_leaves': recent_leaves,
+        'recent_attendance': recent_attendance,
+    }
+
+    return render(request, 'hr/dashboard.html', context)
+
 
 @login_required
 def attendance_list(request):

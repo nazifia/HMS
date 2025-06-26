@@ -170,6 +170,69 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'theatre/surgery_form.html'
     success_url = reverse_lazy('theatre:surgery_list')
 
+
+class SurgeryDeleteView(LoginRequiredMixin, DeleteView):
+    model = Surgery
+    template_name = 'theatre/surgery_confirm_delete.html'
+    success_url = reverse_lazy('theatre:surgery_list')
+
+
+# Surgical Equipment Views
+class SurgicalEquipmentListView(LoginRequiredMixin, ListView):
+    model = SurgicalEquipment
+    template_name = 'theatre/equipment_list.html'
+    context_object_name = 'object_list'
+
+class SurgicalEquipmentDetailView(LoginRequiredMixin, DetailView):
+    model = SurgicalEquipment
+    template_name = 'theatre/equipment_detail.html'
+
+class SurgicalEquipmentCreateView(LoginRequiredMixin, CreateView):
+    model = SurgicalEquipment
+    form_class = SurgicalEquipmentForm
+    template_name = 'theatre/equipment_form.html'
+    success_url = reverse_lazy('theatre:equipment_list')
+
+class SurgicalEquipmentUpdateView(LoginRequiredMixin, UpdateView):
+    model = SurgicalEquipment
+    form_class = SurgicalEquipmentForm
+    template_name = 'theatre/equipment_form.html'
+    success_url = reverse_lazy('theatre:equipment_list')
+
+class SurgicalEquipmentDeleteView(LoginRequiredMixin, DeleteView):
+    model = SurgicalEquipment
+    template_name = 'theatre/equipment_confirm_delete.html'
+    success_url = reverse_lazy('theatre:equipment_list')
+
+
+class TheatreDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'theatre/dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.now().date()
+        next_7_days = today + timezone.timedelta(days=7)
+
+        # Theatre stats
+        context['available_theatres'] = OperationTheatre.objects.filter(is_available=True).count()
+        context['total_theatres'] = OperationTheatre.objects.count()
+
+        # Surgery stats
+        context['total_surgeries'] = Surgery.objects.count()
+        context['completed_surgeries'] = Surgery.objects.filter(status='completed').count()
+
+        # Equipment stats
+        context['available_equipment'] = SurgicalEquipment.objects.filter(is_available=True).count()
+        context['total_equipment'] = SurgicalEquipment.objects.count()
+
+        # Today's surgeries
+        context['todays_surgeries'] = Surgery.objects.filter(scheduled_date__date=today).select_related('patient', 'surgery_type', 'theatre').order_by('scheduled_date')
+
+        # Upcoming surgeries
+        context['upcoming_surgeries'] = Surgery.objects.filter(scheduled_date__date__range=[today, next_7_days]).select_related('patient', 'surgery_type', 'theatre').order_by('scheduled_date')
+
+        return context
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         if 'team_formset' not in kwargs:

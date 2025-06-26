@@ -429,6 +429,254 @@ def register(request):
     return render(request, 'accounts/register.html', {'form': form, 'title': 'Register'})
 
 
+@login_required
+@user_passes_test(is_admin)
+def create_role(request):
+    if request.method == 'POST':
+        form = RoleForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Role created successfully.')
+            return redirect('accounts:role_management')
+    else:
+        form = RoleForm()
+    context = {
+        'form': form,
+        'page_title': 'Create Role'
+    }
+    return render(request, 'accounts/role_form.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def edit_role(request, role_id):
+    role = get_object_or_404(Role, id=role_id)
+    if request.method == 'POST':
+        form = RoleForm(request.POST, instance=role)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Role updated successfully.')
+            return redirect('accounts:role_management')
+    else:
+        form = RoleForm(instance=role)
+    context = {
+        'form': form,
+        'page_title': f'Edit Role: {role.name}'
+    }
+    return render(request, 'accounts/role_form.html', context)
+
+@login_required
+def role_demo(request):
+    return render(request, 'accounts/role_demo.html', {'page_title': 'Role Demo'})
+
+@login_required
+@user_passes_test(is_admin)
+def audit_logs(request):
+    logs = AuditLog.objects.all().order_by('-timestamp')
+    form = AuditLogFilterForm(request.GET)
+    if form.is_valid():
+        user = form.cleaned_data.get('user')
+        action = form.cleaned_data.get('action')
+        start_date = form.cleaned_data.get('start_date')
+        end_date = form.cleaned_data.get('end_date')
+
+        if user:
+            logs = logs.filter(user=user)
+        if action:
+            logs = logs.filter(action=action)
+        if start_date:
+            logs = logs.filter(timestamp__gte=start_date)
+        if end_date:
+            logs = logs.filter(timestamp__lte=end_date)
+
+    paginator = Paginator(logs, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'logs': page_obj,
+        'form': form,
+        'page_title': 'Audit Logs'
+    }
+    return render(request, 'accounts/audit_logs.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def permission_management(request):
+    permissions = Permission.objects.all()
+    form = PermissionFilterForm(request.GET)
+    if form.is_valid():
+        content_type = form.cleaned_data.get('content_type')
+        if content_type:
+            permissions = permissions.filter(content_type=content_type)
+
+    context = {
+        'permissions': permissions,
+        'form': form,
+        'page_title': 'Permission Management'
+    }
+    return render(request, 'accounts/permission_management.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def bulk_user_actions(request):
+    if request.method == 'POST':
+        form = BulkUserActionForm(request.POST)
+        if form.is_valid():
+            action = form.cleaned_data['action']
+            users = form.cleaned_data['users']
+            if action == 'activate':
+                users.update(is_active=True)
+            elif action == 'deactivate':
+                users.update(is_active=False)
+            elif action == 'assign_role':
+                role = form.cleaned_data['role']
+                for user in users:
+                    user.roles.set([role])
+            messages.success(request, f'Bulk action "{action}" applied to {users.count()} users.')
+            return redirect('accounts:user_dashboard')
+    return redirect('accounts:user_dashboard')
+
+@login_required
+@user_passes_test(is_admin)
+def user_privileges(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    if request.method == 'POST':
+        form = UserRoleAssignmentForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Roles for {user.username} updated successfully.')
+            return redirect('accounts:user_dashboard')
+    else:
+        form = UserRoleAssignmentForm(instance=user)
+    context = {
+        'form': form,
+        'user': user,
+        'page_title': f'Manage Roles for {user.username}'
+    }
+    return render(request, 'accounts/user_privileges.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def delete_role(request, role_id):
+    role = get_object_or_404(Role, id=role_id)
+    if request.method == 'POST':
+        role.delete()
+        messages.success(request, 'Role deleted successfully.')
+        return redirect('accounts:role_management')
+    context = {
+        'role': role,
+        'page_title': f'Delete Role: {role.name}'
+    }
+    return render(request, 'accounts/role_confirm_delete.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def role_management(request):
+    roles = Role.objects.all().prefetch_related('permissions')
+    form = RoleForm()
+    if request.method == 'POST':
+        form = RoleForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Role created successfully.')
+            return redirect('accounts:role_management')
+
+    context = {
+        'roles': roles,
+        'form': form,
+        'page_title': 'Role Management'
+    }
+    return render(request, 'accounts/role_management.html', context)
+
+
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+def user_dashboard(request):
+    """Admin user management dashboard: filter, search, bulk actions, CSV export."""
+    users = User.objects.all().select_related('profile')
+    # Filters
+    search = request.GET.get('search', '')
+    role = request.GET.get('role', '')
+    is_active = request.GET.get('is_active', '')
+    if search:
+        users = users.filter(
+            Q(username__icontains=search) |
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(email__icontains=search)
+        )
+    if role:
+        users = users.filter(profile__role=role)
+    if is_active == 'true':
+        users = users.filter(is_active=True)
+    elif is_active == 'false':
+        users = users.filter(is_active=False)
+
+    # Bulk actions
+    if request.method == 'POST' and 'bulk_action' in request.POST:
+        action = request.POST.get('bulk_action')
+        selected_ids = request.POST.getlist('selected_users')
+        if selected_ids:
+            qs = User.objects.filter(id__in=selected_ids)
+            if action == 'activate':
+                qs.update(is_active=True)
+            elif action == 'deactivate':
+                qs.update(is_active=False)
+            # Role assignment (if provided)
+            new_role = request.POST.get('assign_role')
+            if action == 'assign_role' and new_role:
+                for user in qs:
+                    user.get_profile.role = new_role
+                    user.get_profile.save()
+            from django.contrib import messages
+            messages.success(request, f"Bulk action '{action}' applied to {qs.count()} user(s).")
+            # Audit log for user actions (view, bulk action)
+            AuditLog.objects.create(
+                user=request.user,
+                action='user_bulk_action',
+                details=f"Bulk action '{action}' applied to users: {selected_ids}",
+                timestamp=timezone.now()
+            )
+            # Optional: send notification to superusers
+            InternalNotification.objects.create(
+                user=None,  # System-wide
+                message=f"Bulk user action '{action}' performed by {request.user.username}."
+            )
+            return redirect('accounts:user_dashboard')
+
+    # CSV export
+    if 'export' in request.GET:
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="user_dashboard.csv"'
+        import csv
+        writer = csv.writer(response)
+        writer.writerow(['Username', 'Full Name', 'Email', 'Role', 'Status'])
+        for user in users:
+            writer.writerow([
+                user.username,
+                user.get_full_name(),
+                user.email,
+                getattr(user.get_profile, 'role', ''),
+                'Active' if user.is_active else 'Inactive',
+            ])
+        return response
+
+    # Pagination
+    paginator = Paginator(users.order_by('username'), 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'users': page_obj,
+        'search': search,
+        'role': role,
+        'is_active': is_active,
+        'roles': CustomUserProfile.ROLE_CHOICES,
+        'page_title': 'User Management Dashboard',
+    }
+    return render(request, 'accounts/user_dashboard.html', context)
+
+
 # @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 # def user_dashboard(request):
 #     """Admin user management dashboard: filter, search, bulk actions, CSV export."""

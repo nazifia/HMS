@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{{ title }}</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter Reports</h6>
+        </div>
+        <div class="card-body">
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-3">{{ form.start_date.label_tag }} {{ form.start_date }}</div>
+                    <div class="col-md-3">{{ form.end_date.label_tag }} {{ form.end_date }}</div>
+                    <div class="col-md-3">{{ form.patient.label_tag }} {{ form.patient }}</div>
+                    <div class="col-md-3">{{ form.test_type.label_tag }} {{ form.test_type }}</div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Filter</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Radiology Request List</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient</th>
+                            <th>Test Type</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in page_obj %}
+                        <tr>
+                            <td>{{ request.id }}</td>
+                            <td>{{ request.patient.get_full_name }}</td>
+                            <td>{{ request.test_type.name }}</td>
+                            <td>{{ request.created_at }}</td>
+                            <td>{{ request.get_status_display }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No radiology requests found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% include 'pagination.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

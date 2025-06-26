@@ -5,6 +5,7 @@ from .views import pharmacy_sales_report
 app_name = 'pharmacy'
 
 urlpatterns = [
+    path('dashboard/', views.pharmacy_dashboard, name='dashboard'),
     # Inventory Management
     path('inventory/', views.inventory_list, name='inventory'),
     path('inventory/add/', views.add_medication, name='add_medication'),
