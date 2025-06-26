@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{{ title }}</h1>
+
+    <div class="row">
+        <!-- Accounts App -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Accounts</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_users }} Users</div>
+                            <p>Superusers: {{ superuser_count }}</p>
+                            <p>Staff: {{ staff_count }}</p>
+                            <h6>User Roles:</h6>
+                            <ul>
+                                {% for role in user_roles %}
+                                    <li>{{ role.name }}: {{ role.count }}</li>
+                                {% empty %}
+                                    <li>No roles defined.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patients App -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Patients</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_patients_records }} Records</div>
+                            <p>Active Patients: {{ active_patients }}</p>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-injured fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appointments App -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Appointments</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_appointments_records }} Total</div>
+                            <p>Scheduled: {{ scheduled_appointments }}</p>
+                            <p>Completed: {{ completed_appointments }}</p>
+                            <p>Cancelled: {{ cancelled_appointments }}</p>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Laboratory App -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Laboratory Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Test Categories: {{ lab_test_categories }}</p>
+                    <p>Tests Defined: {{ lab_tests_defined }} (Active: {{ active_lab_tests }})</p>
+                    <p>Total Requests: {{ total_test_requests }} (Pending: {{ pending_test_requests }}, Completed: {{ completed_test_requests }})</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pharmacy App -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Pharmacy Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Medication Categories: {{ medication_categories }}</p>
+                    <p>Medications in Inventory: {{ medications_in_inventory }} (Active: {{ active_medications }})</p>
+                    <p>Low Stock: {{ low_stock_medications_count }}</p>
+                    <p>Out of Stock: {{ out_of_stock_medications_count }}</p>
+                    <p>Total Prescriptions: {{ total_prescriptions_issued }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Billing App -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Billing Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Service Categories: {{ billable_service_categories }}</p>
+                    <p>Services Defined: {{ billable_services_defined }}</p>
+                    <p>Total Invoices: {{ total_invoices }} (Paid: {{ paid_invoices }}, Pending: {{ pending_invoices }}, Overdue: {{ overdue_invoices }})</p>
+                    <p>Total Revenue: ${{ total_revenue_collected|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Consultations App -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Consultations Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Total Consultations: {{ total_consultations }}</p>
+                    <p>Consulting Rooms: {{ consulting_rooms }} (Active: {{ active_consulting_rooms }})</p>
+                    <p>Total Referrals: {{ total_referrals }}</p>
+                    <p>Patients in Waiting List: {{ patients_in_waiting_list }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- HR App -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Human Resources Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Departments: {{ hr_departments }}</p>
+                    <p>Total Employees: {{ total_employees }} (Active: {{ active_employees }})</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inpatient App -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Inpatient Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Wards: {{ total_wards }}</p>
+                    <p>Beds: {{ total_beds }} (Occupied: {{ occupied_beds }}, Available: {{ available_beds }})</p>
+                    <p>Total Admissions: {{ total_admissions }} (Current: {{ current_admissions }})</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

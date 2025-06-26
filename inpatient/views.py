@@ -11,6 +11,68 @@ from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundFo
 from patients.models import Patient
 
 @login_required
+def bed_dashboard(request):
+    """Visual dashboard for bed management"""
+    beds_list = Bed.objects.select_related('ward').prefetch_related('admissions__patient').order_by('ward__name', 'bed_number')
+    total_beds = beds_list.count()
+    occupied_beds = beds_list.filter(is_occupied=True).count()
+    available_beds = beds_list.filter(is_occupied=False, is_active=True).count()
+    inactive_beds = beds_list.filter(is_active=False).count()
+    occupancy_rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
+
+    paginator = Paginator(beds_list, 20)  # Show 20 beds per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    if request.method == 'POST':
+        selected_ids = request.POST.getlist('selected_beds')
+        action = request.POST.get('bulk_action')
+        if selected_ids and action:
+            selected_beds = Bed.objects.filter(id__in=selected_ids)
+            if action == 'mark_available':
+                selected_beds.update(is_occupied=False, is_active=True)
+                messages.success(request, f'{selected_beds.count()} beds marked as available.')
+            elif action == 'mark_inactive':
+                selected_beds.update(is_active=False)
+                messages.success(request, f'{selected_beds.count()} beds marked as inactive.')
+            return redirect('inpatient:bed_dashboard')
+
+    context = {
+        'page_obj': page_obj,
+        'total_beds': total_beds,
+        'available_beds': available_beds,
+        'occupied_beds': occupied_beds,
+        'inactive_beds': inactive_beds,
+        'occupancy_rate': occupancy_rate,
+        'title': 'Bed Dashboard'
+    }
+
+    return render(request, 'inpatient/bed_dashboard.html', context)
+
+@login_required
+def patient_admissions(request, patient_id):
+    """List of admissions for a specific patient."""
+    try:
+        patient = Patient.objects.get(id=patient_id)
+    except Patient.DoesNotExist:
+        messages.error(request, 'Patient not found.')
+        return redirect('patients:patient_list')
+
+    admissions_list = Admission.objects.filter(patient=patient).select_related('ward', 'bed', 'attending_doctor').order_by('-admission_date')
+    
+    paginator = Paginator(admissions_list, 10)  # Show 10 admissions per page
+    page_number = request.GET.get('page')
+    admissions = paginator.get_page(page_number)
+
+    context = {
+        'patient': patient,
+        'admissions': admissions,
+        'title': f'Admissions for {patient.get_full_name()}'
+    }
+
+    return render(request, 'inpatient/patient_admissions.html', context)
+
+@login_required
 def ward_list(request):
     """View for listing all wards"""
     wards = Ward.objects.all().order_by('name')

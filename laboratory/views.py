@@ -28,6 +28,75 @@ from django.contrib.auth.models import User
 import os
 from core.models import send_notification_email, InternalNotification
 
+@login_required
+def result_list(request):
+    """View for listing all test results"""
+    results_list = TestResult.objects.select_related(
+        'test_request__patient', 'test', 'performed_by', 'verified_by'
+    ).all().order_by('-result_date')
+
+    query = request.GET.get('q')
+    if query:
+        results_list = results_list.filter(
+            Q(test_request__patient__first_name__icontains=query) |
+            Q(test_request__patient__last_name__icontains=query) |
+            Q(test__name__icontains=query) |
+            Q(test_request__patient__patient_id__icontains=query)
+        )
+
+    paginator = Paginator(results_list, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'title': 'Test Results',
+        'query': query,
+    }
+
+    return render(request, 'laboratory/result_list.html', context)
+
+@login_required
+def result_detail(request, result_id):
+    """View for displaying a single test result"""
+    result = get_object_or_404(
+        TestResult.objects.select_related(
+            'test_request__patient', 'test__category', 'performed_by', 'verified_by', 'sample_collected_by'
+        ),
+        id=result_id
+    )
+    parameters = result.parameters.select_related('parameter').all()
+
+    context = {
+        'result': result,
+        'parameters': parameters,
+        'title': f'Result for {result.test.name}'
+    }
+    return render(request, 'laboratory/result_detail.html', context)
+
+@login_required
+def edit_test_result(request, result_id):
+    """View for editing a test result"""
+    result = get_object_or_404(TestResult.objects.select_related('test_request'), id=result_id)
+    test_request = result.test_request
+
+    if request.method == 'POST':
+        form = TestResultForm(request.POST, request.FILES, instance=result)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Test result updated successfully.')
+            return redirect('laboratory:result_detail', result_id=result.id)
+    else:
+        form = TestResultForm(instance=result)
+
+    context = {
+        'form': form,
+        'result': result,
+        'test_request': test_request,
+        'title': 'Edit Test Result'
+    }
+    return render(request, 'laboratory/test_result_form.html', context)
+
 # Test Management Views
 @login_required
 def test_list(request):

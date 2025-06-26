@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Radiology Sales Report{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Radiology Sales Report</h2>
+
+    <form method="get" class="mb-4">
+        {{ filter.form.as_p }}
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+
+    <div class="card">
+        <div class="card-header">
+            Sales Data
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Patient</th>
+                        <th>Test</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in filter.qs %}
+                    <tr>
+                        <td>{{ order.id }}</td>
+                        <td>{{ order.patient.get_full_name }}</td>
+                        <td>{{ order.test.name }}</td>
+                        <td>{{ order.order_date|date:"Y-m-d" }}</td>
+                        <td>{{ order.test.cost }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">No sales data found for the selected period.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <strong>Total Sales: {{ total_sales }}</strong>
+        </div>
+    </div>
+</div>
+{% endblock %}

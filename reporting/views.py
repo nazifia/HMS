@@ -20,7 +20,17 @@ except ImportError:
 
 from .models import Report, ReportExecution, Dashboard, DashboardWidget
 from .forms import (ReportForm, ReportExecutionForm, DashboardForm, DashboardWidgetForm,
-                    ReportSearchForm, DashboardSearchForm)
+                    ReportSearchForm, DashboardSearchForm, PatientReportForm, AppointmentReportForm,
+                    BillingReportForm, PharmacySalesReportForm, LaboratoryReportForm, RadiologyReportForm,
+                    InpatientReportForm, HRReportForm, FinancialReportForm)
+from hr.models import StaffProfile
+from inpatient.models import Admission as Inpatient
+from radiology.models import RadiologyOrder
+from laboratory.models import TestRequest
+from pharmacy.models import Prescription
+from billing.models import Invoice
+from appointments.models import Appointment
+from patients.models import Patient
 
 from core.models import AuditLog, InternalNotification
 
@@ -230,38 +240,253 @@ def dashboard(request):
 
 @login_required
 def patient_reports(request):
-    # Placeholder view
-    return render(request, 'reporting/patient_reports.html')
+    form = PatientReportForm(request.GET)
+    patients = Patient.objects.all()
+
+    if form.is_valid():
+        if form.cleaned_data.get('start_date'):
+            patients = patients.filter(date_of_birth__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            patients = patients.filter(date_of_birth__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('gender'):
+            patients = patients.filter(gender=form.cleaned_data['gender'])
+
+    paginator = Paginator(patients, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Patient Reports'
+    }
+    return render(request, 'reporting/patient_reports.html', context)
 
 @login_required
 def appointment_reports(request):
-    # Placeholder view
-    return render(request, 'reporting/appointment_reports.html')
+    form = AppointmentReportForm(request.GET)
+    appointments = Appointment.objects.all()
+
+    if form.is_valid():
+        if form.cleaned_data.get('start_date'):
+            appointments = appointments.filter(appointment_date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            appointments = appointments.filter(appointment_date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('doctor'):
+            appointments = appointments.filter(doctor=form.cleaned_data['doctor'])
+        if form.cleaned_data.get('status'):
+            appointments = appointments.filter(status=form.cleaned_data['status'])
+
+    paginator = Paginator(appointments, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Appointment Reports'
+    }
+    return render(request, 'reporting/appointment_reports.html', context)
 
 @login_required
 def billing_reports(request):
-    # Placeholder view
-    return render(request, 'reporting/billing_reports.html')
+    form = BillingReportForm(request.GET)
+    invoices = Invoice.objects.all()
+
+    if form.is_valid():
+        if form.cleaned_data.get('start_date'):
+            invoices = invoices.filter(created_at__date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            invoices = invoices.filter(created_at__date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('patient'):
+            invoices = invoices.filter(patient=form.cleaned_data['patient'])
+        if form.cleaned_data.get('payment_status'):
+            invoices = invoices.filter(status=form.cleaned_data['payment_status'])
+
+    paginator = Paginator(invoices, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Billing Reports'
+    }
+    return render(request, 'reporting/billing_reports.html', context)
 
 @login_required
 def pharmacy_reports(request):
-    # Placeholder view
-    return render(request, 'reporting/pharmacy_reports.html')
+    """Alias for pharmacy_sales_report for URL compatibility"""
+    return pharmacy_sales_report(request)
+
+@login_required
+def pharmacy_sales_report(request):
+    form = PharmacySalesReportForm(request.GET)
+    prescriptions = Prescription.objects.filter(dispensed=True)
+
+    if form.is_valid():
+        if form.cleaned_data.get('start_date'):
+            prescriptions = prescriptions.filter(created_at__date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            prescriptions = prescriptions.filter(created_at__date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('patient'):
+            prescriptions = prescriptions.filter(patient=form.cleaned_data['patient'])
+
+    paginator = Paginator(prescriptions, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Pharmacy Sales Reports'
+    }
+    return render(request, 'reporting/pharmacy_sales_report.html', context)
 
 @login_required
 def laboratory_reports(request):
-    # Placeholder view
-    return render(request, 'reporting/laboratory_reports.html')
+    form = LaboratoryReportForm(request.GET)
+    test_requests = TestRequest.objects.all()
+
+    if form.is_valid():
+        if form.cleaned_data.get('start_date'):
+            test_requests = test_requests.filter(created_at__date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            test_requests = test_requests.filter(created_at__date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('patient'):
+            test_requests = test_requests.filter(patient=form.cleaned_data['patient'])
+        if form.cleaned_data.get('test_type'):
+            test_requests = test_requests.filter(test_type=form.cleaned_data['test_type'])
+
+    paginator = Paginator(test_requests, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Laboratory Reports'
+    }
+    return render(request, 'reporting/laboratory_reports.html', context)
+
+@login_required
+def radiology_reports(request):
+    form = RadiologyReportForm(request.GET)
+    requests = RadiologyOrder.objects.all()
+
+    if form.is_valid():
+        if form.cleaned_data.get('start_date'):
+            requests = requests.filter(created_at__date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            requests = requests.filter(created_at__date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('patient'):
+            requests = requests.filter(patient=form.cleaned_data['patient'])
+        if form.cleaned_data.get('test_type'):
+            requests = requests.filter(test_type=form.cleaned_data['test_type'])
+
+    paginator = Paginator(requests, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Radiology Reports'
+    }
+    return render(request, 'reporting/radiology_reports.html', context)
 
 @login_required
 def inpatient_reports(request):
-    # Placeholder view
-    return render(request, 'reporting/inpatient_reports.html')
+    form = InpatientReportForm(request.GET)
+    inpatients = Inpatient.objects.all()
+
+    if form.is_valid():
+        if form.cleaned_data.get('start_date'):
+            inpatients = inpatients.filter(admission_date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            inpatients = inpatients.filter(admission_date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('patient'):
+            inpatients = inpatients.filter(patient=form.cleaned_data['patient'])
+
+    paginator = Paginator(inpatients, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Inpatient Reports'
+    }
+    return render(request, 'reporting/inpatient_reports.html', context)
 
 @login_required
 def staff_reports(request):
-    # Placeholder view
-    return render(request, 'reporting/staff_reports.html')
+    """Alias for hr_reports for URL compatibility"""
+    return hr_reports(request)
+
+@login_required
+def hr_reports(request):
+    form = HRReportForm(request.GET)
+    staff = StaffProfile.objects.all()
+
+    if form.is_valid():
+        if form.cleaned_data.get('department'):
+            staff = staff.filter(department=form.cleaned_data['department'])
+        if form.cleaned_data.get('designation'):
+            staff = staff.filter(designation=form.cleaned_data['designation'])
+
+    paginator = Paginator(staff, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'HR Reports'
+    }
+    return render(request, 'reporting/hr_reports.html', context)
+
+@login_required
+def financial_reports(request):
+    form = FinancialReportForm(request.GET)
+    # This is a simplified example. A real implementation would need
+    # to query actual financial data (e.g., from a dedicated financial model or by aggregating bills)
+    # and calculate income, expenses, and profit/loss.
+    
+    # For demonstration, we'll create some dummy data.
+    report_items = []
+
+    if form.is_valid():
+        report_type = form.cleaned_data.get('report_type')
+        start_date = form.cleaned_data.get('start_date')
+        end_date = form.cleaned_data.get('end_date')
+
+        # Dummy data generation based on report type
+        if report_type == 'income' or not report_type:
+            report_items.extend([
+                {'date': '2023-10-01', 'description': 'Patient Payment', 'type': 'Income', 'amount': 5000},
+                {'date': '2023-10-05', 'description': 'Insurance Payout', 'type': 'Income', 'amount': 15000},
+            ])
+        if report_type == 'expense' or not report_type:
+            report_items.extend([
+                {'date': '2023-10-02', 'description': 'Medical Supplies', 'type': 'Expense', 'amount': -7000},
+                {'date': '2023-10-10', 'description': 'Salaries', 'type': 'Expense', 'amount': -25000},
+            ])
+        if report_type == 'profit_loss' or not report_type:
+            # In a real scenario, this would be a calculation
+            pass
+
+    paginator = Paginator(report_items, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'title': 'Financial Reports'
+    }
+    return render(request, 'reporting/financial_reports.html', context)
+
 
 @login_required
 def export_csv(request, report_type):

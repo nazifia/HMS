@@ -198,6 +198,7 @@ def patient_radiology_results(request, patient_id):
 
     context = {
         'patient': patient,
+        'results': results,
         'orders_with_results': orders_with_results,
         'results': results,
         'title': f'Radiology Results for {patient.get_full_name()}',

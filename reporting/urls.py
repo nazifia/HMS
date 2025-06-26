@@ -29,6 +29,7 @@ urlpatterns = [
     path('laboratory/', views.laboratory_reports, name='laboratory_reports'),
     path('inpatient/', views.inpatient_reports, name='inpatient_reports'),
     path('staff/', views.staff_reports, name='staff_reports'),
+    path('financials/', views.financial_reports, name='financial_reports'),
 
     # Export URLs
     path('export/csv/<str:report_type>/', views.export_csv, name='export_csv'),

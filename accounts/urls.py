@@ -56,12 +56,12 @@ urlpatterns = [
 
     # Privilege Management URLs
     path('roles/', views.role_management, name='role_management'),
-    path('roles/create/', views.create_role, name='create_role'),
-    path('roles/<int:role_id>/edit/', views.edit_role, name='edit_role'),
-    path('roles/<int:role_id>/delete/', views.delete_role, name='delete_role'),
-    path('users/<int:user_id>/privileges/', views.user_privileges, name='user_privileges'),
-    path('users/bulk-actions/', views.bulk_user_actions, name='bulk_user_actions'),
-    path('permissions/', views.permission_management, name='permission_management'),
-    path('audit-logs/', views.audit_logs, name='audit_logs'),
-    path('role-demo/', views.role_demo, name='role_demo'),
+     path('roles/create/', views.create_role, name='create_role'),
+     path('roles/<int:role_id>/edit/', views.edit_role, name='edit_role'),
+     path('roles/<int:role_id>/delete/', views.delete_role, name='delete_role'),
+     path('users/<int:user_id>/privileges/', views.user_privileges, name='user_privileges'),
+     path('users/bulk-actions/', views.bulk_user_actions, name='bulk_user_actions'),
+     path('permissions/', views.permission_management, name='permission_management'),
+     path('audit-logs/', views.audit_logs, name='audit_logs'),
+     path('role-demo/', views.role_demo, name='role_demo'),
 ]

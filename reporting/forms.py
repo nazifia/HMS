@@ -1,6 +1,78 @@
 from django import forms
 from django.utils import timezone
-from .models import Report, ReportExecution, Dashboard, DashboardWidget
+from .models import Report, Dashboard, DashboardWidget, ReportExecution
+from doctors.models import Doctor
+from appointments.models import Appointment
+from patients.models import Patient
+from billing.models import Invoice
+from laboratory.models import Test
+from radiology.models import RadiologyTest
+from hr.models import StaffProfile, Department, Designation
+
+class PatientReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    gender = forms.ChoiceField(choices=[('', 'All'), ('male', 'Male'), ('female', 'Female')], required=False)
+
+class AppointmentReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    doctor = forms.ModelChoiceField(queryset=Doctor.objects.all(), required=False)
+    status = forms.ChoiceField(choices=[('', 'All')] + list(Appointment.STATUS_CHOICES), required=False)
+
+class BillingReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    payment_status = forms.ChoiceField(
+        choices=[('', 'All'), ('paid', 'Paid'), ('pending', 'Pending'), ('partially_paid', 'Partially Paid'), ('overdue', 'Overdue'), ('cancelled', 'Cancelled')],
+        required=False
+    )
+
+class PharmacySalesReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+
+class LaboratoryReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    test_type = forms.ModelChoiceField(queryset=Test.objects.all(), required=False)
+    status = forms.ChoiceField(
+        choices=[
+            ('', 'All'),
+            ('true', 'Active'),
+            ('false', 'Inactive'),
+        ],
+        required=False
+    )
+
+class RadiologyReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    test_type = forms.ModelChoiceField(queryset=RadiologyTest.objects.all(), required=False)
+
+class InpatientReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+
+class HRReportForm(forms.Form):
+    department = forms.ModelChoiceField(queryset=Department.objects.all(), required=False)
+    designation = forms.ModelChoiceField(queryset=Designation.objects.all(), required=False)
+
+class FinancialReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    report_type = forms.ChoiceField(choices=[
+        ('', 'All'),
+        ('income', 'Income'),
+        ('expense', 'Expense'),
+        ('profit_loss', 'Profit/Loss'),
+    ], required=False)
+
 
 class ReportForm(forms.ModelForm):
     class Meta:
