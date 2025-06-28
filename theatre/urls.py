@@ -25,7 +25,11 @@ urlpatterns = [
     path('surgeries/<int:pk>/', views.SurgeryDetailView.as_view(), name='surgery_detail'),
     path('surgeries/<int:pk>/edit/', views.SurgeryUpdateView.as_view(), name='surgery_update'),
     path('surgeries/<int:pk>/delete/', views.SurgeryDeleteView.as_view(), name='surgery_delete'),
-    
+
+    # Pre-Operative Checklist URLs
+    path('surgeries/<int:surgery_id>/pre-op-checklist/add/', views.PreOperativeChecklistCreateView.as_view(), name='pre_op_checklist_create'),
+    path('surgeries/<int:surgery_id>/logs/', views.SurgeryLogListView.as_view(), name='surgery_log_list'),
+
     # Post-Operative Note URLs
     path('surgeries/<int:surgery_id>/post-op-notes/add/', views_post_op.PostOperativeNoteCreateView.as_view(), name='post_op_note_create'),
     path('post-op-notes/<int:pk>/edit/', views_post_op.PostOperativeNoteUpdateView.as_view(), name='post_op_note_update'),
@@ -37,6 +41,10 @@ urlpatterns = [
     path('equipment/<int:pk>/', views.SurgicalEquipmentDetailView.as_view(), name='equipment_detail'),
     path('equipment/<int:pk>/edit/', views.SurgicalEquipmentUpdateView.as_view(), name='equipment_update'),
     path('equipment/<int:pk>/delete/', views.SurgicalEquipmentDeleteView.as_view(), name='equipment_delete'),
+    path('equipment/maintenance/', views.EquipmentMaintenanceView.as_view(), name='equipment_maintenance'),
+
+    # Reports
+    path('reports/surgery-report/', views.SurgeryReportView.as_view(), name='surgery_report'),
     
     # Dashboard
     path('', views.TheatreDashboardView.as_view(), name='dashboard'),

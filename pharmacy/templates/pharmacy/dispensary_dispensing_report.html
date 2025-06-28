@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Medication</th>
+                <th>Quantity</th>
+                <th>Dispensed By</th>
+                <th>Patient</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in dispensing_logs %}
+                <tr>
+                    <td>{{ log.dispensed_date }}</td>
+                    <td>{{ log.prescription_item.medication.name }}</td>
+                    <td>{{ log.dispensed_quantity }}</td>
+                    <td>{{ log.dispensed_by.get_full_name }}</td>
+                    <td>{{ log.prescription_item.prescription.patient.get_full_name }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5">No dispensing logs for this dispensary.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-secondary">Back to Dispensaries</a>
+</div>
+{% endblock %}

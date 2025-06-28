@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-header">Total Beds</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_beds }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Available Beds</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ available_beds }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-header">Occupied Beds</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ occupied_beds }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Overall Occupancy Rate
+        </div>
+        <div class="card-body">
+            <h3 class="text-center">{{ occupancy_rate }}%</h3>
+            <canvas id="overallOccupancyChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Occupancy by Ward
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Ward</th>
+                        <th>Total Beds</th>
+                        <th>Occupied</th>
+                        <th>Available</th>
+                        <th>Occupancy Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ward in ward_occupancy %}
+                        <tr>
+                            <td>{{ ward.ward_name }}</td>
+                            <td>{{ ward.total }}</td>
+                            <td>{{ ward.occupied }}</td>
+                            <td>{{ ward.available }}</td>
+                            <td>{{ ward.occupancy_rate|floatformat:2 }}%</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <canvas id="wardOccupancyChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Overall Occupancy Chart
+    var ctxOverall = document.getElementById('overallOccupancyChart').getContext('2d');
+    var overallOccupancyChart = new Chart(ctxOverall, {
+        type: 'pie',
+        data: {
+            labels: ['Occupied', 'Available'],
+            datasets: [{
+                data: [{{ occupied_beds }}, {{ available_beds }}],
+                backgroundColor: ['#dc3545', '#28a745'],
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Overall Bed Occupancy'
+                }
+            }
+        },
+    });
+
+    // Ward Occupancy Chart
+    var ctxWard = document.getElementById('wardOccupancyChart').getContext('2d');
+    var wardNames = [];
+    var wardOccupied = [];
+    var wardAvailable = [];
+
+    {% for ward in ward_occupancy %}
+        wardNames.push('{{ ward.ward_name }}');
+        wardOccupied.push({{ ward.occupied }});
+        wardAvailable.push({{ ward.available }});
+    {% endfor %}
+
+    var wardOccupancyChart = new Chart(ctxWard, {
+        type: 'bar',
+        data: {
+            labels: wardNames,
+            datasets: [
+                {
+                    label: 'Occupied',
+                    data: wardOccupied,
+                    backgroundColor: '#dc3545',
+                },
+                {
+                    label: 'Available',
+                    data: wardAvailable,
+                    backgroundColor: '#28a745',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Bed Occupancy by Ward'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

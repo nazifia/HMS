@@ -1,6 +1,6 @@
 from django import forms
 from django.utils import timezone
-from .models import Ward, Bed, Admission, DailyRound, NursingNote
+from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord
 from patients.models import Patient
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -173,3 +173,51 @@ class AdmissionSearchForm(forms.Form):
         queryset=Ward.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
+
+class ClinicalRecordForm(forms.ModelForm):
+    class Meta:
+        model = ClinicalRecord
+        fields = [
+            'record_type', 'date_time', 'notes',
+            'temperature', 'blood_pressure_systolic', 'blood_pressure_diastolic',
+            'heart_rate', 'respiratory_rate', 'oxygen_saturation',
+            'medication_name', 'dosage', 'route',
+            'treatment_description', 'patient_condition',
+        ]
+        widgets = {
+            'record_type': forms.Select(attrs={'class': 'form-select'}),
+            'date_time': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'temperature': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'blood_pressure_systolic': forms.NumberInput(attrs={'class': 'form-control'}),
+            'blood_pressure_diastolic': forms.NumberInput(attrs={'class': 'form-control'}),
+            'heart_rate': forms.NumberInput(attrs={'class': 'form-control'}),
+            'respiratory_rate': forms.NumberInput(attrs={'class': 'form-control'}),
+            'oxygen_saturation': forms.NumberInput(attrs={'class': 'form-control'}),
+            'medication_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'dosage': forms.TextInput(attrs={'class': 'form-control'}),
+            'route': forms.TextInput(attrs={'class': 'form-control'}),
+            'treatment_description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'patient_condition': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk and not self.initial.get('date_time'):
+            self.initial['date_time'] = timezone.now().strftime('%Y-%m-%dT%H:%M')
+
+class PatientTransferForm(forms.Form):
+    to_ward = forms.ModelChoiceField(queryset=Ward.objects.filter(is_active=True), required=True, label="Transfer to Ward")
+    to_bed = forms.ModelChoiceField(queryset=Bed.objects.filter(is_active=True, is_occupied=False), required=True, label="Transfer to Bed")
+    notes = forms.CharField(widget=forms.Textarea, required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['to_bed'].queryset = Bed.objects.none()
+
+        if 'to_ward' in self.data:
+            try:
+                ward_id = int(self.data.get('to_ward'))
+                self.fields['to_bed'].queryset = Bed.objects.filter(ward_id=ward_id, is_active=True, is_occupied=False).order_by('bed_number')
+            except (ValueError, TypeError):
+                pass  # invalid input from the client; ignore and fallback to an empty queryset

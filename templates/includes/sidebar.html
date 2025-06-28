@@ -89,6 +89,28 @@
         </div>
     </li>
 
+    <!-- Nav Item - Inpatient Management (Available to nurses, doctors, and admins) -->
+    {% if user.is_superuser or user.profile and user.profile.role in 'admin,nurse,doctor' %}
+    <li class="nav-item {% if '/inpatient/' in request.path %}active{% endif %}">
+        <a class="nav-link {% if not '/inpatient/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseInpatient" aria-expanded="{% if '/inpatient/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseInpatient">
+            <i class="fas fa-fw fa-hospital-alt text-white"></i>
+            <span class="text-white">Inpatient</span>
+        </a>
+        <div id="collapseInpatient" class="collapse {% if '/inpatient/' in request.path %}show{% endif %}" aria-labelledby="headingInpatient" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">Inpatient Management:</h6>
+                <a class="collapse-item {% if request.path == '/inpatient/admissions/' %}active{% endif %}" href="{% url 'inpatient:admissions' %}">Admissions</a>
+                <a class="collapse-item {% if request.path == '/inpatient/wards/' %}active{% endif %}" href="{% url 'inpatient:wards' %}">Wards</a>
+                <a class="collapse-item {% if request.path == '/inpatient/beds/' %}active{% endif %}" href="{% url 'inpatient:beds' %}">Beds</a>
+                <a class="collapse-item {% if request.path == '/inpatient/bed-dashboard/' %}active{% endif %}" href="{% url 'inpatient:bed_dashboard' %}">Bed Dashboard</a>
+                <div class="collapse-divider"></div>
+                <h6 class="collapse-header">Reports:</h6>
+                <a class="collapse-item {% if request.path == '/inpatient/reports/bed-occupancy/' %}active{% endif %}" href="{% url 'inpatient:bed_occupancy_report' %}">Bed Occupancy Report</a>
+            </div>
+        </div>
+    </li>
+    {% endif %}
+
     <!-- Nav Item - Appointments (Available to doctors, receptionists, health record officers, and admins) -->
     {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,receptionist,health_record_officer' %}
     <li class="nav-item {% if '/appointments/' in request.path %}active{% endif %}">
@@ -189,6 +211,24 @@
     </li>
     {% endif %}
 
+    <!-- Nav Item - Dispensary Management (Available to pharmacists and admins) -->
+    {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
+    <li class="nav-item {% if '/pharmacy/dispensaries/' in request.path %}active{% endif %}">
+        <a class="nav-link {% if not '/pharmacy/dispensaries/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDispensary" aria-expanded="{% if '/pharmacy/dispensaries/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDispensary">
+            <i class="fas fa-fw fa-store-alt text-white"></i>
+            <span class="text-white">Dispensaries</span>
+        </a>
+        <div id="collapseDispensary" class="collapse {% if '/pharmacy/dispensaries/' in request.path %}show{% endif %}" aria-labelledby="headingDispensary" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">Dispensary Management:</h6>
+                <a class="collapse-item {% if request.path == '/pharmacy/dispensaries/' %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Manage Dispensaries</a>
+                <a class="collapse-item {% if '/pharmacy/dispensaries/inventory/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Inventory</a> {# Link to manage page, then navigate to specific inventory #}
+                <a class="collapse-item {% if '/pharmacy/dispensaries/dispensing-report/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Reports</a> {# Link to manage page, then navigate to specific report #}
+            </div>
+        </div>
+    </li>
+    {% endif %}
+
     <!-- Nav Item - Pharmacy Reports -->
     <li class="nav-item {% if '/pharmacy/sales-report/' in request.path %}active{% endif %}">
         <a class="nav-link" href="{% url 'pharmacy:pharmacy_sales_report' %}">
@@ -256,7 +296,28 @@
     </li>
 
     <!-- Include Theatre Module Sidebar -->
-    {% include 'includes/theatre_sidebar.html' %}
+    {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,theatre_staff' %}
+    <li class="nav-item {% if '/theatre/' in request.path %}active{% endif %}">
+        <a class="nav-link {% if not '/theatre/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTheatre" aria-expanded="{% if '/theatre/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseTheatre">
+            <i class="fas fa-fw fa-hospital-symbol text-white"></i>
+            <span class="text-white">Theatre</span>
+        </a>
+        <div id="collapseTheatre" class="collapse {% if '/theatre/' in request.path %}show{% endif %}" aria-labelledby="headingTheatre" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">Theatre Management:</h6>
+                <a class="collapse-item {% if request.path == '/theatre/' %}active{% endif %}" href="{% url 'theatre:dashboard' %}">Dashboard</a>
+                <a class="collapse-item {% if request.path == '/theatre/surgeries/' %}active{% endif %}" href="{% url 'theatre:surgery_list' %}">Surgeries</a>
+                <a class="collapse-item {% if request.path == '/theatre/theatres/' %}active{% endif %}" href="{% url 'theatre:theatre_list' %}">Operation Theatres</a>
+                <a class="collapse-item {% if request.path == '/theatre/surgery-types/' %}active{% endif %}" href="{% url 'theatre:surgery_type_list' %}">Surgery Types</a>
+                <a class="collapse-item {% if request.path == '/theatre/equipment/' %}active{% endif %}" href="{% url 'theatre:equipment_list' %}">Equipment</a>
+                <a class="collapse-item {% if request.path == '/theatre/equipment/maintenance/' %}active{% endif %}" href="{% url 'theatre:equipment_maintenance' %}">Equipment Maintenance</a>
+                <div class="collapse-divider"></div>
+                <h6 class="collapse-header">Reports:</h6>
+                <a class="collapse-item {% if request.path == '/theatre/reports/surgery-report/' %}active{% endif %}" href="{% url 'theatre:surgery_report' %}">Surgery Report</a>
+            </div>
+        </div>
+    </li>
+    {% endif %}
 
     <!-- Divider -->
     <hr class="sidebar-divider"> 

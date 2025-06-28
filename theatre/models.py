@@ -142,6 +142,8 @@ class SurgicalEquipment(models.Model):
     is_available = models.BooleanField(default=True)
     last_maintenance_date = models.DateField(blank=True, null=True)
     next_maintenance_date = models.DateField(blank=True, null=True)
+    last_calibration_date = models.DateField(blank=True, null=True)
+    calibration_frequency = models.DurationField(blank=True, null=True, help_text="e.g., '365 00:00:00' for annual calibration")
     
     def __str__(self):
         return f"{self.name} ({self.get_equipment_type_display()})"
@@ -212,3 +214,40 @@ class PostOperativeNote(models.Model):
         verbose_name = "Post-Operative Note"
         verbose_name_plural = "Post-Operative Notes"
         ordering = ['-created_at']
+
+class PreOperativeChecklist(models.Model):
+    surgery = models.OneToOneField(Surgery, on_delete=models.CASCADE, related_name='pre_op_checklist')
+    patient_identified = models.BooleanField(default=False)
+    site_marked = models.BooleanField(default=False)
+    anesthesia_safety_check_completed = models.BooleanField(default=False)
+    surgical_safety_checklist_completed = models.BooleanField(default=False)
+    consent_confirmed = models.BooleanField(default=False)
+    allergies_reviewed = models.BooleanField(default=False)
+    imaging_available = models.BooleanField(default=False)
+    blood_products_available = models.BooleanField(default=False)
+    antibiotics_administered = models.BooleanField(default=False)
+    notes = models.TextField(blank=True, null=True)
+    completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Pre-operative Checklist for {self.surgery}"
+
+    class Meta:
+        verbose_name = "Pre-Operative Checklist"
+        verbose_name_plural = "Pre-Operative Checklists"
+
+class SurgeryLog(models.Model):
+    surgery = models.ForeignKey(Surgery, on_delete=models.CASCADE, related_name='logs')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    event_type = models.CharField(max_length=100) # e.g., 'Surgery Started', 'Complication Noted', 'Equipment Used'
+    details = models.TextField(blank=True, null=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"[{self.timestamp}] {self.event_type} for {self.surgery}"
+
+    class Meta:
+        verbose_name = "Surgery Log Entry"
+        verbose_name_plural = "Surgery Log Entries"
+        ordering = ['timestamp']

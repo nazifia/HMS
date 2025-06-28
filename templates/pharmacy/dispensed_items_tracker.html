@@ -134,36 +134,40 @@
         <div class="col-md-3">
             <div class="card stats-card bg-primary text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-list-ol stats-icon mb-2"></i>
-                    <h4 class="mb-0">{{ total_logs }}</h4>
-                    <p class="mb-0">Total Dispensing Records</p>
+                    <i class="fas fa-calendar-day stats-icon mb-2"></i>
+                    <h4 class="mb-0">{{ stats.total_dispensed_today }}</h4>
+                    <p class="mb-0">Dispensed Today</p>
+                    <small>₦{{ stats.total_value_today|floatformat:2 }}</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card stats-card bg-success text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-capsules stats-icon mb-2"></i>
-                    <h4 class="mb-0">{{ total_quantity_dispensed }}</h4>
-                    <p class="mb-0">Total Items Dispensed</p>
+                    <i class="fas fa-calendar-week stats-icon mb-2"></i>
+                    <h4 class="mb-0">{{ stats.total_dispensed_week }}</h4>
+                    <p class="mb-0">This Week</p>
+                    <small>₦{{ stats.total_value_week|floatformat:2 }}</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card stats-card bg-info text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-dollar-sign stats-icon mb-2"></i>
-                    <h4 class="mb-0">${{ total_value_dispensed|floatformat:2 }}</h4>
-                    <p class="mb-0">Total Value Dispensed</p>
+                    <i class="fas fa-calendar-alt stats-icon mb-2"></i>
+                    <h4 class="mb-0">{{ stats.total_dispensed_month }}</h4>
+                    <p class="mb-0">This Month</p>
+                    <small>₦{{ stats.total_value_month|floatformat:2 }}</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card stats-card bg-warning text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-tablets stats-icon mb-2"></i>
-                    <h4 class="mb-0">{{ unique_medications }}</h4>
-                    <p class="mb-0">Unique Medications</p>
+                    <i class="fas fa-chart-line stats-icon mb-2"></i>
+                    <h4 class="mb-0">{{ stats.avg_quantity_per_dispense|floatformat:1 }}</h4>
+                    <p class="mb-0">Avg Quantity</p>
+                    <small>Per Dispense</small>
                 </div>
             </div>
         </div>
@@ -263,7 +267,7 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
-                    <h5><i class="fas fa-history me-2"></i>Dispensing Records ({{ page_obj.paginator.count }} total)</h5>
+                    <h5><i class="fas fa-history me-2"></i>Dispensing Records ({{ total_results }} total)</h5>
                 </div>
                 <div class="card-body">
                     {% for log in page_obj %}
@@ -360,11 +364,12 @@
             {% endif %}
         </div>
 
-        <!-- Top Medications Sidebar -->
+        <!-- Analytics Sidebar -->
         <div class="col-md-4">
-            <div class="card">
+            <!-- Top Medications -->
+            <div class="card mb-3">
                 <div class="card-header">
-                    <h5><i class="fas fa-chart-bar me-2"></i>Top Dispensed Medications</h5>
+                    <h6><i class="fas fa-chart-bar me-2"></i>Top Medications (This Month)</h6>
                 </div>
                 <div class="card-body p-0">
                     <div class="top-medications-list">
@@ -378,6 +383,36 @@
                                 <div class="text-end">
                                     <span class="badge bg-primary">{{ med.total_quantity }}</span>
                                     <br><small class="text-muted">${{ med.total_value|floatformat:2 }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center p-3">
+                            <i class="fas fa-info-circle text-muted"></i>
+                            <p class="text-muted mb-0">No data available</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Staff -->
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-user-md me-2"></i>Top Dispensing Staff (This Month)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="top-medications-list">
+                        {% for staff in top_staff %}
+                        <div class="medication-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ staff.dispensed_by__first_name }} {{ staff.dispensed_by__last_name }}</strong>
+                                    <br><small class="text-muted">{{ staff.total_dispensed }} dispensing{{ staff.total_dispensed|pluralize }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success">{{ staff.total_dispensed }}</span>
+                                    <br><small class="text-muted">${{ staff.total_value|floatformat:2 }}</small>
                                 </div>
                             </div>
                         </div>

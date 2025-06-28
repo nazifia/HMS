@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Equipment Due for Maintenance/Calibration</h2>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Last Maintenance</th>
+                <th>Next Maintenance</th>
+                <th>Last Calibration</th>
+                <th>Calibration Frequency</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for equipment in equipment_due %}
+                <tr>
+                    <td>{{ equipment.name }}</td>
+                    <td>{{ equipment.get_equipment_type_display }}</td>
+                    <td>{{ equipment.last_maintenance_date|default:"N/A" }}</td>
+                    <td>{{ equipment.next_maintenance_date|default:"N/A" }}</td>
+                    <td>{{ equipment.last_calibration_date|default:"N/A" }}</td>
+                    <td>{{ equipment.calibration_frequency|default:"N/A" }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6">No equipment due for maintenance or calibration.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

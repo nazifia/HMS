@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem
+from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem, Dispensary, MedicationInventory
 
 class PurchaseItemInline(admin.TabularInline):
     model = PurchaseItem
@@ -64,3 +64,17 @@ class PrescriptionItemAdmin(admin.ModelAdmin):
     list_display = ('prescription', 'medication', 'dosage', 'frequency', 'quantity', 'is_dispensed')
     list_filter = ('is_dispensed', 'dispensed_date')
     search_fields = ('prescription__patient__first_name', 'prescription__patient__last_name', 'medication__name')
+
+@admin.register(Dispensary)
+class DispensaryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'location', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'location')
+    date_hierarchy = 'created_at'
+
+@admin.register(MedicationInventory)
+class MedicationInventoryAdmin(admin.ModelAdmin):
+    list_display = ('medication', 'dispensary', 'stock_quantity', 'reorder_level', 'last_restock_date')
+    list_filter = ('dispensary', 'last_restock_date')
+    search_fields = ('medication__name', 'dispensary__name')
+    date_hierarchy = 'last_restock_date'

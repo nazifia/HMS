@@ -8,7 +8,8 @@ from .models import (
     SurgicalEquipment,
     EquipmentUsage,
     SurgerySchedule,
-    PostOperativeNote
+    PostOperativeNote,
+    PreOperativeChecklist
 )
 from patients.models import Patient
 from accounts.models import CustomUser
@@ -96,6 +97,49 @@ class SurgeryForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.patient:
             self.fields['patient_search'].initial = str(self.instance.patient)
 
+    def clean(self):
+        cleaned_data = super().clean()
+        theatre = cleaned_data.get('theatre')
+        scheduled_date = cleaned_data.get('scheduled_date')
+        expected_duration = cleaned_data.get('expected_duration')
+        primary_surgeon = cleaned_data.get('primary_surgeon')
+        anesthetist = cleaned_data.get('anesthetist')
+
+        if theatre and scheduled_date and expected_duration:
+            end_time = scheduled_date + expected_duration
+
+            # Check for theatre conflicts
+            conflicting_surgeries = Surgery.objects.filter(
+                theatre=theatre,
+                scheduled_date__lt=end_time,
+                scheduled_date__gte=scheduled_date
+            ).exclude(pk=self.instance.pk if self.instance else None)
+
+            if conflicting_surgeries.exists():
+                raise forms.ValidationError("The selected theatre is already booked for an overlapping surgery.")
+
+            # Check for surgeon conflicts
+            if primary_surgeon:
+                conflicting_surgeon_surgeries = Surgery.objects.filter(
+                    primary_surgeon=primary_surgeon,
+                    scheduled_date__lt=end_time,
+                    scheduled_date__gte=scheduled_date
+                ).exclude(pk=self.instance.pk if self.instance else None)
+                if conflicting_surgeon_surgeries.exists():
+                    raise forms.ValidationError("The primary surgeon is already booked for an overlapping surgery.")
+
+            # Check for anesthetist conflicts
+            if anesthetist:
+                conflicting_anesthetist_surgeries = Surgery.objects.filter(
+                    anesthetist=anesthetist,
+                    scheduled_date__lt=end_time,
+                    scheduled_date__gte=scheduled_date
+                ).exclude(pk=self.instance.pk if self.instance else None)
+                if conflicting_anesthetist_surgeries.exists():
+                    raise forms.ValidationError("The anesthetist is already booked for an overlapping surgery.")
+
+        return cleaned_data
+
 
 class SurgicalTeamForm(forms.ModelForm):
     class Meta:
@@ -123,6 +167,11 @@ class SurgicalEquipmentForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 3}),
             'last_maintenance_date': DateInput(),
             'next_maintenance_date': DateInput(),
+            'last_calibration_date': DateInput(),
+            'calibration_frequency': DurationInput(attrs={'placeholder': 'DD HH:MM:SS'}),
+        }
+        help_texts = {
+            'calibration_frequency': 'Format: DD HH:MM:SS (e.g., 365 00:00:00 for annual)',
         }
 
 
@@ -168,6 +217,28 @@ class PostOperativeNoteForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'rows': 4}),
             'complications': forms.Textarea(attrs={'rows': 3}),
             'follow_up_instructions': forms.Textarea(attrs={'rows': 3}),
+        }
+
+
+class PreOperativeChecklistForm(forms.ModelForm):
+    class Meta:
+        model = PreOperativeChecklist
+        fields = [
+            'patient_identified', 'site_marked', 'anesthesia_safety_check_completed',
+            'surgical_safety_checklist_completed', 'consent_confirmed', 'allergies_reviewed',
+            'imaging_available', 'blood_products_available', 'antibiotics_administered', 'notes'
+        ]
+        widgets = {
+            'patient_identified': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'site_marked': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'anesthesia_safety_check_completed': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'surgical_safety_checklist_completed': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'consent_confirmed': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'allergies_reviewed': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'imaging_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'blood_products_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'antibiotics_administered': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notes': forms.Textarea(attrs={'rows': 3}),
         }
 
 

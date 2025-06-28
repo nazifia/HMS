@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Pharmacy Dispensaries</h2>
+    <form method="get" class="form-inline mb-3">
+        <input type="text" name="search" value="{{ search_query }}" class="form-control mr-2" placeholder="Search by name or location">
+        <select name="status" class="form-control mr-2">
+            <option value="">All Statuses</option>
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+    <a href="#" class="btn btn-success mb-3" data-toggle="modal" data-target="#addDispensaryModal">Add Dispensary</a>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dispensary in page_obj %}
+            <tr>
+                <td>{{ dispensary.name }}</td>
+                <td>{{ dispensary.location }}</td>
+                <td>{% if dispensary.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-secondary">Inactive</span>{% endif %}</td>
+                <td>
+                    <a href="{% url 'pharmacy:dispensary_inventory' dispensary.id %}" class="btn btn-sm btn-info">Inventory</a>
+                    <a href="{% url 'pharmacy:edit_dispensary' dispensary.id %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No dispensaries found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <nav>
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    <!-- Add Dispensary Modal -->
+    <div class="modal fade" id="addDispensaryModal" tabindex="-1" role="dialog" aria-labelledby="addDispensaryModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addDispensaryModalLabel">Add Dispensary</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <div class="modal-body">
+              {{ form.as_p }}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Add Dispensary</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+</div>
+{% endblock %}

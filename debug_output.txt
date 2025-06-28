@@ -1,0 +1,16 @@
+Starting debug process...
+Table pharmacy_dispensary exists: True
+Table schema:
+  id (INTEGER)
+  name (varchar(100))
+  location (varchar(200))
+  description (TEXT)
+  is_active (bool)
+  created_at (datetime)
+  updated_at (datetime)
+  manager_id (bigint)
+Dispensary model imported successfully
+Dispensary count: 0
+Created test dispensary: Debug Test Dispensary
+Test dispensary deleted
+All tests passed!

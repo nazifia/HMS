@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load audit_log_extras %}
 {% block title %}Audit Logs - Hospital Management System{% endblock %}
 
 {% block extra_css %}
@@ -196,16 +197,7 @@
                             
                             {% if log.details %}
                             <div class="log-details">
-                                <strong>Details:</strong><br>
-                                {% for key, value in log.details.items %}
-                                    <strong>{{ key|title }}:</strong> 
-                                    {% if value is list %}
-                                        {% for item in value %}{{ item }}{% if not forloop.last %}, {% endif %}{% endfor %}
-                                    {% else %}
-                                        {{ value }}
-                                    {% endif %}
-                                    <br>
-                                {% endfor %}
+                                {{ log.details|render_json_details }}
                             </div>
                             {% endif %}
                         </div>

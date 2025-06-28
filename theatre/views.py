@@ -15,7 +15,9 @@ from .models import (
     SurgicalEquipment,
     EquipmentUsage,
     SurgerySchedule,
-    PostOperativeNote
+    PostOperativeNote,
+    PreOperativeChecklist,
+    SurgeryLog
 )
 from .forms import (
     OperationTheatreForm, 
@@ -26,7 +28,8 @@ from .forms import (
     EquipmentUsageFormSet,
     SurgeryScheduleForm,
     PostOperativeNoteForm,
-    SurgeryFilterForm
+    SurgeryFilterForm,
+    PreOperativeChecklistForm
 )
 
 # Operation Theatre Views
@@ -114,6 +117,69 @@ class SurgeryListView(LoginRequiredMixin, ListView):
 class SurgeryDetailView(LoginRequiredMixin, DetailView):
     model = Surgery
     template_name = 'theatre/surgery_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        surgery = self.get_object()
+        context['post_op_notes'] = surgery.post_op_notes.all()
+        context['pre_op_checklist'] = None
+        context['checklist_form'] = None
+
+        try:
+            context['pre_op_checklist'] = surgery.pre_op_checklist
+            context['checklist_form'] = PreOperativeChecklistForm(instance=surgery.pre_op_checklist)
+        except PreOperativeChecklist.DoesNotExist:
+            context['checklist_form'] = PreOperativeChecklistForm()
+
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        try:
+            pre_op_checklist = self.object.pre_op_checklist
+            form = PreOperativeChecklistForm(request.POST, instance=pre_op_checklist)
+        except PreOperativeChecklist.DoesNotExist:
+            form = PreOperativeChecklistForm(request.POST)
+
+        if form.is_valid():
+            checklist = form.save(commit=False)
+            checklist.surgery = self.object
+            checklist.completed_by = request.user
+            checklist.save()
+            messages.success(request, 'Pre-operative checklist updated successfully.')
+            return redirect('theatre:surgery_detail', pk=self.object.pk)
+        else:
+            messages.error(request, 'Error updating pre-operative checklist.')
+            return self.render_to_response(self.get_context_data(checklist_form=form))
+
+class PreOperativeChecklistCreateView(LoginRequiredMixin, CreateView):
+    model = PreOperativeChecklist
+    form_class = PreOperativeChecklistForm
+    template_name = 'theatre/pre_op_checklist_form.html'
+
+    def form_valid(self, form):
+        surgery = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
+        form.instance.surgery = surgery
+        form.instance.completed_by = self.request.user
+        messages.success(self.request, 'Pre-operative checklist created successfully.')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('theatre:surgery_detail', kwargs={'pk': self.kwargs['surgery_id']})
+
+class SurgeryLogListView(LoginRequiredMixin, ListView):
+    model = SurgeryLog
+    template_name = 'theatre/surgery_log_list.html'
+    context_object_name = 'logs'
+
+    def get_queryset(self):
+        surgery = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
+        return SurgeryLog.objects.filter(surgery=surgery).order_by('timestamp')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['surgery'] = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
+        return context
 
 class SurgeryCreateView(LoginRequiredMixin, CreateView):
     model = Surgery
@@ -207,109 +273,6 @@ class SurgicalEquipmentDeleteView(LoginRequiredMixin, DeleteView):
 
 class TheatreDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'theatre/dashboard.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        today = timezone.now().date()
-        next_7_days = today + timezone.timedelta(days=7)
-
-        # Theatre stats
-        context['available_theatres'] = OperationTheatre.objects.filter(is_available=True).count()
-        context['total_theatres'] = OperationTheatre.objects.count()
-
-        # Surgery stats
-        context['total_surgeries'] = Surgery.objects.count()
-        context['completed_surgeries'] = Surgery.objects.filter(status='completed').count()
-
-        # Equipment stats
-        context['available_equipment'] = SurgicalEquipment.objects.filter(is_available=True).count()
-        context['total_equipment'] = SurgicalEquipment.objects.count()
-
-        # Today's surgeries
-        context['todays_surgeries'] = Surgery.objects.filter(scheduled_date__date=today).select_related('patient', 'surgery_type', 'theatre').order_by('scheduled_date')
-
-        # Upcoming surgeries
-        context['upcoming_surgeries'] = Surgery.objects.filter(scheduled_date__date__range=[today, next_7_days]).select_related('patient', 'surgery_type', 'theatre').order_by('scheduled_date')
-
-        return context
-
-    def get_context_data(self, **kwargs):
-        data = super().get_context_data(**kwargs)
-        if 'team_formset' not in kwargs:
-            if self.request.POST:
-                data['team_formset'] = SurgicalTeamFormSet(self.request.POST, instance=self.object)
-            else:
-                data['team_formset'] = SurgicalTeamFormSet(instance=self.object)
-        if 'equipment_formset' not in kwargs:
-            if self.request.POST:
-                data['equipment_formset'] = EquipmentUsageFormSet(self.request.POST, instance=self.object)
-            else:
-                data['equipment_formset'] = EquipmentUsageFormSet(instance=self.object)
-        return data
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        form = self.get_form()
-        team_formset = SurgicalTeamFormSet(self.request.POST, instance=self.object)
-        equipment_formset = EquipmentUsageFormSet(self.request.POST, instance=self.object)
-        if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
-            return self.form_valid(form, team_formset, equipment_formset)
-        else:
-            return self.form_invalid(form, team_formset, equipment_formset)
-
-    def form_valid(self, form, team_formset, equipment_formset):
-        with transaction.atomic():
-            self.object = form.save()
-            team_formset.save()
-            equipment_formset.save()
-        messages.success(self.request, 'Surgery updated successfully.')
-        return redirect(self.get_success_url())
-
-    def form_invalid(self, form, team_formset, equipment_formset):
-        return self.render_to_response(
-            self.get_context_data(
-                form=form,
-                team_formset=team_formset,
-                equipment_formset=equipment_formset
-            )
-        )
-
-class SurgeryDeleteView(LoginRequiredMixin, DeleteView):
-    model = Surgery
-    template_name = 'theatre/surgery_confirm_delete.html'
-    success_url = reverse_lazy('theatre:surgery_list')
-
-# Surgical Equipment Views
-class SurgicalEquipmentListView(LoginRequiredMixin, ListView):
-    model = SurgicalEquipment
-    template_name = 'theatre/equipment_list.html'
-    context_object_name = 'equipments'
-
-class SurgicalEquipmentDetailView(LoginRequiredMixin, DetailView):
-    model = SurgicalEquipment
-    template_name = 'theatre/equipment_detail.html'
-
-class SurgicalEquipmentCreateView(LoginRequiredMixin, CreateView):
-    model = SurgicalEquipment
-    form_class = SurgicalEquipmentForm
-    template_name = 'theatre/equipment_form.html'
-    success_url = reverse_lazy('theatre:equipment_list')
-
-class SurgicalEquipmentUpdateView(LoginRequiredMixin, UpdateView):
-    model = SurgicalEquipment
-    form_class = SurgicalEquipmentForm
-    template_name = 'theatre/equipment_form.html'
-    success_url = reverse_lazy('theatre:equipment_list')
-
-class SurgicalEquipmentDeleteView(LoginRequiredMixin, DeleteView):
-    model = SurgicalEquipment
-    template_name = 'theatre/equipment_confirm_delete.html'
-    success_url = reverse_lazy('theatre:equipment_list')
-
-
-# Theatre Dashboard View
-class TheatreDashboardView(LoginRequiredMixin, TemplateView):
-    template_name = 'theatre/dashboard.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -344,3 +307,44 @@ class TheatreDashboardView(LoginRequiredMixin, TemplateView):
         ).count()
         
         return context
+
+
+# Equipment Maintenance and Calibration Views
+class EquipmentMaintenanceView(LoginRequiredMixin, ListView):
+    model = SurgicalEquipment
+    template_name = 'theatre/equipment_maintenance.html'
+    context_object_name = 'equipment_due'
+
+    def get_queryset(self):
+        today = timezone.now().date()
+        # Filter for equipment due for maintenance or calibration
+        # This is a simplified example; a real-world scenario might involve more complex logic
+        # and potentially a custom manager or method on the model.
+        return SurgicalEquipment.objects.filter(
+            Q(next_maintenance_date__lte=today) | Q(last_calibration_date__lte=today)
+        ).order_by('next_maintenance_date', 'last_calibration_date')
+
+
+# Reporting Views
+class SurgeryReportView(LoginRequiredMixin, TemplateView):
+    template_name = 'theatre/surgery_report.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Total surgeries by status
+        context['surgeries_by_status'] = Surgery.objects.values('status').annotate(count=Count('id'))
+
+        # Surgeries by type
+        context['surgeries_by_type'] = Surgery.objects.values('surgery_type__name').annotate(count=Count('id'))
+
+        # Surgeries by surgeon
+        context['surgeries_by_surgeon'] = Surgery.objects.values('primary_surgeon__first_name', 'primary_surgeon__last_name').annotate(count=Count('id'))
+
+        # Complications (simple count for now)
+        context['complications_count'] = PostOperativeNote.objects.exclude(complications__isnull=True).exclude(complications__exact='').count()
+
+        return context
+
+
+# Theatre Dashboard View

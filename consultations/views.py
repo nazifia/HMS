@@ -652,7 +652,7 @@ def waiting_list(request):
         )
 
     # Get all doctors and consulting rooms for filters
-    doctors = CustomUser.objects.filter(is_active=True, roles__name='doctor')
+    doctors = CustomUser.objects.filter(is_active=True, profile__role='doctor')
     consulting_rooms = ConsultingRoom.objects.filter(is_active=True)
 
     context = {

@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Surgery Report</h2>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Surgeries by Status
+        </div>
+        <div class="card-body">
+            <canvas id="surgeriesByStatusChart"></canvas>
+            <table class="table table-striped mt-3">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in surgeries_by_status %}
+                        <tr>
+                            <td>{{ item.status }}</td>
+                            <td>{{ item.count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Surgeries by Type
+        </div>
+        <div class="card-body">
+            <canvas id="surgeriesByTypeChart"></canvas>
+            <table class="table table-striped mt-3">
+                <thead>
+                    <tr>
+                        <th>Surgery Type</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in surgeries_by_type %}
+                        <tr>
+                            <td>{{ item.surgery_type__name }}</td>
+                            <td>{{ item.count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Surgeries by Surgeon
+        </div>
+        <div class="card-body">
+            <canvas id="surgeriesBySurgeonChart"></canvas>
+            <table class="table table-striped mt-3">
+                <thead>
+                    <tr>
+                        <th>Surgeon</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in surgeries_by_surgeon %}
+                        <tr>
+                            <td>{{ item.primary_surgeon__first_name }} {{ item.primary_surgeon__last_name }}</td>
+                            <td>{{ item.count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Complications
+        </div>
+        <div class="card-body">
+            <p>Total Complications Noted: {{ complications_count }}</p>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Surgeries by Status Chart
+    var ctxStatus = document.getElementById('surgeriesByStatusChart').getContext('2d');
+    var surgeriesByStatusChart = new Chart(ctxStatus, {
+        type: 'pie',
+        data: {
+            labels: [{% for item in surgeries_by_status %}'{{ item.status }}',{% endfor %}],
+            datasets: [{
+                data: [{% for item in surgeries_by_status %}{{ item.count }},{% endfor %}],
+                backgroundColor: [
+                    '#007bff', '#28a745', '#ffc107', '#dc3545', '#6c757d',
+                ],
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Surgeries by Status'
+                }
+            }
+        },
+    });
+
+    // Surgeries by Type Chart
+    var ctxType = document.getElementById('surgeriesByTypeChart').getContext('2d');
+    var surgeriesByTypeChart = new Chart(ctxType, {
+        type: 'bar',
+        data: {
+            labels: [{% for item in surgeries_by_type %}'{{ item.surgery_type__name }}',{% endfor %}],
+            datasets: [{
+                label: 'Number of Surgeries',
+                data: [{% for item in surgeries_by_type %}{{ item.count }},{% endfor %}],
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Surgeries by Type'
+                }
+            }
+        }
+    });
+
+    // Surgeries by Surgeon Chart
+    var ctxSurgeon = document.getElementById('surgeriesBySurgeonChart').getContext('2d');
+    var surgeriesBySurgeonChart = new Chart(ctxSurgeon, {
+        type: 'bar',
+        data: {
+            labels: [{% for item in surgeries_by_surgeon %}'{{ item.primary_surgeon__first_name }} {{ item.primary_surgeon__last_name }}',{% endfor %}],
+            datasets: [{
+                label: 'Number of Surgeries',
+                data: [{% for item in surgeries_by_surgeon %}{{ item.count }},{% endfor %}],
+                backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Surgeries by Surgeon'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

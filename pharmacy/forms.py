@@ -2,10 +2,11 @@ from django import forms
 from django.utils import timezone
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
-    PurchaseItem, Prescription, PrescriptionItem, DispensingLog
+    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory
 )
 from patients.models import Patient
 from django.contrib.auth import get_user_model
+from accounts.models import CustomUser
 User = get_user_model()
 
 class MedicationCategoryForm(forms.ModelForm):
@@ -103,7 +104,7 @@ class PrescriptionForm(forms.ModelForm):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, roles__name='Doctor').distinct(),
+        queryset=User.objects.filter(is_active=True, profile__role='doctor').distinct(),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -175,6 +176,12 @@ class DispenseItemForm(forms.Form):
     item_id = forms.IntegerField(widget=forms.HiddenInput())
     dispense_this_item = forms.BooleanField(required=False, label="Dispense")
     quantity_to_dispense = forms.IntegerField(min_value=0, required=False, widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width: 70px;'}))
+    dispensary = forms.ModelChoiceField(
+        queryset=Dispensary.objects.filter(is_active=True),
+        required=False,
+        empty_label="Select Dispensary",
+        widget=forms.Select(attrs={'class': 'form-control form-control-sm'})
+    )
 
     def __init__(self, *args, **kwargs):
         self.prescription_item = kwargs.pop('prescription_item', None)
@@ -310,7 +317,7 @@ class PrescriptionSearchForm(forms.Form):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, roles__name='Doctor').distinct(),
+        queryset=User.objects.filter(is_active=True, profile__role='doctor').distinct(),
         required=False,
         empty_label="All Doctors"
     )
@@ -427,3 +434,51 @@ class DispensedItemsSearchForm(forms.Form):
             raise forms.ValidationError("Minimum quantity cannot be greater than maximum quantity.")
 
         return cleaned_data
+
+
+class DispensaryForm(forms.ModelForm):
+    """Form for creating and editing dispensaries"""
+
+    class Meta:
+        model = Dispensary
+        fields = ['name', 'location', 'description', 'manager', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter dispensary name'
+            }),
+            'location': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter location'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter description'
+            }),
+            'manager': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter manager choices to only show staff users
+        self.fields['manager'].queryset = User.objects.filter(is_staff=True)
+        self.fields['manager'].empty_label = "Select Manager (Optional)"
+
+class MedicationInventoryForm(forms.ModelForm):
+    """Form for managing medication inventory in dispensaries"""
+
+    class Meta:
+        model = MedicationInventory
+        fields = ['medication', 'dispensary', 'stock_quantity', 'reorder_level']
+        widgets = {
+            'medication': forms.Select(attrs={'class': 'form-control'}),
+            'dispensary': forms.Select(attrs={'class': 'form-control'}),
+            'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'reorder_level': forms.NumberInput(attrs={'class': 'form-control'}),
+        }

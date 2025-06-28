@@ -7,13 +7,13 @@ from django.http import JsonResponse
 from django.utils import timezone
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
-    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, PurchaseApproval
+    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, PurchaseApproval, Dispensary, MedicationInventory
 )
 from .forms import (
     MedicationCategoryForm, MedicationForm, SupplierForm, PurchaseForm,
     PurchaseItemForm, PrescriptionForm, PrescriptionItemForm,
     DispenseItemForm, BaseDispenseItemFormSet, MedicationSearchForm, PrescriptionSearchForm,
-    DispensedItemsSearchForm
+    DispensedItemsSearchForm, DispensaryForm
 )
 from patients.models import Patient
 from django.contrib.auth.models import User
@@ -496,7 +496,7 @@ def prescription_list(request):
     cancelled_count = status_count_dict.get('cancelled', 0)
 
     # Advanced: Add role-based analytics for prescriptions
-    role_counts = Prescription.objects.values('doctor__roles__name').annotate(count=Count('id')).order_by('-count')
+    role_counts = Prescription.objects.values('doctor__profile__role').annotate(count=Count('id')).order_by('-count')
     from core.models import AuditLog, InternalNotification
     # Advanced: Add audit log and notification fetch (if models exist)
     audit_logs = AuditLog.objects.all().order_by('-timestamp')[:10]
@@ -512,7 +512,7 @@ def prescription_list(request):
         'total_value': prescriptions.aggregate(
             total=Sum('items__medication__price')
         )['total'] or 0,
-        'actions_by_role': AuditLog.objects.all().values('user__roles__name').annotate(count=Count('id')).order_by('-count')
+        'actions_by_role': AuditLog.objects.all().values('user__profile__role').annotate(count=Count('id')).order_by('-count')
     }
 
     context = {
@@ -984,6 +984,7 @@ def dispense_prescription(request, prescription_id):
                                     prescription_item=prescription_item,
                                     dispensed_by=request.user,
                                     dispensed_quantity=quantity_to_dispense,
+                                    dispensary=form_item.cleaned_data.get('dispensary'),
                                     unit_price_at_dispense=prescription_item.medication.price,
                                 )
                                 medication = prescription_item.medication
@@ -1462,20 +1463,25 @@ def pharmacy_sales_report(request):
 
 @login_required
 def dispensed_items_tracker(request):
-    """
-    Main view for tracking dispensed items with advanced search capabilities.
-    Allows searching by medication name (first few letters), date range, and other filters.
-    """
-    search_form = DispensedItemsSearchForm(request.GET or None)
-
-    # Base queryset with optimized joins
+    """View for tracking dispensed items with advanced search capabilities."""
+    from django.db.models import Q, Sum, Count, Avg
+    from django.core.paginator import Paginator
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+    
+    # Initialize search form
+    search_form = DispensedItemsSearchForm(request.GET)
+    
+    # Base queryset with optimized queries
     dispensing_logs = DispensingLog.objects.select_related(
-        'prescription_item__medication__category',
         'prescription_item__prescription__patient',
         'prescription_item__prescription__doctor',
+        'prescription_item__medication__category',
         'dispensed_by'
+    ).prefetch_related(
+        'prescription_item__prescription__items'
     ).order_by('-dispensed_date')
-
+    
     # Apply search filters
     if search_form.is_valid():
         medication_name = search_form.cleaned_data.get('medication_name')
@@ -1487,185 +1493,173 @@ def dispensed_items_tracker(request):
         min_quantity = search_form.cleaned_data.get('min_quantity')
         max_quantity = search_form.cleaned_data.get('max_quantity')
         prescription_type = search_form.cleaned_data.get('prescription_type')
-
-        # Search by medication name (supports partial matching from first letters)
+        
         if medication_name:
             dispensing_logs = dispensing_logs.filter(
-                Q(prescription_item__medication__name__istartswith=medication_name) |
-                Q(prescription_item__medication__generic_name__istartswith=medication_name)
+                Q(prescription_item__medication__name__icontains=medication_name) |
+                Q(prescription_item__medication__generic_name__icontains=medication_name)
             )
-
-        # Date range filter
+        
         if date_from:
             dispensing_logs = dispensing_logs.filter(dispensed_date__date__gte=date_from)
+        
         if date_to:
             dispensing_logs = dispensing_logs.filter(dispensed_date__date__lte=date_to)
-
-        # Patient name filter
+        
         if patient_name:
             dispensing_logs = dispensing_logs.filter(
                 Q(prescription_item__prescription__patient__first_name__icontains=patient_name) |
                 Q(prescription_item__prescription__patient__last_name__icontains=patient_name)
             )
-
-        # Staff filter
+        
         if dispensed_by:
             dispensing_logs = dispensing_logs.filter(dispensed_by=dispensed_by)
-
-        # Category filter
+        
         if category:
-            dispensing_logs = dispensing_logs.filter(
-                prescription_item__medication__category=category
-            )
-
-        # Quantity range filters
+            dispensing_logs = dispensing_logs.filter(prescription_item__medication__category=category)
+        
         if min_quantity:
             dispensing_logs = dispensing_logs.filter(dispensed_quantity__gte=min_quantity)
+        
         if max_quantity:
             dispensing_logs = dispensing_logs.filter(dispensed_quantity__lte=max_quantity)
-
-        # Prescription type filter
+        
         if prescription_type:
-            dispensing_logs = dispensing_logs.filter(
-                prescription_item__prescription__prescription_type=prescription_type
-            )
-
-    # Calculate summary statistics
-    total_logs = dispensing_logs.count()
-    total_quantity_dispensed = dispensing_logs.aggregate(
-        total=Sum('dispensed_quantity')
-    )['total'] or 0
-    total_value_dispensed = dispensing_logs.aggregate(
-        total=Sum('total_price_for_this_log')
-    )['total'] or 0
-
-    # Get unique medications dispensed count
-    unique_medications = dispensing_logs.values(
-        'prescription_item__medication'
-    ).distinct().count()
-
-    # Get top dispensed medications
-    top_medications = dispensing_logs.values(
-        'prescription_item__medication__name'
-    ).annotate(
-        total_quantity=Sum('dispensed_quantity'),
-        total_value=Sum('total_price_for_this_log'),
-        dispense_count=Count('id')
-    ).order_by('-total_quantity')[:10]
-
+            dispensing_logs = dispensing_logs.filter(prescription_item__prescription__prescription_type=prescription_type)
+    
+    # Calculate statistics
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+    
+    stats = {
+        'total_dispensed_today': dispensing_logs.filter(dispensed_date__date=today).count(),
+        'total_dispensed_week': dispensing_logs.filter(dispensed_date__date__gte=week_ago).count(),
+        'total_dispensed_month': dispensing_logs.filter(dispensed_date__date__gte=month_ago).count(),
+        'total_value_today': dispensing_logs.filter(dispensed_date__date=today).aggregate(
+            total=Sum('total_price_for_this_log')
+        )['total'] or 0,
+        'total_value_week': dispensing_logs.filter(dispensed_date__date__gte=week_ago).aggregate(
+            total=Sum('total_price_for_this_log')
+        )['total'] or 0,
+        'total_value_month': dispensing_logs.filter(dispensed_date__date__gte=month_ago).aggregate(
+            total=Sum('total_price_for_this_log')
+        )['total'] or 0,
+        'avg_quantity_per_dispense': dispensing_logs.aggregate(
+            avg=Avg('dispensed_quantity')
+        )['avg'] or 0,
+    }
+    
+    # Top medications dispensed this month
+    top_medications = (
+        dispensing_logs.filter(dispensed_date__date__gte=month_ago)
+        .values('prescription_item__medication__name')
+        .annotate(
+            total_quantity=Sum('dispensed_quantity'),
+            total_value=Sum('total_price_for_this_log'),
+            dispense_count=Count('id')
+        )
+        .order_by('-total_quantity')[:10]
+    )
+    
+    # Top dispensing staff this month
+    top_staff = (
+        dispensing_logs.filter(dispensed_date__date__gte=month_ago)
+        .values('dispensed_by__first_name', 'dispensed_by__last_name', 'dispensed_by__id')
+        .annotate(
+            total_dispensed=Count('id'),
+            total_value=Sum('total_price_for_this_log')
+        )
+        .order_by('-total_dispensed')[:10]
+    )
+    
     # Pagination
-    paginator = Paginator(dispensing_logs, 25)  # Show 25 logs per page
+    paginator = Paginator(dispensing_logs, 25)  # Show 25 items per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
+    
     context = {
-        'search_form': search_form,
         'page_obj': page_obj,
-        'total_logs': total_logs,
-        'total_quantity_dispensed': total_quantity_dispensed,
-        'total_value_dispensed': total_value_dispensed,
-        'unique_medications': unique_medications,
+        'search_form': search_form,
+        'stats': stats,
         'top_medications': top_medications,
-        'title': 'Dispensed Items Tracker'
+        'top_staff': top_staff,
+        'today': today,
+        'week_ago': week_ago,
+        'month_ago': month_ago,
+        'title': 'Dispensed Items Tracker',
+        'total_results': dispensing_logs.count(),
     }
-
+    
     return render(request, 'pharmacy/dispensed_items_tracker.html', context)
-
 
 @login_required
 def dispensed_item_detail(request, log_id):
-    """
-    Detailed view for a specific dispensing log entry.
-    Shows complete information about the dispensed item.
-    """
+    """View for showing details of a specific dispensed item."""
     dispensing_log = get_object_or_404(
         DispensingLog.objects.select_related(
-            'prescription_item__medication__category',
             'prescription_item__prescription__patient',
             'prescription_item__prescription__doctor',
+            'prescription_item__medication__category',
             'dispensed_by'
         ),
         id=log_id
     )
-
+    
     # Get related dispensing logs for the same prescription item
     related_logs = DispensingLog.objects.filter(
         prescription_item=dispensing_log.prescription_item
     ).exclude(id=log_id).order_by('-dispensed_date')
-
+    
     # Get prescription details
     prescription = dispensing_log.prescription_item.prescription
-
+    prescription_items = prescription.items.all().select_related('medication')
+    
+    # Calculate dispensing progress for this prescription item
+    total_prescribed = dispensing_log.prescription_item.quantity
+    total_dispensed = dispensing_log.prescription_item.quantity_dispensed_so_far
+    remaining = total_prescribed - total_dispensed
+    dispensing_percentage = (total_dispensed / total_prescribed * 100) if total_prescribed > 0 else 0
+    
+    # Get audit trail for this dispensing log
+    from core.models import AuditLog
+    audit_logs = AuditLog.objects.filter(
+        details__icontains=str(log_id)
+    ).order_by('-timestamp')[:10]
+    
     context = {
         'dispensing_log': dispensing_log,
         'related_logs': related_logs,
         'prescription': prescription,
-        'title': f'Dispensing Log #{dispensing_log.id}'
+        'prescription_items': prescription_items,
+        'total_prescribed': total_prescribed,
+        'total_dispensed': total_dispensed,
+        'remaining': remaining,
+        'dispensing_percentage': round(dispensing_percentage, 1),
+        'audit_logs': audit_logs,
+        'title': f'Dispensing Log #{dispensing_log.id}',
     }
-
+    
     return render(request, 'pharmacy/dispensed_item_detail.html', context)
-
-
-@login_required
-def medication_autocomplete(request):
-    """
-    AJAX endpoint for medication name autocomplete.
-    Returns JSON list of medications matching the search term.
-    """
-    term = request.GET.get('term', '').strip()
-
-    if len(term) < 2:  # Require at least 2 characters
-        return JsonResponse([], safe=False)
-
-    # Search medications by name or generic name (case-insensitive, starts with)
-    medications = Medication.objects.filter(
-        Q(name__istartswith=term) | Q(generic_name__istartswith=term),
-        is_active=True
-    ).values('name', 'generic_name').distinct()[:10]
-
-    # Format results for autocomplete
-    results = []
-    for med in medications:
-        # Add both name and generic name if different
-        if med['name']:
-            results.append({
-                'label': med['name'],
-                'value': med['name']
-            })
-        if med['generic_name'] and med['generic_name'] != med['name']:
-            results.append({
-                'label': f"{med['generic_name']} (Generic)",
-                'value': med['generic_name']
-            })
-
-    # Remove duplicates while preserving order
-    seen = set()
-    unique_results = []
-    for item in results:
-        if item['value'] not in seen:
-            seen.add(item['value'])
-            unique_results.append(item)
-
-    return JsonResponse(unique_results[:10], safe=False)
-
 
 @login_required
 def dispensed_items_export(request):
-    """
-    Export dispensed items data to CSV format.
-    Applies the same filters as the main tracker view.
-    """
-    search_form = DispensedItemsSearchForm(request.GET or None)
-
-    # Base queryset with optimized joins
+    """Export dispensed items data to CSV."""
+    import csv
+    from django.http import HttpResponse
+    from django.utils import timezone
+    
+    # Apply same filters as the tracker view
+    search_form = DispensedItemsSearchForm(request.GET)
+    
     dispensing_logs = DispensingLog.objects.select_related(
-        'prescription_item__medication__category',
         'prescription_item__prescription__patient',
         'prescription_item__prescription__doctor',
+        'prescription_item__medication__category',
         'dispensed_by'
     ).order_by('-dispensed_date')
-
-    # Apply the same filters as the main view
+    
+    # Apply search filters (same logic as tracker view)
     if search_form.is_valid():
         medication_name = search_form.cleaned_data.get('medication_name')
         date_from = search_form.cleaned_data.get('date_from')
@@ -1676,76 +1670,294 @@ def dispensed_items_export(request):
         min_quantity = search_form.cleaned_data.get('min_quantity')
         max_quantity = search_form.cleaned_data.get('max_quantity')
         prescription_type = search_form.cleaned_data.get('prescription_type')
-
+        
         if medication_name:
             dispensing_logs = dispensing_logs.filter(
-                Q(prescription_item__medication__name__istartswith=medication_name) |
-                Q(prescription_item__medication__generic_name__istartswith=medication_name)
+                Q(prescription_item__medication__name__icontains=medication_name) |
+                Q(prescription_item__medication__generic_name__icontains=medication_name)
             )
+        
         if date_from:
             dispensing_logs = dispensing_logs.filter(dispensed_date__date__gte=date_from)
+        
         if date_to:
             dispensing_logs = dispensing_logs.filter(dispensed_date__date__lte=date_to)
+        
         if patient_name:
             dispensing_logs = dispensing_logs.filter(
                 Q(prescription_item__prescription__patient__first_name__icontains=patient_name) |
                 Q(prescription_item__prescription__patient__last_name__icontains=patient_name)
             )
+        
         if dispensed_by:
             dispensing_logs = dispensing_logs.filter(dispensed_by=dispensed_by)
+        
         if category:
-            dispensing_logs = dispensing_logs.filter(
-                prescription_item__medication__category=category
-            )
+            dispensing_logs = dispensing_logs.filter(prescription_item__medication__category=category)
+        
         if min_quantity:
             dispensing_logs = dispensing_logs.filter(dispensed_quantity__gte=min_quantity)
+        
         if max_quantity:
             dispensing_logs = dispensing_logs.filter(dispensed_quantity__lte=max_quantity)
+        
         if prescription_type:
-            dispensing_logs = dispensing_logs.filter(
-                prescription_item__prescription__prescription_type=prescription_type
-            )
-
-    # Create CSV response
+            dispensing_logs = dispensing_logs.filter(prescription_item__prescription__prescription_type=prescription_type)
+    
+    # Create the HttpResponse object with CSV header
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="dispensed_items_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
-
-    import csv
+    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    response['Content-Disposition'] = f'attachment; filename="dispensed_items_{timestamp}.csv"'
+    
     writer = csv.writer(response)
-
-    # Write header
+    
+    # Write header row
     writer.writerow([
-        'Date & Time',
-        'Medication Name',
-        'Generic Name',
-        'Category',
-        'Quantity Dispensed',
-        'Unit Price',
-        'Total Price',
+        'Dispensing Date',
+        'Prescription ID',
         'Patient Name',
         'Patient ID',
         'Doctor',
+        'Medication Name',
+        'Generic Name',
+        'Category',
+        'Dosage Form',
+        'Strength',
+        'Quantity Dispensed',
+        'Unit Price',
+        'Total Price',
         'Dispensed By',
         'Prescription Type',
-        'Prescription ID'
+        'Prescription Status',
+        'Dosage',
+        'Frequency',
+        'Duration',
+        'Instructions'
     ])
-
+    
     # Write data rows
     for log in dispensing_logs:
+        prescription = log.prescription_item.prescription
+        patient = prescription.patient
+        medication = log.prescription_item.medication
+        
         writer.writerow([
             log.dispensed_date.strftime('%Y-%m-%d %H:%M:%S'),
-            log.prescription_item.medication.name,
-            log.prescription_item.medication.generic_name or '',
-            log.prescription_item.medication.category.name if log.prescription_item.medication.category else '',
+            prescription.id,
+            patient.get_full_name(),
+            patient.patient_id,
+            prescription.doctor.get_full_name() if prescription.doctor else '',
+            medication.name,
+            medication.generic_name or '',
+            medication.category.name if medication.category else '',
+            medication.dosage_form,
+            medication.strength,
             log.dispensed_quantity,
-            f"{log.unit_price_at_dispense:.2f}",
-            f"{log.total_price_for_this_log:.2f}",
-            log.prescription_item.prescription.patient.get_full_name(),
-            log.prescription_item.prescription.patient.patient_id,
-            log.prescription_item.prescription.doctor.get_full_name(),
+            log.unit_price_at_dispense,
+            log.total_price_for_this_log,
             log.dispensed_by.get_full_name() if log.dispensed_by else '',
-            log.prescription_item.prescription.get_prescription_type_display(),
-            log.prescription_item.prescription.id
+            prescription.get_prescription_type_display(),
+            prescription.get_status_display(),
+            log.prescription_item.dosage,
+            log.prescription_item.frequency,
+            log.prescription_item.duration,
+            log.prescription_item.instructions or ''
         ])
-
+    
     return response
+
+@login_required
+def dispensary_list(request):
+    """View for listing all dispensaries."""
+    dispensaries = Dispensary.objects.all().order_by('name')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        dispensaries = dispensaries.filter(
+            Q(name__icontains=search_query) |
+            Q(location__icontains=search_query)
+        )
+    
+    # Status filter
+    status_filter = request.GET.get('status')
+    if status_filter == 'active':
+        dispensaries = dispensaries.filter(is_active=True)
+    elif status_filter == 'inactive':
+        dispensaries = dispensaries.filter(is_active=False)
+    
+    if request.method == 'POST':
+        form = DispensaryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Dispensary created successfully.')
+            return redirect('pharmacy:dispensary_list')
+    else:
+        form = DispensaryForm()
+    
+    # Pagination
+    paginator = Paginator(dispensaries, 10)  # Show 10 dispensaries per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'form': form,
+        'title': 'Pharmacy Dispensaries'
+    }
+    
+    return render(request, 'pharmacy/dispensary_list.html', context)
+
+@login_required
+def edit_dispensary(request, dispensary_id):
+    """View for editing a dispensary."""
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id)
+    
+    if request.method == 'POST':
+        form = DispensaryForm(request.POST, instance=dispensary)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Dispensary updated successfully.')
+            return redirect('pharmacy:dispensary_list')
+    else:
+        form = DispensaryForm(instance=dispensary)
+    
+    context = {
+        'form': form,
+        'dispensary': dispensary,
+        'title': f'Edit Dispensary - {dispensary.name}'
+    }
+    
+    return render(request, 'pharmacy/edit_dispensary.html', context)
+
+@login_required
+def delete_dispensary(request, dispensary_id):
+    """View for deleting a dispensary."""
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id)
+    
+    if request.method == 'POST':
+        name = dispensary.name
+        dispensary.delete()
+        messages.success(request, f'Dispensary "{name}" deleted successfully.')
+        return redirect('pharmacy:dispensary_list')
+    
+    context = {
+        'dispensary': dispensary,
+        'title': f'Delete Dispensary - {dispensary.name}'
+    }
+    
+    return render(request, 'pharmacy/delete_dispensary.html', context)
+
+@login_required
+def dispensary_inventory(request, dispensary_id):
+    """View for managing inventory specific to a dispensary."""
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id)
+    
+    # Get medications with their inventory for this dispensary
+    inventory_items = MedicationInventory.objects.select_related(
+        'medication', 'medication__category'
+    ).filter(dispensary=dispensary)
+
+    # Apply filters if provided
+    search_form = MedicationSearchForm(request.GET)
+    if search_form.is_valid():
+        search_query = search_form.cleaned_data.get('search')
+        category = search_form.cleaned_data.get('category')
+        stock_status = search_form.cleaned_data.get('stock_status')
+        is_active = search_form.cleaned_data.get('is_active')
+
+        if search_query:
+            inventory_items = inventory_items.filter(
+                Q(medication__name__icontains=search_query) |
+                Q(medication__generic_name__icontains=search_query) |
+                Q(medication__category__name__icontains=search_query)
+            )
+
+        if category:
+            inventory_items = inventory_items.filter(medication__category=category)
+
+        if stock_status:
+            if stock_status == 'in_stock':
+                inventory_items = inventory_items.filter(stock_quantity__gt=0)
+            elif stock_status == 'low_stock':
+                inventory_items = inventory_items.filter(stock_quantity__lte=F('reorder_level'), stock_quantity__gt=0)
+            elif stock_status == 'out_of_stock':
+                inventory_items = inventory_items.filter(stock_quantity=0)
+
+        if is_active:
+            if is_active == 'active':
+                inventory_items = inventory_items.filter(medication__is_active=True)
+            elif is_active == 'inactive':
+                inventory_items = inventory_items.filter(medication__is_active=False)
+
+    # Get categories for the filter
+    categories = MedicationCategory.objects.all()
+
+    # Get inventory statistics
+    total_medications = inventory_items.count()
+    in_stock_count = inventory_items.filter(stock_quantity__gt=0).count()
+    low_stock_count = inventory_items.filter(stock_quantity__lte=F('reorder_level'), stock_quantity__gt=0).count()
+    out_of_stock_count = inventory_items.filter(stock_quantity=0).count()
+    expired_count = inventory_items.filter(medication__expiry_date__lt=timezone.now().date()).count()
+
+    # Real-time inventory alerts
+    low_stock_alerts = inventory_items.filter(
+        stock_quantity__lte=F('reorder_level'), 
+        stock_quantity__gt=0,
+        medication__is_active=True
+    )
+    expired_alerts = inventory_items.filter(
+        medication__expiry_date__lt=timezone.now().date(),
+        medication__is_active=True
+    )
+
+    # Pagination
+    paginator = Paginator(inventory_items, 10)  # Show 10 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'dispensary': dispensary,
+        'page_obj': page_obj,
+        'search_form': search_form,
+        'total_medications': total_medications,
+        'in_stock_count': in_stock_count,
+        'low_stock_count': low_stock_count,
+        'out_of_stock_count': out_of_stock_count,
+        'expired_count': expired_count,
+        'categories': categories,
+        'low_stock_alerts': low_stock_alerts,
+        'expired_alerts': expired_alerts,
+        'title': f'Inventory - {dispensary.name}'
+    }
+
+    return render(request, 'pharmacy/dispensary_inventory.html', context)
+
+@login_required
+def medication_autocomplete(request):
+    """AJAX view for medication name autocomplete."""
+    query = request.GET.get('query', '') or request.GET.get('term', '')
+    results = []
+    if query and len(query) >= 2:
+        medications = Medication.objects.filter(
+            Q(name__icontains=query) |
+            Q(generic_name__icontains=query)
+        ).filter(is_active=True)[:10]  # Limit to 10 results
+        
+        results = []
+        for med in medications:
+            display_name = med.name
+            if med.generic_name and med.generic_name != med.name:
+                display_name += f" ({med.generic_name})"
+            
+            results.append({
+                'id': med.id,
+                'label': display_name,
+                'value': med.name,
+                'name': med.name,
+                'generic_name': med.generic_name or ''
+            })
+    
+    return JsonResponse(results, safe=False)
