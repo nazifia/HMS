@@ -6,7 +6,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import HttpResponse
 from django.db import models
-from .models import Ward, Bed, Admission, DailyRound, NursingNote
+from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord
 from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm
 from patients.models import Patient
 
@@ -390,7 +390,7 @@ def admission_list(request):
     deceased_count = status_count_dict.get('deceased', 0)
 
     # Advanced: Add role-based analytics for admissions
-    role_counts = Admission.objects.values('attending_doctor__roles__name').annotate(count=models.Count('id')).order_by('-count')
+    role_counts = Admission.objects.values('attending_doctor__profile__role').annotate(count=models.Count('id')).order_by('-count')
     # Advanced: Add audit log and notification fetch (if models exist)
     from core.models import AuditLog, InternalNotification
     audit_logs = AuditLog.objects.filter(
@@ -607,102 +607,150 @@ def discharge_patient(request, admission_id):
     return render(request, 'inpatient/discharge_form.html', context)
 
 @login_required
-def patient_admissions(request, patient_id):
-    """View for displaying admissions for a specific patient"""
-    patient = get_object_or_404(Patient, id=patient_id)
-    admissions = Admission.objects.filter(patient=patient).order_by('-admission_date')
+def transfer_patient(request, admission_id):
+    admission = get_object_or_404(Admission, id=admission_id)
+    if request.method == 'POST':
+        form = PatientTransferForm(request.POST)
+        if form.is_valid():
+            to_ward = form.cleaned_data['to_ward']
+            to_bed = form.cleaned_data['to_bed']
+
+            # Create transfer records
+            BedTransfer.objects.create(admission=admission, from_bed=admission.bed, to_bed=to_bed, notes=form.cleaned_data['notes'])
+            if admission.bed.ward != to_ward:
+                WardTransfer.objects.create(admission=admission, from_ward=admission.bed.ward, to_ward=to_ward, notes=form.cleaned_data['notes'])
+
+            # Update admission
+            admission.bed.is_occupied = False
+            admission.bed.save()
+            admission.bed = to_bed
+            admission.bed.is_occupied = True
+            admission.bed.save()
+            admission.save()
+
+            messages.success(request, f'Patient {admission.patient.get_full_name()} transferred successfully to {to_ward.name}, {to_bed.bed_number}.')
+            return redirect('inpatient:admission_detail', admission_id=admission.id)
+    else:
+        form = PatientTransferForm()
 
     context = {
-        'patient': patient,
-        'admissions': admissions,
-        'title': f'Admissions for {patient.get_full_name()}'
+        'form': form,
+        'admission': admission,
+        'title': f'Transfer Patient: {admission.patient.get_full_name()}'
     }
-
-    return render(request, 'inpatient/patient_admissions.html', context)
+    return render(request, 'inpatient/transfer_form.html', context)
 
 @login_required
-def bed_dashboard(request):
-    """Enhanced bed management dashboard: filter, bulk actions, notifications, analytics, CSV export."""
-    from .models import Bed, Ward, Admission
-    wards = Ward.objects.filter(is_active=True).order_by('name')
-    beds = Bed.objects.select_related('ward').all()
+def add_clinical_record(request, admission_id):
+    admission = get_object_or_404(Admission, id=admission_id)
+    if request.method == 'POST':
+        form = ClinicalRecordForm(request.POST)
+        if form.is_valid():
+            clinical_record = form.save(commit=False)
+            clinical_record.admission = admission
+            clinical_record.recorded_by = request.user
+            clinical_record.save()
+            messages.success(request, 'Clinical record added successfully.')
+            return redirect('inpatient:admission_detail', admission_id=admission.id)
+    else:
+        form = ClinicalRecordForm()
+    context = {
+        'form': form,
+        'admission': admission,
+        'title': 'Add Clinical Record'
+    }
+    return render(request, 'inpatient/clinical_record_form.html', context)
 
-    # Filters
-    ward_id = request.GET.get('ward')
-    bed_status = request.GET.get('status')
-    search = request.GET.get('search', '')
-    if ward_id:
-        beds = beds.filter(ward_id=ward_id)
-    if bed_status == 'available':
-        beds = beds.filter(is_occupied=False, is_active=True)
-    elif bed_status == 'occupied':
-        beds = beds.filter(is_occupied=True)
-    elif bed_status == 'inactive':
-        beds = beds.filter(is_active=False)
-    if search:
-        beds = beds.filter(Q(bed_number__icontains=search) | Q(ward__name__icontains=search))
+@login_required
+def bed_occupancy_report(request):
+    total_beds = Bed.objects.filter(is_active=True).count()
+    occupied_beds = Bed.objects.filter(is_occupied=True, is_active=True).count()
+    available_beds = total_beds - occupied_beds
+    occupancy_rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
 
-    # Bulk actions: Mark beds as available/inactive
-    if request.method == 'POST' and 'bulk_action' in request.POST:
-        action = request.POST.get('bulk_action')
-        selected_ids = request.POST.getlist('selected_beds')
-        if selected_ids:
-            qs = Bed.objects.filter(id__in=selected_ids)
-            if action == 'mark_available':
-                qs.update(is_active=True, is_occupied=False)
-                messages.success(request, f"{qs.count()} bed(s) marked as available.")
-            elif action == 'mark_inactive':
-                qs.update(is_active=False)
-                messages.success(request, f"{qs.count()} bed(s) marked as inactive.")
-            return redirect('inpatient:bed_dashboard')
-
-    # Analytics
-    total_beds = beds.count()
-    available_beds = beds.filter(is_occupied=False, is_active=True).count()
-    occupied_beds = beds.filter(is_occupied=True).count()
-    inactive_beds = beds.filter(is_active=False).count()
-    occupancy_rate = (occupied_beds / total_beds * 100) if total_beds else 0
-
-    # CSV export
-    if 'export' in request.GET:
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="bed_dashboard.csv"'
-        import csv
-        writer = csv.writer(response)
-        writer.writerow(['Ward', 'Bed Number', 'Status', 'Description', 'Current Patient'])
-        for bed in beds:
-            status = 'Inactive' if not bed.is_active else ('Occupied' if bed.is_occupied else 'Available')
-            current_patient = ''
-            if bed.is_occupied:
-                admission = bed.admissions.filter(status='admitted').first()
-                if admission:
-                    current_patient = admission.patient.get_full_name()
-            writer.writerow([
-                bed.ward.name,
-                bed.bed_number,
-                status,
-                bed.description or '-',
-                current_patient
-            ])
-        return response
-
-    # Pagination
-    paginator = Paginator(beds.order_by('ward__name', 'bed_number'), 25)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # Data for charting (example: occupancy by ward)
+    ward_occupancy = []
+    wards = Ward.objects.filter(is_active=True).annotate(total_beds_ward=Count('beds'), occupied_beds_ward=Count('beds', filter=Q(beds__is_occupied=True)))
+    for ward in wards:
+        ward_occupancy.append({
+            'ward_name': ward.name,
+            'occupied': ward.occupied_beds_ward,
+            'available': ward.total_beds_ward - ward.occupied_beds_ward,
+            'total': ward.total_beds_ward,
+            'occupancy_rate': (ward.occupied_beds_ward / ward.total_beds_ward * 100) if ward.total_beds_ward > 0 else 0
+        })
 
     context = {
-        'wards': wards,
-        'page_obj': page_obj,
-        'ward_id': ward_id,
-        'bed_status': bed_status,
-        'search': search,
         'total_beds': total_beds,
-        'available_beds': available_beds,
         'occupied_beds': occupied_beds,
-        'inactive_beds': inactive_beds,
-        'occupancy_rate': occupancy_rate,
-        'page_title': 'Bed Management Dashboard',
-        'active_nav': 'bed_dashboard',
+        'available_beds': available_beds,
+        'occupancy_rate': round(occupancy_rate, 2),
+        'ward_occupancy': ward_occupancy,
+        'title': 'Bed Occupancy Report'
     }
-    return render(request, 'inpatient/bed_dashboard.html', context)
+    return render(request, 'inpatient/bed_occupancy_report.html', context)
+
+@login_required
+def admission_detail(request, admission_id):
+    """View for displaying admission details"""
+    admission = get_object_or_404(Admission, id=admission_id)
+    daily_rounds = DailyRound.objects.filter(admission=admission).order_by('-date_time')
+    nursing_notes = NursingNote.objects.filter(admission=admission).order_by('-date_time')
+    clinical_records = ClinicalRecord.objects.filter(admission=admission).order_by('-date_time')
+
+    # Get prescriptions for this patient
+    prescriptions = None
+    if admission.patient:
+        from pharmacy.models import Prescription
+        prescriptions = Prescription.objects.filter(patient=admission.patient).order_by('-prescription_date')
+
+    # Handle adding new daily round
+    if request.method == 'POST' and 'add_round' in request.POST:
+        round_form = DailyRoundForm(request.POST)
+        if round_form.is_valid():
+            daily_round = round_form.save(commit=False)
+            daily_round.admission = admission
+            daily_round.save()
+            messages.success(request, 'Doctor round has been recorded successfully.')
+            return redirect('inpatient:admission_detail', admission_id=admission.id)
+    else:
+        round_form = DailyRoundForm(initial={'doctor': request.user if request.user.profile.role == 'doctor' else None})
+
+    # Handle adding new nursing note
+    if request.method == 'POST' and 'add_note' in request.POST:
+        note_form = NursingNoteForm(request.POST)
+        if note_form.is_valid():
+            nursing_note = note_form.save(commit=False)
+            nursing_note.admission = admission
+            nursing_note.save()
+            messages.success(request, 'Nursing note has been recorded successfully.')
+            return redirect('inpatient:admission_detail', admission_id=admission.id)
+    else:
+        note_form = NursingNoteForm(initial={'nurse': request.user if request.user.profile.role == 'nurse' else None})
+
+    # Handle adding new clinical record
+    if request.method == 'POST' and 'add_clinical_record' in request.POST:
+        clinical_record_form = ClinicalRecordForm(request.POST)
+        if clinical_record_form.is_valid():
+            clinical_record = clinical_record_form.save(commit=False)
+            clinical_record.admission = admission
+            clinical_record.recorded_by = request.user
+            clinical_record.save()
+            messages.success(request, 'Clinical record added successfully.')
+            return redirect('inpatient:admission_detail', admission_id=admission.id)
+    else:
+        clinical_record_form = ClinicalRecordForm()
+
+    context = {
+        'admission': admission,
+        'daily_rounds': daily_rounds,
+        'nursing_notes': nursing_notes,
+        'clinical_records': clinical_records,
+        'round_form': round_form,
+        'note_form': note_form,
+        'clinical_record_form': clinical_record_form,
+        'prescriptions': prescriptions,
+        'title': f'Admission: {admission.patient.get_full_name()}'
+    }
+
+    return render(request, 'inpatient/admission_detail.html', context)

@@ -19,5 +19,8 @@ urlpatterns = [
     path('admissions/<int:admission_id>/', views.admission_detail, name='admission_detail'),
     path('admissions/<int:admission_id>/edit/', views.edit_admission, name='edit_admission'),
     path('admissions/<int:admission_id>/discharge/', views.discharge_patient, name='discharge_patient'),
+    path('admissions/<int:admission_id>/transfer/', views.transfer_patient, name='transfer_patient'),
+    path('admissions/<int:admission_id>/clinical-record/add/', views.add_clinical_record, name='add_clinical_record'),
+    path('reports/bed-occupancy/', views.bed_occupancy_report, name='bed_occupancy_report'),
     path('patient/<int:patient_id>/admissions/', views.patient_admissions, name='patient_admissions'),
 ]

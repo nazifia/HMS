@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Medication</th>
+                <th>Category</th>
+                <th>Stock Quantity</th>
+                <th>Reorder Level</th>
+                <th>Expiry Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for medication in medications %}
+                <tr>
+                    <td>{{ medication.name }} ({{ medication.strength }})</td>
+                    <td>{{ medication.category.name }}</td>
+                    <td>{{ medication.stock_quantity }}</td>
+                    <td>{{ medication.reorder_level }}</td>
+                    <td>{{ medication.expiry_date|default:"N/A" }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5">No medications found in this dispensary.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-secondary">Back to Dispensaries</a>
+</div>
+{% endblock %}

@@ -47,12 +47,12 @@ def user_management(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    role_counts = User.objects.filter(is_active=True).values('roles__name').annotate(count=Count('id'))
-    role_count_dict = {item['roles__name']: item['count'] for item in role_counts}
+    role_counts = User.objects.filter(is_active=True).values('profile__role').annotate(count=Count('id'))
+    role_count_dict = {item['profile__role']: item['count'] for item in role_counts}
     doctors_count = role_count_dict.get('doctor', 0)
     nurses_count = role_count_dict.get('nurse', 0)
     admin_count = role_count_dict.get('admin', 0)
-    other_count = User.objects.filter(is_active=True).exclude(roles__name__in=['doctor', 'nurse', 'admin']).count()
+    other_count = User.objects.filter(is_active=True).exclude(profile__role__in=['doctor', 'nurse', 'admin']).count()
 
     audit_logs = AuditLog.objects.filter(
         user__in=User.objects.all()

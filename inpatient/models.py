@@ -91,6 +91,8 @@ class Admission(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_admissions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    bed_history = models.ManyToManyField(Bed, through='BedTransfer', related_name='admission_history', through_fields=('admission', 'to_bed'))
+    ward_history = models.ManyToManyField(Ward, through='WardTransfer', related_name='admission_history', through_fields=('admission', 'to_ward'))
 
     def __str__(self):
         return f"{self.patient.get_full_name()} - {self.admission_date.strftime('%Y-%m-%d')}"
@@ -160,6 +162,63 @@ class NursingNote(models.Model):
 
     def __str__(self):
         return f"Nursing note for {self.admission.patient.get_full_name()} on {self.date_time.strftime('%Y-%m-%d %H:%M')}"
+
+    class Meta:
+        ordering = ['-date_time']
+
+class BedTransfer(models.Model):
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='bed_transfers')
+    from_bed = models.ForeignKey(Bed, on_delete=models.CASCADE, related_name='transfers_from')
+    to_bed = models.ForeignKey(Bed, on_delete=models.CASCADE, related_name='transfers_to')
+    transfer_date = models.DateTimeField(default=timezone.now)
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Transfer for {self.admission.patient.get_full_name()} from {self.from_bed} to {self.to_bed}"
+
+class WardTransfer(models.Model):
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='ward_transfers')
+    from_ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='transfers_from')
+    to_ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='transfers_to')
+    transfer_date = models.DateTimeField(default=timezone.now)
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Transfer for {self.admission.patient.get_full_name()} from {self.from_ward} to {self.to_ward}"
+
+class ClinicalRecord(models.Model):
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='clinical_records')
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    record_type = models.CharField(max_length=50, choices=(
+        ('vitals', 'Vital Signs'),
+        ('medication', 'Medication Administration'),
+        ('treatment', 'Treatment Plan'),
+        ('progress', 'Progress Note'),
+        ('other', 'Other'),
+    ))
+    date_time = models.DateTimeField(default=timezone.now)
+    notes = models.TextField()
+    # Fields for vital signs
+    temperature = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    blood_pressure_systolic = models.IntegerField(null=True, blank=True)
+    blood_pressure_diastolic = models.IntegerField(null=True, blank=True)
+    heart_rate = models.IntegerField(null=True, blank=True)
+    respiratory_rate = models.IntegerField(null=True, blank=True)
+    oxygen_saturation = models.IntegerField(null=True, blank=True)
+    # Fields for medication administration
+    medication_name = models.CharField(max_length=255, null=True, blank=True)
+    dosage = models.CharField(max_length=100, null=True, blank=True)
+    route = models.CharField(max_length=100, null=True, blank=True)
+    # Fields for treatment plan
+    treatment_description = models.TextField(null=True, blank=True)
+    # Fields for progress note
+    patient_condition = models.TextField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.get_record_type_display()} for {self.admission.patient.get_full_name()} on {self.date_time.strftime('%Y-%m-%d %H:%M')}"
 
     class Meta:
         ordering = ['-date_time']

@@ -4,7 +4,7 @@ from .models import Prescription, PrescriptionItem
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from billing.models import Invoice
-from .views import _create_pharmacy_invoice
+
 from decimal import Decimal
 from django.db import transaction
 

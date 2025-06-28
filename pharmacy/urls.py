@@ -1,7 +1,5 @@
 from django.urls import path
 from . import views
-from .views import pharmacy_sales_report
-
 app_name = 'pharmacy'
 
 urlpatterns = [
@@ -55,13 +53,19 @@ urlpatterns = [
     path('dispensing-report/', views.dispensing_report, name='dispensing_report'),
 
     # Pharmacy Sales Report
-    path('reports/pharmacy-sales/', pharmacy_sales_report, name='pharmacy_sales_report'),
-    path('sales-report/', pharmacy_sales_report, name='pharmacy_sales_report'),
+    path('reports/pharmacy-sales/', views.pharmacy_sales_report, name='pharmacy_sales_report'),
+    path('sales-report/', views.pharmacy_sales_report, name='pharmacy_sales_report'),
 
     # Dispensed Items Tracking
     path('dispensed-items/', views.dispensed_items_tracker, name='dispensed_items_tracker'),
     path('dispensed-items/<int:log_id>/', views.dispensed_item_detail, name='dispensed_item_detail'),
     path('dispensed-items/export/', views.dispensed_items_export, name='dispensed_items_export'),
+
+    # Dispensary Management
+    path('dispensaries/', views.dispensary_list, name='dispensary_list'),  # Changed from manage_dispensaries
+    path('dispensaries/<int:dispensary_id>/edit/', views.edit_dispensary, name='edit_dispensary'),
+    path('dispensaries/<int:dispensary_id>/delete/', views.delete_dispensary, name='delete_dispensary'),
+    path('dispensaries/<int:dispensary_id>/inventory/', views.dispensary_inventory, name='dispensary_inventory'),
 
     # AJAX Endpoints
     path('api/medication-autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),

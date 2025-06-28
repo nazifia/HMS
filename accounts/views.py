@@ -384,7 +384,7 @@ def api_users(request):
     users_query = User.objects.filter(is_active=True)
 
     if role:
-        users_query = users_query.filter(roles__name=role)
+        users_query = users_query.filter(profile__role=role)
 
     users = users_query.select_related('profile').prefetch_related('roles')
 
@@ -828,7 +828,7 @@ def user_dashboard(request):
         )
     
     if role_filter:
-        users_query = users_query.filter(roles__name=role_filter)
+        users_query = users_query.filter(profile__role=role_filter)
     
     if is_active_filter == 'true':
         users_query = users_query.filter(is_active=True)
@@ -905,10 +905,17 @@ def user_dashboard(request):
     inactive_count = User.objects.filter(is_active=False).count() # Same as above
 
     if request.method == 'GET': # Log only on initial load/filter, not POST actions
+        # Convert is_active_filter to a boolean or None for better logging
+        logged_is_active_filter = None
+        if is_active_filter == 'true':
+            logged_is_active_filter = True
+        elif is_active_filter == 'false':
+            logged_is_active_filter = False
+
         AuditLog.objects.create(
             user=request.user,
             action='user_dashboard_view',
-            details={"filters": {"search": search_query, "role": role_filter, "is_active": is_active_filter}},
+            details={"filters": {"search": search_query, "role": role_filter, "is_active": logged_is_active_filter}},
             ip_address=request.META.get('REMOTE_ADDR'),
             timestamp=timezone.now()
         )
@@ -1229,6 +1236,10 @@ def audit_logs(request):
     paginator = Paginator(logs, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    # Debugging: Print details of each log entry
+    for log_entry in page_obj:
+        print(f"Audit Log ID: {log_entry.id}, Details: {log_entry.details}")
 
     context = {
         'page_obj': page_obj,

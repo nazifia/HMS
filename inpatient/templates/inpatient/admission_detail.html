@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+    <div class="card">
+        <div class="card-header">
+            Admission Details
+        </div>
+        <div class="card-body">
+            <p><strong>Patient:</strong> {{ admission.patient.get_full_name }}</p>
+            <p><strong>Admission Date:</strong> {{ admission.admission_date }}</p>
+            <p><strong>Ward:</strong> {{ admission.bed.ward.name }}</p>
+            <p><strong>Bed:</strong> {{ admission.bed.bed_number }}</p>
+            <p><strong>Attending Doctor:</strong> {{ admission.attending_doctor.get_full_name }}</p>
+            <p><strong>Diagnosis:</strong> {{ admission.diagnosis }}</p>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'inpatient:edit_admission' admission.id %}" class="btn btn-primary">Edit Admission</a>
+            <a href="{% url 'inpatient:discharge_patient' admission.id %}" class="btn btn-danger">Discharge Patient</a>
+            <a href="{% url 'inpatient:transfer_patient' admission.id %}" class="btn btn-warning">Transfer Patient</a>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h4>Daily Rounds</h4>
+        {% for round in daily_rounds %}
+            <div class="card mb-2">
+                <div class="card-body">
+                    <p><strong>Doctor:</strong> {{ round.doctor.get_full_name }}</p>
+                    <p><strong>Date:</strong> {{ round.date_time }}</p>
+                    <p><strong>Notes:</strong> {{ round.notes }}</p>
+                </div>
+            </div>
+        {% endfor %}
+        <a href="#" class="btn btn-success">Add Daily Round</a>
+    </div>
+
+    <div class="mt-4">
+        <h4>Nursing Notes</h4>
+        {% for note in nursing_notes %}
+            <div class="card mb-2">
+                <div class="card-body">
+                    <p><strong>Nurse:</strong> {{ note.nurse.get_full_name }}</p>
+                    <p><strong>Date:</strong> {{ note.date_time }}</p>
+                    <p><strong>Notes:</strong> {{ note.notes }}</p>
+                </div>
+            </div>
+        {% endfor %}
+        <a href="#" class="btn btn-success">Add Nursing Note</a>
+    </div>
+
+    <div class="mt-4">
+        <h4>Clinical Records</h4>
+        {% for record in clinical_records %}
+            <div class="card mb-2">
+                <div class="card-body">
+                    <p><strong>Record Type:</strong> {{ record.get_record_type_display }}</p>
+                    <p><strong>Recorded By:</strong> {{ record.recorded_by.get_full_name }}</p>
+                    <p><strong>Date:</strong> {{ record.date_time }}</p>
+                    <p><strong>Notes:</strong> {{ record.notes }}</p>
+                    {% if record.record_type == 'vitals' %}
+                        <p><strong>Temperature:</strong> {{ record.temperature }}</p>
+                        <p><strong>Blood Pressure:</strong> {{ record.blood_pressure_systolic }}/{{ record.blood_pressure_diastolic }}</p>
+                        <p><strong>Heart Rate:</strong> {{ record.heart_rate }}</p>
+                        <p><strong>Respiratory Rate:</strong> {{ record.respiratory_rate }}</p>
+                        <p><strong>Oxygen Saturation:</strong> {{ record.oxygen_saturation }}</p>
+                    {% elif record.record_type == 'medication' %}
+                        <p><strong>Medication:</strong> {{ record.medication_name }}</p>
+                        <p><strong>Dosage:</strong> {{ record.dosage }}</p>
+                        <p><strong>Route:</strong> {{ record.route }}</p>
+                    {% elif record.record_type == 'treatment' %}
+                        <p><strong>Treatment:</strong> {{ record.treatment_description }}</p>
+                    {% elif record.record_type == 'progress' %}
+                        <p><strong>Patient Condition:</strong> {{ record.patient_condition }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+        <a href="{% url 'inpatient:add_clinical_record' admission.id %}" class="btn btn-success">Add Clinical Record</a>
+    </div>
+
+</div>
+{% endblock %}

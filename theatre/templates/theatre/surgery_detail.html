@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Surgery Details</h2>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Surgery Information
+        </div>
+        <div class="card-body">
+            <p><strong>Patient:</strong> {{ object.patient.get_full_name }}</p>
+            <p><strong>Surgery Type:</strong> {{ object.surgery_type.name }}</p>
+            <p><strong>Theatre:</strong> {{ object.theatre.name }}</p>
+            <p><strong>Primary Surgeon:</strong> {{ object.primary_surgeon.get_full_name }}</p>
+            <p><strong>Anesthetist:</strong> {{ object.anesthetist.get_full_name }}</p>
+            <p><strong>Scheduled Date:</strong> {{ object.scheduled_date }}</p>
+            <p><strong>Expected Duration:</strong> {{ object.expected_duration }}</p>
+            <p><strong>Status:</strong> {{ object.get_status_display }}</p>
+            <p><strong>Pre-Surgery Notes:</strong> {{ object.pre_surgery_notes|default:"N/A" }}</p>
+            <p><strong>Post-Surgery Notes:</strong> {{ object.post_surgery_notes|default:"N/A" }}</p>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'theatre:surgery_update' object.pk %}" class="btn btn-primary">Edit Surgery</a>
+            <a href="{% url 'theatre:surgery_delete' object.pk %}" class="btn btn-danger">Delete Surgery</a>
+            <a href="{% url 'theatre:surgery_log_list' object.pk %}" class="btn btn-info">View Surgery Log</a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Pre-Operative Checklist
+        </div>
+        <div class="card-body">
+            {% if pre_op_checklist %}
+                <p><strong>Patient Identified:</strong> {{ pre_op_checklist.patient_identified|yesno:"Yes,No" }}</p>
+                <p><strong>Site Marked:</strong> {{ pre_op_checklist.site_marked|yesno:"Yes,No" }}</p>
+                <p><strong>Anesthesia Safety Check Completed:</strong> {{ pre_op_checklist.anesthesia_safety_check_completed|yesno:"Yes,No" }}</p>
+                <p><strong>Surgical Safety Checklist Completed:</strong> {{ pre_op_checklist.surgical_safety_checklist_completed|yesno:"Yes,No" }}</p>
+                <p><strong>Consent Confirmed:</strong> {{ pre_op_checklist.consent_confirmed|yesno:"Yes,No" }}</p>
+                <p><strong>Allergies Reviewed:</strong> {{ pre_op_checklist.allergies_reviewed|yesno:"Yes,No" }}</p>
+                <p><strong>Imaging Available:</strong> {{ pre_op_checklist.imaging_available|yesno:"Yes,No" }}</p>
+                <p><strong>Blood Products Available:</strong> {{ pre_op_checklist.blood_products_available|yesno:"Yes,No" }}</p>
+                <p><strong>Antibiotics Administered:</strong> {{ pre_op_checklist.antibiotics_administered|yesno:"Yes,No" }}</p>
+                <p><strong>Notes:</strong> {{ pre_op_checklist.notes|default:"N/A" }}</p>
+                <p><strong>Completed By:</strong> {{ pre_op_checklist.completed_by.get_full_name }}</p>
+                <p><strong>Completed At:</strong> {{ pre_op_checklist.completed_at }}</p>
+                <a href="{% url 'theatre:pre_op_checklist_create' object.pk %}" class="btn btn-primary">Edit Checklist</a>
+            {% else %}
+                <p>No pre-operative checklist available.</p>
+                <a href="{% url 'theatre:pre_op_checklist_create' object.pk %}" class="btn btn-primary">Add Checklist</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Post-Operative Notes
+        </div>
+        <div class="card-body">
+            {% if post_op_notes %}
+                {% for note in post_op_notes %}
+                    <div class="mb-3 p-3 border rounded">
+                        <p><strong>Notes:</strong> {{ note.notes }}</p>
+                        <p><strong>Complications:</strong> {{ note.complications|default:"N/A" }}</p>
+                        <p><strong>Follow-up Instructions:</strong> {{ note.follow_up_instructions|default:"N/A" }}</p>
+                        <p><strong>Created By:</strong> {{ note.created_by.get_full_name }}</p>
+                        <p><strong>Created At:</strong> {{ note.created_at }}</p>
+                        <a href="{% url 'theatre:post_op_note_update' note.pk %}" class="btn btn-sm btn-secondary">Edit</a>
+                        <a href="{% url 'theatre:post_op_note_delete' note.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No post-operative notes available.</p>
+            {% endif %}
+            <a href="{% url 'theatre:post_op_note_create' object.pk %}" class="btn btn-primary">Add Post-Operative Note</a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
