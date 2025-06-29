@@ -5,6 +5,7 @@ from patients.models import Patient
 from django.contrib.auth import get_user_model
 User = get_user_model()
 from doctors.models import Specialization, Doctor
+from accounts.models import Department # Import Department model
 
 def get_specialization_choices():
     return [(s.id, s.name) for s in Specialization.objects.all()]
@@ -135,7 +136,12 @@ class NursingNoteForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter nurses (users with nurse role)
-        self.fields['nurse'].queryset = User.objects.filter(profile__department='Nursing')
+        try:
+            nursing_department = Department.objects.get(name='Nursing')
+            self.fields['nurse'].queryset = User.objects.filter(profile__department=nursing_department)
+        except Department.DoesNotExist:
+            self.fields['nurse'].queryset = User.objects.none()
+            print("Warning: 'Nursing' department not found. No nurses will be available.")
         
         # Set initial date_time to now
         if not self.instance.pk and not self.initial.get('date_time'):
