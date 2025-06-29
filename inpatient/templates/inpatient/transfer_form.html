@@ -1,12 +1,48 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <h2>{{ title }}</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Transfer</button>
-    </form>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="transferForm">
+                        {% csrf_token %}
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Transfer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+<script>
+// Auto-submit the form on ward change to update beds
+const wardSelect = document.getElementById('id_to_ward');
+if (wardSelect) {
+    wardSelect.addEventListener('change', function() {
+        const form = document.getElementById('transferForm');
+        // Change method to GET for dynamic reload
+        form.method = 'get';
+        form.submit();
+    });
+}
+</script>
 {% endblock %}

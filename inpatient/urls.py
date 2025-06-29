@@ -23,4 +23,5 @@ urlpatterns = [
     path('admissions/<int:admission_id>/clinical-record/add/', views.add_clinical_record, name='add_clinical_record'),
     path('reports/bed-occupancy/', views.bed_occupancy_report, name='bed_occupancy_report'),
     path('patient/<int:patient_id>/admissions/', views.patient_admissions, name='patient_admissions'),
+    path('ajax/load-beds/', views.load_beds, name='ajax_load_beds'), # New URL pattern for AJAX
 ]
