@@ -4,16 +4,21 @@ from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.db import models
-from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord
-from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm
+from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord, BedTransfer, WardTransfer
+from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm, ClinicalRecordForm, PatientTransferForm
 from patients.models import Patient
 
 @login_required
 def bed_dashboard(request):
     """Visual dashboard for bed management"""
     beds_list = Bed.objects.select_related('ward').prefetch_related('admissions__patient').order_by('ward__name', 'bed_number')
+
+    # Annotate each bed with its current admission (status='admitted')
+    for bed in beds_list:
+        bed.current_admission = bed.admissions.filter(status='admitted').first()
+
     total_beds = beds_list.count()
     occupied_beds = beds_list.filter(is_occupied=True).count()
     available_beds = beds_list.filter(is_occupied=False, is_active=True).count()
@@ -59,6 +64,8 @@ def patient_admissions(request, patient_id):
         return redirect('patients:patient_list')
 
     admissions_list = Admission.objects.filter(patient=patient).select_related('ward', 'bed', 'attending_doctor').order_by('-admission_date')
+    # Get the current admission (status == 'admitted')
+    current_admission = admissions_list.filter(status='admitted').first()
     
     paginator = Paginator(admissions_list, 10)  # Show 10 admissions per page
     page_number = request.GET.get('page')
@@ -67,6 +74,7 @@ def patient_admissions(request, patient_id):
     context = {
         'patient': patient,
         'admissions': admissions,
+        'current_admission': current_admission,
         'title': f'Admissions for {patient.get_full_name()}'
     }
 
@@ -141,6 +149,10 @@ def ward_detail(request, ward_id):
     ward = get_object_or_404(Ward, id=ward_id)
     beds = ward.beds.all().order_by('bed_number')
 
+    # Annotate each bed with its current admission (status='admitted')
+    for bed in beds:
+        bed.current_admission = bed.admissions.filter(status='admitted').first()
+
     # Get counts
     total_beds = beds.count()
     available_beds = beds.filter(is_occupied=False, is_active=True).count()
@@ -208,6 +220,10 @@ def delete_ward(request, ward_id):
 def bed_list(request):
     """View for listing all beds"""
     beds = Bed.objects.all().select_related('ward')
+
+    # Annotate each bed with its current admission (status='admitted')
+    for bed in beds:
+        bed.current_admission = bed.admissions.filter(status='admitted').first()
 
     # Search functionality
     search_query = request.GET.get('search', '')
@@ -483,9 +499,17 @@ def create_admission(request):
 @login_required
 def admission_detail(request, admission_id):
     """View for displaying admission details"""
-    admission = get_object_or_404(Admission, id=admission_id)
+    # Defensive: Ensure admission_id is an integer
+    try:
+        admission_id_int = int(admission_id)
+    except (ValueError, TypeError):
+        import logging
+        logging.error(f"Invalid admission_id passed to admission_detail: {admission_id}")
+        return HttpResponseBadRequest("Invalid admission ID. Please contact support if this error persists.")
+    admission = get_object_or_404(Admission, id=admission_id_int)
     daily_rounds = DailyRound.objects.filter(admission=admission).order_by('-date_time')
     nursing_notes = NursingNote.objects.filter(admission=admission).order_by('-date_time')
+    clinical_records = ClinicalRecord.objects.filter(admission=admission).order_by('-date_time')
 
     # Get prescriptions for this patient
     prescriptions = None
@@ -503,7 +527,7 @@ def admission_detail(request, admission_id):
             messages.success(request, 'Doctor round has been recorded successfully.')
             return redirect('inpatient:admission_detail', admission_id=admission.id)
     else:
-        round_form = DailyRoundForm(initial={'doctor': request.user if request.user.profile.role == 'doctor' else None})
+        round_form = DailyRoundForm(initial={'doctor': request.user if hasattr(request.user, 'profile') and getattr(request.user.profile, 'role', None) == 'doctor' else None})
 
     # Handle adding new nursing note
     if request.method == 'POST' and 'add_note' in request.POST:
@@ -515,14 +539,29 @@ def admission_detail(request, admission_id):
             messages.success(request, 'Nursing note has been recorded successfully.')
             return redirect('inpatient:admission_detail', admission_id=admission.id)
     else:
-        note_form = NursingNoteForm(initial={'nurse': request.user if request.user.profile.role == 'nurse' else None})
+        note_form = NursingNoteForm(initial={'nurse': request.user if hasattr(request.user, 'profile') and getattr(request.user.profile, 'role', None) == 'nurse' else None})
+
+    # Handle adding new clinical record
+    if request.method == 'POST' and 'add_clinical_record' in request.POST:
+        clinical_record_form = ClinicalRecordForm(request.POST)
+        if clinical_record_form.is_valid():
+            clinical_record = clinical_record_form.save(commit=False)
+            clinical_record.admission = admission
+            clinical_record.recorded_by = request.user
+            clinical_record.save()
+            messages.success(request, 'Clinical record added successfully.')
+            return redirect('inpatient:admission_detail', admission_id=admission.id)
+    else:
+        clinical_record_form = ClinicalRecordForm()
 
     context = {
         'admission': admission,
         'daily_rounds': daily_rounds,
         'nursing_notes': nursing_notes,
+        'clinical_records': clinical_records,
         'round_form': round_form,
         'note_form': note_form,
+        'clinical_record_form': clinical_record_form,
         'prescriptions': prescriptions,
         'title': f'Admission: {admission.patient.get_full_name()}'
     }
@@ -689,68 +728,3 @@ def bed_occupancy_report(request):
         'title': 'Bed Occupancy Report'
     }
     return render(request, 'inpatient/bed_occupancy_report.html', context)
-
-@login_required
-def admission_detail(request, admission_id):
-    """View for displaying admission details"""
-    admission = get_object_or_404(Admission, id=admission_id)
-    daily_rounds = DailyRound.objects.filter(admission=admission).order_by('-date_time')
-    nursing_notes = NursingNote.objects.filter(admission=admission).order_by('-date_time')
-    clinical_records = ClinicalRecord.objects.filter(admission=admission).order_by('-date_time')
-
-    # Get prescriptions for this patient
-    prescriptions = None
-    if admission.patient:
-        from pharmacy.models import Prescription
-        prescriptions = Prescription.objects.filter(patient=admission.patient).order_by('-prescription_date')
-
-    # Handle adding new daily round
-    if request.method == 'POST' and 'add_round' in request.POST:
-        round_form = DailyRoundForm(request.POST)
-        if round_form.is_valid():
-            daily_round = round_form.save(commit=False)
-            daily_round.admission = admission
-            daily_round.save()
-            messages.success(request, 'Doctor round has been recorded successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
-    else:
-        round_form = DailyRoundForm(initial={'doctor': request.user if request.user.profile.role == 'doctor' else None})
-
-    # Handle adding new nursing note
-    if request.method == 'POST' and 'add_note' in request.POST:
-        note_form = NursingNoteForm(request.POST)
-        if note_form.is_valid():
-            nursing_note = note_form.save(commit=False)
-            nursing_note.admission = admission
-            nursing_note.save()
-            messages.success(request, 'Nursing note has been recorded successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
-    else:
-        note_form = NursingNoteForm(initial={'nurse': request.user if request.user.profile.role == 'nurse' else None})
-
-    # Handle adding new clinical record
-    if request.method == 'POST' and 'add_clinical_record' in request.POST:
-        clinical_record_form = ClinicalRecordForm(request.POST)
-        if clinical_record_form.is_valid():
-            clinical_record = clinical_record_form.save(commit=False)
-            clinical_record.admission = admission
-            clinical_record.recorded_by = request.user
-            clinical_record.save()
-            messages.success(request, 'Clinical record added successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
-    else:
-        clinical_record_form = ClinicalRecordForm()
-
-    context = {
-        'admission': admission,
-        'daily_rounds': daily_rounds,
-        'nursing_notes': nursing_notes,
-        'clinical_records': clinical_records,
-        'round_form': round_form,
-        'note_form': note_form,
-        'clinical_record_form': clinical_record_form,
-        'prescriptions': prescriptions,
-        'title': f'Admission: {admission.patient.get_full_name()}'
-    }
-
-    return render(request, 'inpatient/admission_detail.html', context)

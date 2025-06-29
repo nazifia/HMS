@@ -136,15 +136,13 @@
                                         <td>{{ bed.description|default:"No description" }}</td>
                                         <td>
                                             {% if bed.is_occupied %}
-                                                {% with current_admission=bed.admissions.filter.first %}
-                                                    {% if current_admission %}
-                                                        <a href="{% url 'inpatient:admission_detail' current_admission.id %}">
-                                                            {{ current_admission.patient.get_full_name }}
-                                                        </a>
-                                                    {% else %}
-                                                        <span class="text-muted">Unknown</span>
-                                                    {% endif %}
-                                                {% endwith %}
+                                                {% if bed.current_admission %}
+                                                    <a href="{% url 'inpatient:admission_detail' bed.current_admission.id %}">
+                                                        {{ bed.current_admission.patient.get_full_name }}
+                                                    </a>
+                                                {% else %}
+                                                    <span class="text-muted">Unknown</span>
+                                                {% endif %}
                                             {% else %}
                                                 <span class="text-muted">None</span>
                                             {% endif %}

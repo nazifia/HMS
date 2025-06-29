@@ -92,22 +92,11 @@
                         <td>{{ bed.description|default:'-' }}</td>
                         <td>
                             {% if bed.is_occupied %}
-                                {% with current_admission=None %}
-                                    {% for admission in bed.admissions.all|dictsortreversed:'admission_date' %}
-                                        {% if admission.status == 'admitted' %}
-                                            {% if not current_admission %}
-                                                {% with current_admission=admission %}
-                                                    <a href="{% url 'inpatient:admission_detail' admission.id %}">{{ admission.patient.get_full_name }}</a>
-                                                {% endwith %}
-                                            {% endif %}
-                                        {% endif %}
-                                    {% empty %}
-                                        <span class="text-muted">Unknown</span>
-                                    {% endfor %}
-                                    {% if not current_admission %}
-                                        <span class="text-muted">Unknown</span>
-                                    {% endif %}
-                                {% endwith %}
+                                {% if bed.current_admission %}
+                                    <a href="{% url 'inpatient:admission_detail' bed.current_admission.id %}">{{ bed.current_admission.patient.get_full_name }}</a>
+                                {% else %}
+                                    <span class="text-muted">Unknown</span>
+                                {% endif %}
                             {% else %}
                                 <span class="text-muted">None</span>
                             {% endif %}
