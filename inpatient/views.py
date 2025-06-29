@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.db import models
 from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord, BedTransfer, WardTransfer
 from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm, ClinicalRecordForm, PatientTransferForm
@@ -152,12 +152,6 @@ def ward_detail(request, ward_id):
     # Annotate each bed with its current admission (status='admitted')
     for bed in beds:
         bed.current_admission = bed.admissions.filter(status='admitted').first()
-
-    # Get counts
-    total_beds = beds.count()
-    available_beds = beds.filter(is_occupied=False, is_active=True).count()
-    occupied_beds = beds.filter(is_occupied=True).count()
-    inactive_beds = beds.filter(is_active=False).count()
 
     context = {
         'ward': ward,
@@ -648,6 +642,10 @@ def discharge_patient(request, admission_id):
 @login_required
 def transfer_patient(request, admission_id):
     admission = get_object_or_404(Admission, id=admission_id)
+    initial = {}
+    # Pre-populate to_ward from GET if present
+    if request.method == 'GET' and 'to_ward' in request.GET:
+        initial['to_ward'] = request.GET.get('to_ward')
     if request.method == 'POST':
         form = PatientTransferForm(request.POST)
         if form.is_valid():
@@ -670,7 +668,7 @@ def transfer_patient(request, admission_id):
             messages.success(request, f'Patient {admission.patient.get_full_name()} transferred successfully to {to_ward.name}, {to_bed.bed_number}.')
             return redirect('inpatient:admission_detail', admission_id=admission.id)
     else:
-        form = PatientTransferForm()
+        form = PatientTransferForm(initial=initial)
 
     context = {
         'form': form,
@@ -728,3 +726,9 @@ def bed_occupancy_report(request):
         'title': 'Bed Occupancy Report'
     }
     return render(request, 'inpatient/bed_occupancy_report.html', context)
+
+@login_required
+def load_beds(request):
+    ward_id = request.GET.get('ward_id')
+    beds = Bed.objects.filter(ward_id=ward_id, is_active=True, is_occupied=False).order_by('bed_number')
+    return JsonResponse(list(beds.values('id', 'bed_number')), safe=False)

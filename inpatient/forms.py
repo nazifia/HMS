@@ -219,11 +219,19 @@ class PatientTransferForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['to_bed'].queryset = Bed.objects.none()
+        self.fields['to_bed'].queryset = Bed.objects.none() # Initialize with empty queryset
 
+        # Get the ward_id from either submitted data or initial data
+        ward_id = None
         if 'to_ward' in self.data:
+            ward_id = self.data.get('to_ward')
+        elif self.initial.get('to_ward'):
+            # If initial data is a Ward object, get its ID
+            ward_id = self.initial.get('to_ward').id if isinstance(self.initial.get('to_ward'), Ward) else self.initial.get('to_ward')
+
+        if ward_id:
             try:
-                ward_id = int(self.data.get('to_ward'))
+                ward_id = int(ward_id)
                 self.fields['to_bed'].queryset = Bed.objects.filter(ward_id=ward_id, is_active=True, is_occupied=False).order_by('bed_number')
             except (ValueError, TypeError):
-                pass  # invalid input from the client; ignore and fallback to an empty queryset
+                pass # Handle invalid ward_id gracefully

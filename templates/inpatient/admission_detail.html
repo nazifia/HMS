@@ -23,7 +23,64 @@
     </div>
 
     <div class="mt-4">
-        <h4>Daily Rounds</h4>
+        {% comment %} <h4>Daily Rounds</h4> {% endcomment %}
+        {% comment %} <h4 class="d-inline-block ms-4">Nursing Notes</h4> {% endcomment %}
+        <div class="d-flex gap-2 mb-3">
+            <!-- Button to trigger Daily Round Modal -->
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#dailyRoundModal">
+                Add Daily Round
+            </button>
+
+            <!-- Daily Round Modal -->
+            <div class="modal fade" id="dailyRoundModal" tabindex="-1" aria-labelledby="dailyRoundModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="dailyRoundModalLabel">Add Daily Round</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="modal-body">
+                                {{ round_form.as_p }}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <input type="hidden" name="add_round" value="true">
+                                <button type="submit" class="btn btn-success">Save Daily Round</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nursingNoteModal">
+                Add Nursing Note
+            </button>
+
+            <!-- Nursing Note Modal -->
+            <div class="modal fade" id="nursingNoteModal" tabindex="-1" aria-labelledby="nursingNoteModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="nursingNoteModalLabel">Add Nursing Note</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="modal-body">
+                                {{ note_form.as_p }}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <input type="hidden" name="add_note" value="true">
+                                <button type="submit" class="btn btn-success">Save Nursing Note</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% for round in daily_rounds %}
             <div class="card mb-2">
                 <div class="card-body">
@@ -33,37 +90,6 @@
                 </div>
             </div>
         {% endfor %}
-        <!-- Button to trigger Daily Round Modal -->
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#dailyRoundModal">
-            Add Daily Round
-        </button>
-
-        <!-- Daily Round Modal -->
-        <div class="modal fade" id="dailyRoundModal" tabindex="-1" aria-labelledby="dailyRoundModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="dailyRoundModalLabel">Add Daily Round</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="modal-body">
-                            {{ round_form.as_p }}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <input type="hidden" name="add_round" value="true">
-                            <button type="submit" class="btn btn-success">Save Daily Round</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mt-4">
-        <h4>Nursing Notes</h4>
         {% for note in nursing_notes %}
             <div class="card mb-2">
                 <div class="card-body">
@@ -73,33 +99,6 @@
                 </div>
             </div>
         {% endfor %}
-        <!-- Button to trigger Nursing Note Modal -->
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nursingNoteModal">
-            Add Nursing Note
-        </button>
-
-        <!-- Nursing Note Modal -->
-        <div class="modal fade" id="nursingNoteModal" tabindex="-1" aria-labelledby="nursingNoteModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="nursingNoteModalLabel">Add Nursing Note</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="modal-body">
-                            {{ note_form.as_p }}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <input type="hidden" name="add_note" value="true">
-                            <button type="submit" class="btn btn-success">Save Nursing Note</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
     </div>
 
 </div>
