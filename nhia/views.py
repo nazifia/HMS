@@ -1,0 +1,79 @@
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.contrib import messages
+
+from patients.models import Patient
+from patients.forms import PatientSearchForm, NHIAIndependentPatientForm # Import NHIAIndependentPatientForm
+from .models import NHIAPatient
+
+@login_required
+def nhia_patient_list(request):
+    nhia_patients = NHIAPatient.objects.select_related('patient').all().order_by('-date_registered')
+
+    search_query = request.GET.get('search', '')
+    if search_query:
+        nhia_patients = nhia_patients.filter(
+            Q(nhia_reg_number__icontains=search_query) |
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(patient__patient_id__icontains=search_query)
+        )
+
+    paginator = Paginator(nhia_patients, 10)  # Show 10 NHIA patients per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'title': 'NHIA Patients'
+    }
+    return render(request, 'nhia/nhia_patient_list.html', context)
+
+@login_required
+def register_patient_for_nhia(request):
+    search_form = PatientSearchForm(request.GET)
+    patients = Patient.objects.all().order_by('first_name')
+
+    if search_form.is_valid():
+        search_query = search_form.cleaned_data.get('search')
+        if search_query:
+            patients = patients.filter(
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(patient_id__icontains=search_query) |
+                Q(phone_number__icontains=search_query)
+            )
+
+    # Filter out patients who already have an NHIA record
+    patients = patients.exclude(nhia_info__isnull=False)
+
+    paginator = Paginator(patients, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'search_form': search_form,
+        'page_obj': page_obj,
+        'title': 'Select Patient for NHIA Registration'
+    }
+    return render(request, 'nhia/register_patient_for_nhia.html', context)
+
+@login_required
+def register_independent_nhia_patient(request):
+    if request.method == 'POST':
+        form = NHIAIndependentPatientForm(request.POST, request.FILES)
+        if form.is_valid():
+            patient = form.save()
+            messages.success(request, f'Independent NHIA Patient {patient.get_full_name()} registered successfully.')
+            return redirect('patients:detail', patient_id=patient.id)
+    else:
+        form = NHIAIndependentPatientForm()
+
+    context = {
+        'form': form,
+        'title': 'Register Independent NHIA Patient'
+    }
+    return render(request, 'nhia/register_independent_nhia_patient.html', context)

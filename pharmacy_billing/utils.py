@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 from billing.models import Invoice, InvoiceItem, Service
 from django.contrib import messages
+from nhia.models import NHIAPatient # Import NHIAPatient
 
 def create_pharmacy_invoice(request, prescription, subtotal_value):
     messages.info(request, f"[create_pharmacy_invoice] Called for Prescription ID: {prescription.id}, Subtotal: {subtotal_value}")
@@ -16,6 +17,20 @@ def create_pharmacy_invoice(request, prescription, subtotal_value):
         return None
 
     subtotal_value = Decimal(str(subtotal_value)).quantize(Decimal('0.01'))
+    
+    # Check if the patient is an NHIA patient
+    is_nhia_patient = False
+    try:
+        if hasattr(prescription.patient, 'nhia_info') and prescription.patient.nhia_info.is_active:
+            is_nhia_patient = True
+    except NHIAPatient.DoesNotExist:
+        pass # Not an NHIA patient
+
+    if is_nhia_patient:
+        # NHIA patients pay 10% of the medication cost
+        subtotal_value = subtotal_value * Decimal('0.10')
+        messages.info(request, f"[create_pharmacy_invoice] NHIA patient detected. Medication cost adjusted to 10%: {subtotal_value}")
+
     tax_percentage = pharmacy_service.tax_percentage if pharmacy_service and pharmacy_service.tax_percentage is not None else Decimal('0.00')
     tax_amount_calculated = Decimal('0.00')
     if tax_percentage > 0:

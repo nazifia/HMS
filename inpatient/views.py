@@ -153,6 +153,12 @@ def ward_detail(request, ward_id):
     for bed in beds:
         bed.current_admission = bed.admissions.filter(status='admitted').first()
 
+    # Add missing bed counts
+    total_beds = beds.count()
+    available_beds = beds.filter(is_occupied=False, is_active=True).count()
+    occupied_beds = beds.filter(is_occupied=True).count()
+    inactive_beds = beds.filter(is_active=False).count()
+
     context = {
         'ward': ward,
         'beds': beds,

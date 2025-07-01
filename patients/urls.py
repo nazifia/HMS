@@ -27,4 +27,6 @@ urlpatterns = [
     path('<int:patient_id>/wallet/transfer/', views.wallet_transfer, name='wallet_transfer'),
     path('<int:patient_id>/wallet/refund/', views.wallet_refund, name='wallet_refund'),
     path('<int:patient_id>/wallet/adjustment/', views.wallet_adjustment, name='wallet_adjustment'),
+    path('<int:patient_id>/nhia/register/', views.register_nhia_patient, name='register_nhia_patient'),
+    path('<int:patient_id>/nhia/edit/', views.edit_nhia_patient, name='edit_nhia_patient'),
 ]
