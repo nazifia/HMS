@@ -22,7 +22,7 @@ class Ward(models.Model):
         ('scbu', 'SCBU'),
         # ('icu', 'Intensive Care Unit'), # Already exists
         ('theater', 'Theater'),
-        ('nhia', 'NHIA (For Insurance)'),
+        ('nhia', 'NHIA (For Insurance)'), # This ward type is for categorization, NHIA patients can be admitted to any ward.
         ('opthalmic', 'Opthalmic'),
         ('ent', 'ENT'),
         ('dental', 'Dental'),

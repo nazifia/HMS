@@ -7,6 +7,8 @@ from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from .models import Patient, MedicalHistory, Vitals
+from nhia.models import NHIAPatient
+from .forms import NHIARegistrationForm
 from .forms import PatientForm, MedicalHistoryForm, VitalsForm, PatientSearchForm
 from core.audit_utils import log_audit_action
 from core.utils import send_notification_email, send_sms_notification
@@ -148,6 +150,13 @@ def patient_detail(request, patient_id):
     has_wallet = hasattr(patient, 'wallet') and patient.wallet is not None
     wallet_is_active = has_wallet and patient.wallet.is_active
 
+    # NHIA Information
+    nhia_info = None
+    try:
+        nhia_info = patient.nhia_info
+    except NHIAPatient.DoesNotExist:
+        pass
+
     context = {
         'patient': patient,
         'medical_histories': medical_histories,
@@ -158,9 +167,59 @@ def patient_detail(request, patient_id):
         'today': timezone.now(),
         'has_wallet': has_wallet,
         'wallet_is_active': wallet_is_active,
+        'nhia_info': nhia_info, # Pass NHIA info to template
     }
 
     return render(request, 'patients/patient_detail.html', context)
+
+@login_required
+def register_nhia_patient(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    # Check if patient already has an NHIA record
+    if hasattr(patient, 'nhia_info'):
+        messages.warning(request, f'Patient {patient.get_full_name()} already has an NHIA record. Please edit the existing record.')
+        return redirect('patients:detail', patient_id=patient.id)
+
+    if request.method == 'POST':
+        form = NHIARegistrationForm(request.POST)
+        if form.is_valid():
+            nhia_patient = form.save(commit=False)
+            nhia_patient.patient = patient
+            nhia_patient.save()
+            messages.success(request, f'NHIA record for {patient.get_full_name()} created successfully.')
+            return redirect('patients:detail', patient_id=patient.id)
+    else:
+        form = NHIARegistrationForm()
+
+    context = {
+        'form': form,
+        'patient': patient,
+        'title': f'Register NHIA Patient: {patient.get_full_name()}'
+    }
+    return render(request, 'patients/nhia_registration_form.html', context)
+
+@login_required
+def edit_nhia_patient(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    nhia_patient = get_object_or_404(NHIAPatient, patient=patient)
+
+    if request.method == 'POST':
+        form = NHIARegistrationForm(request.POST, instance=nhia_patient)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'NHIA record for {patient.get_full_name()} updated successfully.')
+            return redirect('patients:detail', patient_id=patient.id)
+    else:
+        form = NHIARegistrationForm(instance=nhia_patient)
+
+    context = {
+        'form': form,
+        'patient': patient,
+        'nhia_patient': nhia_patient,
+        'title': f'Edit NHIA Patient: {patient.get_full_name()}'
+    }
+    return render(request, 'patients/nhia_registration_form.html', context)
 
 @login_required
 def edit_patient(request, patient_id):

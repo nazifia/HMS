@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     'consultations',
     'radiology',
     'theatre.apps.TheatreConfig',
+    'nhia',
 
 ]
 

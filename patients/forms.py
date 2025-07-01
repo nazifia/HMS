@@ -3,6 +3,34 @@ from .models import Patient, MedicalHistory, Vitals
 from django.core.validators import RegexValidator
 from doctors.models import Specialization
 import re
+from nhia.models import NHIAPatient # Import NHIAPatient
+import datetime
+
+def generate_unique_nhia_reg_number():
+    """
+    Generates a unique NHIA registration number.
+    Format: NHIA-YYYYMMDD-XXXX (where XXXX is a sequential number)
+    """
+    today = datetime.date.today()
+    prefix = f"NHIA-{today.strftime('%Y%m%d')}"
+    
+    # Find the last NHIA patient registered today to get the next sequential number
+    last_nhia_patient = NHIAPatient.objects.filter(
+        nhia_reg_number__startswith=prefix
+    ).order_by('-nhia_reg_number').first()
+
+    if last_nhia_patient:
+        try:
+            # Extract the sequential number and increment it
+            last_number_str = last_nhia_patient.nhia_reg_number.split('-')[-1]
+            last_number = int(last_number_str)
+            new_number = last_number + 1
+        except (IndexError, ValueError):
+            new_number = 1
+    else:
+        new_number = 1
+    
+    return f"{prefix}-{new_number:04d}"
 
 class PatientForm(forms.ModelForm):
     """
@@ -507,3 +535,48 @@ class WalletTransactionSearchForm(forms.Form):
         }),
         label='Max Amount'
     )
+
+class NHIARegistrationForm(forms.ModelForm):
+    class Meta:
+        model = NHIAPatient
+        fields = ['nhia_reg_number', 'is_active']
+        widgets = {
+            'nhia_reg_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # If updating an existing NHIAPatient, disable the nhia_reg_number field
+        if self.instance and self.instance.pk:
+            self.fields['nhia_reg_number'].widget.attrs['readonly'] = True
+            self.fields['nhia_reg_number'].help_text = "NHIA Registration Number cannot be changed after creation."
+
+    def clean_nhia_reg_number(self):
+        nhia_reg_number = self.cleaned_data.get('nhia_reg_number')
+        if nhia_reg_number and NHIAPatient.objects.filter(nhia_reg_number=nhia_reg_number).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("This NHIA Registration Number is already in use.")
+        return nhia_reg_number
+
+class NHIAIndependentPatientForm(PatientForm):
+    is_nhia_active = forms.BooleanField(
+        label="Is NHIA Active?",
+        initial=True,
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
+    class Meta(PatientForm.Meta):
+        fields = PatientForm.Meta.fields + ['is_nhia_active']
+
+    def save(self, commit=True):
+        patient = super().save(commit=True) # This calls PatientForm.save(commit=True)
+        if commit:
+            nhia_reg_number = generate_unique_nhia_reg_number()
+            is_nhia_active = self.cleaned_data.get('is_nhia_active')
+            NHIAPatient.objects.create(
+                patient=patient,
+                nhia_reg_number=nhia_reg_number,
+                is_active=is_nhia_active
+            )
+        return patient
