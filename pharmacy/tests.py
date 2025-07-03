@@ -1,8 +1,10 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from pharmacy.models import Patient, Prescription, Medication, PrescriptionItem
-from pharmacy_billing.models import Invoice, Service
+from pharmacy_billing.models import Invoice
+from billing.models import Service
 from decimal import Decimal
 
 class CreatePrescriptionTestCase(TestCase):
@@ -10,11 +12,11 @@ class CreatePrescriptionTestCase(TestCase):
     def setUp(self):
         # Create test user, patient, and service
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass')
+        self.user = User.objects.create_user(username='testuser', password='testpass', phone_number='+1234567890')
         self.client.login(username='testuser', password='testpass')
 
-        self.patient = Patient.objects.create(name='Test Patient', age=30, gender='M')
-        self.service = Service.objects.create(name='Medication Dispensing', tax_percentage=10)
+        self.patient = Patient.objects.create(first_name='Test', last_name='Patient', date_of_birth='1995-01-01', gender='M', phone_number='+1234567890', address='123 Test St', city='Test City', state='Test State', country='Test Country')
+        self.service = Service.objects.create(name='Medication Dispensing', tax_percentage=10, price=Decimal('0.00'))
         self.medication = Medication.objects.create(name='Test Medication', price=Decimal('50.00'))
 
     def test_create_prescription_with_invoice(self):

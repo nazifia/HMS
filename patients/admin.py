@@ -1,5 +1,30 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django import forms
+from django.shortcuts import render, redirect
 from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction
+from nhia.models import NHIAPatient
+from .utils import merge_patients
+
+class MergePatientForm(forms.Form):
+    primary_patient = forms.ModelChoiceField(queryset=Patient.objects.all(), label="Primary Patient")
+    secondary_patient = forms.ModelChoiceField(queryset=Patient.objects.all(), label="Patient to Merge")
+    is_nhia_patient = forms.BooleanField(required=False, label="Convert to NHIA Patient")
+    nhia_reg_number = forms.CharField(required=False, label="NHIA Registration Number")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        primary_patient = cleaned_data.get("primary_patient")
+        secondary_patient = cleaned_data.get("secondary_patient")
+        is_nhia_patient = cleaned_data.get("is_nhia_patient")
+        nhia_reg_number = cleaned_data.get("nhia_reg_number")
+
+        if primary_patient == secondary_patient:
+            raise forms.ValidationError("Primary and secondary patients cannot be the same.")
+
+        if is_nhia_patient and not nhia_reg_number:
+            self.add_error('nhia_reg_number', "NHIA registration number is required if converting to NHIA patient.")
+
+        return cleaned_data
 
 class MedicalHistoryInline(admin.TabularInline):
     model = MedicalHistory
@@ -11,13 +36,13 @@ class VitalsInline(admin.TabularInline):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ('patient_id', 'first_name', 'last_name', 'gender', 'phone_number', 'registration_date', 'is_active', 'primary_doctor')
+    list_display = ('patient_id', 'first_name', 'last_name', 'patient_type', 'gender', 'phone_number', 'registration_date', 'is_active', 'primary_doctor')
     list_filter = ('gender', 'blood_group', 'is_active', 'registration_date')
     search_fields = ('patient_id', 'first_name', 'last_name', 'phone_number', 'email')
     date_hierarchy = 'registration_date'
     fieldsets = (
         ('Basic Information', {
-            'fields': ('first_name', 'last_name', 'date_of_birth', 'gender', 'blood_group', 'marital_status', 'profile_picture')
+            'fields': ('first_name', 'last_name', 'date_of_birth', 'gender', 'blood_group', 'marital_status', 'profile_picture', 'patient_type')
         }),
         ('Contact Information', {
             'fields': ('email', 'phone_number', 'address', 'city', 'state', 'postal_code', 'country')
@@ -37,6 +62,31 @@ class PatientAdmin(admin.ModelAdmin):
     )
     readonly_fields = ('registration_date',)
     inlines = [MedicalHistoryInline, VitalsInline]
+
+    def merge_patient_action(self, request, queryset):
+        if 'apply' in request.POST:
+            form = MergePatientForm(request.POST)
+            if form.is_valid():
+                primary_patient = form.cleaned_data['primary_patient']
+                secondary_patient = form.cleaned_data['secondary_patient']
+                is_nhia_patient = form.cleaned_data['is_nhia_patient']
+                nhia_reg_number = form.cleaned_data['nhia_reg_number']
+
+                try:
+                    merge_patients(primary_patient, secondary_patient, is_nhia_patient, nhia_reg_number)
+                    self.message_user(request, "Patients merged successfully.", messages.SUCCESS)
+                    return redirect(request.get_full_path())
+                except Exception as e:
+                    self.message_user(request, f"Error merging patients: {e}", messages.ERROR)
+
+        else:
+            form = MergePatientForm()
+
+        return render(request, 'admin/merge_patient.html', {'form': form, 'patients': queryset})
+
+    merge_patient_action.short_description = "Merge selected patients"
+
+    actions = [merge_patient_action]
 
 @admin.register(MedicalHistory)
 class MedicalHistoryAdmin(admin.ModelAdmin):

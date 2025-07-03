@@ -33,7 +33,7 @@ class NHIARegistrationTest(TestCase):
 
         # Check if a new Patient and NHIAPatient object were created
         self.assertEqual(Patient.objects.count(), 1)
-        self.assertEqual(NHIAPatient.objects.count(), 1)
+        self.assertEqual(Patient.objects.filter(patient_type='nhia').count(), 1)
 
         patient = Patient.objects.last()
         nhia_patient = NHIAPatient.objects.last()
@@ -70,7 +70,8 @@ class NHIARegistrationTest(TestCase):
         # Register a second patient
         self.client.post(self.register_url, self.patient_data, follow=True)
         second_patient = Patient.objects.last()
-        second_nhia_patient = NHIAPatient.objects.get(patient=second_patient)
+        self.assertEqual(second_patient.patient_type, 'nhia')
+        second_patient = Patient.objects.filter(patient_type='nhia').get(patient=second_patient)
 
         # Assert that the registration numbers are different
         self.assertNotEqual(first_nhia_patient.nhia_reg_number, second_nhia_patient.nhia_reg_number)
@@ -82,6 +83,6 @@ class NHIARegistrationTest(TestCase):
         self.assertTrue(second_nhia_patient.nhia_reg_number.startswith(expected_prefix))
         
         # Check sequential parts
-        first_seq = int(first_nhia_patient.nhia_reg_number.split('-')[-1])
-        second_seq = int(second_nhia_patient.nhia_reg_number.split('-')[-1])
+        first_seq = int(first_patient.patient_id.split('-')[-1])
+        second_seq = int(second_patient.patient_id.split('-')[-1])
         self.assertEqual(second_seq, first_seq + 1)

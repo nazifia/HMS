@@ -484,9 +484,7 @@
                             <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">
                                 <i class="fas fa-edit me-1"></i> Edit Patient
                             </a>
-                            <a href="{% url 'patients:delete' patient.id %}" class="btn btn-danger ms-2" onclick="return confirm('Are you sure you want to deactivate this patient?');">
-                                <i class="fas fa-user-times me-1"></i> Deactivate Patient
-                            </a>
+                            <!-- Deactivate/Activate handled by toggle button below; removed obsolete delete link -->
                         </div>
                     </div>
                 </div>
@@ -624,10 +622,11 @@
                                 <label for="radiology_type" class="form-label">Radiology Type</label>
                                 <select class="form-select" id="radiology_type" name="radiology_type" required>
                                     <option value="">Select Type</option>
-                                    <option value="xray">X-Ray</option>
-                                    <option value="ct">CT Scan</option>
-                                    <option value="mri">MRI</option>
+                                    <option value="x-ray">X-Ray</option>
                                     <option value="ultrasound">Ultrasound</option>
+                                    <option value="ct-scan">CT Scan</option>
+                                    <option value="mri">MRI</option>
+                                    <option value="ecg">ECG</option>
                                 </select>
                             </div>
                         </div>
