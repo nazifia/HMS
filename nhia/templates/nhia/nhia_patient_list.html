@@ -34,6 +34,7 @@
                         <th>Patient Name</th>
                         <th>Patient ID</th>
                         <th>NHIA Reg. No.</th>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Date Registered</th>
                         <th>Actions</th>
@@ -45,6 +46,7 @@
                         <td><a href="{% url 'patients:detail' nhia_patient.patient.id %}">{{ nhia_patient.patient.get_full_name }}</a></td>
                         <td>{{ nhia_patient.patient.patient_id }}</td>
                         <td>{{ nhia_patient.nhia_reg_number }}</td>
+                        <td><span class="badge bg-success">NHIA</span></td>
                         <td>
                             {% if nhia_patient.is_active %}
                                 <span class="badge bg-success">Active</span>
@@ -59,7 +61,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6">No NHIA patients found.</td>
+                        <td colspan="7">No NHIA patients found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

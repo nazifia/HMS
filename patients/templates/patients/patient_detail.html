@@ -25,6 +25,7 @@
             <div class="card-body">
                 <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
                 <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                <p><strong>Type:</strong> {{ patient.get_patient_type_display }}</p>
                 <p><strong>Date of Birth:</strong> {{ patient.date_of_birth|date:"Y-m-d" }} (Age: {{ age }})</p>
                 <p><strong>Gender:</strong> {{ patient.get_gender_display }}</p>
                 <p><strong>Phone:</strong> {{ patient.phone_number }}</p>
@@ -86,13 +87,14 @@
                 <hr>
 
                 <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">Edit Patient</a>
-                {% if patient.is_active %}
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deletePatientModal">
-                        Deactivate Patient
-                    </button>
-                {% else %}
-                    <span class="text-muted">Patient is inactive.</span>
-                {% endif %}
+                <form method="post" action="{% url 'patients:toggle_active' patient.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    {% if patient.is_active %}
+                        <button type="submit" class="btn btn-warning">Deactivate Patient</button>
+                    {% else %}
+                        <button type="submit" class="btn btn-success">Activate Patient</button>
+                    {% endif %}
+                </form>
             </div>
         </div>
 
@@ -132,6 +134,7 @@
                     <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
                 {% endif %}
                 <h5>{{ patient.get_full_name }}</h5>
+                <p class="text-muted">Patient type: {{ patient.get_patient_type_display }}</p>
                 <p class="text-muted">ID: {{ patient.patient_id }}</p>
                 {% if patient.is_active %}
                     <span class="badge bg-success">Active Patient</span>
@@ -157,25 +160,24 @@
 </div>
 
 <!-- Deactivate Patient Modal -->
-<div class="modal fade" id="deletePatientModal" tabindex="-1" aria-labelledby="deletePatientModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deletePatientModalLabel">Confirm Deactivation</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Are you sure you want to deactivate patient {{ patient.get_full_name }} ({{ patient.patient_id }})?
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <form method="post" action="{% url 'patients:delete' patient.id %}" style="display: inline;">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger">Deactivate</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
+        <!-- The delete modal and form below are now obsolete since toggle is used -->
+        {#
+        <div class="modal fade" id="deletePatientModal" tabindex="-1" aria-labelledby="deletePatientModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="deletePatientModalLabel">Confirm Deactivation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                Are you sure you want to deactivate patient {{ patient.get_full_name }} ({{ patient.patient_id }})?
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <!-- Removed the delete form -->
+              </div>
+            </div>
+          </div>
+        </div>
+        #}
 {% endblock content %}

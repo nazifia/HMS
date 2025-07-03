@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Patient List</h3>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="form-inline mb-3">
+                        {{ search_form.as_p }}
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </form>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Patient ID</th>
+                                <th>Name</th>
+                                <th>Age</th>
+                                <th>Gender</th>
+                                <th>Phone</th>
+                                <th>Type</th>
+                                <th>Registered</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patient in page_obj %}
+                            <tr>
+                                <td>{{ patient.patient_id }}</td>
+                                <td>{{ patient.get_full_name }}</td>
+                                <td>{{ patient.age }}</td>
+                                <td>{{ patient.get_gender_display }}</td>
+                                <td>{{ patient.phone_number }}</td>
+                                <td>{{ patient.get_patient_type_display }}</td>
+                                <td>{{ patient.registration_date|date:"Y-m-d" }}</td>
+                                <td>
+                                    {% if patient.is_active %}
+                                    <span class="badge badge-success">Active</span>
+                                    {% else %}
+                                    <span class="badge badge-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'patients:detail' patient.id %}" class="btn btn-info btn-sm">View</a>
+                                    <a href="{% url 'patients:edit' patient.id %}" class="btn btn-warning btn-sm">Edit</a>
+                                    <form action="{% url 'patients:toggle_status' patient.id %}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to change the status of this patient?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-{% if patient.is_active %}danger{% else %}success{% endif %} btn-sm">
+                                            {% if patient.is_active %}
+                                            Deactivate
+                                            {% else %}
+                                            Activate
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div class="pagination">
+                        <span class="step-links">
+                            {% if page_obj.has_previous %}
+                                <a href="?page=1">&laquo; first</a>
+                                <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+                            {% endif %}
+
+                            <span class="current">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                            </span>
+
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}">next</a>
+                                <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

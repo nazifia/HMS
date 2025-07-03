@@ -6,31 +6,7 @@ import re
 from nhia.models import NHIAPatient # Import NHIAPatient
 import datetime
 
-def generate_unique_nhia_reg_number():
-    """
-    Generates a unique NHIA registration number.
-    Format: NHIA-YYYYMMDD-XXXX (where XXXX is a sequential number)
-    """
-    today = datetime.date.today()
-    prefix = f"NHIA-{today.strftime('%Y%m%d')}"
-    
-    # Find the last NHIA patient registered today to get the next sequential number
-    last_nhia_patient = NHIAPatient.objects.filter(
-        nhia_reg_number__startswith=prefix
-    ).order_by('-nhia_reg_number').first()
 
-    if last_nhia_patient:
-        try:
-            # Extract the sequential number and increment it
-            last_number_str = last_nhia_patient.nhia_reg_number.split('-')[-1]
-            last_number = int(last_number_str)
-            new_number = last_number + 1
-        except (IndexError, ValueError):
-            new_number = 1
-    else:
-        new_number = 1
-    
-    return f"{prefix}-{new_number:04d}"
 
 class PatientForm(forms.ModelForm):
     """
@@ -82,7 +58,7 @@ class PatientForm(forms.ModelForm):
         return cleaned
 
     # Override fields for better validation and UI
-    phone_number = forms.CharField(validators=[phone_regex], max_length=17)
+    phone_number = forms.CharField(validators=[phone_regex], max_length=17, required=False)
     date_of_birth = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
 
     class Meta:
@@ -110,8 +86,7 @@ class PatientForm(forms.ModelForm):
 
     def clean_phone_number(self):
         phone_number = self.cleaned_data.get('phone_number')
-        if phone_number and Patient.objects.filter(phone_number=phone_number).exclude(id=self.instance.id if self.instance else None).exists():
-            raise forms.ValidationError("This phone number is already registered with another patient.")
+        # Uniqueness check removed as requested
         return phone_number
 
     def clean_first_name(self):
@@ -156,32 +131,6 @@ class PatientForm(forms.ModelForm):
 
     def save(self, commit=True):
         patient = super().save(commit=False)
-
-        # Generate patient ID if this is a new patient
-        if not patient.pk and not patient.patient_id:
-            # Format: YYYYMMNNNN (numeric only, no letters or hyphens)
-            import datetime
-            year = datetime.date.today().year
-            month = datetime.date.today().month
-            prefix = f"{year}{month:02d}"
-
-            # Get the last patient ID with the same date prefix
-            last_patient = Patient.objects.filter(
-                patient_id__startswith=prefix
-            ).order_by('-patient_id').first()
-
-            if last_patient:
-                try:
-                    # Extract the sequential number and increment it
-                    last_number = int(last_patient.patient_id[len(prefix):])
-                    new_number = last_number + 1
-                except (IndexError, ValueError):
-                    new_number = 1
-            else:
-                new_number = 1
-
-            patient.patient_id = f"{prefix}{new_number:04d}"
-
         if commit:
             patient.save()
         return patient
@@ -568,15 +517,11 @@ class NHIAIndependentPatientForm(PatientForm):
 
     class Meta(PatientForm.Meta):
         fields = PatientForm.Meta.fields + ['is_nhia_active']
+        exclude = ['allergies', 'chronic_diseases', 'current_medications', 'primary_doctor', 'notes', 'postal_code']
 
     def save(self, commit=True):
-        patient = super().save(commit=True) # This calls PatientForm.save(commit=True)
+        patient = super().save(commit=False)
+        patient.patient_type = 'nhia'  # Ensure type
         if commit:
-            nhia_reg_number = generate_unique_nhia_reg_number()
-            is_nhia_active = self.cleaned_data.get('is_nhia_active')
-            NHIAPatient.objects.create(
-                patient=patient,
-                nhia_reg_number=nhia_reg_number,
-                is_active=is_nhia_active
-            )
+            patient.save()
         return patient

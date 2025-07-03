@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+import random
 
 
 class Patient(models.Model):
@@ -28,8 +29,14 @@ class Patient(models.Model):
         ('widowed', 'Widowed'),
     )
 
+    PATIENT_TYPE_CHOICES = (
+        ('regular', 'Regular'),
+        ('nhia', 'NHIA'),
+    )
+
     # Basic Information
     first_name = models.CharField(max_length=100)
+    patient_type = models.CharField(max_length=10, choices=PATIENT_TYPE_CHOICES, default='regular')
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
@@ -38,7 +45,7 @@ class Patient(models.Model):
 
     # Contact Information
     email = models.EmailField(blank=True, null=True)
-    phone_number = models.CharField(max_length=15)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
     emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
     emergency_contact_relation = models.CharField(max_length=50, blank=True, null=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True, null=True)
@@ -70,25 +77,21 @@ class Patient(models.Model):
     id_document = models.FileField(upload_to='id_documents/', blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Generate a unique patient ID if not provided
         if not self.patient_id:
-            year = timezone.now().year
-            month = timezone.now().month
-            # Only use numbers for patient ID: YYYYMMNNNN
-            prefix = f"{year}{month:02d}"
-            last_patient = Patient.objects.filter(patient_id__startswith=prefix).order_by('-patient_id').first()
-
-            if last_patient:
-                try:
-                    last_number = int(last_patient.patient_id[len(prefix):])
-                    new_number = last_number + 1
-                except (IndexError, ValueError):
-                    new_number = 1
+            if self.patient_type == 'nhia':
+                while True:
+                    # NHIA patient ID: 10 digits, starting with 4
+                    new_id = '4' + ''.join([str(random.randint(0, 9)) for _ in range(9)])
+                    if not Patient.objects.filter(patient_id=new_id).exists():
+                        self.patient_id = new_id
+                        break
             else:
-                new_number = 1
-
-            self.patient_id = f"{prefix}{new_number:04d}"
-
+                # Regular patient ID: 10 digits, starting with 0
+                while True:
+                    new_id = '0' + ''.join([str(random.randint(0, 9)) for _ in range(9)])
+                    if not Patient.objects.filter(patient_id=new_id).exists():
+                        self.patient_id = new_id
+                        break
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -133,6 +136,9 @@ class Patient(models.Model):
         Returns True if either photo or profile_picture is available.
         """
         return bool(self.photo or self.profile_picture)
+
+    def get_patient_type_display(self):
+        return dict(self.PATIENT_TYPE_CHOICES).get(self.patient_type, self.patient_type)
 
 class MedicalHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_histories')
@@ -321,3 +327,20 @@ class WalletTransaction(models.Model):
         verbose_name = "Wallet Transaction"
         verbose_name_plural = "Wallet Transactions"
         ordering = ['-created_at']
+
+
+class NHIAPatientManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(patient_type='nhia')
+
+class NHIAPatient(Patient):
+    objects = NHIAPatientManager()
+
+    class Meta:
+        proxy = True
+        verbose_name = 'NHIA Patient'
+        verbose_name_plural = 'NHIA Patients'
+
+    def save(self, *args, **kwargs):
+        self.patient_type = 'nhia'
+        super().save(*args, **kwargs)

@@ -247,25 +247,33 @@ def edit_patient(request, patient_id):
 
     return render(request, 'patients/patient_form.html', context)
 
+
 @login_required
-def delete_patient(request, patient_id):
-    """View for deactivating a patient (soft delete)"""
+@require_POST
+def toggle_patient_status(request, patient_id):
+    """View for activating or deactivating a patient."""
     patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Toggle the is_active status
+    patient.is_active = not patient.is_active
+    patient.save()
+    
+    # Determine the action for the audit log and message
+    action = "activated" if patient.is_active else "deactivated"
+    
+    # Audit log for patient status change
+    log_audit_action(
+        request.user, 
+        f'{action}_patient', 
+        patient, 
+        f"{action.capitalize()} patient {patient.get_full_name()} (ID: {patient.patient_id})"
+    )
+    
+    # Success message
+    messages.success(request, f'Patient {patient.get_full_name()} has been {action}.')
+    
+    return redirect('patients:list')
 
-    if request.method == 'POST':
-        # Instead of deleting, we deactivate the patient
-        patient.is_active = False
-        patient.save()
-        # Audit log for patient deactivation
-        log_audit_action(request.user, 'deactivate_patient', patient, f"Deactivated patient {patient.get_full_name()} (ID: {patient.patient_id})")
-        messages.success(request, f'Patient {patient.get_full_name()} has been deactivated.')
-        return redirect('patients:list')
-
-    context = {
-        'patient': patient
-    }
-
-    return render(request, 'patients/delete_patient.html', context)
 
 @login_required
 def add_funds_to_wallet(request, patient_id):
@@ -976,3 +984,13 @@ def pwa_offline_queue_demo(request):
         'message': 'Data received by server (demo endpoint).'
     }
     return JsonResponse(response)
+
+@login_required
+def toggle_active_patient(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    if request.method == 'POST':
+        patient.is_active = not patient.is_active
+        patient.save()
+        status = 'activated' if patient.is_active else 'deactivated'
+        messages.success(request, f'Patient {patient.get_full_name()} has been {status}.')
+    return redirect('patients:detail', patient_id=patient.id)

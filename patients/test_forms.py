@@ -24,9 +24,6 @@ class NHIAIndependentPatientFormTest(TestCase):
 
         self.assertIsNotNone(patient.pk)
         self.assertTrue(Patient.objects.filter(pk=patient.pk).exists())
-        self.assertTrue(NHIAPatient.objects.filter(patient=patient).exists())
+        self.assertEqual(patient.patient_type, 'nhia')
 
-        nhia_patient = NHIAPatient.objects.get(patient=patient)
-        self.assertIsNotNone(nhia_patient.nhia_reg_number)
-        self.assertTrue(nhia_patient.nhia_reg_number.startswith('NHIA-'))
-        self.assertTrue(nhia_patient.is_active)
+        self.assertEqual(patient.patient_type, 'nhia')

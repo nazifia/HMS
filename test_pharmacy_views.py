@@ -9,7 +9,7 @@ try:
     # Test importing all pharmacy components
     print("Testing pharmacy imports...")
     from pharmacy import views, models, forms, admin
-    print("✓ All pharmacy imports successful")
+    
     
     # Test the specific line that was causing the error (line 8 in views.py)
     from pharmacy.models import (
@@ -35,9 +35,9 @@ try:
     form = DispensaryForm()
     print("✓ DispensaryForm creation successful")
     
-    print("\n🎉 All tests passed! The original error has been resolved.")
+    
     
 except Exception as e:
-    print(f"❌ Error: {e}")
+    
     import traceback
     traceback.print_exc()
