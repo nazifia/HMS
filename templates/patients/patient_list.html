@@ -82,6 +82,7 @@
                                 <th>Age</th>
                                 <th>Phone</th>
                                 <th>Registration Date</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -96,13 +97,15 @@
                                         <div class="d-flex align-items-center">
                                             <div>
                                                 <strong>{{ patient.get_full_name }}</strong>
-                                                {% if patient.is_active %}
-                                                    <span class="badge bg-success ms-2">Active</span>
-                                                {% else %}
-                                                    <span class="badge bg-danger ms-2">Inactive</span>
-                                                {% endif %}
                                             </div>
                                         </div>
+                                    </td>
+                                    <td>
+                                        {% if patient.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
                                     </td>
                                     <td>{{ patient.get_gender_display }}</td>
                                     <td>{{ patient.get_age }}</td>
@@ -119,6 +122,12 @@
                                             <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success" data-bs-toggle="tooltip" title="View Wallet">
                                                 <i class="fas fa-wallet"></i>
                                             </a>
+                                            <form action="{% url 'patients:toggle_active' patient.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to {{ patient.is_active|yesno:'deactivate,reactivate' }} this patient?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-{% if patient.is_active %}warning{% else %}info{% endif %}" data-bs-toggle="tooltip" title="{{ patient.is_active|yesno:'Deactivate,Reactivate' }}">
+                                                    <i class="fas fa-{% if patient.is_active %}ban{% else %}check-circle{% endif %}"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>

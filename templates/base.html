@@ -294,6 +294,23 @@
                                         <strong>Registered:</strong> {{ patient.registration_date|date:'M d, Y' }}
                                     </div>
                                 </div>
+                                {% if user.is_authenticated %}
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        {% if patient.is_active %}
+                                            <form method="post" action="{% url 'patients:toggle_patient_status' patient.id %}" style="margin-top: 0.5rem;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-warning btn-sm">Deactivate Patient</button>
+                                            </form>
+                                        {% else %}
+                                            <form method="post" action="{% url 'patients:toggle_patient_status' patient.id %}" style="margin-top: 0.5rem;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success btn-sm">Activate Patient</button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         <!-- Patient Modal -->
