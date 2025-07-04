@@ -985,12 +985,12 @@ def pwa_offline_queue_demo(request):
     }
     return JsonResponse(response)
 
-@login_required
-def toggle_active_patient(request, patient_id):
-    patient = get_object_or_404(Patient, id=patient_id)
-    if request.method == 'POST':
-        patient.is_active = not patient.is_active
-        patient.save()
-        status = 'activated' if patient.is_active else 'deactivated'
-        messages.success(request, f'Patient {patient.get_full_name()} has been {status}.')
-    return redirect('patients:detail', patient_id=patient.id)
+# @login_required
+# def toggle_active_patient(request, patient_id):
+#     patient = get_object_or_404(Patient, id=patient_id)
+#     if request.method == 'POST':
+#         patient.is_active = not patient.is_active
+#         patient.save()
+#         status = 'activated' if patient.is_active else 'deactivated'
+#         messages.success(request, f'Patient {patient.get_full_name()} has been {status}.')
+#     return redirect('patients:detail', patient_id=patient.id)

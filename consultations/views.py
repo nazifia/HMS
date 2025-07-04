@@ -143,7 +143,7 @@ def patient_detail(request, patient_id):
         'active_nav': 'patients',
     }
 
-    return render(request, 'consultations/patient_detail.html', context)
+    return render(request, 'patients/patient_detail.html', context)
 
 @login_required
 def create_consultation(request, patient_id):
