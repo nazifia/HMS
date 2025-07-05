@@ -1,0 +1,50 @@
+
+/* Modern Dashboard Styles */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 2rem;
+}
+
+.sidebar-modern {
+    background-color: #1a202c;
+    color: #a0aec0;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+}
+
+.sidebar-modern .nav-link {
+    color: #a0aec0;
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar-modern .nav-link:hover, .sidebar-modern .nav-link.active {
+    color: #ffffff;
+    background-color: #2d3748;
+}
+
+.stat-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.stat-card .stat-icon {
+    font-size: 2.5rem;
+    color: #cbd5e0;
+}
+
+.chart-container {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}

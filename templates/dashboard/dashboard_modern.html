@@ -1,0 +1,156 @@
+
+{% extends 'base.html' %}
+{% block title %}Modern Dashboard - HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        
+        <div class="col-md-12">
+            <div class="container-fluid p-4">
+                <h1 class="h3 mb-4">Dashboard</h1>
+                <div class="row">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Patients</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_patients }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Appointments</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_appointments }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Prescriptions</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prescriptions }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-pills fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2 stat-card">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Lab Tests</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_tests }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-flask fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow mb-4 chart-container">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Today's Appointments</h6>
+                            </div>
+                            <div class="card-body">
+                                {% if today_appointments %}
+                                    <ul class="list-group list-group-flush">
+                                        {% for appointment in today_appointments %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>{{ appointment.patient.get_full_name }}</strong> with Dr. {{ appointment.doctor.get_full_name }}
+                                                    <br>
+                                                    <small class="text-muted">{{ appointment.appointment_time }}</small>
+                                                </div>
+                                                <span class="badge bg-primary rounded-pill">{{ appointment.status }}</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p>No appointments scheduled for today.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow mb-4 chart-container">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Revenue Overview</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="revenueChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Today', 'This Week', 'This Month'],
+            datasets: [{
+                label: 'Revenue',
+                data: [{{ today_revenue }}, {{ this_week_revenue }}, {{ this_month_revenue }}],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

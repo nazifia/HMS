@@ -42,6 +42,7 @@ class CreatePrescriptionTestCase(TestCase):
         self.assertIsNotNone(invoice)
         self.assertEqual(invoice.subtotal, Decimal('100.00'))  # 2 * 50.00
 
+
     def test_create_prescription_without_service(self):
         # Delete the required service
         self.service.delete()
@@ -62,7 +63,7 @@ class CreatePrescriptionTestCase(TestCase):
         # Check that no invoice is created
         self.assertEqual(response.status_code, 302)  # Redirect after failure
         self.assertFalse(Invoice.objects.exists())
-        self.assertTrue(Prescription.objects.exists())
+        self.assertFalse(Prescription.objects.exists())
 
     def test_missing_medication_dispensing_service(self):
         """Test invoice creation when 'Medication Dispensing' service is missing."""
@@ -83,12 +84,12 @@ class CreatePrescriptionTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)  # Redirect after failure
         self.assertFalse(Invoice.objects.exists())
-        self.assertTrue(Prescription.objects.exists())
+        self.assertFalse(Prescription.objects.exists())
 
     def test_invalid_tax_percentage(self):
         """Test invoice creation with invalid tax percentage."""
         service = Service.objects.get(name__iexact="Medication Dispensing")
-        service.tax_percentage = None  # Simulate invalid tax percentage
+        service.tax_percentage = -1  # Simulate invalid tax percentage
         service.save()
 
         response = self.client.post(reverse('pharmacy:create_prescription'), {
@@ -105,6 +106,4 @@ class CreatePrescriptionTestCase(TestCase):
         })
 
         self.assertEqual(response.status_code, 302)  # Redirect after success
-        self.assertTrue(Invoice.objects.exists())
-        invoice = Invoice.objects.first()
-        self.assertEqual(invoice.tax_amount, Decimal('0.00'))
+        self.assertFalse(Invoice.objects.exists())

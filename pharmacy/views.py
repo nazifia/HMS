@@ -532,7 +532,6 @@ def prescription_list(request):
 
 @login_required
 def create_prescription(request):
-    # ...existing code...
     messages.info(request, f"[create_prescription] View called. Method: {request.method}")
     is_direct_post = request.method == 'POST' and 'patient' in request.POST and 'doctor' in request.POST and 'medication[]' in request.POST
     messages.info(request, f"[create_prescription] Is Direct POST: {is_direct_post}")
@@ -562,6 +561,7 @@ def create_prescription(request):
                     payment_status='unpaid' 
                 )
                 messages.info(request, f"[create_prescription:DirectPOST] Prescription object created. ID: {prescription.id}")
+                print(f"DEBUG: Prescription created with ID: {prescription.id}")
 
                 medications = request.POST.getlist('medication[]')
                 dosages = request.POST.getlist('dosage[]')

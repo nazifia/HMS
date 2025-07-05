@@ -2,9 +2,9 @@
 
 /* 1. Sidebar Container */
 #sidebar, .sidebar {
-    width: 250px;
-    min-width: 250px;
-    max-width: 250px;
+    width: 14rem; /* Adjusted width */
+    min-width: 14rem;
+    max-width: 14rem;
     height: 100vh;
     min-height: 100vh;
     background: #23272b;
@@ -20,6 +20,7 @@
     font-family: 'Segoe UI', Arial, sans-serif;
     overflow-y: auto;
     background-attachment: local;
+    transition: all 0.3s; /* Added transition for smooth toggle */
 }
 
 /* 2. Sidebar Branding */
@@ -84,13 +85,51 @@
 }
 
 /* 7. Responsive: Stack Sidebar on Small Screens */
-@media (max-width: 991.98px) {
+@media (max-width: 768px) { /* Changed to 768px for consistency with JS */
     #sidebar, .sidebar {
-        width: 100vw;
-        min-width: 0;
-        max-width: 100vw;
-        height: auto;
-        position: relative;
+        position: fixed; /* Fixed position for overlay */
+        left: 0;
+        top: 0;
+        height: 100vh;
+        min-height: 100vh;
+        width: 250px; /* Default width for mobile sidebar */
+        transform: translateX(-100%); /* Hidden by default */
+        box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+        background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
+        background-repeat: repeat-y;
+        background-attachment: local;
+        overflow-y: auto;
+        z-index: 1050; /* Higher z-index for overlay */
+    }
+
+    .sidebar-open { /* Class added by JS when sidebar is open */
+        transform: translateX(0%);
+    }
+
+    .sidebar-overlay { /* Overlay for when sidebar is open on mobile */
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.3);
+        z-index: 1040;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    .sidebar-toggle-btn { /* Button to toggle sidebar on mobile */
+        display: inline-block; /* Show button on mobile */
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #23272b;
+        margin-right: 1rem;
+    }
+
+    /* Adjust content area when sidebar is open on mobile */
+    body.sidebar-open #content-wrapper {
+        margin-left: 250px; /* Shift content to the right */
     }
 }
 
@@ -100,156 +139,11 @@
     outline-offset: 2px;
 }
 
-/* Sidebar Styles */
-.sidebar {
-    width: 12rem; /* Reduced width to decrease the gap */
-    min-height: 100vh;
-    transition: all 0.3s;
-    z-index: 1;
-}
-
-.sidebar .sidebar-brand {
-    height: 4.375rem;
-    text-decoration: none;
-    font-size: 1rem;
-    font-weight: 800;
-    padding: 1.5rem 1rem;
-    text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 0.05rem;
-    z-index: 1;
-    color: #ffffff;
-}
-
-.sidebar hr.sidebar-divider {
-    margin: 0 1rem 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.sidebar .sidebar-heading {
-    text-align: left;
-    padding: 0 1rem;
-    font-weight: 800;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.13rem;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.sidebar .nav-item {
-    position: relative;
-}
-
-.sidebar .nav-item:last-child {
-    margin-bottom: 1rem;
-}
-
-.sidebar .nav-item .nav-link {
-    text-align: left;
-    padding: 0.75rem 1rem;
-    width: 14rem;
-    font-weight: 500;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.sidebar .nav-item .nav-link i {
-    margin-right: 0.25rem;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.sidebar .nav-item .nav-link:hover {
-    color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.sidebar .nav-item .nav-link:hover i {
-    color: #ffffff;
-}
-
-.sidebar .nav-item .nav-link span {
-    font-size: 0.85rem;
-    display: inline;
-}
-
-.sidebar .nav-item.active .nav-link {
-    font-weight: 700;
-    color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.sidebar .nav-item.active .nav-link i {
-    color: #ffffff;
-}
-
-.sidebar .nav-item .collapse {
-    position: relative;
-    left: 0;
-    z-index: 1;
-    top: 0;
-    animation: none;
-}
-
-.sidebar .nav-item .collapse .collapse-inner {
-    border-radius: 0.35rem;
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-}
-
-.sidebar .nav-item .collapsing {
-    display: none;
-    transition: none;
-}
-
-.sidebar .nav-item .collapse .collapse-inner,
-.sidebar .nav-item .collapsing .collapse-inner {
-    padding: 0.5rem 0;
-    min-width: 10rem;
-    font-size: 0.85rem;
-    margin: 0 0 1rem 0;
-}
-
-.sidebar .nav-item .collapse .collapse-inner .collapse-header,
-.sidebar .nav-item .collapsing .collapse-inner .collapse-header {
-    margin: 0;
-    white-space: nowrap;
-    padding: 0.5rem 1.5rem;
-    text-transform: uppercase;
-    font-weight: 800;
-    font-size: 0.65rem;
-    color: #4e73df;
-}
-
-.sidebar .nav-item .collapse .collapse-inner .collapse-item,
-.sidebar .nav-item .collapsing .collapse-inner .collapse-item {
-    padding: 0.5rem 1rem;
-    margin: 0 0.5rem;
-    display: block;
-    color: #3a3b45;
-    text-decoration: none;
-    border-radius: 0.35rem;
-    white-space: nowrap;
-}
-
-.sidebar .nav-item .collapse .collapse-inner .collapse-item:hover,
-.sidebar .nav-item .collapsing .collapse-inner .collapse-item:hover {
-    background-color: #eaecf4;
-}
-
-.sidebar .nav-item .collapse .collapse-inner .collapse-item:active,
-.sidebar .nav-item .collapsing .collapse-inner .collapse-item:active {
-    background-color: #dddfeb;
-}
-
-.sidebar .nav-item .collapse .collapse-inner .collapse-item.active,
-.sidebar .nav-item .collapsing .collapse-inner .collapse-item.active {
-    color: #4e73df;
-    font-weight: 700;
-}
-
-/* Sidebar Toggler */
-.sidebar-toggled .sidebar {
-    width: 0 !important;
+/* Sidebar Toggler for desktop */
+.sidebar-toggled #sidebar {
+    width: 6.5rem !important; /* Collapsed width */
+    min-width: 6.5rem !important;
+    max-width: 6.5rem !important;
     overflow: hidden;
 }
 
@@ -322,8 +216,9 @@
     width: 1.5rem;
 }
 
-.sidebar-toggled .content {
-    margin-left: 0 !important;
+/* Content Wrapper adjustments for desktop sidebar toggle */
+body.sidebar-toggled #content-wrapper {
+    margin-left: 6.5rem; /* Shift content to the right when sidebar is collapsed */
 }
 
 #sidebarToggle {
@@ -360,7 +255,8 @@
     background-color: #f8f9fc;
     width: 100%;
     overflow-x: hidden;
-    margin-left: 12rem; /* Adjusted to match the new sidebar width */
+    margin-left: 14rem; /* Default margin for expanded sidebar */
+    transition: margin-left 0.3s; /* Smooth transition for margin */
 }
 
 #content-wrapper #content {
@@ -374,51 +270,20 @@
     min-height: 100vh;
 }
 
-#wrapper #content-wrapper {
-    width: 100%;
-    overflow-x: hidden;
-}
-
-/* Content Wrapper adjustments for sidebar */
-#wrapper #content-wrapper {
-    /* Default state: sidebar is visible (14rem wide) */
-    margin-left: 14rem; /* Push content to the right of the sidebar */
-    width: calc(100% - 14rem); /* Adjust width to fill remaining space */
-    transition: margin-left 0.3s, width 0.3s;
-    overflow-x: hidden; /* Already present, good */
-}
-
-/* When sidebar is toggled (hidden) */
-#wrapper.sidebar-toggled #content-wrapper {
-    margin-left: 0;
-    width: 100%;
-}
-
 /* Responsive adjustments for smaller screens where sidebar might behave differently */
 @media (max-width: 767.98px) { /* Bootstrap 5 breakpoint for sm */
-    #wrapper #content-wrapper {
-        margin-left: 0; /* Sidebar is often overlay or fully hidden */
+    #content-wrapper {
+        margin-left: 0; /* No margin on small screens, sidebar is overlay */
         width: 100%;
     }
-
-    /* If sidebar is toggled to be visible on small screens as an overlay */
-    /* This depends on your specific toggling JS and if it adds a class to #wrapper or body */
-    /* Example: if .sidebar-toggled means sidebar is *shown* as overlay on mobile */
-    /* #wrapper.sidebar-toggled-mobile #content-wrapper { */
-        /* margin-left: 0; /* Content doesn't shift for overlay sidebar */
-    /* } */
 }
 
 #wrapper #content-wrapper #content {
     flex: 1 0 auto;
 }
 
-/* Responsive Styles */
+/* Responsive Styles for desktop sidebar */
 @media (min-width: 768px) {
-    .sidebar {
-        width: 14rem !important;
-    }
-
     .sidebar .nav-item .collapse {
         position: relative;
         left: 0;
@@ -486,67 +351,6 @@
 
     .sidebar .sidebar-heading {
         text-align: left;
-    }
-
-    .sidebar.toggled {
-        overflow: visible;
-        width: 6.5rem !important;
-    }
-
-    .sidebar.toggled .nav-item .collapse {
-        position: absolute;
-        left: calc(6.5rem + 1.5rem / 2);
-        z-index: 1;
-        top: 2px;
-        animation-name: growIn;
-        animation-duration: 200ms;
-        animation-timing-function: transform cubic-bezier(0.18, 1.25, 0.4, 1), opacity cubic-bezier(0, 1, 0.4, 1);
-    }
-
-    .sidebar.toggled .nav-item .collapse .collapse-inner {
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        border-radius: 0.35rem;
-    }
-
-    .sidebar.toggled .nav-item .collapsing {
-        display: none;
-        transition: none;
-    }
-
-    .sidebar.toggled .nav-item:last-child {
-        margin-bottom: 1rem;
-    }
-
-    .sidebar.toggled .nav-item .nav-link {
-        text-align: center;
-        padding: 0.75rem 1rem;
-        width: 6.5rem;
-    }
-
-    .sidebar.toggled .nav-item .nav-link span {
-        font-size: 0.65rem;
-        display: block;
-    }
-
-    .sidebar.toggled .nav-item .nav-link i {
-        margin-right: 0;
-        font-size: 1rem;
-    }
-
-    .sidebar.toggled .nav-item .nav-link[data-bs-toggle="collapse"]::after {
-        display: none;
-    }
-
-    .sidebar.toggled .sidebar-brand .sidebar-brand-icon i {
-        font-size: 2rem;
-    }
-
-    .sidebar.toggled .sidebar-brand .sidebar-brand-text {
-        display: none;
-    }
-
-    .sidebar.toggled .sidebar-heading {
-        text-align: center;
     }
 }
 
@@ -743,36 +547,6 @@
     width: 2rem;
 }
 
-/* Responsive Adjustments */
-@media (min-width: 768px) {
-    .content {
-        margin-left: 14rem;
-        transition: margin 0.3s;
-    }
-
-    .sidebar-toggled .content {
-        margin-left: 6.5rem;
-    }
-}
-
-@media (max-width: 767.98px) {
-    .sidebar {
-        width: 0 !important;
-    }
-
-    .sidebar.toggled {
-        width: 14rem !important;
-    }
-
-    .content {
-        margin-left: 0;
-    }
-
-    .sidebar-toggled .content {
-        margin-left: 0;
-    }
-}
-
 /* Footer Styles */
 .sticky-footer {
     padding: 2rem 0;
@@ -811,33 +585,6 @@
     font-weight: 800;
 }
 
-/* Ensure sidebar and content are side by side, and content fills remaining space */
-#wrapper {
-    display: flex;
-    flex-direction: row;
-    min-height: 100vh;
-}
-#content-wrapper {
-    flex-grow: 1;
-    width: 100%;
-    min-width: 0;
-    background: #f8f9fc;
-    overflow-y: auto;
-    height: 100vh;
-}
-#sidebar {
-    min-width: 220px;
-    max-width: 250px;
-    background: #222e3c;
-    min-height: 100vh;
-    height: 100vh;
-    overflow-y: auto;
-    background-attachment: local;
-}
-#content {
-    width: 100%;
-}
-
 /* Strongly enforce sidebar/content layout for all screen sizes */
 #wrapper {
     display: flex !important;
@@ -845,16 +592,7 @@
     min-height: 100vh;
     width: 100vw;
 }
-#sidebar {
-    min-width: 220px;
-    max-width: 250px;
-    background: #222e3c;
-    min-height: 100vh;
-    height: 100vh;
-    flex-shrink: 0;
-    overflow-y: auto;
-    background-attachment: local;
-}
+
 #content-wrapper {
     flex-grow: 1;
     width: 100%;
@@ -869,15 +607,4 @@
     width: 100%;
     flex: 1 1 auto;
 }
-@media (max-width: 991px) {
-    #wrapper {
-        flex-direction: column !important;
-    }
-    #sidebar {
-        min-width: 100vw;
-        max-width: 100vw;
-        min-height: 100vh;
-        height: 100vh;
-        overflow-y: auto;
-    }
-}
+

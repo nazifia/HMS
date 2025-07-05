@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     'radiology',
     'theatre.apps.TheatreConfig',
     'nhia',
+    'retainership',
 
 ]
 
@@ -117,6 +118,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.media',
+                'django.template.context_processors.static',
                 'pharmacy.context_processors.pharmacy_context',
                 'patients.context_processors.all_patients',
             ],
