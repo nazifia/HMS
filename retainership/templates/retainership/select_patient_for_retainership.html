@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'retainership:retainership_patient_list' %}">Retainership Patients</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+        <form class="d-none d-sm-inline-block form-inline mr-auto my-2 my-md-0 mw-100 navbar-search" method="GET">
+            <div class="input-group">
+                <input type="text" class="form-control bg-light border-0 small" placeholder="Search patient by name, ID, or phone..." aria-label="Search"
+                       aria-describedby="basic-addon2" name="search" value="{{ search_form.search.value|default_if_none:'' }}">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search fa-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info mb-3">
+            <strong>Note:</strong> Only <span class="badge bg-secondary">Regular</span> patients are listed here. Retainership patients are managed separately.
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Patient ID</th>
+                        <th>Phone Number</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in page_obj %}
+                    <tr>
+                        <td>{{ patient.get_full_name }}</td>
+                        <td>{{ patient.patient_id }}</td>
+                        <td>{{ patient.phone_number }}</td>
+                        <td>{{ patient.email|default:"N/A" }}</td>
+                        <td>
+                            <a href="{% url 'retainership:register_patient_for_retainership' patient.id %}" class="btn btn-sm btn-success">Register for Retainership</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">No patients found who are not already registered for Retainership.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="Page navigation example">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_form.search.value %}&search={{ search_form.search.value }}{% endif %}">Previous</a></li>
+                {% endif %}
+
+                {% for i in page_obj.paginator.page_range %}
+                    {% if page_obj.number == i %}
+                        <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search_form.search.value %}&search={{ search_form.search.value }}{% endif %}">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_form.search.value %}&search={{ search_form.search.value }}{% endif %}">Next</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+
+    </div>
+</div>
+{% endblock %}
