@@ -4,6 +4,9 @@ from django.core.validators import RegexValidator
 from doctors.models import Specialization
 import re
 from nhia.models import NHIAPatient # Import NHIAPatient
+from nhia.utils import generate_nhia_reg_number
+from retainership.models import RetainershipPatient # Import RetainershipPatient
+from retainership.utils import generate_retainership_reg_number
 import datetime
 
 
@@ -507,6 +510,8 @@ class NHIARegistrationForm(forms.ModelForm):
             raise forms.ValidationError("This NHIA Registration Number is already in use.")
         return nhia_reg_number
 
+from nhia.utils import generate_nhia_reg_number
+
 class NHIAIndependentPatientForm(PatientForm):
     is_nhia_active = forms.BooleanField(
         label="Is NHIA Active?",
@@ -524,4 +529,59 @@ class NHIAIndependentPatientForm(PatientForm):
         patient.patient_type = 'nhia'  # Ensure type
         if commit:
             patient.save()
+            if not hasattr(patient, 'nhia_info'):
+                nhia_patient = NHIAPatient.objects.create(
+                    patient=patient,
+                    nhia_reg_number=generate_nhia_reg_number(),
+                    is_active=self.cleaned_data.get('is_nhia_active', True)
+                )
+        return patient
+
+class RetainershipRegistrationForm(forms.ModelForm):
+    class Meta:
+        model = RetainershipPatient
+        fields = ['retainership_reg_number', 'is_active']
+        widgets = {
+            'retainership_reg_number': forms.NumberInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # If updating an existing RetainershipPatient, disable the retainership_reg_number field
+        if self.instance and self.instance.pk:
+            self.fields['retainership_reg_number'].widget.attrs['readonly'] = True
+            self.fields['retainership_reg_number'].help_text = "Retainership Registration Number cannot be changed after creation."
+
+    def clean_retainership_reg_number(self):
+        retainership_reg_number = self.cleaned_data.get('retainership_reg_number')
+        if retainership_reg_number and RetainershipPatient.objects.filter(retainership_reg_number=retainership_reg_number).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("This Retainership Registration Number is already in use.")
+        return retainership_reg_number
+
+from retainership.utils import generate_retainership_reg_number
+
+class RetainershipIndependentPatientForm(PatientForm):
+    is_retainership_active = forms.BooleanField(
+        label="Is Retainership Active?",
+        initial=True,
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
+    class Meta(PatientForm.Meta):
+        fields = PatientForm.Meta.fields + ['is_retainership_active']
+        exclude = ['allergies', 'chronic_diseases', 'current_medications', 'primary_doctor', 'notes', 'postal_code']
+
+    def save(self, commit=True):
+        patient = super().save(commit=False)
+        patient.patient_type = 'retainership'  # Ensure type
+        if commit:
+            patient.save()
+            if not hasattr(patient, 'retainership_info'):
+                retainership_patient = RetainershipPatient.objects.create(
+                    patient=patient,
+                    retainership_reg_number=generate_retainership_reg_number(),
+                    is_active=self.cleaned_data.get('is_retainership_active', True)
+                )
         return patient

@@ -92,7 +92,7 @@ def dashboard(request):
         'appointment_stats': appointment_stats,
     }
 
-    return render(request, 'dashboard/dashboard.html', context)
+    return render(request, 'dashboard/dashboard_modern.html', context)
 
 @login_required
 def system_overview(request):

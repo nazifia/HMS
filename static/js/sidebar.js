@@ -1,26 +1,52 @@
 (function($) {
     "use strict"; // Start of use strict
 
-    // Toggle the side navigation
+    // Function to toggle mobile sidebar
+    function toggleMobileSidebar() {
+        const sidebar = $('#accordionSidebar'); // Use the ID of the sidebar
+        const overlay = $('#sidebar-overlay');
+        sidebar.toggleClass('sidebar-open');
+        overlay.toggleClass('active');
+        $('body').toggleClass('overflow-hidden'); // Prevent scrolling on body when sidebar is open
+    }
+
+    // Function to close mobile sidebar
+    function closeMobileSidebar() {
+        const sidebar = $('#accordionSidebar');
+        const overlay = $('#sidebar-overlay');
+        sidebar.removeClass('sidebar-open');
+        overlay.removeClass('active');
+        $('body').removeClass('overflow-hidden');
+    }
+
+    // Toggle the side navigation for desktop
     $("#sidebarToggle, #sidebarToggleTop").on('click', function(e) {
-        $("body").toggleClass("sidebar-toggled");
-        $(".sidebar").toggleClass("toggled");
-        if ($(".sidebar").hasClass("toggled")) {
-            $('.sidebar .collapse').collapse('hide');
+        if ($(window).width() >= 768) { // Only for desktop
+            $("body").toggleClass("sidebar-toggled");
+            $(".sidebar").toggleClass("toggled");
+            if ($(".sidebar").hasClass("toggled")) {
+                $('.sidebar .collapse').collapse('hide');
+            }
+        } else { // For mobile
+            toggleMobileSidebar();
         }
+    });
+
+    // Close mobile sidebar when overlay is clicked
+    $('#sidebar-overlay').on('click', function() {
+        closeMobileSidebar();
     });
 
     // Close any open menu accordions when window is resized below 768px
     $(window).resize(function() {
         if ($(window).width() < 768) {
             $('.sidebar .collapse').collapse('hide');
-        }
-        
-        // Toggle the side navigation when window is resized below 480px
-        if ($(window).width() < 480 && !$(".sidebar").hasClass("toggled")) {
-            $("body").addClass("sidebar-toggled");
-            $(".sidebar").addClass("toggled");
-            $('.sidebar .collapse').collapse('hide');
+            // Ensure mobile sidebar is closed when resizing from desktop to mobile
+            closeMobileSidebar();
+        } else {
+            // Ensure desktop sidebar is in correct state when resizing from mobile to desktop
+            $("body").removeClass("sidebar-toggled");
+            $(".sidebar").removeClass("toggled");
         }
     });
 

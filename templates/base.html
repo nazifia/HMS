@@ -22,69 +22,36 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
     <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard_modern.css' %}">
 
     {% block extra_css %}{% endblock %}
     <style>
-        /* Responsive sidebar integrated into main content */
-        .main-layout {
+        /* Main layout for sidebar and content */
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #wrapper {
             display: flex;
-            flex-direction: row;
             min-height: 100vh;
             width: 100vw;
             background: #f8f9fc;
+            overflow: hidden;
         }
-        .sidebar-responsive {
-            width: 250px;
-            min-width: 220px;
-            max-width: 300px;
-            background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
-            color: #fff;
-            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
-            z-index: 1050;
-            min-height: 100vh;
-            height: 100vh;
-            background-repeat: repeat-y;
-            background-attachment: local;
-            overflow-y: auto;
-            position: sticky;
-            top: 0;
-        }
-        .sidebar-collapsed {
-            transform: translateX(-100%);
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100vh;
-            min-height: 100vh;
-            background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
-            background-repeat: repeat-y;
-            background-attachment: local;
-        }
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.3);
-            z-index: 1040;
-        }
-        .sidebar-toggle-btn {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #23272b;
-            margin-right: 1rem;
-        }
-        .content-area {
-            flex: 1;
-            width: 100%;
-            min-width: 0;
+
+        /* Content Wrapper */
+        #content-wrapper {
             display: flex;
             flex-direction: column;
+            flex-grow: 1;
+            width: 100%;
+            min-width: 0;
             background: #f8f9fc;
-            min-height: 100vh;
-            overflow-y: auto;
+            overflow: hidden;
+            height: 100vh;
         }
+
+        /* Main Content Area */
         #content {
             flex: 1 0 auto;
             width: 100%;
@@ -92,7 +59,10 @@
             flex-direction: column;
             padding-bottom: 80px; /* Space for footer */
             overflow-y: auto;
+            height: 100vh;
         }
+
+        /* Container Fluid for content padding */
         .container-fluid {
             flex: 1 0 auto;
             display: flex;
@@ -100,58 +70,7 @@
             overflow-y: auto;
             padding: 1rem;
         }
-        @media (max-width: 991.98px) {
-            .main-layout {
-                flex-direction: column;
-            }
-            .sidebar-responsive {
-                position: fixed;
-                left: 0;
-                top: 0;
-                height: 100vh;
-                min-height: 100vh;
-                transform: translateX(-100%);
-                box-shadow: 2px 0 8px rgba(0,0,0,0.08);
-                background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
-                background-repeat: repeat-y;
-                background-attachment: local;
-                overflow-y: auto;
-            }
-            .sidebar-open {
-                transform: translateX(0);
-            }
-            .sidebar-overlay.active {
-                display: block;
-            }
-            .sidebar-toggle-btn {
-                display: inline-block;
-            }
-        }
 
-        /* Ensure bg-gradient-primary extends full height */
-        .bg-gradient-primary {
-            min-height: 100vh !important;
-            height: 100vh !important;
-            background-attachment: local !important;
-        }
-
-        /* Ensure user dashboard and other pages are scrollable */
-        .main-layout {
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .content-area {
-            height: 100vh;
-            overflow-y: auto;
-        }
-
-        /* Specific styles for user dashboard scrollability */
-        .user-dashboard-content {
-            max-height: calc(100vh - 140px); /* Account for topbar and footer */
-            overflow-y: auto;
-            padding-bottom: 2rem;
-        }
         /* Topbar custom style */
         .topbar {
             background: #fff;
@@ -212,17 +131,7 @@
         }
     </style>
     <script>
-        // Sidebar toggle for mobile
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar-responsive');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('sidebar-open');
-            overlay.classList.toggle('active');
-        }
-        function closeSidebar() {
-            document.getElementById('sidebar-responsive').classList.remove('sidebar-open');
-            document.getElementById('sidebar-overlay').classList.remove('active');
-        }
+        // Sidebar toggle for mobile - handled by sidebar.js
     </script>
     {% block extra_head %}
     {{ block.super }}
@@ -232,30 +141,20 @@
 <body id="page-top">
 
     <!-- Page Wrapper -->
-    <div class="main-layout">
+    <div id="wrapper">
         <!-- Sidebar -->
         {% if user.is_authenticated %}
-            <div id="sidebar-responsive" class="sidebar-responsive">
-                {% include 'includes/sidebar.html' %}
-            </div>
-            <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+            {% include 'includes/sidebar.html' %}
         {% endif %}
         <!-- Content Wrapper -->
-        <div class="content-area">
+        <div id="content-wrapper" class="d-flex flex-column">
             <!-- Main Content -->
-            <div id="content" style="width:100%;">
+            <div id="content">
                 <!-- Topbar -->
-                <div class="topbar">
-                    {% if user.is_authenticated %}
-                        <button class="sidebar-toggle-btn d-lg-none" onclick="toggleSidebar()" aria-label="Toggle sidebar">
-                            <i class="fas fa-bars"></i>
-                        </button>
-                    {% endif %}
-                    {% include 'includes/topbar.html' %}
-                    
-                </div>
+                
+                <!-- End of Topbar -->
                 <!-- Begin Page Content -->
-                <div class="container-fluid px-0" style="overflow-y: auto; flex: 1;">
+                <div class="container-fluid">
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -450,21 +349,21 @@
                         </div>
                     </div>
                 </div>
-                {% endif %}
                 <!-- End Radiology Requests Widget -->
-                
-                {{ block.super }}
-                    {% endblock %}
-                </div>
+                {% endif %}
+                {% endblock %}
                 <!-- /.container-fluid -->
             </div>
             <!-- End of Main Content -->
             <!-- Footer -->
-            <footer class="footer w-100 mt-auto bg-light text-center py-2" style="position:fixed; left:0; bottom:0; width:100%; z-index:1000;">
-                <div class="container">
-                    <span class="text-muted">&copy; {{ year|default:2025 }} Hospital Management System. All rights reserved.</span>
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>&copy; {{ year|default:2025 }} Hospital Management System. All rights reserved.</span>
+                    </div>
                 </div>
             </footer>
+            <!-- End of Footer -->
         </div>
         <!-- End of Content Wrapper -->
     </div>
