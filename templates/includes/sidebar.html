@@ -72,11 +72,10 @@
                     <a class="collapse-item {% if request.path == '/doctors/' %}active{% endif %}" href="{% url 'doctors:doctor_list' %}">All Doctors</a>
 
                     <!-- Application admin-only doctor management options -->
-                    {% if user.profile and user.profile.role == 'admin' %}
                     <a class="collapse-item {% if request.path == '/doctors/admin/doctors/' %}active{% endif %}" href="{% url 'doctors:manage_doctors' %}">Manage Doctors</a>
+                    <a class="collapse-item {% if request.path == '/doctors/admin/doctors/add/' %}active{% endif %}" href="{% url 'doctors:add_doctor' %}">Add New Doctor</a>
                     <a class="collapse-item {% if request.path == '/doctors/admin/specializations/' %}active{% endif %}" href="{% url 'doctors:manage_specializations' %}">Specializations</a>
                     <a class="collapse-item {% if request.path == '/doctors/admin/leave-requests/' %}active{% endif %}" href="{% url 'doctors:manage_leave_requests' %}">Leave Requests</a>
-                    {% endif %}
 
                     <!-- Doctor-specific options -->
                     {% if user.profile and user.profile.role == 'doctor' %}

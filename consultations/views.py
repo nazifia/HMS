@@ -162,29 +162,23 @@ def create_consultation(request, patient_id):
     latest_vitals = Vitals.objects.filter(patient=patient).order_by('-date_time').first()
 
     if request.method == 'POST':
-        # Handle direct form submission from modal
-        chief_complaint = request.POST.get('chief_complaint')
-        symptoms = request.POST.get('symptoms')
-        diagnosis = request.POST.get('diagnosis')
-        consultation_notes = request.POST.get('consultation_notes')
+        form = ConsultationForm(request.POST, initial={'patient': patient, 'doctor': request.user})
+        vitals_form = VitalsSelectionForm(patient, request.POST)
 
-        if chief_complaint and symptoms:
-            consultation = Consultation(
-                patient=patient,
-                doctor=request.user,
-                chief_complaint=chief_complaint,
-                symptoms=symptoms,
-                diagnosis=diagnosis,
-                consultation_notes=consultation_notes,
-                status='completed'
-            )
+        if form.is_valid() and vitals_form.is_valid():
+            consultation = form.save(commit=False)
+            consultation.patient = patient
+            consultation.doctor = request.user
 
             # Set the appointment if it exists
             if appointment:
                 consultation.appointment = appointment
 
             # Set the latest vitals if they exist
-            if latest_vitals:
+            selected_vitals = vitals_form.cleaned_data.get('vitals')
+            if selected_vitals:
+                consultation.vitals = selected_vitals
+            elif latest_vitals:
                 consultation.vitals = latest_vitals
 
             consultation.save()
@@ -192,15 +186,12 @@ def create_consultation(request, patient_id):
             messages.success(request, f"Consultation for {patient.get_full_name()} created successfully.")
             return redirect('patients:detail', patient_id=patient.id)
         else:
-            messages.error(request, "Chief complaint and symptoms are required.")
-            return redirect('patients:detail', patient_id=patient.id)
+            messages.error(request, "Please correct the form errors.")
     else:
-        # Pre-fill the form
         initial_data = {
             'patient': patient,
             'doctor': request.user,
         }
-
         form = ConsultationForm(initial=initial_data)
         vitals_form = VitalsSelectionForm(patient)
 
@@ -436,64 +427,63 @@ def referral_list(request):
     return render(request, 'consultations/referral_list.html', context)
 
 @login_required
-def create_referral(request):
+def create_referral(request, patient_id=None):
     """View for creating a new referral directly from the patient detail page"""
+    patient = None
+    if patient_id:
+        patient = get_object_or_404(Patient, id=patient_id)
+
     if request.method == 'POST':
-        patient_id = request.POST.get('patient')
-        referring_doctor_id = request.POST.get('referring_doctor')
-        referred_to_id = request.POST.get('referred_to')
-        reason = request.POST.get('reason')
-        notes = request.POST.get('notes')
-        urgency = request.POST.get('urgency', 'normal')
-        referral_date = request.POST.get('referral_date')
+        form = ReferralForm(request.POST)
+        if form.is_valid():
+            referral = form.save(commit=False)
+            if patient:
+                referral.patient = patient
+            referral.referring_doctor = request.user
+            referral.save()
 
-        if patient_id and referring_doctor_id and referred_to_id and reason:
-            try:
-                patient = Patient.objects.get(id=patient_id)
-                referring_doctor = User.objects.get(id=referring_doctor_id)
-                referred_to = User.objects.get(id=referred_to_id)
+            # Create a consultation if it doesn't exist
+            consultation = Consultation.objects.filter(
+                patient=referral.patient,
+                doctor=referral.referring_doctor,
+                consultation_date__date=timezone.now().date()
+            ).first()
 
-                # Create a new referral
-                referral = Referral(
-                    patient=patient,
-                    referring_doctor=referring_doctor,
-                    referred_to=referred_to,
-                    reason=reason,
-                    notes=notes,
-                    status='pending',
-                    referral_date=timezone.now() if not referral_date else referral_date
+            if not consultation:
+                consultation = Consultation.objects.create(
+                    patient=referral.patient,
+                    doctor=referral.referring_doctor,
+                    chief_complaint="Referral to specialist",
+                    symptoms="See referral notes",
+                    diagnosis="Requires specialist consultation",
+                    consultation_notes=f"Patient referred to Dr. {referral.referred_to.get_full_name()} for {referral.reason}",
+                    status='completed'
                 )
 
-                # Create a consultation if it doesn't exist
-                consultation = Consultation.objects.filter(
-                    patient=patient,
-                    doctor=referring_doctor,
-                    consultation_date__date=timezone.now().date()
-                ).first()
+            referral.consultation = consultation
+            referral.save()
 
-                if not consultation:
-                    consultation = Consultation.objects.create(
-                        patient=patient,
-                        doctor=referring_doctor,
-                        chief_complaint="Referral to specialist",
-                        symptoms="See referral notes",
-                        diagnosis="Requires specialist consultation",
-                        consultation_notes=f"Patient referred to Dr. {referred_to.get_full_name()} for {reason}",
-                        status='completed'
-                    )
-
-                referral.consultation = consultation
-                referral.save()
-
-                messages.success(request, f"Referral for {patient.get_full_name()} created successfully.")
-            except (Patient.DoesNotExist, User.DoesNotExist) as e:
-                messages.error(request, f"Error creating referral: {str(e)}")
+            messages.success(request, f"Referral for {referral.patient.get_full_name()} created successfully.")
+            return redirect('patients:detail', patient_id=referral.patient.id)
         else:
             messages.error(request, "Missing required fields for referral.")
+            if patient:
+                return redirect('patients:detail', patient_id=patient.id)
+            else:
+                return redirect('dashboard:dashboard')
 
-        return redirect('patients:detail', patient_id=patient_id)
+    else:
+        initial_data = {}
+        if patient:
+            initial_data['patient'] = patient
+        form = ReferralForm(initial=initial_data)
 
-    return redirect('dashboard:dashboard')
+    context = {
+        'form': form,
+        'patient': patient,
+        'title': 'Create New Referral'
+    }
+    return render(request, 'consultations/referral_form.html', context)
 
 @login_required
 @doctor_required
