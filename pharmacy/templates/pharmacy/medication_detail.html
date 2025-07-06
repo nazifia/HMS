@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }} - {{ medication.name }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Medication Information</h6>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ medication.name }}</p>
+            <p><strong>Generic Name:</strong> {{ medication.generic_name|default:"N/A" }}</p>
+            <p><strong>Category:</strong> {{ medication.category.name|default:"N/A" }}</p>
+            <p><strong>Description:</strong> {{ medication.description|default:"N/A" }}</p>
+            <p><strong>Dosage Form:</strong> {{ medication.dosage_form }}</p>
+            <p><strong>Strength:</strong> {{ medication.strength }}</p>
+            <p><strong>Manufacturer:</strong> {{ medication.manufacturer|default:"N/A" }}</p>
+            <p><strong>Price:</strong> {{ medication.price }}</p>
+            <p><strong>Reorder Level:</strong> {{ medication.reorder_level }}</p>
+            <p><strong>Expiry Date:</strong> {{ medication.expiry_date|date:"Y-m-d"|default:"N/A" }}</p>
+            <p><strong>Side Effects:</strong> {{ medication.side_effects|default:"N/A" }}</p>
+            <p><strong>Precautions:</strong> {{ medication.precautions|default:"N/A" }}</p>
+            <p><strong>Storage Instructions:</strong> {{ medication.storage_instructions|default:"N/A" }}</p>
+            <p><strong>Active:</strong> {% if medication.is_active %}Yes{% else %}No{% endif %}</p>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'pharmacy:edit_medication' medication.id %}" class="btn btn-warning">Edit Medication</a>
+            <a href="{% url 'pharmacy:delete_medication' medication.id %}" class="btn btn-danger">Delete Medication</a>
+            <a href="{% url 'pharmacy:inventory' %}" class="btn btn-secondary">Back to Inventory</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

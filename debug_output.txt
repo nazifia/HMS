@@ -14,3 +14,390 @@ Dispensary count: 0
 Created test dispensary: Debug Test Dispensary
 Test dispensary deleted
 All tests passed!
+2025-07-06 09:04:38,453 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\models.py changed, reloading.
+2025-07-06 09:13:09,869 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\templatetags\pharmacy_tags.py changed, reloading.
+2025-07-06 09:13:17,556 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-06 09:13:52,042 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\models.py changed, reloading.
+2025-07-06 09:14:42,584 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\models.py changed, reloading.
+2025-07-06 09:14:54,008 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\models.py changed, reloading.
+2025-07-06 09:15:22,439 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:17:52,174 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-06 09:20:45,077 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-06 09:23:09,637 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:23:18,760 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:23:27,020 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:30:38,668 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\templatetags\pharmacy_tags.py changed, reloading.
+2025-07-06 09:34:47,616 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:35:53,213 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:37:09,572 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:38:08,195 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:40:19,708 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:41:47,167 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:44:15,497 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:56:14,605 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 09:58:13,864 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:07:51,456 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:12:42,311 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:15:04,132 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:15:18,064 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:15:45,593 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:16:07,079 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:16:22,291 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:16:55,241 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:24:34,942 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:28:31,556 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:34:08,869 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:35:42,146 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:41:13,177 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:46:28,015 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:49:07,057 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:50:05,731 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:54:38,347 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:55:39,753 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:57:36,113 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 10:59:18,828 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 11:01:03,032 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 11:03:33,479 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 11:05:21,927 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 11:11:02,378 - ERROR - Internal Server Error: /pharmacy/reports/expiring-medications/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 973, in expiring_medications_report
+    return render(request, 'pharmacy/reports/expiring_medications_report.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 15, in get_template
+    return engine.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 234, in do_block
+    nodelist = parser.parse(("endblock",))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 962, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 862, in do_for
+    nodelist_loop = parser.parse(
+        (
+    ...<2 lines>...
+        )
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 962, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 1531, in do_with
+    extra_context = token_kwargs(remaining_bits, parser, support_legacy=True)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1127, in token_kwargs
+    kwargs[key] = parser.compile_filter(value)
+                  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 609, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 705, in __init__
+    filter_func = parser.find_filter(filter_name)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 615, in find_filter
+    raise TemplateSyntaxError("Invalid filter: '%s'" % filter_name)
+django.template.exceptions.TemplateSyntaxError: Invalid filter: 'timeuntil_days'
+2025-07-06 11:17:05,492 - ERROR - Internal Server Error: /pharmacy/reports/expiring-medications/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 973, in expiring_medications_report
+    return render(request, 'pharmacy/reports/expiring_medications_report.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 15, in get_template
+    return engine.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 234, in do_block
+    nodelist = parser.parse(("endblock",))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 962, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 862, in do_for
+    nodelist_loop = parser.parse(
+        (
+    ...<2 lines>...
+        )
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 962, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 1540, in do_with
+    nodelist = parser.parse(("endwith",))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 970, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 489, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 487, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 609, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 705, in __init__
+    filter_func = parser.find_filter(filter_name)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 615, in find_filter
+    raise TemplateSyntaxError("Invalid filter: '%s'" % filter_name)
+django.template.exceptions.TemplateSyntaxError: Invalid filter: 'abs'
+2025-07-06 11:18:53,923 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\templatetags\pharmacy_tags.py changed, reloading.
+2025-07-06 12:02:20,066 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:03:31,318 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\urls.py changed, reloading.
+2025-07-06 12:07:39,310 - WARNING - Not Found: /favicon.ico
+2025-07-06 12:25:14,156 - ERROR - Internal Server Error: /pharmacy/prescriptions/1/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 923, in dispense_prescription
+    formset = DispenseItemFormSet(initial=initial_data, prescription_items_qs=prescription_items)
+TypeError: BaseFormSet.__init__() got an unexpected keyword argument 'prescription_items_qs'
+2025-07-06 12:29:34,295 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:31:01,523 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:50:15,212 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:51:12,647 - ERROR - Internal Server Error: /pharmacy/prescriptions/1/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 850, in dispense_prescription
+    DispenseItemFormSet = formset_factory(DispenseItemForm, formset=BaseDispenseItemFormSet, extra=len(initial_data), can_delete=False)
+                                                                    ^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'BaseDispenseItemFormSet' is not defined. Did you mean: 'DispenseItemForm'?
+2025-07-06 12:51:25,673 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:55:07,444 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:57:32,653 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:58:42,408 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 12:59:15,714 - ERROR - Internal Server Error: /pharmacy/prescriptions/1/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 854, in dispense_prescription
+    DispenseItemFormSet = formset_factory(DispenseItemForm, formset=BaseDispenseItemFormSet, extra=len(initial_data), can_delete=False)
+                                                                    ^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'BaseDispenseItemFormSet' is not defined. Did you mean: 'DispenseItemForm'?
+2025-07-06 13:00:15,941 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 13:00:49,193 - ERROR - Internal Server Error: /pharmacy/prescriptions/1/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 941, in dispense_prescription
+    formset = DispenseItemFormSet(initial=initial_data, formset_kwargs={'prescription_items_qs': prescription_items})
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 271, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: BaseFormSet.__init__() got an unexpected keyword argument 'formset_kwargs'. Did you mean 'form_kwargs'?
+2025-07-06 13:00:50,124 - ERROR - Internal Server Error: /dashboard/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\dashboard\views.py", line 45, in dashboard
+    low_stock_medications = Medication.objects.filter(
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        is_active=True,
+        ^^^^^^^^^^^^^^^
+        stock_quantity__lte=F('reorder_level'),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stock_quantity__gt=0 # Ensure it's not completely out of stock if that's a separate category
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).order_by('stock_quantity')[:5]
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1481, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1499, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1506, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1643, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1675, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1523, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1330, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'stock_quantity' into field. Choices are: category, category_id, created_at, description, dosage_form, expiry_date, generic_name, id, inventories, is_active, manufacturer, name, precautions, prescriptionitem, price, purchaseitem, reorder_level, side_effects, storage_instructions, strength, updated_at
+2025-07-06 13:02:10,164 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 13:02:32,338 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 13:03:31,419 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 13:04:13,707 - ERROR - Internal Server Error: /pharmacy/prescriptions/1/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 854, in dispense_prescription
+    DispenseItemFormSet = formset_factory(DispenseItemForm, formset=BaseDispenseItemFormSet, extra=len(initial_data), can_delete=False, formset_kwargs={'prescription_items_qs': prescription_items})
+TypeError: formset_factory() got an unexpected keyword argument 'formset_kwargs'
+2025-07-06 13:04:28,063 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-06 13:04:42,664 - ERROR - Internal Server Error: /pharmacy/prescriptions/1/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 854, in dispense_prescription
+    DispenseItemFormSet = formset_factory(DispenseItemForm, formset=BaseDispenseItemFormSet, extra=len(initial_data), can_delete=False, formset_kwargs={'prescription_items_qs': prescription_items})
+TypeError: formset_factory() got an unexpected keyword argument 'formset_kwargs'
+2025-07-06 13:06:45,738 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.

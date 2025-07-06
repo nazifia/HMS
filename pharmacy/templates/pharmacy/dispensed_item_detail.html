@@ -1,0 +1,96 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="my-4">{{ title }}</h2>
+
+    <div class="card">
+        <div class="card-header">
+            Log ID: {{ log_entry.id }}
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Dispensing Details</h4>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Dispensed Date</th>
+                            <td>{{ log_entry.dispensed_date|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Dispensed Quantity</th>
+                            <td>{{ log_entry.dispensed_quantity }}</td>
+                        </tr>
+                        <tr>
+                            <th>Unit Price</th>
+                            <td>${{ log_entry.unit_price_at_dispense }}</td>
+                        </tr>
+                        <tr>
+                            <th>Total Price</th>
+                            <td>${{ log_entry.total_price_for_this_log }}</td>
+                        </tr>
+                        <tr>
+                            <th>Dispensed By</th>
+                            <td>{{ log_entry.dispensed_by.get_full_name|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Dispensary</th>
+                            <td>{{ log_entry.dispensary.name|default:"N/A" }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h4>Medication Details</h4>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Medication</th>
+                            <td>{{ log_entry.prescription_item.medication.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Category</th>
+                            <td>{{ log_entry.prescription_item.medication.category.name|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Dosage Form</th>
+                            <td>{{ log_entry.prescription_item.medication.dosage_form }}</td>
+                        </tr>
+                        <tr>
+                            <th>Strength</th>
+                            <td>{{ log_entry.prescription_item.medication.strength }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <h4>Patient and Prescription Details</h4>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Patient</th>
+                            <td>{{ log_entry.prescription_item.prescription.patient.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Prescription ID</th>
+                            <td>{{ log_entry.prescription_item.prescription.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Prescription Date</th>
+                            <td>{{ log_entry.prescription_item.prescription.prescription_date|date:"Y-m-d" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Doctor</th>
+                            <td>{{ log_entry.prescription_item.prescription.doctor.get_full_name }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-secondary">Back to Tracker</a>
+                <a href="{% url 'pharmacy:prescription_detail' log_entry.prescription_item.prescription.id %}" class="btn btn-primary">View Prescription</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:add_medication' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Medication
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="form-inline">
+                {{ form.search|as_crispy_field }}
+                {{ form.category|as_crispy_field }}
+                {{ form.is_active|as_crispy_field }}
+                <button type="submit" class="btn btn-primary ml-2">Search</button>
+                <a href="{% url 'pharmacy:inventory' %}" class="btn btn-secondary ml-2">Reset</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Medication List</h6>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Generic Name</th>
+                            <th>Category</th>
+                            <th>Dosage Form</th>
+                            <th>Strength</th>
+                            <th>Price</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medication in page_obj %}
+                        <tr>
+                            <td>{{ medication.name }}</td>
+                            <td>{{ medication.generic_name|default:"N/A" }}</td>
+                            <td>{{ medication.category.name|default:"N/A" }}</td>
+                            <td>{{ medication.dosage_form }}</td>
+                            <td>{{ medication.strength }}</td>
+                            <td>{{ medication.price }}</td>
+                            <td>
+                                {% if medication.is_active %}
+                                    <span class="badge bg-success">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-danger">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-info btn-sm">View</a>
+                                <a href="{% url 'pharmacy:edit_medication' medication.id %}" class="btn btn-warning btn-sm">Edit</a>
+                                <a href="{% url 'pharmacy:delete_medication' medication.id %}" class="btn btn-danger btn-sm">Delete</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}">Previous</a></li>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+
+            {% else %}
+            <p>No medications found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

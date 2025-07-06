@@ -1,0 +1,84 @@
+{% extends "base_print.html" %}
+
+{% block title %}Print Prescription - {{ prescription.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 text-center mb-4">
+            <h1 class="h3 mb-0 text-gray-800">Prescription Details</h1>
+            <p class="text-muted">Date: {{ prescription.prescription_date|date:"F d, Y" }}</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h5>Patient Information:</h5>
+            <p><strong>Name:</strong> {{ prescription.patient.get_full_name }}</p>
+            <p><strong>Patient ID:</strong> {{ prescription.patient.patient_id }}</p>
+            <p><strong>Date of Birth:</strong> {{ prescription.patient.date_of_birth|date:"M d, Y" }}</p>
+            <p><strong>Gender:</strong> {{ prescription.patient.gender }}</p>
+        </div>
+        <div class="col-md-6 text-md-right">
+            <h5>Doctor Information:</h5>
+            <p><strong>Name:</strong> {{ prescription.doctor.get_full_name }}</p>
+            <p><strong>Contact:</strong> {{ prescription.doctor.email }}</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5>Diagnosis:</h5>
+            <p>{{ prescription.diagnosis|default:"N/A" }}</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5>Medications Prescribed:</h5>
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Medication</th>
+                        <th>Dosage</th>
+                        <th>Frequency</th>
+                        <th>Duration</th>
+                        <th>Instructions</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in prescription_items %}
+                    <tr>
+                        <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                        <td>{{ item.dosage }}</td>
+                        <td>{{ item.frequency }}</td>
+                        <td>{{ item.duration }}</td>
+                        <td>{{ item.instructions|default:"N/A" }}</td>
+                        <td>{{ item.quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <h5>Notes:</h5>
+            <p>{{ prescription.notes|default:"N/A" }}</p>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <p>_________________________</p>
+            <p>Patient Signature</p>
+        </div>
+        <div class="col-md-6 text-md-right">
+            <p>_________________________</p>
+            <p>Doctor Signature</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,76 +1,60 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2>Pharmacy Dispensaries</h2>
-    <form method="get" class="form-inline mb-3">
-        <input type="text" name="search" value="{{ search_query }}" class="form-control mr-2" placeholder="Search by name or location">
-        <select name="status" class="form-control mr-2">
-            <option value="">All Statuses</option>
-            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
-            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
-        </select>
-        <button type="submit" class="btn btn-primary">Filter</button>
-    </form>
-    <a href="#" class="btn btn-success mb-3" data-toggle="modal" data-target="#addDispensaryModal">Add Dispensary</a>
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Location</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for dispensary in page_obj %}
-            <tr>
-                <td>{{ dispensary.name }}</td>
-                <td>{{ dispensary.location }}</td>
-                <td>{% if dispensary.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-secondary">Inactive</span>{% endif %}</td>
-                <td>
-                    <a href="{% url 'pharmacy:dispensary_inventory' dispensary.id %}" class="btn btn-sm btn-info">Inventory</a>
-                    <a href="{% url 'pharmacy:edit_dispensary' dispensary.id %}" class="btn btn-sm btn-warning">Edit</a>
-                    <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" class="btn btn-sm btn-danger">Delete</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4">No dispensaries found.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <nav>
-        <ul class="pagination">
-            {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
-            {% endif %}
-            <li class="page-item active"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
-            {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
-            {% endif %}
-        </ul>
-    </nav>
-    <!-- Add Dispensary Modal -->
-    <div class="modal fade" id="addDispensaryModal" tabindex="-1" role="dialog" aria-labelledby="addDispensaryModalLabel" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="addDispensaryModalLabel">Add Dispensary</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <form method="post">
-            {% csrf_token %}
-            <div class="modal-body">
-              {{ form.as_p }}
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary">Add Dispensary</button>
-            </div>
-          </form>
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:add_dispensary' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Dispensary
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Dispensaries</h6>
         </div>
-      </div>
+        <div class="card-body">
+            {% if dispensaries %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Location</th>
+                            <th>Manager</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dispensary in dispensaries %}
+                        <tr>
+                            <td>{{ dispensary.name }}</td>
+                            <td>{{ dispensary.location|default:"N/A" }}</td>
+                            <td>{{ dispensary.manager.get_full_name|default:"N/A" }}</td>
+                            <td>
+                                {% if dispensary.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'pharmacy:edit_dispensary' dispensary.id %}" class="btn btn-info btn-sm">Edit</a>
+                                <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" class="btn btn-danger btn-sm">Delete</a>
+                                <a href="{% url 'pharmacy:dispensary_inventory' dispensary.id %}" class="btn btn-primary btn-sm">Inventory</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No dispensaries found.</p>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

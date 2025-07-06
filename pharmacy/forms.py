@@ -30,7 +30,7 @@ class MedicationForm(forms.ModelForm):
         model = Medication
         fields = [
             'name', 'generic_name', 'category', 'description', 'dosage_form',
-            'strength', 'manufacturer', 'price', 'stock_quantity', 'reorder_level',
+            'strength', 'manufacturer', 'price',
             'expiry_date', 'side_effects', 'precautions', 'storage_instructions',
             'is_active'
         ]
@@ -185,13 +185,27 @@ class DispenseItemForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self.prescription_item = kwargs.pop('prescription_item', None)
+        self.selected_dispensary = kwargs.pop('selected_dispensary', None)
         super().__init__(*args, **kwargs)
         if self.prescription_item:
             self.fields['item_id'].initial = self.prescription_item.id
             remaining_qty = self.prescription_item.remaining_quantity_to_dispense
             
             is_fully_dispensed = self.prescription_item.is_dispensed # Based on new logic (qty_dispensed_so_far >= quantity)
-            can_be_dispensed = remaining_qty > 0 and self.prescription_item.medication.stock_quantity > 0 and not is_fully_dispensed
+            
+            # Get available stock from MedicationInventory for the selected dispensary
+            available_stock = 0
+            if self.selected_dispensary:
+                try:
+                    med_inventory = MedicationInventory.objects.get(
+                        medication=self.prescription_item.medication,
+                        dispensary=self.selected_dispensary
+                    )
+                    available_stock = med_inventory.stock_quantity
+                except MedicationInventory.DoesNotExist:
+                    available_stock = 0 # No inventory for this medication at this dispensary
+
+            can_be_dispensed = remaining_qty > 0 and available_stock > 0 and not is_fully_dispensed
 
             if not can_be_dispensed:
                 self.fields['dispense_this_item'].widget.attrs['disabled'] = True
@@ -199,13 +213,13 @@ class DispenseItemForm(forms.Form):
                 self.fields['quantity_to_dispense'].initial = 0
                 if is_fully_dispensed:
                     self.fields['dispense_this_item'].label = "Fully Dispensed"
-                elif self.prescription_item.medication.stock_quantity == 0:
+                elif available_stock == 0:
                      self.fields['dispense_this_item'].label = "Out of Stock"
             else:
                 # Default to remaining quantity, capped by current stock
-                initial_qty_to_dispense = min(remaining_qty, self.prescription_item.medication.stock_quantity)
+                initial_qty_to_dispense = min(remaining_qty, available_stock)
                 self.fields['quantity_to_dispense'].initial = initial_qty_to_dispense
-                self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, self.prescription_item.medication.stock_quantity)
+                self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, available_stock)
                 self.fields['quantity_to_dispense'].widget.attrs['min'] = 0 # Allow 0 if user unchecks
 
     def clean(self):
@@ -219,22 +233,32 @@ class DispenseItemForm(forms.Form):
 
         remaining_qty = self.prescription_item.remaining_quantity_to_dispense
         is_fully_dispensed = self.prescription_item.is_dispensed
-        can_be_dispensed = remaining_qty > 0 and self.prescription_item.medication.stock_quantity > 0 and not is_fully_dispensed
+
+        # Get available stock from MedicationInventory for the selected dispensary
+        available_stock = 0
+        if self.selected_dispensary:
+            try:
+                med_inventory = MedicationInventory.objects.get(
+                    medication=self.prescription_item.medication,
+                    dispensary=self.selected_dispensary
+                )
+                available_stock = med_inventory.stock_quantity
+            except MedicationInventory.DoesNotExist:
+                available_stock = 0
+
+        can_be_dispensed = remaining_qty > 0 and available_stock > 0 and not is_fully_dispensed
 
         if not can_be_dispensed and dispense_this_item:
-            # This case should ideally be prevented by disabling the checkbox
             self.add_error(None, "This item cannot be dispensed (fully dispensed or out of stock).")
             return cleaned_data
 
         if dispense_this_item:
             if quantity_to_dispense is None or quantity_to_dispense <= 0:
                 self.add_error('quantity_to_dispense', 'Quantity must be greater than 0 if selected for dispensing.')
-            # Check against remaining quantity for this item
             elif quantity_to_dispense > remaining_qty:
                 self.add_error('quantity_to_dispense', f'Cannot dispense more than remaining ({remaining_qty}).')
-            # Check against available stock
-            elif quantity_to_dispense > self.prescription_item.medication.stock_quantity:
-                self.add_error('quantity_to_dispense', f'Not enough stock. Available: {self.prescription_item.medication.stock_quantity}.')
+            elif quantity_to_dispense > available_stock:
+                self.add_error('quantity_to_dispense', f'Not enough stock at selected dispensary. Available: {available_stock}.')
         
         return cleaned_data
 
@@ -282,16 +306,6 @@ class MedicationSearchForm(forms.Form):
         queryset=MedicationCategory.objects.all(),
         required=False,
         empty_label="All Categories"
-    )
-
-    stock_status = forms.ChoiceField(
-        choices=[
-            ('', 'All'),
-            ('in_stock', 'In Stock'),
-            ('low_stock', 'Low Stock'),
-            ('out_of_stock', 'Out of Stock')
-        ],
-        required=False
     )
 
     is_active = forms.ChoiceField(
@@ -467,7 +481,7 @@ class DispensaryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter manager choices to only show staff users
-        self.fields['manager'].queryset = User.objects.filter(is_staff=True)
+        self.fields['manager'].queryset = User.objects.filter(is_active=True)
         self.fields['manager'].empty_label = "Select Manager (Optional)"
 
 class MedicationInventoryForm(forms.ModelForm):
