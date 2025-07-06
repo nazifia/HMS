@@ -14,6 +14,8 @@
             <p><strong>Bed:</strong> {{ admission.bed.bed_number }}</p>
             <p><strong>Attending Doctor:</strong> {{ admission.attending_doctor.get_full_name }}</p>
             <p><strong>Diagnosis:</strong> {{ admission.diagnosis }}</p>
+            <p><strong>Days Spent:</strong> {{ admission.get_duration }}</p>
+            <p><strong>Estimated Total Cost:</strong> ₦{{ admission.get_total_cost|floatformat:2 }}</p>
         </div>
         <div class="card-footer">
             <a href="{% url 'inpatient:edit_admission' admission.id %}" class="btn btn-primary">Edit Admission</a>

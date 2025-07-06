@@ -67,7 +67,16 @@ def get_specialization_choices():
     return [(s.id, s.name) for s in Specialization.objects.all()]
 
 class DoctorForm(forms.ModelForm):
-    specialization = forms.ModelChoiceField(queryset=Specialization.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}))
+    specialization = forms.ModelChoiceField(queryset=Specialization.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
+    department = forms.ModelChoiceField(queryset=Department.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
+    license_number = forms.CharField(max_length=100, required=False)
+    experience = forms.ChoiceField(choices=Doctor.EXPERIENCE_CHOICES, widget=forms.Select(attrs={'class': 'form-select'}), required=False)
+    qualification = forms.CharField(max_length=255, required=False)
+    consultation_fee = forms.DecimalField(max_digits=10, decimal_places=2, required=False)
+    bio = forms.CharField(widget=forms.Textarea(attrs={'rows': 4}), required=False)
+    available_for_appointments = forms.BooleanField(required=False)
+    signature = forms.ImageField(required=False)
+
     """Form for creating and editing doctor profiles"""
     class Meta:
         model = Doctor

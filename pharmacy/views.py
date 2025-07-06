@@ -40,12 +40,22 @@ logging.basicConfig(filename='debug_output.txt', level=logging.DEBUG,
 
 
 
+from patients.models import Patient # Import Patient model
+
 @login_required
 @permission_required('pharmacy.add_prescription', raise_exception=True)
-def create_prescription(request):
+def create_prescription(request, patient_id=None):
     logging.debug("create_prescription view called.")
+    patient = None
+    if patient_id:
+        patient = get_object_or_404(Patient, id=patient_id)
+
+    initial_data = {}
+    if patient:
+        initial_data['patient'] = patient
+
     if request.method == 'POST':
-        prescription_form = PrescriptionForm(request.POST, request=request)
+        prescription_form = PrescriptionForm(request.POST, request=request, initial=initial_data)
         logging.debug(f"Form is valid: {prescription_form.is_valid()}")
         if not prescription_form.is_valid():
             logging.error(f"Form errors: {prescription_form.errors}")
@@ -53,7 +63,8 @@ def create_prescription(request):
             context = {
                 'prescription_form': prescription_form,
                 'medications': Medication.objects.filter(is_active=True),
-                'title': 'Create New Prescription'
+                'title': 'Create New Prescription',
+                'patient': patient,
             }
             return render(request, 'pharmacy/create_prescription.html', context, status=400) # Bad Request
         
@@ -111,7 +122,8 @@ def create_prescription(request):
             context = {
                 'prescription_form': prescription_form,
                 'medications': Medication.objects.filter(is_active=True),
-                'title': 'Create New Prescription'
+                'title': 'Create New Prescription',
+                'patient': patient,
             }
             return render(request, 'pharmacy/create_prescription.html', context, status=400)
         except Exception as e:
@@ -120,16 +132,18 @@ def create_prescription(request):
             context = {
                 'prescription_form': prescription_form,
                 'medications': Medication.objects.filter(is_active=True),
-                'title': 'Create New Prescription'
+                'title': 'Create New Prescription',
+                'patient': patient,
             }
             return render(request, 'pharmacy/create_prescription.html', context, status=400)
     else:
-        prescription_form = PrescriptionForm(request=request)
+        prescription_form = PrescriptionForm(request=request, initial=initial_data)
 
     context = {
         'prescription_form': prescription_form,
         'medications': Medication.objects.filter(is_active=True),
-        'title': 'Create New Prescription'
+        'title': 'Create New Prescription',
+        'patient': patient,
     }
     return render(request, 'pharmacy/create_prescription.html', context, status=200) # Always return 200 on re-render for errors
 

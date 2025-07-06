@@ -166,7 +166,9 @@
             </div>
             <div class="card-body">
                 <a href="#" class="btn btn-info btn-block mb-2">New Appointment</a>
-                <a href="#" class="btn btn-warning btn-block mb-2">New Consultation</a>
+                <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-warning btn-block mb-2">New Consultation</a>
+                <a href="{% url 'consultations:create_referral' %}" class="btn btn-info btn-block mb-2">Refer Patient</a>
+                <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success btn-block mb-2">Send Medication Prescription</a>
                 <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-block mb-2">Edit Patient</a>
                 <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success btn-block mb-2">Wallet Dashboard</a>
             </div>

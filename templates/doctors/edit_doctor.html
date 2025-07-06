@@ -52,7 +52,7 @@
                     </div>
                     
                     <div class="col-md-4 mb-3">
-                        <label for="{{ doctor_form.specialization.id_for_label }}" class="form-label">Specialization *</label>
+                        <label for="{{ doctor_form.specialization.id_for_label }}" class="form-label">Specialization</label>
                         {{ doctor_form.specialization|add_class:"form-select" }}
                         {% if doctor_form.specialization.errors %}
                             <div class="text-danger">{{ doctor_form.specialization.errors }}</div>
@@ -60,23 +60,23 @@
                     </div>
                     
                     <div class="col-md-4 mb-3">
-                        <label for="{{ doctor_form.department.id_for_label }}" class="form-label">Department *</label>
+                        <label for="{{ doctor_form.department.id_for_label }}" class="form-label">Department</label>
                         {{ doctor_form.department|add_class:"form-select" }}
                         {% if doctor_form.department.errors %}
                             <div class="text-danger">{{ doctor_form.department.errors }}</div>
                         {% endif %}
                     </div>
                     
-                    <div class="col-md-4 mb-3">
+                    {% comment %} <div class="col-md-4 mb-3">
                         <label for="{{ doctor_form.license_number.id_for_label }}" class="form-label">License Number *</label>
                         {{ doctor_form.license_number|add_class:"form-control" }}
                         {% if doctor_form.license_number.errors %}
                             <div class="text-danger">{{ doctor_form.license_number.errors }}</div>
                         {% endif %}
-                    </div>
+                    </div> {% endcomment %}
                     
                     <div class="col-md-4 mb-3">
-                        <label for="{{ doctor_form.experience.id_for_label }}" class="form-label">Experience *</label>
+                        <label for="{{ doctor_form.experience.id_for_label }}" class="form-label">Experience</label>
                         {{ doctor_form.experience|add_class:"form-select" }}
                         {% if doctor_form.experience.errors %}
                             <div class="text-danger">{{ doctor_form.experience.errors }}</div>
@@ -84,7 +84,7 @@
                     </div>
                     
                     <div class="col-md-4 mb-3">
-                        <label for="{{ doctor_form.qualification.id_for_label }}" class="form-label">Qualification *</label>
+                        <label for="{{ doctor_form.qualification.id_for_label }}" class="form-label">Qualification</label>
                         {{ doctor_form.qualification|add_class:"form-control" }}
                         {% if doctor_form.qualification.errors %}
                             <div class="text-danger">{{ doctor_form.qualification.errors }}</div>
@@ -92,9 +92,9 @@
                     </div>
                     
                     <div class="col-md-4 mb-3">
-                        <label for="{{ doctor_form.consultation_fee.id_for_label }}" class="form-label">Consultation Fee *</label>
+                        <label for="{{ doctor_form.consultation_fee.id_for_label }}" class="form-label">Consultation Fee</label>
                         <div class="input-group">
-                            <span class="input-group-text">$</span>
+                            <span class="input-group-text">₦</span>
                             {{ doctor_form.consultation_fee|add_class:"form-control" }}
                         </div>
                         {% if doctor_form.consultation_fee.errors %}

@@ -81,13 +81,25 @@ class ReferralForm(forms.ModelForm):
         empty_label="Select Doctor"
     )
 
+    patient = forms.ModelChoiceField(
+        queryset=Patient.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Patient"
+    )
+
     class Meta:
         model = Referral
-        fields = ['referred_to', 'reason', 'notes']
+        fields = ['patient', 'referred_to', 'reason', 'notes']
         widgets = {
             'reason': forms.Textarea(attrs={'rows': 3}),
             'notes': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'patient' in self.initial:
+            self.fields['patient'].widget = forms.HiddenInput()
+            self.fields['patient'].initial = self.initial['patient']
 
 class VitalsSelectionForm(forms.Form):
     """Form for selecting patient vitals for a consultation"""
