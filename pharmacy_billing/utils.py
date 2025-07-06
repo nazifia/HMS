@@ -19,12 +19,7 @@ def create_pharmacy_invoice(request, prescription, subtotal_value):
     subtotal_value = Decimal(str(subtotal_value)).quantize(Decimal('0.01'))
     
     # Check if the patient is an NHIA patient
-    is_nhia_patient = False
-    try:
-        if hasattr(prescription.patient, 'nhia_info') and prescription.patient.nhia_info.is_active:
-            is_nhia_patient = True
-    except NHIAPatient.DoesNotExist:
-        pass # Not an NHIA patient
+    is_nhia_patient = (prescription.patient.patient_type == 'nhia')
 
     if is_nhia_patient:
         # NHIA patients pay 10% of the medication cost

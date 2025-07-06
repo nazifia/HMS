@@ -47,10 +47,10 @@
                     <a class="collapse-item {% if request.path == '/patients/list/' %}active{% endif %}" href="{% url 'patients:list' %}">All Patients</a>
                     {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
                     <a class="collapse-item {% if request.path == '/patients/register/' %}active{% endif %}" href="{% url 'patients:register' %}">Register Patient</a>
-                    <a class="collapse-item {% if request.path == '/nhia/register-independent/' %}active{% endif %}" href="{% url 'nhia:register_independent_nhia_patient' %}">Register Independent NHIA Patient</a>
-                    <a class="collapse-item {% if request.path == '/nhia/register-patient/' %}active{% endif %}" href="{% url 'nhia:register_patient_for_nhia' %}">Register NHIA Patient</a>
-                    <a class="collapse-item {% if request.path == '/retainership/register-independent/' %}active{% endif %}" href="{% url 'retainership:register_independent_retainership_patient' %}">Register Independent Retainership Patient</a>
-                    <a class="collapse-item {% if request.path == '/retainership/register-patient/' %}active{% endif %}" href="{% url 'retainership:select_patient_for_retainership' %}">Register Retainership Patient</a>
+                    <a class="collapse-item {% if request.path == '/nhia/register-independent/' %}active{% endif %}" href="{% url 'nhia:register_independent_nhia_patient' %}">Register NHIA Patient</a>
+                    <a class="collapse-item {% if request.path == '/nhia/register-patient/' %}active{% endif %}" href="{% url 'nhia:register_patient_for_nhia' %}">Add Patient to NHIA</a>
+                    <a class="collapse-item {% if request.path == '/retainership/register-independent/' %}active{% endif %}" href="{% url 'retainership:register_independent_retainership_patient' %}">Register Retainership Patient</a>
+                    {% comment %} <a class="collapse-item {% if request.path == '/retainership/register-patient/' %}active{% endif %}" href="{% url 'retainership:select_patient_for_retainership' %}">Register Retainership Patient</a> {% endcomment %}
                     <a class="collapse-item {% if '/nhia/patients/' in request.path %}active{% endif %}" href="{% url 'nhia:nhia_patient_list' %}">NHIA Patients</a>
                     {% endif %}
                     <!-- Retainership Patients: always visible, styled like NHIA -->
