@@ -24,8 +24,6 @@ class Medication(models.Model):
     strength = models.CharField(max_length=50)  # e.g., 500mg, 250ml
     manufacturer = models.CharField(max_length=100, blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    # Moving stock_quantity to MedicationInventory for per-dispensary tracking
-    stock_quantity = models.IntegerField(default=0)  # Will be deprecated after migration
     reorder_level = models.IntegerField(default=10)
     expiry_date = models.DateField(blank=True, null=True)
     side_effects = models.TextField(blank=True, null=True)
@@ -38,20 +36,11 @@ class Medication(models.Model):
     def __str__(self):
         return f"{self.name} ({self.strength})"
 
-    def is_low_stock(self):
-        return self.stock_quantity <= self.reorder_level
-
-    def is_expired(self):
-        if self.expiry_date:
-            return timezone.now().date() >= self.expiry_date
-        return False
-
     class Meta:
         indexes = [
             models.Index(fields=['name']),
             models.Index(fields=['category']),
             models.Index(fields=['is_active']),
-            models.Index(fields=['stock_quantity']),
         ]
         ordering = ['name']
 
@@ -88,6 +77,7 @@ class Purchase(models.Model):
         ('paid', 'Paid'),
     ), default='pending')
     notes = models.TextField(blank=True, null=True)
+    dispensary = models.ForeignKey('Dispensary', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchases') # New field
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -137,15 +127,21 @@ class PurchaseItem(models.Model):
     def save(self, *args, **kwargs):
         self.total_price = self.quantity * self.unit_price
 
-        # Update medication stock and expiry date if this is a new item
         if not self.pk:  # If this is a new item (not an update)
-            self.medication.stock_quantity += self.quantity
-
-            # Update expiry date if the new one is later than the current one
-            if not self.medication.expiry_date or (self.expiry_date and self.expiry_date > self.medication.expiry_date):
-                self.medication.expiry_date = self.expiry_date
-
-            self.medication.save()
+            if self.purchase.dispensary:
+                inventory, created = MedicationInventory.objects.get_or_create(
+                    medication=self.medication,
+                    dispensary=self.purchase.dispensary,
+                    defaults={'stock_quantity': 0} # Initialize if new
+                )
+                inventory.stock_quantity += self.quantity
+                inventory.last_restock_date = timezone.now()
+                inventory.save()
+            else:
+                # Handle cases where a purchase might not be linked to a specific dispensary yet
+                # For now, we can log a warning or raise an error, depending on desired behavior
+                # For this implementation, we'll assume dispensary is always set for purchases that affect inventory
+                pass # Or raise an exception: raise ValueError("Purchase must have a dispensary to update inventory.")
 
         super().save(*args, **kwargs)
 
@@ -278,6 +274,14 @@ class MedicationInventory(models.Model):
 
     def __str__(self):
         return f"{self.medication.name} at {self.dispensary.name}"
+
+    def is_low_stock(self):
+        return self.stock_quantity <= self.reorder_level
+
+    def is_expired(self):
+        if self.medication.expiry_date:
+            return timezone.now().date() >= self.medication.expiry_date
+        return False
 
     class Meta:
         verbose_name_plural = "Medication Inventories"

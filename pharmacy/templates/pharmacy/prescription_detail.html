@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Prescription Information</h6>
+        </div>
+        <div class="card-body">
+            <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+            <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
+            <p><strong>Diagnosis:</strong> {{ prescription.diagnosis|default:"N/A" }}</p>
+            <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
+            <p><strong>Payment Status:</strong> {{ prescription.get_payment_status_display }}</p>
+            <p><strong>Prescription Type:</strong> {{ prescription.get_prescription_type_display }}</p>
+            <p><strong>Notes:</strong> {{ prescription.notes|default:"N/A" }}</p>
+            <p><strong>Created At:</strong> {{ prescription.created_at|date:"Y-m-d H:i" }}</p>
+            <p><strong>Last Updated:</strong> {{ prescription.updated_at|date:"Y-m-d H:i" }}</p>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Prescription Items</h6>
+        </div>
+        <div class="card-body">
+            {% if prescription_items %}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Medication</th>
+                            <th>Dosage</th>
+                            <th>Frequency</th>
+                            <th>Duration</th>
+                            <th>Instructions</th>
+                            <th>Prescribed Quantity</th>
+                            <th>Dispensed So Far</th>
+                            <th>Remaining</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in prescription_items %}
+                        <tr>
+                            <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                            <td>{{ item.dosage }}</td>
+                            <td>{{ item.frequency }}</td>
+                            <td>{{ item.duration }}</td>
+                            <td>{{ item.instructions|default:"N/A" }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.quantity_dispensed_so_far }}</td>
+                            <td>{{ item.remaining_quantity_to_dispense }}</td>
+                            <td>
+                                {% if item.is_dispensed %}
+                                    <span class="badge bg-success">Fully Dispensed</span>
+                                {% elif item.quantity_dispensed_so_far > 0 %}
+                                    <span class="badge bg-warning">Partially Dispensed</span>
+                                {% else %}
+                                    <span class="badge bg-info">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'pharmacy:delete_prescription_item' item.id %}" class="btn btn-danger btn-sm">Delete</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No items for this prescription.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card-footer">
+        <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-secondary">Back to Prescriptions</a>
+        <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success">Dispense Medication</a>
+        <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info">Print Prescription</a>
+    </div>
+</div>
+{% endblock %}

@@ -5,47 +5,43 @@
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ title }} - {{ dispensary.name }}</h1>
-        <a href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Medication to Inventory
-        </a>
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
     </div>
 
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Medication Inventory</h6>
+            <h6 class="m-0 font-weight-bold text-primary">Medications Below Reorder Level</h6>
         </div>
         <div class="card-body">
-            {% if inventory_items %}
+            {% if low_stock_items %}
             <div class="table-responsive">
                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
                             <th>Medication</th>
+                            <th>Dispensary</th>
                             <th>Current Stock</th>
                             <th>Reorder Level</th>
+                            <th>Difference</th>
                             <th>Last Restock</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in inventory_items %}
+                        {% for item in low_stock_items %}
                         <tr>
                             <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                            <td>{{ item.dispensary.name }}</td>
                             <td>{{ item.stock_quantity }}</td>
                             <td>{{ item.reorder_level }}</td>
+                            <td class="text-danger">{{ item.stock_quantity|add:"-"|add:item.reorder_level }}</td>
                             <td>{{ item.last_restock_date|date:"Y-m-d H:i"|default:"N/A" }}</td>
-                            <td>
-                                <a href="{% url 'pharmacy:edit_dispensary_inventory_item' dispensary.id item.id %}" class="btn btn-info btn-sm">Edit</a>
-                                <a href="{% url 'pharmacy:delete_dispensary_inventory_item' dispensary.id item.id %}" class="btn btn-danger btn-sm">Delete</a>
-                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             {% else %}
-            <p>No medication inventory found for this dispensary.</p>
+            <p>No medications are currently below their reorder level.</p>
             {% endif %}
         </div>
     </div>

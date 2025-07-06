@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Prescription Details - #{{ prescription.id }}</h6>
+        </div>
+        <div class="card-body">
+            <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+            <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
+            <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
+            <p><strong>Type:</strong> {{ prescription.get_prescription_type_display }}</p>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Dispense Medications</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="form-group mb-3">
+                    <label for="dispensary_select">Select Dispensary:</label>
+                    <select name="dispensary_select" id="dispensary_select" class="form-control">
+                        <option value="">-- Select a Dispensary --</option>
+                        {% for dispensary in dispensaries %}
+                            <option value="{{ dispensary.id }}" {% if dispensary.id|stringformat:"s" == selected_dispensary_id %}selected{% endif %}>{{ dispensary.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {{ formset.management_form }}
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Medication</th>
+                                <th>Prescribed Quantity</th>
+                                <th>Dispensed So Far</th>
+                                <th>Remaining</th>
+                                <th>Dispense?</th>
+                                <th>Quantity to Dispense</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in formset %}
+                            <tr>
+                                <td>{{ form.prescription_item.medication.name }} ({{ form.prescription_item.medication.strength }})</td>
+                                <td>{{ form.prescription_item.quantity }}</td>
+                                <td>{{ form.prescription_item.quantity_dispensed_so_far }}</td>
+                                <td>{{ form.prescription_item.remaining_quantity_to_dispense }}</td>
+                                <td>
+                                    {{ form.item_id }}
+                                    {{ form.dispense_this_item }}
+                                    {% if form.dispense_this_item.field.widget.attrs.disabled %}
+                                        <span class="badge bg-secondary">{{ form.dispense_this_item.label }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ form.quantity_to_dispense }}</td>
+                            </tr>
+                            {% if form.errors %}
+                            <tr>
+                                <td colspan="6">
+                                    <div class="alert alert-danger" role="alert">
+                                        {% for field in form %}
+                                            {% if field.errors %}
+                                                {{ field.label }}: {{ field.errors }}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {{ form.non_field_errors }}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Dispense Selected Items</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:add_purchase' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Purchase
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Purchase List</h6>
+        </div>
+        <div class="card-body">
+            {% if purchases %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Invoice Number</th>
+                            <th>Supplier</th>
+                            <th>Purchase Date</th>
+                            <th>Total Amount</th>
+                            <th>Payment Status</th>
+                            <th>Created By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for purchase in purchases %}
+                        <tr>
+                            <td>{{ purchase.invoice_number }}</td>
+                            <td>{{ purchase.supplier.name }}</td>
+                            <td>{{ purchase.purchase_date }}</td>
+                            <td>{{ purchase.total_amount }}</td>
+                            <td>{{ purchase.get_payment_status_display }}</td>
+                            <td>{{ purchase.created_by.get_full_name|default:"N/A" }}</td>
+                            <td>
+                                <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-info btn-sm">View</a>
+                                <!-- Add edit/delete if needed, but typically purchases are immutable after creation -->
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No purchases found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -16,7 +16,7 @@ class MedicationCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Medication)
 class MedicationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'generic_name', 'category', 'dosage_form', 'strength', 'price', 'stock_quantity', 'is_active')
+    list_display = ('name', 'generic_name', 'category', 'dosage_form', 'strength', 'price', 'is_active')
     list_filter = ('category', 'dosage_form', 'is_active')
     search_fields = ('name', 'generic_name', 'manufacturer')
     fieldsets = (
@@ -24,7 +24,7 @@ class MedicationAdmin(admin.ModelAdmin):
             'fields': ('name', 'generic_name', 'category', 'description', 'dosage_form', 'strength', 'manufacturer')
         }),
         ('Inventory Information', {
-            'fields': ('price', 'stock_quantity', 'reorder_level', 'expiry_date', 'is_active')
+            'fields': ('price', 'reorder_level', 'expiry_date', 'is_active')
         }),
         ('Medical Information', {
             'fields': ('side_effects', 'precautions', 'storage_instructions')

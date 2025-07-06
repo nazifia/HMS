@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Medications Expiring Soon or Expired</h6>
+        </div>
+        <div class="card-body">
+            {% if expiring_items %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Medication</th>
+                            <th>Dispensary</th>
+                            <th>Expiry Date</th>
+                            <th>Days Until Expiry</th>
+                            <th>Current Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in expiring_items %}
+                        <tr>
+                            <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                            <td>{{ item.dispensary.name }}</td>
+                            <td>{{ item.medication.expiry_date|date:"Y-m-d" }}</td>
+                            <td>
+                                {% if item.medication.expiry_date %}
+                                    {% with days_left=item.medication.expiry_date|timeuntil_days %}
+                                        {% if days_left == 0 %}
+                                            <span class="badge bg-danger">Expires Today!</span>
+                                        {% elif days_left < 0 %}
+                                            <span class="badge bg-danger">Expired {{ days_left|abs_val }} days ago</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">{{ days_left }} days</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>{{ item.stock_quantity }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No medications are expiring soon or have expired.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Custom filter to calculate days until expiry
+    // This is a simple JS implementation for display, for robust logic, use Django filters
+    // This is just to show how you might add client-side enhancements
+    // For the actual report, the server-side logic is sufficient.
+    // You would need to define 'timeuntil_days' filter in Django for server-side calculation.
+    // For now, assuming it's handled by the view or a custom Django template filter.
+</script>
+{% endblock %}

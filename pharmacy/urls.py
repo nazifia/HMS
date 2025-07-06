@@ -64,8 +64,12 @@ urlpatterns = [
     # Dispensary Management
     path('dispensaries/', views.dispensary_list, name='dispensary_list'),  # Changed from manage_dispensaries
     path('dispensaries/<int:dispensary_id>/edit/', views.edit_dispensary, name='edit_dispensary'),
+    path('dispensaries/add/', views.add_dispensary, name='add_dispensary'),
     path('dispensaries/<int:dispensary_id>/delete/', views.delete_dispensary, name='delete_dispensary'),
     path('dispensaries/<int:dispensary_id>/inventory/', views.dispensary_inventory, name='dispensary_inventory'),
+    path('dispensaries/<int:dispensary_id>/inventory/add/', views.add_dispensary_inventory_item, name='add_dispensary_inventory_item'),
+    path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/edit/', views.edit_dispensary_inventory_item, name='edit_dispensary_inventory_item'),
+    path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/delete/', views.delete_dispensary_inventory_item, name='delete_dispensary_inventory_item'),
 
     # AJAX Endpoints
     path('api/medication-autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),
