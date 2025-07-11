@@ -21,7 +21,7 @@ from .forms import (
     MedicationSearchForm, PrescriptionSearchForm, DispensedItemsSearchForm, DispensaryForm, MedicationInventoryForm
 )
 from billing.models import Service
-from pharmacy_billing.models import Invoice
+from pharmacy_billing.models import Invoice, InvoiceItem
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -43,7 +43,6 @@ logging.basicConfig(filename='debug_output.txt', level=logging.DEBUG,
 from patients.models import Patient # Import Patient model
 
 @login_required
-@permission_required('pharmacy.add_prescription', raise_exception=True)
 def create_prescription(request, patient_id=None):
     logging.debug("create_prescription view called.")
     patient = None
@@ -102,13 +101,22 @@ def create_prescription(request, patient_id=None):
                 
                 invoice = Invoice.objects.create(
                     patient=prescription.patient,
+                    invoice_date=timezone.now().date(),
+                    due_date=timezone.now().date() + timezone.timedelta(days=30),
                     created_by=request.user,
-                    service=medication_dispensing_service,
                     subtotal=total_prescription_price,
-                    total_amount=total_prescription_price * (1 + medication_dispensing_service.tax_percentage / 100),
+                    total_amount=total_prescription_price,
                     status='pending',
-                    notes=f'Invoice for Prescription {prescription.id}'
                 )
+
+                InvoiceItem.objects.create(
+                    invoice=invoice,
+                    service=medication_dispensing_service,
+                    description=f'Invoice for Prescription {prescription.id}',
+                    quantity=1,
+                    unit_price=total_prescription_price,
+                )
+
                 prescription.invoice = invoice
                 prescription.save()
                 logging.debug(f"Invoice created: {invoice.id}")
@@ -306,7 +314,6 @@ def pharmacy_dashboard(request):
     return render(request, 'pharmacy/pharmacy_dashboard.html', context)
 
 @login_required
-@permission_required('pharmacy.add_dispensary', raise_exception=True)
 def add_dispensary(request):
     if request.method == 'POST':
         form = DispensaryForm(request.POST)
@@ -325,7 +332,6 @@ def add_dispensary(request):
     return render(request, 'pharmacy/add_edit_dispensary.html', context)
 
 @login_required
-@permission_required('pharmacy.view_dispensary', raise_exception=True)
 def dispensary_list(request):
     dispensaries = Dispensary.objects.all().order_by('name')
     context = {
@@ -335,7 +341,6 @@ def dispensary_list(request):
     return render(request, 'pharmacy/dispensary_list.html', context)
 
 @login_required
-@permission_required('pharmacy.change_dispensary', raise_exception=True)
 def edit_dispensary(request, dispensary_id):
     dispensary = get_object_or_404(Dispensary, id=dispensary_id)
     if request.method == 'POST':
@@ -355,7 +360,6 @@ def edit_dispensary(request, dispensary_id):
     return render(request, 'pharmacy/add_edit_dispensary.html', context)
 
 @login_required
-@permission_required('pharmacy.delete_dispensary', raise_exception=True)
 def delete_dispensary(request, dispensary_id):
     dispensary = get_object_or_404(Dispensary, id=dispensary_id)
     if request.method == 'POST':
@@ -369,7 +373,6 @@ def delete_dispensary(request, dispensary_id):
     return render(request, 'pharmacy/confirm_delete_dispensary.html', context)
 
 @login_required
-@permission_required('pharmacy.add_medicationinventory', raise_exception=True)
 def add_dispensary_inventory_item(request, dispensary_id):
     dispensary = get_object_or_404(Dispensary, id=dispensary_id)
     if request.method == 'POST':
@@ -392,7 +395,6 @@ def add_dispensary_inventory_item(request, dispensary_id):
     return render(request, 'pharmacy/add_edit_inventory_item.html', context)
 
 @login_required
-@permission_required('pharmacy.change_medicationinventory', raise_exception=True)
 def edit_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
     dispensary = get_object_or_404(Dispensary, id=dispensary_id)
     inventory_item = get_object_or_404(MedicationInventory, id=inventory_item_id, dispensary=dispensary)
@@ -416,7 +418,6 @@ def edit_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
     return render(request, 'pharmacy/add_edit_inventory_item.html', context)
 
 @login_required
-@permission_required('pharmacy.delete_medicationinventory', raise_exception=True)
 def delete_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
     dispensary = get_object_or_404(Dispensary, id=dispensary_id)
     inventory_item = get_object_or_404(MedicationInventory, id=inventory_item_id, dispensary=dispensary)
