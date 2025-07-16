@@ -20,6 +20,7 @@
 
     <!-- Custom CSS -->
     {% load static %}
+{% load form_tags %}
     <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
     <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
     <link rel="stylesheet" href="{% static 'css/dashboard_modern.css' %}">
@@ -29,14 +30,16 @@
         /* Main layout for sidebar and content */
         html, body {
             height: 100%;
-            overflow: hidden;
+            overflow-x: hidden; /* Allow horizontal scrolling if needed */
+            overflow-y: auto; /* Allow vertical scrolling */
         }
         #wrapper {
             display: flex;
             min-height: 100vh;
             width: 100vw;
             background: #f8f9fc;
-            overflow: hidden;
+            overflow-x: hidden; /* Keep horizontal hidden if desired, but allow vertical */
+            overflow-y: auto; /* Allow vertical scrolling */
         }
 
         /* Content Wrapper */
@@ -47,7 +50,7 @@
             width: 100%;
             min-width: 0;
             background: #f8f9fc;
-            overflow: hidden;
+            overflow-y: auto; /* Changed from hidden to auto */
             height: 100vh;
         }
 
@@ -454,5 +457,70 @@
     <script src="{% static 'js/sidebar.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
+
+    <!-- Add Item Modal -->
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="add_item" value="1">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addItemModalLabel">Add Invoice Item</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="{{ item_form.service.id_for_label }}" class="form-label">Service</label>
+                            {{ item_form.service|add_class:"form-control select2-modal" }}
+                            {% if item_form.service.errors %}
+                                <div class="text-danger">
+                                    {{ item_form.service.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Select a service or enter a custom description below.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ item_form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ item_form.description|add_class:"form-control" }}
+                            {% if item_form.description.errors %}
+                                <div class="text-danger">
+                                    {{ item_form.description.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ item_form.quantity.id_for_label }}" class="form-label">Quantity</label>
+                                {{ item_form.quantity|add_class:"form-control" }}
+                                {% if item_form.quantity.errors %}
+                                    <div class="text-danger">
+                                        {{ item_form.quantity.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ item_form.unit_price.id_for_label }}" class="form-label">Unit Price</label>
+                                {{ item_form.unit_price|add_class:"form-control" }}
+                                {% if item_form.unit_price.errors %}
+                                    <div class="text-danger">
+                                        {{ item_form.unit_price.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

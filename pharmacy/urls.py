@@ -40,8 +40,15 @@ urlpatterns = [
     path('prescriptions/<int:prescription_id>/print/', views.print_prescription, name='print_prescription'),
     path('prescriptions/<int:prescription_id>/status/', views.update_prescription_status, name='update_prescription_status'),
     path('prescriptions/<int:prescription_id>/dispense/', views.dispense_prescription, name='dispense_prescription'),
+    path('prescriptions/<int:prescription_id>/dispense/original/', views.dispense_prescription_original, name='dispense_prescription_original'),
+    path('prescriptions/<int:prescription_id>/dispense/debug/', views.debug_dispense_prescription, name='debug_dispense_prescription'),
     path('prescriptions/<int:prescription_id>/history/', views.prescription_dispensing_history, name='prescription_dispensing_history'), # New URL for history
+    path('prescriptions/<int:prescription_id>/add-item/', views.add_prescription_item, name='add_prescription_item'),
     path('prescriptions/items/<int:item_id>/delete/', views.delete_prescription_item, name='delete_prescription_item'),
+
+    # Payment Management
+    path('prescriptions/<int:prescription_id>/payment/', views.prescription_payment, name='prescription_payment'),
+    path('prescriptions/<int:prescription_id>/payment/create-invoice/', views.create_prescription_invoice, name='create_prescription_invoice'),
 
     # API Endpoints
     path('api/medications/', views.medication_api, name='medication_api'),
@@ -49,6 +56,7 @@ urlpatterns = [
     # Reports
     path('reports/expiring-medications/', views.expiring_medications_report, name='expiring_medications_report'),
     path('reports/low-stock-medications/', views.low_stock_medications_report, name='low_stock_medications_report'),
+    path('reports/sales-statistics/', views.pharmacy_sales_report, name='pharmacy_sales_report'),
 
     # Dispensing Report
     path('dispensing-report/', views.dispensing_report, name='dispensing_report'),
@@ -72,6 +80,11 @@ urlpatterns = [
     path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/edit/', views.edit_dispensary_inventory_item, name='edit_dispensary_inventory_item'),
     path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/delete/', views.delete_dispensary_inventory_item, name='delete_dispensary_inventory_item'),
 
+    # Medication Inventory Management
+    path('inventory/stock/add/', views.add_medication_stock, name='add_medication_stock'),
+    path('inventory/stock/quick-add/', views.quick_add_stock, name='quick_add_stock'),
+
     # AJAX Endpoints
     path('api/medication-autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),
+    path('prescriptions/<int:prescription_id>/stock-quantities/', views.get_stock_quantities, name='get_stock_quantities'),
 ]

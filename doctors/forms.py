@@ -1,5 +1,6 @@
 from django import forms
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from .models import (
@@ -37,8 +38,8 @@ class DoctorUserCreationForm(UserCreationForm):
             raise ValidationError("Phone number must contain only digits.")
         
         # Check if phone number is already in use
-        from accounts.models import UserProfile
-        if UserProfile.objects.filter(phone_number=phone_number).exists():
+        from accounts.models import CustomUserProfile
+        if CustomUserProfile.objects.filter(phone_number=phone_number).exists():
             raise ValidationError("This phone number is already in use.")
         
         return phone_number
@@ -65,6 +66,13 @@ def get_specialization_choices():
     """Utility to get all specializations as choices for forms."""
     from .models import Specialization
     return [(s.id, s.name) for s in Specialization.objects.all()]
+
+class DoctorAdminForm(forms.ModelForm):
+    user = forms.ModelChoiceField(queryset=User.objects.all(), required=True)
+
+    class Meta:
+        model = Doctor
+        fields = '__all__'
 
 class DoctorForm(forms.ModelForm):
     specialization = forms.ModelChoiceField(queryset=Specialization.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)

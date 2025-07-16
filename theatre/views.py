@@ -2,16 +2,17 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Count, Q
 
 from .models import (
-    OperationTheatre, 
-    SurgeryType, 
-    Surgery, 
-    SurgicalTeam, 
+    OperationTheatre,
+    SurgeryType,
+    Surgery,
+    SurgicalTeam,
     SurgicalEquipment,
     EquipmentUsage,
     SurgerySchedule,
@@ -19,6 +20,7 @@ from .models import (
     PreOperativeChecklist,
     SurgeryLog
 )
+from accounts.models import CustomUser
 from .forms import (
     OperationTheatreForm, 
     SurgeryTypeForm, 
@@ -345,6 +347,172 @@ class SurgeryReportView(LoginRequiredMixin, TemplateView):
         context['complications_count'] = PostOperativeNote.objects.exclude(complications__isnull=True).exclude(complications__exact='').count()
 
         return context
+
+
+@login_required
+def theatre_statistics_report(request):
+    """Comprehensive theatre statistics and reporting"""
+    from django.db.models import Q, Sum, Count, Avg
+    from datetime import datetime, timedelta
+    from decimal import Decimal
+
+    # Get filter parameters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    surgery_type_id = request.GET.get('surgery_type')
+    theatre_id = request.GET.get('theatre')
+    status = request.GET.get('status')
+    surgeon_id = request.GET.get('surgeon')
+
+    # Default date range (last 30 days)
+    if not start_date:
+        start_date = (timezone.now() - timedelta(days=30)).date()
+    else:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+
+    if not end_date:
+        end_date = timezone.now().date()
+    else:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    # Base queryset for surgeries
+    surgeries = Surgery.objects.filter(
+        scheduled_date__date__gte=start_date,
+        scheduled_date__date__lte=end_date
+    ).select_related('patient', 'surgery_type', 'theatre', 'primary_surgeon', 'anesthetist')
+
+    # Apply filters
+    if surgery_type_id:
+        surgeries = surgeries.filter(surgery_type_id=surgery_type_id)
+
+    if theatre_id:
+        surgeries = surgeries.filter(theatre_id=theatre_id)
+
+    if status:
+        surgeries = surgeries.filter(status=status)
+
+    if surgeon_id:
+        surgeries = surgeries.filter(primary_surgeon_id=surgeon_id)
+
+    # Surgeries by theatre
+    theatre_stats = surgeries.values(
+        'theatre__name',
+        'theatre__id'
+    ).annotate(
+        total_surgeries=Count('id'),
+        completed_surgeries=Count('id', filter=Q(status='completed')),
+        cancelled_surgeries=Count('id', filter=Q(status='cancelled')),
+        avg_duration=Avg('expected_duration'),
+        unique_patients=Count('patient', distinct=True),
+        unique_surgeons=Count('primary_surgeon', distinct=True)
+    ).order_by('-total_surgeries')
+
+    # Top surgery types by volume
+    top_surgery_types = surgeries.values(
+        'surgery_type__name',
+        'surgery_type__id'
+    ).annotate(
+        total_surgeries=Count('id'),
+        completed_surgeries=Count('id', filter=Q(status='completed')),
+        avg_duration=Avg('expected_duration'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_surgeries')[:10]
+
+    # Status distribution
+    status_stats = surgeries.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
+    # Daily surgery volume trend
+    daily_stats = surgeries.extra(
+        select={'day': 'DATE(scheduled_date)'}
+    ).values('day').annotate(
+        daily_surgeries=Count('id'),
+        daily_completed=Count('id', filter=Q(status='completed'))
+    ).order_by('day')
+
+    # Top surgeons
+    top_surgeons = surgeries.filter(
+        primary_surgeon__isnull=False
+    ).values(
+        'primary_surgeon__first_name',
+        'primary_surgeon__last_name',
+        'primary_surgeon__id'
+    ).annotate(
+        total_surgeries=Count('id'),
+        completed_surgeries=Count('id', filter=Q(status='completed')),
+        unique_patients=Count('patient', distinct=True),
+        avg_duration=Avg('expected_duration')
+    ).order_by('-total_surgeries')[:10]
+
+    # Theatre utilization
+    theatre_utilization = surgeries.values(
+        'theatre__name',
+        'theatre__id'
+    ).annotate(
+        scheduled_hours=Sum('expected_duration'),
+        total_surgeries=Count('id')
+    ).order_by('-scheduled_hours')
+
+    # Overall statistics
+    overall_stats = surgeries.aggregate(
+        total_surgeries=Count('id'),
+        completed_surgeries=Count('id', filter=Q(status='completed')),
+        cancelled_surgeries=Count('id', filter=Q(status='cancelled')),
+        in_progress_surgeries=Count('id', filter=Q(status='in_progress')),
+        scheduled_surgeries=Count('id', filter=Q(status='scheduled')),
+        avg_duration=Avg('expected_duration'),
+        unique_patients=Count('patient', distinct=True),
+        unique_surgeons=Count('primary_surgeon', distinct=True),
+        unique_theatres=Count('theatre', distinct=True)
+    )
+
+    # Success rate (completed vs total)
+    total_surgeries = overall_stats['total_surgeries'] or 0
+    completed_surgeries = overall_stats['completed_surgeries'] or 0
+    success_rate = (completed_surgeries / total_surgeries * 100) if total_surgeries > 0 else 0
+
+    # Cancellation rate
+    cancelled_surgeries = overall_stats['cancelled_surgeries'] or 0
+    cancellation_rate = (cancelled_surgeries / total_surgeries * 100) if total_surgeries > 0 else 0
+
+    # Complications count (from post-operative notes)
+    complications_count = PostOperativeNote.objects.filter(
+        surgery__in=surgeries,
+        complications__isnull=False
+    ).exclude(complications__exact='').count()
+
+    # Get filter options
+    surgery_types = SurgeryType.objects.all().order_by('name')
+    theatres = OperationTheatre.objects.filter(is_available=True).order_by('name')
+    surgeons = CustomUser.objects.filter(
+        profile__specialization__icontains='surgeon'
+    ).order_by('first_name', 'last_name')
+
+    context = {
+        'title': 'Theatre Statistics and Reports',
+        'start_date': start_date,
+        'end_date': end_date,
+        'theatre_stats': theatre_stats,
+        'top_surgery_types': top_surgery_types,
+        'top_surgeons': top_surgeons,
+        'theatre_utilization': theatre_utilization,
+        'status_stats': status_stats,
+        'daily_stats': daily_stats,
+        'overall_stats': overall_stats,
+        'success_rate': success_rate,
+        'cancellation_rate': cancellation_rate,
+        'complications_count': complications_count,
+        'surgery_types': surgery_types,
+        'theatres': theatres,
+        'surgeons': surgeons,
+        'selected_surgery_type': surgery_type_id,
+        'selected_theatre': theatre_id,
+        'selected_status': status,
+        'selected_surgeon': surgeon_id,
+    }
+
+    return render(request, 'theatre/reports/theatre_statistics.html', context)
 
 
 # Theatre Dashboard View

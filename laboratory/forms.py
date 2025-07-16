@@ -229,6 +229,36 @@ TestResultParameterFormSet = inlineformset_factory(
 #     )
 
 class TestSearchForm(forms.Form):
+    """Form for searching tests"""
+
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by test name or category',
+            'class': 'form-control'
+        }),
+        label='Search'
+    )
+
+    category = forms.ModelChoiceField(
+        queryset=TestCategory.objects.all(),
+        required=False,
+        empty_label="All Categories",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Category'
+    )
+
+    is_active = forms.ChoiceField(
+        choices=[
+            ('', 'All'),
+            ('active', 'Active'),
+            ('inactive', 'Inactive')
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Status'
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
@@ -237,9 +267,12 @@ class TestSearchForm(forms.Form):
             )
         except Exception:
             sample_type_choices = [('', 'All')]  # fallback if table doesn't exist
+
         self.fields['sample_type'] = forms.ChoiceField(
             choices=sample_type_choices,
-            required=False
+            required=False,
+            widget=forms.Select(attrs={'class': 'form-control'}),
+            label='Sample Type'
         )
 
 
@@ -281,4 +314,84 @@ class TestRequestSearchForm(forms.Form):
     date_to = forms.DateField(
         required=False,
         widget=forms.DateInput(attrs={'type': 'date'})
+    )
+
+
+class TestResultSearchForm(forms.Form):
+    """Enhanced form for searching test results with comprehensive filters"""
+
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by patient name, patient number, or phone',
+            'class': 'form-control'
+        }),
+        label='Patient Search'
+    )
+
+    patient_number = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Patient Number',
+            'class': 'form-control'
+        }),
+        label='Patient Number'
+    )
+
+    test_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Test Name',
+            'class': 'form-control'
+        }),
+        label='Test Name'
+    )
+
+    test_category = forms.ModelChoiceField(
+        queryset=TestCategory.objects.all(),
+        required=False,
+        empty_label="All Categories",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Test Category'
+    )
+
+    status = forms.ChoiceField(
+        choices=[
+            ('', 'All Status'),
+            ('pending', 'Pending'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('verified', 'Verified')
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Status'
+    )
+
+    performed_by = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_active=True),
+        required=False,
+        empty_label="All Staff",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Performed By'
+    )
+
+    verified_by = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_active=True),
+        required=False,
+        empty_label="All Verifiers",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Verified By'
+    )
+
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='From Date'
+    )
+
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='To Date'
     )

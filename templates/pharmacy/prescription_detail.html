@@ -18,9 +18,31 @@
                         <i class="fas fa-history"></i> Dispensing History
                     </a>
                     {% if prescription.status != 'completed' and prescription.status != 'cancelled' %}
-                        <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success me-2">
-                            <i class="fas fa-prescription-bottle-alt"></i> Dispense Medications
-                        </a>
+                        {% if prescription.is_payment_verified %}
+                            <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success me-2">
+                                <i class="fas fa-prescription-bottle-alt"></i> Dispense Medications
+                            </a>
+                        {% else %}
+                            <button type="button" class="btn btn-success me-2" disabled title="Payment required before dispensing">
+                                <i class="fas fa-lock"></i> Dispense Medications (Payment Required)
+                            </button>
+
+                            <!-- Payment Options -->
+                            <div class="btn-group me-2" role="group">
+                                {% if prescription.invoice %}
+                                    <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning">
+                                        <i class="fas fa-credit-card"></i> Pay Now
+                                    </a>
+                                    <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-outline-warning">
+                                        <i class="fas fa-file-invoice"></i> View Invoice
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'pharmacy:create_prescription_invoice' prescription.id %}" class="btn btn-primary">
+                                        <i class="fas fa-file-invoice-dollar"></i> Create Invoice & Pay
+                                    </a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -343,6 +365,31 @@
     </div>
 </div>
 
+
+{% if messages %}
+    <div class="mt-3">
+        {% for message in messages %}
+            {% if message.tags != 'error' or message.message != 'Invalid status.' %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 for medication dropdown
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            dropdownParent: $('#addMedicationModal')
+        });
+    });
+</script>
+
 <!-- Add Medication Modal -->
 <div class="modal fade" id="addMedicationModal" tabindex="-1" aria-labelledby="addMedicationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -351,9 +398,8 @@
                 <h5 class="modal-title" id="addMedicationModalLabel">Add Medication</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post">
+            <form method="post" action="{% url 'pharmacy:add_prescription_item' prescription.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="add_item" value="1">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-12 mb-3">
@@ -426,27 +472,6 @@
     </div>
 </div>
 
-{% if messages %}
-    <div class="mt-3">
-        {% for message in messages %}
-            {% if message.tags != 'error' or message.message != 'Invalid status.' %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endif %}
-        {% endfor %}
-    </div>
-{% endif %}
-
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize select2 for medication dropdown
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            width: '100%',
-            dropdownParent: $('#addMedicationModal')
-        });
-    });
-</script>
-{% endblock %}
+

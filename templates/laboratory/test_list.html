@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% load form_tags %}
 
 {% block title %}Laboratory Tests - Hospital Management System{% endblock %}
 
@@ -49,23 +48,36 @@
 
                 <!-- Search and Filter Form -->
                 <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-search"></i> Search & Filter Tests
+                        </h6>
+                    </div>
                     <div class="card-body">
                         <form method="get" class="row g-3">
                             <div class="col-md-4">
-                                <label for="{{ search_form.search.id_for_label }}" class="form-label">Search</label>
-                                {{ search_form.search|add_class:"form-control" }}
+                                <div class="form-group">
+                                    <label for="{{ search_form.search.id_for_label }}" class="form-label">{{ search_form.search.label }}</label>
+                                    {{ search_form.search }}
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label for="{{ search_form.category.id_for_label }}" class="form-label">Category</label>
-                                {{ search_form.category|add_class:"form-select" }}
+                                <div class="form-group">
+                                    <label for="{{ search_form.category.id_for_label }}" class="form-label">{{ search_form.category.label }}</label>
+                                    {{ search_form.category }}
+                                </div>
                             </div>
                             <div class="col-md-2">
-                                <label for="{{ search_form.sample_type.id_for_label }}" class="form-label">Sample Type</label>
-                                {{ search_form.sample_type|add_class:"form-select" }}
+                                <div class="form-group">
+                                    <label for="{{ search_form.sample_type.id_for_label }}" class="form-label">{{ search_form.sample_type.label }}</label>
+                                    {{ search_form.sample_type }}
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label for="{{ search_form.is_active.id_for_label }}" class="form-label">Status</label>
-                                {{ search_form.is_active|add_class:"form-select" }}
+                                <div class="form-group">
+                                    <label for="{{ search_form.is_active.id_for_label }}" class="form-label">{{ search_form.is_active.label }}</label>
+                                    {{ search_form.is_active }}
+                                </div>
                             </div>
                             <div class="col-12 d-flex justify-content-end">
                                 <button type="submit" class="btn btn-primary me-2">
@@ -203,11 +215,26 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize select2 for category dropdown
-        ₦('.select2').select2({
-            theme: 'bootstrap-5',
-            width: '100%'
-        });
+        // Initialize select2 for category dropdown if available
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+        }
+
+        // Add search functionality
+        const searchForm = document.querySelector('form[method="get"]');
+        if (searchForm) {
+            // Auto-submit on category/status change
+            const selectFields = searchForm.querySelectorAll('select');
+            selectFields.forEach(field => {
+                field.addEventListener('change', function() {
+                    // Optional: Auto-submit form on select change
+                    // searchForm.submit();
+                });
+            });
+        }
     });
 </script>
 {% endblock %}

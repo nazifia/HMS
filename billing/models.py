@@ -74,6 +74,7 @@ class Invoice(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     test_request = models.OneToOneField(TestRequest, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoice_record')
     prescription = models.ForeignKey(Prescription, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
+    admission = models.ForeignKey('inpatient.Admission', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     source_app = models.CharField(
         max_length=20,
         choices=SOURCE_APP_CHOICES,
@@ -133,6 +134,18 @@ class Invoice(models.Model):
             except Prescription.DoesNotExist:
                 # Handle the case where the prescription might have been deleted
                 pass # Or log an error
+
+        # If the invoice is marked as paid and is linked to an admission, update the admission's amount_paid
+        if self.admission:
+            try:
+                admission = self.admission
+                # Only update if the invoice is paid or partially paid
+                if self.status in ['paid', 'partially_paid']:
+                    admission.amount_paid = self.amount_paid
+                    admission.save(update_fields=['amount_paid'])
+            except Exception as e:
+                # Log the error if the admission object cannot be found or updated
+                print(f"Error updating admission amount_paid for invoice {self.invoice_number}: {e}")
 
         # Update related service statuses if applicable
 

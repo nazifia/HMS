@@ -13,22 +13,46 @@
             <h6 class="m-0 font-weight-bold text-primary">Prescription Information</h6>
         </div>
         <div class="card-body">
-            <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
-            <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
-            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
-            <p><strong>Diagnosis:</strong> {{ prescription.diagnosis|default:"N/A" }}</p>
-            <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
-            <p><strong>Payment Status:</strong> {{ prescription.get_payment_status_display }}</p>
-            <p><strong>Prescription Type:</strong> {{ prescription.get_prescription_type_display }}</p>
-            <p><strong>Notes:</strong> {{ prescription.notes|default:"N/A" }}</p>
-            <p><strong>Created At:</strong> {{ prescription.created_at|date:"Y-m-d H:i" }}</p>
-            <p><strong>Last Updated:</strong> {{ prescription.updated_at|date:"Y-m-d H:i" }}</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+                    <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+                    <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
+                    <p><strong>Diagnosis:</strong> {{ prescription.diagnosis|default:"N/A" }}</p>
+                    <p><strong>Prescription Type:</strong> {{ prescription.get_prescription_type_display }}</p>
+                    <p><strong>Notes:</strong> {{ prescription.notes|default:"N/A" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Status:</strong>
+                        <span class="badge badge-{{ prescription.status|default:'secondary' }}">{{ prescription.get_status_display }}</span>
+                    </p>
+                    {% with payment_info=prescription.get_payment_status_display_info %}
+                    <p><strong>Payment Status:</strong>
+                        <span class="badge badge-{{ payment_info.css_class }}">
+                            <i class="fas fa-{{ payment_info.icon }}"></i> {{ payment_info.message }}
+                        </span>
+                    </p>
+                    {% if payment_info.status == 'unpaid' and prescription.invoice %}
+                    <p><strong>Invoice:</strong>
+                        <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-sm btn-warning">
+                            <i class="fas fa-credit-card"></i> Pay Invoice #{{ prescription.invoice.id }}
+                        </a>
+                    </p>
+                    {% endif %}
+                    {% endwith %}
+                    <p><strong>Created At:</strong> {{ prescription.created_at|date:"Y-m-d H:i" }}</p>
+                    <p><strong>Last Updated:</strong> {{ prescription.updated_at|date:"Y-m-d H:i" }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Prescription Items</h6>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMedicationModal">
+                <i class="fas fa-plus"></i> Add Medication
+            </button>
         </div>
         <div class="card-body">
             {% if prescription_items %}
@@ -84,8 +108,189 @@
 
     <div class="card-footer">
         <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-secondary">Back to Prescriptions</a>
-        <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success">Dispense Medication</a>
-        <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info">Print Prescription</a>
+
+        {% if prescription.is_payment_verified %}
+            <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success">
+                <i class="fas fa-pills"></i> Dispense Medication
+            </a>
+        {% else %}
+            <button type="button" class="btn btn-success" disabled title="Payment required before dispensing">
+                <i class="fas fa-lock"></i> Dispense Medication (Payment Required)
+            </button>
+
+            <!-- Payment Options -->
+            <div class="btn-group ml-2" role="group">
+                {% if prescription.invoice %}
+                    <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </a>
+                    <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-outline-warning">
+                        <i class="fas fa-file-invoice"></i> View Invoice
+                    </a>
+                {% else %}
+                    <a href="{% url 'pharmacy:create_prescription_invoice' prescription.id %}" class="btn btn-primary">
+                        <i class="fas fa-file-invoice-dollar"></i> Create Invoice & Pay
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info">
+            <i class="fas fa-print"></i> Print Prescription
+        </a>
     </div>
 </div>
+
+<!-- Add Medication Modal -->
+<div class="modal fade" id="addMedicationModal" tabindex="-1" aria-labelledby="addMedicationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addMedicationModalLabel">Add New Medication</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addMedicationForm" method="post" action="{% url 'pharmacy:add_prescription_item' prescription.id %}">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_medication" class="form-label">Medication *</label>
+                                <select name="medication" id="id_medication" class="form-control" required>
+                                    <option value="">Select a medication</option>
+                                    {% for medication in medications %}
+                                        <option value="{{ medication.id }}">{{ medication.name }} ({{ medication.strength }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_quantity" class="form-label">Quantity *</label>
+                                <input type="number" name="quantity" id="id_quantity" class="form-control" min="1" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_dosage" class="form-label">Dosage *</label>
+                                <input type="text" name="dosage" id="id_dosage" class="form-control" placeholder="e.g., 1 tablet" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_frequency" class="form-label">Frequency *</label>
+                                <input type="text" name="frequency" id="id_frequency" class="form-control" placeholder="e.g., twice daily" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_duration" class="form-label">Duration *</label>
+                                <input type="text" name="duration" id="id_duration" class="form-control" placeholder="e.g., 7 days" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_instructions" class="form-label">Instructions</label>
+                                <textarea name="instructions" id="id_instructions" class="form-control" rows="2" placeholder="e.g., take after meals"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addMedicationForm" class="btn btn-primary">Add Medication</button>
+            </div>
+        </div>
+    </div>
+ </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for medication dropdown in modal
+    $('#id_medication').select2({
+        placeholder: 'Select a medication',
+        allowClear: true,
+        dropdownParent: $('#addMedicationModal')
+    });
+    
+    // Handle form submission via AJAX
+     $('#addMedicationForm').on('submit', function(e) {
+         e.preventDefault();
+         
+         // Clear previous alerts
+         $('.alert', '#addMedicationModal').remove();
+         
+         var formData = $(this).serialize();
+         var actionUrl = $(this).attr('action');
+         
+         $.ajax({
+             url: actionUrl,
+             type: 'POST',
+             data: formData,
+             headers: {
+                 'X-Requested-With': 'XMLHttpRequest'
+             },
+             success: function(response) {
+                 if (response.success) {
+                     // Close modal
+                     $('#addMedicationModal').modal('hide');
+                     
+                     // Show success message
+                     var alertHtml = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
+                         response.message +
+                         '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                         '</div>';
+                     $('.container-fluid').prepend(alertHtml);
+                     
+                     // Reload the page to show the new medication
+                     setTimeout(function() {
+                         location.reload();
+                     }, 1500);
+                 } else {
+                     // Show form validation errors
+                     var errorHtml = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                         response.message;
+                     
+                     if (response.errors) {
+                         errorHtml += '<ul class="mb-0 mt-2">';
+                         $.each(response.errors, function(field, errors) {
+                             $.each(errors, function(index, error) {
+                                 errorHtml += '<li>' + field + ': ' + error + '</li>';
+                             });
+                         });
+                         errorHtml += '</ul>';
+                     }
+                     
+                     errorHtml += '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+                     $('.modal-body').prepend(errorHtml);
+                 }
+             },
+             error: function(xhr, status, error) {
+                 // Show error message
+                 var alertHtml = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                     'Error adding medication. Please try again.' +
+                     '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                     '</div>';
+                 $('.modal-body').prepend(alertHtml);
+             }
+         });
+     });
+    
+    // Reset form when modal is closed
+    $('#addMedicationModal').on('hidden.bs.modal', function() {
+        $('#addMedicationForm')[0].reset();
+        $('#id_medication').val(null).trigger('change');
+        $('.alert', this).remove();
+    });
+});
+</script>
 {% endblock %}

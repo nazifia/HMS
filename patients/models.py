@@ -201,7 +201,7 @@ class PatientWallet(models.Model):
     def __str__(self):
         return f"Wallet for {self.patient.get_full_name()} (₦{self.balance})"
 
-    def credit(self, amount, description="Credit", transaction_type="credit", user=None):
+    def credit(self, amount, description="Credit", transaction_type="credit", user=None, invoice=None, payment_instance=None):
         """Credit amount to wallet and create transaction record"""
         if amount <= 0:
             raise ValueError("Credit amount must be positive.")
@@ -216,7 +216,9 @@ class PatientWallet(models.Model):
             amount=amount,
             balance_after=self.balance,
             description=description,
-            created_by=user
+            created_by=user,
+            invoice=invoice,
+            payment=payment_instance
         )
 
     def debit(self, amount, description="Debit", transaction_type="debit", user=None, invoice=None, payment_instance=None):
@@ -259,6 +261,78 @@ class PatientWallet(models.Model):
         """Get total amount debited from wallet"""
         return self.transactions.filter(
             transaction_type__in=['debit', 'payment', 'withdrawal']
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+
+    def transfer_to(self, recipient_wallet, amount, description="Transfer", user=None):
+        """Transfer funds to another wallet atomically"""
+        if amount <= 0:
+            raise ValueError("Transfer amount must be positive.")
+        
+        if recipient_wallet == self:
+            raise ValueError("Cannot transfer to the same wallet.")
+        
+        if not recipient_wallet.is_active:
+            raise ValueError("Recipient wallet is not active.")
+        
+        from django.db import transaction
+        
+        with transaction.atomic():
+            # Debit from sender
+            self.debit(
+                amount=amount,
+                description=f'Transfer to {recipient_wallet.patient.get_full_name()} - {description}',
+                transaction_type='transfer_out',
+                user=user
+            )
+            
+            # Credit to recipient
+            recipient_wallet.credit(
+                amount=amount,
+                description=f'Transfer from {self.patient.get_full_name()} - {description}',
+                transaction_type='transfer_in',
+                user=user
+            )
+            
+            # Link the transactions
+            sender_transaction = self.transactions.filter(
+                transaction_type='transfer_out',
+                amount=amount
+            ).latest('created_at')
+            
+            recipient_transaction = recipient_wallet.transactions.filter(
+                transaction_type='transfer_in',
+                amount=amount
+            ).latest('created_at')
+            
+            # Update transfer relationships
+            sender_transaction.transfer_to_wallet = recipient_wallet
+            sender_transaction.save(update_fields=['transfer_to_wallet'])
+            
+            recipient_transaction.transfer_from_wallet = self
+            recipient_transaction.save(update_fields=['transfer_from_wallet'])
+            
+            return sender_transaction, recipient_transaction
+
+    def get_transfer_history(self, limit=None):
+        """Get transfer-specific transaction history"""
+        transfers = self.transactions.filter(
+            transaction_type__in=['transfer_in', 'transfer_out']
+        ).order_by('-created_at')
+        
+        if limit:
+            transfers = transfers[:limit]
+        return transfers
+
+    def get_total_transfers_in(self):
+        """Get total amount received via transfers"""
+        return self.transactions.filter(
+            transaction_type='transfer_in'
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+
+    def get_total_transfers_out(self):
+        """Get total amount sent via transfers"""
+        return self.transactions.filter(
+            transaction_type='transfer_out'
         ).aggregate(total=models.Sum('amount'))['total'] or 0
 
     class Meta:

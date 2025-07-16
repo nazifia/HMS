@@ -7,6 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from .models import Patient, MedicalHistory, Vitals
+from inpatient.models import Admission
 from nhia.models import NHIAPatient
 from .forms import NHIARegistrationForm
 from .forms import PatientForm, MedicalHistoryForm, VitalsForm, PatientSearchForm
@@ -336,6 +337,9 @@ def wallet_dashboard(request, patient_id):
         transaction_type__in=['debit', 'payment', 'withdrawal']
     ).aggregate(total=Sum('amount'))['total'] or 0
 
+    # Get recent admissions for the patient
+    recent_admissions = patient.admissions.all().order_by('-admission_date')[:5] # Get last 5 admissions
+
     context = {
         'patient': patient,
         'wallet': wallet,
@@ -344,6 +348,7 @@ def wallet_dashboard(request, patient_id):
         'total_debits': total_debits,
         'monthly_credits': monthly_credits,
         'monthly_debits': monthly_debits,
+        'recent_admissions': recent_admissions, # Add recent admissions to context
         'title': f'Wallet Dashboard - {patient.get_full_name()}'
     }
     return render(request, 'patients/wallet_dashboard.html', context)
@@ -447,42 +452,93 @@ def wallet_withdrawal(request, patient_id):
 
 @login_required
 def wallet_transfer(request, patient_id):
-    """Transfer funds between patient wallets"""
+    """Transfer funds between patient wallets with enhanced error handling"""
     patient = get_object_or_404(Patient, id=patient_id)
     wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+
+    # Check if sender wallet is active
+    if not wallet.is_active:
+        messages.error(request, f'Wallet for {patient.get_full_name()} is not active. Please contact administrator.')
+        return redirect('patients:wallet_dashboard', patient_id=patient.id)
 
     if request.method == 'POST':
         form = WalletTransferForm(request.POST, wallet=wallet)
         if form.is_valid():
             amount = form.cleaned_data['amount']
             recipient_patient = form.cleaned_data['recipient_patient']
-            description = form.cleaned_data.get('description', f'Transfer to {recipient_patient.get_full_name()}')
-
-            # Get or create recipient wallet
-            recipient_wallet, created = PatientWallet.objects.get_or_create(patient=recipient_patient)
+            description = form.cleaned_data.get('description', 'Wallet transfer')
 
             try:
-                # Debit from sender
-                wallet.debit(
+                # Get or create recipient wallet
+                recipient_wallet, recipient_created = PatientWallet.objects.get_or_create(
+                    patient=recipient_patient,
+                    defaults={'is_active': True}
+                )
+
+                # Ensure recipient wallet is active
+                if not recipient_wallet.is_active:
+                    messages.error(request, f'Recipient wallet for {recipient_patient.get_full_name()} is not active. Please contact administrator.')
+                    return render(request, 'patients/wallet_transfer.html', {
+                        'form': form,
+                        'patient': patient,
+                        'wallet': wallet,
+                        'title': f'Transfer from Wallet - {patient.get_full_name()}'
+                    })
+
+                # Store initial balances for detailed success message
+                initial_sender_balance = wallet.balance
+                initial_recipient_balance = recipient_wallet.balance
+
+                # Use the enhanced transfer_to method for atomic processing
+                sender_transaction, recipient_transaction = wallet.transfer_to(
+                    recipient_wallet=recipient_wallet,
                     amount=amount,
-                    description=f'Transfer to {recipient_patient.get_full_name()} - {description}',
-                    transaction_type='transfer_out',
+                    description=description,
                     user=request.user
                 )
 
-                # Credit to recipient
-                recipient_wallet.credit(
-                    amount=amount,
-                    description=f'Transfer from {patient.get_full_name()} - {description}',
-                    transaction_type='transfer_in',
-                    user=request.user
+                # Refresh wallet balances from database
+                wallet.refresh_from_db()
+                recipient_wallet.refresh_from_db()
+
+                # Comprehensive audit logging
+                log_audit_action(
+                    request.user, 
+                    'wallet_transfer', 
+                    wallet, 
+                    f"Transferred ₦{amount:,.2f} from {patient.get_full_name()} (ID: {patient.patient_id}) "
+                    f"to {recipient_patient.get_full_name()} (ID: {recipient_patient.patient_id}). "
+                    f"Sender balance: ₦{initial_sender_balance:,.2f} → ₦{wallet.balance:,.2f}, "
+                    f"Recipient balance: ₦{initial_recipient_balance:,.2f} → ₦{recipient_wallet.balance:,.2f}. "
+                    f"Transaction refs: {sender_transaction.reference_number}, {recipient_transaction.reference_number}"
                 )
 
-                log_audit_action(request.user, 'wallet_transfer', wallet, f"Transferred ₦{amount} from {patient.get_full_name()} to {recipient_patient.get_full_name()}")
-                messages.success(request, f'Successfully transferred ₦{amount} to {recipient_patient.get_full_name()}. New balance: ₦{wallet.balance}')
+                # Detailed success message
+                messages.success(
+                    request, 
+                    f'✅ Successfully transferred ₦{amount:,.2f} to {recipient_patient.get_full_name()}. '
+                    f'Your new balance: ₦{wallet.balance:,.2f}. '
+                    f'Transaction reference: {sender_transaction.reference_number}'
+                )
+                
                 return redirect('patients:wallet_dashboard', patient_id=patient.id)
+
             except ValueError as e:
-                messages.error(request, str(e))
+                # Handle validation errors from the transfer_to method
+                messages.error(request, f'Transfer failed: {str(e)}')
+                
+            except Exception as e:
+                # Handle unexpected errors
+                messages.error(request, f'An unexpected error occurred during the transfer. Please try again or contact support. Error: {str(e)}')
+                
+                # Log the error for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Wallet transfer error for user {request.user.id}: {str(e)}", exc_info=True)
+
+        else:
+            # Form validation errors
+            messages.error(request, 'Please correct the errors below and try again.')
     else:
         form = WalletTransferForm(wallet=wallet)
 

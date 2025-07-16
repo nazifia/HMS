@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Admissions List</h2>
+
+    <form method="get" class="form-inline mb-3">
+        {{ search_form.as_p }}
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Admissions</h5>
+                    <p class="card-text">{{ total_admissions }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Admitted Patients</h5>
+                    <p class="card-text">{{ admitted_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Discharged Patients</h5>
+                    <p class="card-text">{{ discharged_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Transferred Patients</h5>
+                    <p class="card-text">{{ transferred_count }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Admission Date</th>
+                <th>Ward</th>
+                <th>Bed</th>
+                <th>Diagnosis</th>
+                <th>Status</th>
+                <th>Attending Doctor</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for admission in page_obj %}
+            <tr>
+                <td>{{ admission.patient.get_full_name }}</td>
+                <td>{{ admission.admission_date|date:"Y-m-d H:i" }}</td>
+                <td>{{ admission.bed.ward.name }}</td>
+                <td>{{ admission.bed.bed_number }}</td>
+                <td>{{ admission.diagnosis }}</td>
+                <td>{{ admission.get_status_display }}</td>
+                <td>{{ admission.attending_doctor.get_full_name }}</td>
+                <td>
+                    <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-info btn-sm">View</a>
+                    {% if admission.status == 'admitted' %}
+                        <a href="{% url 'inpatient:discharge_patient' admission.id %}" class="btn btn-danger btn-sm">Discharge</a>
+                        <a href="{% url 'inpatient:transfer_patient' admission.id %}" class="btn btn-warning btn-sm">Transfer</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8">No admissions found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Previous</a></li>
+            {% endif %}
+            <li class="page-item active"><a class="page-link" href="#">{{ page_obj.number }}</a></li>
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{{ title }}</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Admission Invoices</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Admission ID</th>
+                            <th>Patient</th>
+                            <th>Admission Date</th>
+                            <th>Billed Amount</th>
+                            <th>Amount Paid</th>
+                            <th>Payment Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admission in admissions %}
+                        <tr>
+                            <td>{{ admission.id }}</td>
+                            <td>{{ admission.patient.get_full_name }}</td>
+                            <td>{{ admission.admission_date|date:"Y-m-d" }}</td>
+                            <td>₦{{ admission.billed_amount|floatformat:2 }}</td>
+                            <td>₦{{ admission.amount_paid|floatformat:2 }}</td>
+                            <td><span class="badge badge-{{ admission.status_badge_class }}">{{ admission.payment_status_display }}</span></td>
+                            <td>
+                                <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-info btn-sm">View</a>
+                                {% if admission.balance_due > 0 %}
+                                <a href="{% url 'billing:admission_payment' admission.id %}" class="btn btn-success btn-sm">Pay</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

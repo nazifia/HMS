@@ -112,7 +112,7 @@
 
                     <!-- Action Buttons -->
                     <div class="form-group mt-4">
-                        <button type="submit" class="btn btn-info" id="transfer-btn" disabled>
+                        <button type="submit" class="btn btn-secondary" id="transfer-btn" disabled>
                             <i class="fas fa-exchange-alt"></i> Transfer Funds
                         </button>
                         <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-secondary">
@@ -222,10 +222,46 @@ document.addEventListener('DOMContentLoaded', function() {
     const transferBtn = document.getElementById('transfer-btn');
     const availableBalance = {{ wallet.balance }};
     
+    // Debug logging
+    console.log('Transfer form initialized');
+    console.log('Available balance:', availableBalance);
+    console.log('Elements found:', {
+        amountInput: !!amountInput,
+        recipientSelect: !!recipientSelect,
+        transferBtn: !!transferBtn
+    });
+    
+    function updateButtonState() {
+        const amount = parseFloat(amountInput.value) || 0;
+        const hasRecipient = recipientSelect.value && recipientSelect.value !== '';
+        const isValidAmount = amount > 0;
+        
+        console.log('Button state check:', {
+            amount: amount,
+            hasRecipient: hasRecipient,
+            isValidAmount: isValidAmount
+        });
+        
+        if (isValidAmount && hasRecipient) {
+            transferBtn.disabled = false;
+            if (amount > availableBalance) {
+                transferBtn.className = 'btn btn-warning';
+                transferBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Transfer (Exceeds Balance)';
+            } else {
+                transferBtn.className = 'btn btn-success';
+                transferBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Transfer Funds';
+            }
+        } else {
+            transferBtn.disabled = true;
+            transferBtn.className = 'btn btn-secondary';
+            transferBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Transfer Funds';
+        }
+    }
+    
     function updateTransferSummary() {
         const amount = parseFloat(amountInput.value) || 0;
         const recipientOption = recipientSelect.options[recipientSelect.selectedIndex];
-        const recipientName = recipientOption.text;
+        const recipientName = recipientOption ? recipientOption.text : 'Select recipient';
         const description = descriptionInput.value || '-';
         
         if (amount > 0 && recipientSelect.value) {
@@ -237,62 +273,76 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('recipient-name').textContent = recipientName;
             document.getElementById('transfer-amount').textContent = `₦${amount.toFixed(2)}`;
             document.getElementById('transfer-description').textContent = description;
-            
-            // Enable/disable transfer button
-            if (amount <= availableBalance) {
-                transferBtn.disabled = false;
-                transferBtn.className = 'btn btn-info';
-            } else {
-                transferBtn.disabled = true;
-                transferBtn.className = 'btn btn-danger';
-            }
         } else {
             transferSummary.style.display = 'none';
-            transferBtn.disabled = true;
         }
+        
+        // Update button state
+        updateButtonState();
     }
     
     function validateAmount() {
         const amount = parseFloat(amountInput.value) || 0;
-        
+
         // Remove existing feedback
         const existingFeedback = amountInput.parentNode.querySelector('.balance-feedback');
         if (existingFeedback) {
             existingFeedback.remove();
         }
-        
+
         // Add new feedback
         if (amount > 0) {
             const feedback = document.createElement('small');
             feedback.className = 'form-text balance-feedback';
-            
+
             if (amount > availableBalance) {
-                feedback.className += ' text-danger';
-                feedback.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Insufficient balance!';
+                feedback.className += ' text-warning';
+                feedback.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Amount exceeds balance - transfer will still be processed';
             } else {
-                feedback.className += ' text-info';
-                feedback.innerHTML = `<i class="fas fa-info-circle"></i> Balance after transfer: ₦${(availableBalance - amount).toFixed(2)}`;
+                feedback.className += ' text-success';
+                feedback.innerHTML = `<i class="fas fa-check-circle"></i> Balance after transfer: ₦${(availableBalance - amount).toFixed(2)}`;
             }
-            
+
             amountInput.parentNode.appendChild(feedback);
         }
+
+        // Update button state after validating amount
+        updateButtonState();
     }
+    
+    // Initial button state check
+    updateButtonState();
     
     // Event listeners
     if (amountInput) {
         amountInput.addEventListener('input', function() {
+            console.log('Amount changed:', this.value);
+            validateAmount();
+            updateTransferSummary();
+        });
+        
+        // Also trigger on keyup for immediate feedback
+        amountInput.addEventListener('keyup', function() {
             validateAmount();
             updateTransferSummary();
         });
     }
     
     if (recipientSelect) {
-        recipientSelect.addEventListener('change', updateTransferSummary);
+        recipientSelect.addEventListener('change', function() {
+            console.log('Recipient changed:', this.value);
+            updateTransferSummary();
+        });
     }
     
     if (descriptionInput) {
         descriptionInput.addEventListener('input', updateTransferSummary);
     }
+    
+    // Force initial update after a short delay to ensure DOM is ready
+    setTimeout(function() {
+        updateTransferSummary();
+    }, 100);
 });
 </script>
 {% endblock content %}

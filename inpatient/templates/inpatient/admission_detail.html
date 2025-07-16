@@ -14,6 +14,12 @@
             <p><strong>Bed:</strong> {{ admission.bed.bed_number }}</p>
             <p><strong>Attending Doctor:</strong> {{ admission.attending_doctor.get_full_name }}</p>
             <p><strong>Diagnosis:</strong> {{ admission.diagnosis }}</p>
+            {% if patient_wallet %}
+            <p><strong>Wallet Balance:</strong> ₦{{ patient_wallet.balance }}</p>
+            <p><a href="{% url 'patients:wallet_dashboard' admission.patient.id %}" class="btn btn-info btn-sm">View Wallet Dashboard</a></p>
+            {% else %}
+            <p>No wallet found for this patient.</p>
+            {% endif %}
         </div>
         <div class="card-footer">
             <a href="{% url 'inpatient:edit_admission' admission.id %}" class="btn btn-primary">Edit Admission</a>

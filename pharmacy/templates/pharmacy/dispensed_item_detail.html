@@ -88,7 +88,11 @@
             </div>
             <div class="mt-4">
                 <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-secondary">Back to Tracker</a>
-                <a href="{% url 'pharmacy:prescription_detail' log_entry.prescription_item.prescription.id %}" class="btn btn-primary">View Prescription</a>
+                {% if log_entry.prescription_item.prescription.id %}
+                    <a href="{% url 'pharmacy:prescription_detail' log_entry.prescription_item.prescription.id %}" class="btn btn-primary">View Prescription</a>
+                {% else %}
+                    <span class="btn btn-secondary disabled" title="No Prescription Available">View Prescription</span>
+                {% endif %}
             </div>
         </div>
     </div>

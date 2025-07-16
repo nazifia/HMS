@@ -78,8 +78,8 @@ class WalletTransaction(models.Model):
 ### Key Methods
 
 #### Wallet Operations
-- `wallet.credit(amount, description, transaction_type, user)`: Add funds with transaction logging
-- `wallet.debit(amount, description, transaction_type, user)`: Remove funds with validation
+- `wallet.credit(amount, description="Credit", transaction_type="credit", user=None, invoice=None, payment_instance=None)`: Add funds with transaction logging
+- `wallet.debit(amount, description="Debit", transaction_type="debit", user=None, invoice=None, payment_instance=None)`: Remove funds with validation
 - `wallet.get_transaction_history(limit)`: Retrieve transaction history
 - `wallet.get_total_credits()`: Calculate total credits
 - `wallet.get_total_debits()`: Calculate total debits

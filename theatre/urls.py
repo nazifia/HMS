@@ -45,6 +45,7 @@ urlpatterns = [
 
     # Reports
     path('reports/surgery-report/', views.SurgeryReportView.as_view(), name='surgery_report'),
+    path('reports/statistics/', views.theatre_statistics_report, name='theatre_statistics_report'),
     
     # Dashboard
     path('', views.TheatreDashboardView.as_view(), name='dashboard'),

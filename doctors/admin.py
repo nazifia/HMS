@@ -3,6 +3,7 @@ from .models import (
     Specialization, Doctor, DoctorAvailability, DoctorLeave,
     DoctorEducation, DoctorExperience, DoctorReview
 )
+from .forms import DoctorAdminForm
 
 class DoctorAvailabilityInline(admin.TabularInline):
     model = DoctorAvailability
@@ -18,6 +19,7 @@ class DoctorExperienceInline(admin.TabularInline):
 
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
+    form = DoctorAdminForm
     list_display = ('get_full_name', 'specialization', 'license_number', 'experience', 'available_for_appointments')
     list_filter = ('specialization', 'available_for_appointments', 'experience')
     search_fields = ('user__first_name', 'user__last_name', 'license_number')

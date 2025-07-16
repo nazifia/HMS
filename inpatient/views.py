@@ -1,14 +1,21 @@
-from django.shortcuts import render, redirect, get_object_or_404
+import logging
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
+
+from django.shortcuts import render, get_object_or_404, redirect
+from billing.models import Service, Invoice, InvoiceItem, Payment
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.http import require_http_methods
 from django.db import models
 from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord, BedTransfer, WardTransfer
 from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm, ClinicalRecordForm, PatientTransferForm
-from patients.models import Patient
+from patients.models import Patient, PatientWallet, WalletTransaction
 
 @login_required
 def bed_dashboard(request):
@@ -357,7 +364,7 @@ def admission_list(request):
     """View for listing all admissions"""
     search_form = AdmissionSearchForm(request.GET)
     # Use select_related for ForeignKey/OneToOne, prefetch_related for reverse/many-to-many
-    admissions = Admission.objects.all().select_related('patient', 'bed', 'bed__ward', 'attending_doctor').order_by('-admission_date')
+    admissions = Admission.objects.filter(status='admitted').select_related('patient', 'bed', 'bed__ward', 'attending_doctor').order_by('-admission_date')
 
     # Apply filters if the form is valid
     if search_form.is_valid():
@@ -377,6 +384,7 @@ def admission_list(request):
             )
 
         if status:
+            admissions = Admission.objects.all().select_related('patient', 'bed', 'bed__ward', 'attending_doctor').order_by('-admission_date')
             admissions = admissions.filter(status=status)
 
         if date_from:
@@ -435,6 +443,16 @@ def admission_list(request):
     return render(request, 'inpatient/admission_list.html', context)
 
 @login_required
+def admission_detail(request, pk):
+    """View for displaying admission details."""
+    admission = get_object_or_404(Admission, pk=pk)
+    context = {
+        'admission': admission,
+        'title': f'Admission Details for {admission.patient.get_full_name()}'
+    }
+    return render(request, 'inpatient/admission_detail.html', context)
+
+@login_required
 def create_admission(request):
     """View for creating a new admission"""
     from django.db import transaction
@@ -477,163 +495,197 @@ def create_admission(request):
                         # Update bed status
                         bed.is_occupied = True
                         bed.save()
-                        messages.success(request, f'Patient {admission.patient.get_full_name()} has been admitted successfully to {bed.ward.name}, Bed {bed.bed_number}.')
-                        return redirect('inpatient:admission_detail', admission_id=admission.id)
+
+                        # Create and process admission charge
+                        logger.info(f"Attempting to process admission charge for patient: {admission.patient.get_full_name()}")
+
+                        try:
+                            admission_service = form.cleaned_data['admission_service']
+                            logger.info(f'Found admission service: {admission_service.name} with price {admission_service.price}')
+                            wallet = PatientWallet.objects.get(patient=admission.patient)
+                            logger.info(f'Found wallet for patient {wallet.patient.get_full_name()} with balance {wallet.balance}')
+
+                            if wallet.balance >= admission_service.price:
+                                logger.info('Wallet balance is sufficient. Proceeding with transaction.')
+                                # Create Invoice
+                                invoice = Invoice.objects.create(
+                                    patient=admission.patient,
+                                    invoice_date=timezone.now(),
+                                    due_date=timezone.now() + timedelta(days=7), # Example: due in 7 days
+                                    notes=form.cleaned_data['admission_notes'],
+                                    subtotal=admission_service.price,
+                                    tax_amount=0,
+                                    discount_amount=0,
+                                    total_amount=admission_service.price,
+                                    admission=admission, # Link invoice to admission
+                                    source_app='inpatient',
+                                ) 
+                                # Create InvoiceItem
+                                InvoiceItem.objects.create(
+                                    invoice=invoice,
+                                    service=admission_service,
+                                    quantity=1,
+                                    unit_price=admission_service.price,
+                                    total_amount=admission_service.price
+                                )
+                                # Deduct from wallet
+                                wallet.balance -= admission_service.price
+                                wallet.save()
+                                logger.info(f'Deducted {admission_service.price} from wallet. New balance: {wallet.balance}')
+
+                                # Create WalletTransaction
+                                WalletTransaction.objects.create(
+                                    wallet=wallet,
+                                    transaction_type='admission_fee',
+                                    amount=admission_service.price,
+                                    description=f'Admission fee for {admission.patient.get_full_name()}',
+                                    invoice=invoice
+                                )
+
+                                messages.success(request, 'Admission created successfully and wallet deducted.')
+                                return redirect('inpatient:admission_detail', pk=admission.pk)
+                            else:
+                                messages.error(request, 'Insufficient wallet balance to cover admission fee.')
+                                logger.warning(
+                                f'Insufficient wallet balance for patient {admission.patient.get_full_name()}. '
+                                f'Balance: {wallet.balance}, Required: {admission_service.price}'
+                                )
+                                messages.warning(request, f'Patient {admission.patient.get_full_name()} admitted, but insufficient wallet balance for admission fee.')
+
+                        except Service.DoesNotExist:
+                            messages.error(request, 'Admission Fee service not found. Please configure it in the billing settings.')
+                            logger.error('Admission Fee service not found.')
+                        except PatientWallet.DoesNotExist:
+                            messages.error(request, 'Patient wallet not found. Please create a wallet for the patient.')
+                            logger.error(f'Patient wallet not found for patient: {admission.patient.get_full_name()}')
+                        except Exception as e:
+                            messages.error(request, f'An error occurred during admission charge processing: {e}')
+                            logger.exception('Error during admission charge processing.')
+
                 except Exception as e:
-                    messages.error(request, f'Admission failed: {str(e)}')
+                    messages.error(request, f'An error occurred during admission creation: {e}')
+                    logger.exception('Error during admission creation.')
         else:
-            messages.error(request, 'Admission form is invalid. Please check the details and try again.')
+            messages.error(request, 'Please correct the errors below.')
     else:
+        # Pre-select the 'Admission Fee' service if it exists
+        try:
+            admission_fee_service = Service.objects.get(name='Admission Fee')
+            initial_data['admission_service'] = admission_fee_service
+        except Service.DoesNotExist:
+            pass
         form = AdmissionForm(initial=initial_data)
-        # Only show available and active beds
-        form.fields['bed'].queryset = Bed.objects.filter(is_occupied=False, is_active=True)
 
     context = {
         'form': form,
-        'title': 'Admit Patient',
-        'form_errors': form.errors if form.errors else None
+        'title': 'Create New Admission',
     }
-
     return render(request, 'inpatient/admission_form.html', context)
 
-@login_required
-def admission_detail(request, admission_id):
-    """View for displaying admission details"""
-    # Defensive: Ensure admission_id is an integer
-    try:
-        admission_id_int = int(admission_id)
-    except (ValueError, TypeError):
-        import logging
-        logging.error(f"Invalid admission_id passed to admission_detail: {admission_id}")
-        return HttpResponseBadRequest("Invalid admission ID. Please contact support if this error persists.")
-    admission = get_object_or_404(Admission, id=admission_id_int)
-    daily_rounds = DailyRound.objects.filter(admission=admission).order_by('-date_time')
-    nursing_notes = NursingNote.objects.filter(admission=admission).order_by('-date_time')
-    clinical_records = ClinicalRecord.objects.filter(admission=admission).order_by('-date_time')
-
-    # Get prescriptions for this patient
-    prescriptions = None
-    if admission.patient:
-        from pharmacy.models import Prescription
-        prescriptions = Prescription.objects.filter(patient=admission.patient).order_by('-prescription_date')
-
-    # Handle adding new daily round
-    if request.method == 'POST' and 'add_round' in request.POST:
-        round_form = DailyRoundForm(request.POST)
-        if round_form.is_valid():
-            daily_round = round_form.save(commit=False)
-            daily_round.admission = admission
-            daily_round.save()
-            messages.success(request, 'Doctor round has been recorded successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
-    else:
-        round_form = DailyRoundForm(initial={'doctor': request.user if hasattr(request.user, 'profile') and getattr(request.user.profile, 'role', None) == 'doctor' else None})
-
-    # Handle adding new nursing note
-    if request.method == 'POST' and 'add_note' in request.POST:
-        note_form = NursingNoteForm(request.POST)
-        if note_form.is_valid():
-            nursing_note = note_form.save(commit=False)
-            nursing_note.admission = admission
-            nursing_note.save()
-            messages.success(request, 'Nursing note has been recorded successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
-    else:
-        note_form = NursingNoteForm(initial={'nurse': request.user if hasattr(request.user, 'profile') and getattr(request.user.profile, 'role', None) == 'nurse' else None})
-
-    # Handle adding new clinical record
-    if request.method == 'POST' and 'add_clinical_record' in request.POST:
-        clinical_record_form = ClinicalRecordForm(request.POST)
-        if clinical_record_form.is_valid():
-            clinical_record = clinical_record_form.save(commit=False)
-            clinical_record.admission = admission
-            clinical_record.recorded_by = request.user
-            clinical_record.save()
-            messages.success(request, 'Clinical record added successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
-    else:
-        clinical_record_form = ClinicalRecordForm()
-
-    context = {
-        'admission': admission,
-        'daily_rounds': daily_rounds,
-        'nursing_notes': nursing_notes,
-        'clinical_records': clinical_records,
-        'round_form': round_form,
-        'note_form': note_form,
-        'clinical_record_form': clinical_record_form,
-        'prescriptions': prescriptions,
-        'title': f'Admission: {admission.patient.get_full_name()}'
-    }
-
-    return render(request, 'inpatient/admission_detail.html', context)
 
 @login_required
 def edit_admission(request, admission_id):
     """View for editing an admission"""
     admission = get_object_or_404(Admission, id=admission_id)
-
-    # Don't allow editing of discharged, transferred, or deceased admissions
-    if admission.status in ['discharged', 'transferred', 'deceased']:
-        messages.error(request, f'Cannot edit admission with status: {admission.get_status_display()}')
-        return redirect('inpatient:admission_detail', admission_id=admission.id)
-
-    # Get the current bed to check if it changed
-    current_bed = admission.bed
-
     if request.method == 'POST':
         form = AdmissionForm(request.POST, instance=admission)
         if form.is_valid():
-            # Check if bed has changed
-            new_bed = form.cleaned_data.get('bed')
-            if new_bed != current_bed:
-                # Update old bed status
-                current_bed.is_occupied = False
-                current_bed.save()
-
-                # Update new bed status
-                new_bed.is_occupied = True
-                new_bed.save()
-
             form.save()
-            messages.success(request, f'Admission for {admission.patient.get_full_name()} has been updated successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
+            messages.success(request, 'Admission details updated successfully.')
+            return redirect('inpatient:admission_detail', pk=admission.id)
     else:
         form = AdmissionForm(instance=admission)
-        # Allow selecting the current bed even if it's occupied
-        form.fields['bed'].queryset = Bed.objects.filter(Q(is_occupied=False, is_active=True) | Q(id=current_bed.id))
 
     context = {
         'form': form,
         'admission': admission,
-        'title': f'Edit Admission: {admission.patient.get_full_name()}'
+        'title': f'Edit Admission for {admission.patient.get_full_name()}'
     }
-
     return render(request, 'inpatient/admission_form.html', context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def transfer_patient(request, admission_id):
+    """Handles both bed and ward transfers for a patient."""
+    admission = get_object_or_404(Admission, id=admission_id, status='admitted')
+    
+    if request.method == 'POST':
+        form = PatientTransferForm(request.POST, current_bed=admission.bed)
+        if form.is_valid():
+            new_bed = form.cleaned_data['new_bed']
+            transfer_type = form.cleaned_data['transfer_type']
+            notes = form.cleaned_data['notes']
+            
+            # Check if the new bed is available
+            if new_bed.is_occupied:
+                messages.error(request, f"Bed {new_bed.bed_number} is already occupied.")
+                return redirect('inpatient:transfer_patient', admission_id=admission.id)
+
+            # Create a transfer record
+            if transfer_type == 'bed':
+                BedTransfer.objects.create(
+                    admission=admission,
+                    old_bed=admission.bed,
+                    new_bed=new_bed,
+                    notes=notes
+                )
+                messages.success(request, f"Patient transferred from bed {admission.bed.bed_number} to {new_bed.bed_number}.")
+            elif transfer_type == 'ward':
+                WardTransfer.objects.create(
+                    admission=admission,
+                    old_ward=admission.bed.ward,
+                    new_ward=new_bed.ward,
+                    notes=notes
+                )
+                messages.success(request, f"Patient transferred from ward {admission.bed.ward.name} to {new_bed.ward.name}.")
+
+            # Update admission and bed statuses
+            old_bed = admission.bed
+            old_bed.is_occupied = False
+            old_bed.save()
+            
+            new_bed.is_occupied = True
+            new_bed.save()
+            
+            admission.bed = new_bed
+            admission.save()
+            
+            return redirect('inpatient:admission_detail', pk=admission.id)
+    else:
+        form = PatientTransferForm(current_bed=admission.bed)
+
+    context = {
+        'form': form,
+        'admission': admission,
+        'patient': admission.patient,
+        'title': 'Transfer Patient'
+    }
+    return render(request, 'inpatient/transfer_patient.html', context)
+
 
 @login_required
 def discharge_patient(request, admission_id):
     """View for discharging a patient"""
     admission = get_object_or_404(Admission, id=admission_id)
 
-    # Don't allow discharging already discharged, transferred, or deceased patients
-    if admission.status in ['discharged', 'transferred', 'deceased']:
-        messages.error(request, f'Patient has already been {admission.get_status_display().lower()}.')
-        return redirect('inpatient:admission_detail', admission_id=admission.id)
-
     if request.method == 'POST':
         form = DischargeForm(request.POST, instance=admission)
         if form.is_valid():
-            # Update the admission
-            admission = form.save()
+            admission = form.save(commit=False)
+            admission.status = 'discharged'
+            admission.discharge_date = timezone.now()
+            admission.save()
+            logger.info(f"Admission {admission.id} status after save: {admission.status}")
 
-            # Free up the bed
-            bed = admission.bed
-            bed.is_occupied = False
-            bed.save()
+            # Update bed status
+            if admission.bed:
+                admission.bed.is_occupied = False
+                admission.bed.save()
+                logger.info(f"Bed {admission.bed.id} occupied status after save: {admission.bed.is_occupied}")
 
-            messages.success(request, f'Patient {admission.patient.get_full_name()} has been {admission.get_status_display().lower()} successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
+            messages.success(request, f'Patient {admission.patient.get_full_name()} has been discharged successfully.')
+            return redirect('inpatient:admission_detail', pk=admission.id)
     else:
         form = DischargeForm(instance=admission)
 
@@ -646,95 +698,66 @@ def discharge_patient(request, admission_id):
     return render(request, 'inpatient/discharge_form.html', context)
 
 @login_required
-def transfer_patient(request, admission_id):
-    admission = get_object_or_404(Admission, id=admission_id)
-    initial = {}
-    # Pre-populate to_ward from GET if present
-    if request.method == 'GET' and 'to_ward' in request.GET:
-        initial['to_ward'] = request.GET.get('to_ward')
-    if request.method == 'POST':
-        form = PatientTransferForm(request.POST)
-        if form.is_valid():
-            to_ward = form.cleaned_data['to_ward']
-            to_bed = form.cleaned_data['to_bed']
-
-            # Create transfer records
-            BedTransfer.objects.create(admission=admission, from_bed=admission.bed, to_bed=to_bed, notes=form.cleaned_data['notes'])
-            if admission.bed.ward != to_ward:
-                WardTransfer.objects.create(admission=admission, from_ward=admission.bed.ward, to_ward=to_ward, notes=form.cleaned_data['notes'])
-
-            # Update admission
-            admission.bed.is_occupied = False
-            admission.bed.save()
-            admission.bed = to_bed
-            admission.bed.is_occupied = True
-            admission.bed.save()
-            admission.save()
-
-            messages.success(request, f'Patient {admission.patient.get_full_name()} transferred successfully to {to_ward.name}, {to_bed.bed_number}.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
-    else:
-        form = PatientTransferForm(initial=initial)
-
-    context = {
-        'form': form,
-        'admission': admission,
-        'title': f'Transfer Patient: {admission.patient.get_full_name()}'
-    }
-    return render(request, 'inpatient/transfer_form.html', context)
-
-@login_required
 def add_clinical_record(request, admission_id):
+    """View for adding a clinical record to an admission"""
     admission = get_object_or_404(Admission, id=admission_id)
+
     if request.method == 'POST':
         form = ClinicalRecordForm(request.POST)
         if form.is_valid():
-            clinical_record = form.save(commit=False)
-            clinical_record.admission = admission
-            clinical_record.recorded_by = request.user
-            clinical_record.save()
+            record = form.save(commit=False)
+            record.admission = admission
+            record.recorded_by = request.user.profile
+            record.save()
             messages.success(request, 'Clinical record added successfully.')
-            return redirect('inpatient:admission_detail', admission_id=admission.id)
+            return redirect('inpatient:admission_detail', pk=admission.id)
     else:
         form = ClinicalRecordForm()
+
     context = {
         'form': form,
         'admission': admission,
         'title': 'Add Clinical Record'
     }
+
     return render(request, 'inpatient/clinical_record_form.html', context)
 
 @login_required
 def bed_occupancy_report(request):
-    total_beds = Bed.objects.filter(is_active=True).count()
-    occupied_beds = Bed.objects.filter(is_occupied=True, is_active=True).count()
-    available_beds = total_beds - occupied_beds
-    occupancy_rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
+    """View for generating a bed occupancy report"""
+    wards = Ward.objects.all()
+    report_data = []
 
-    # Data for charting (example: occupancy by ward)
-    ward_occupancy = []
-    wards = Ward.objects.filter(is_active=True).annotate(total_beds_ward=Count('beds'), occupied_beds_ward=Count('beds', filter=Q(beds__is_occupied=True)))
     for ward in wards:
-        ward_occupancy.append({
+        total_beds = ward.beds.count()
+        occupied_beds = ward.beds.filter(is_occupied=True).count()
+        occupancy_rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
+        report_data.append({
             'ward_name': ward.name,
-            'occupied': ward.occupied_beds_ward,
-            'available': ward.total_beds_ward - ward.occupied_beds_ward,
-            'total': ward.total_beds_ward,
-            'occupancy_rate': (ward.occupied_beds_ward / ward.total_beds_ward * 100) if ward.total_beds_ward > 0 else 0
+            'total_beds': total_beds,
+            'occupied_beds': occupied_beds,
+            'occupancy_rate': occupancy_rate
         })
 
     context = {
-        'total_beds': total_beds,
-        'occupied_beds': occupied_beds,
-        'available_beds': available_beds,
-        'occupancy_rate': round(occupancy_rate, 2),
-        'ward_occupancy': ward_occupancy,
+        'report_data': report_data,
         'title': 'Bed Occupancy Report'
     }
+
     return render(request, 'inpatient/bed_occupancy_report.html', context)
 
 @login_required
 def load_beds(request):
+    """AJAX view to load beds based on selected ward."""
     ward_id = request.GET.get('ward_id')
-    beds = Bed.objects.filter(ward_id=ward_id, is_active=True, is_occupied=False).order_by('bed_number')
-    return JsonResponse(list(beds.values('id', 'bed_number')), safe=False)
+    try:
+        ward = Ward.objects.get(id=ward_id)
+        # Filter for beds that are active and not occupied
+        beds = Bed.objects.filter(ward=ward, is_active=True, is_occupied=False).order_by('bed_number')
+        # Format the data for the dropdown
+        bed_list = [{'id': bed.id, 'text': bed.bed_number} for bed in beds]
+        return JsonResponse({'beds': bed_list})
+    except Ward.DoesNotExist:
+        return JsonResponse({'error': 'Ward not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

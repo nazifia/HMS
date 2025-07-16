@@ -229,8 +229,8 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Dispensary Management:</h6>
                     <a class="collapse-item {% if request.path == '/pharmacy/dispensaries/' %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Manage Dispensaries</a>
-                    <a class="collapse-item {% if '/pharmacy/dispensaries/inventory/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Inventory</a> {# Link to manage page, then navigate to specific inventory #}
-                    <a class="collapse-item {% if '/pharmacy/dispensaries/dispensing-report/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Reports</a> {# Link to manage page, then navigate to specific report #}
+                    {% comment %} <a class="collapse-item {% if '/pharmacy/dispensaries/inventory/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Inventory</a> {# Link to manage page, then navigate to specific inventory #}
+                    <a class="collapse-item {% if '/pharmacy/dispensaries/dispensing-report/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Reports</a> {# Link to manage page, then navigate to specific report #} {% endcomment %}
                 </div>
             </div>
         </li>
@@ -350,6 +350,7 @@
                     {% endif %}
                     {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant' %}
                     <a class="collapse-item {% if request.path == '/billing/services/' %}active{% endif %}" href="{% url 'billing:services' %}">Services</a>
+                    <a class="collapse-item {% if request.path == '/billing/admission-invoices/' %}active{% endif %}" href="{% url 'billing:admission_invoices' %}">Admission Invoices</a>
                     {% endif %}
                 </div>
             </div>

@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 from doctors.models import Specialization, Doctor
 from accounts.models import Department # Import Department model
+from billing.models import Service # Import Service model
 
 def get_specialization_choices():
     return [(s.id, s.name) for s in Specialization.objects.all()]
@@ -50,8 +51,8 @@ class BedForm(forms.ModelForm):
 class AdmissionForm(forms.ModelForm):
     class Meta:
         model = Admission
-        fields = ['patient', 'admission_date', 'bed', 'diagnosis', 'attending_doctor', 
-                  'reason_for_admission', 'admission_notes']  # Remove 'status' from the form fields
+        fields = ['patient', 'admission_date', 'bed', 'diagnosis', 'attending_doctor',
+                  'reason_for_admission', 'admission_notes', 'admission_service']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select select2'}),
             'admission_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
@@ -60,7 +61,15 @@ class AdmissionForm(forms.ModelForm):
             'attending_doctor': forms.Select(attrs={'class': 'form-select select2'}),
             'reason_for_admission': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'admission_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'admission_service': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    admission_service = forms.ModelChoiceField(
+        queryset=Service.objects.filter(name='Admission Fee'),
+        empty_label=None,  # Ensures a service is always selected
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Admission Service'
+    )
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
