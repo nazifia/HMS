@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dispensing Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Dispensing Test Page</h1>
+    
+    <div class="debug">
+        <h3>Debug Information:</h3>
+        <p><strong>Prescription:</strong> {{ prescription }}</p>
+        <p><strong>Prescription ID:</strong> {{ prescription.id }}</p>
+        <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+        <p><strong>Status:</strong> {{ prescription.status }}</p>
+        <p><strong>Prescription Items Type:</strong> {{ prescription_items|length }}</p>
+        <p><strong>Prescription Items:</strong> {{ prescription_items }}</p>
+        <p><strong>Dispensaries Count:</strong> {{ dispensaries|length }}</p>
+    </div>
+
+    <h2>Raw Template Variables:</h2>
+    <div class="debug">
+        <p>prescription_items = {{ prescription_items }}</p>
+        <p>prescription_items|length = {{ prescription_items|length }}</p>
+        <p>prescription_items.count = {{ prescription_items.count }}</p>
+    </div>
+
+    <h2>Items Loop Test:</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Item ID</th>
+                <th>Medication</th>
+                <th>Quantity</th>
+                <th>Dispensed</th>
+                <th>Remaining</th>
+                <th>Is Dispensed</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in prescription_items %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.medication.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.quantity_dispensed_so_far }}</td>
+                    <td>{{ item.remaining_quantity_to_dispense }}</td>
+                    <td>{{ item.is_dispensed }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6">NO ITEMS FOUND IN LOOP</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Direct Database Query Test:</h2>
+    <div class="debug">
+        <p>Total items in prescription: {{ prescription.items.count }}</p>
+        <p>All items:</p>
+        <ul>
+            {% for item in prescription.items.all %}
+                <li>{{ item.id }}: {{ item.medication.name }} (is_dispensed: {{ item.is_dispensed }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <h2>Dispensaries:</h2>
+    <ul>
+        {% for dispensary in dispensaries %}
+            <li>{{ dispensary.name }} (ID: {{ dispensary.id }})</li>
+        {% empty %}
+            <li>No dispensaries found</li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="/pharmacy/prescriptions/3/dispense/">Back to Dispensing Page</a></p>
+</body>
+</html>

@@ -204,3 +204,169 @@ def patient_radiology_results(request, patient_id):
         'title': f'Radiology Results for {patient.get_full_name()}',
     }
     return render(request, 'radiology/patient_results.html', context)
+
+
+@login_required
+def radiology_statistics_report(request):
+    """Comprehensive radiology statistics and reporting"""
+    from django.db.models import Q, Sum, Count, Avg
+    from datetime import datetime, timedelta
+    from decimal import Decimal
+
+    # Get filter parameters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    test_category_id = request.GET.get('test_category')
+    test_id = request.GET.get('test')
+    status = request.GET.get('status')
+    priority = request.GET.get('priority')
+
+    # Default date range (last 30 days)
+    if not start_date:
+        start_date = (timezone.now() - timedelta(days=30)).date()
+    else:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+
+    if not end_date:
+        end_date = timezone.now().date()
+    else:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    # Base queryset for radiology orders
+    radiology_orders = RadiologyOrder.objects.filter(
+        order_date__date__gte=start_date,
+        order_date__date__lte=end_date
+    ).select_related('patient', 'test', 'referring_doctor', 'technician')
+
+    # Apply filters
+    if test_category_id:
+        radiology_orders = radiology_orders.filter(test__category_id=test_category_id)
+
+    if test_id:
+        radiology_orders = radiology_orders.filter(test_id=test_id)
+
+    if status:
+        radiology_orders = radiology_orders.filter(status=status)
+
+    if priority:
+        radiology_orders = radiology_orders.filter(priority=priority)
+
+    # Orders by category
+    category_stats = radiology_orders.values(
+        'test__category__name',
+        'test__category__id'
+    ).annotate(
+        total_orders=Count('id'),
+        total_revenue=Sum('test__price'),
+        avg_price=Avg('test__price'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_orders')
+
+    # Top tests by volume
+    top_tests = radiology_orders.values(
+        'test__name',
+        'test__id'
+    ).annotate(
+        total_orders=Count('id'),
+        total_revenue=Sum('test__price'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_orders')[:10]
+
+    # Status distribution
+    status_stats = radiology_orders.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
+    # Priority distribution
+    priority_stats = radiology_orders.values('priority').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
+    # Daily order volume trend
+    daily_stats = radiology_orders.extra(
+        select={'day': 'DATE(order_date)'}
+    ).values('day').annotate(
+        daily_orders=Count('id'),
+        daily_revenue=Sum('test__price')
+    ).order_by('day')
+
+    # Top referring doctors
+    top_doctors = radiology_orders.values(
+        'referring_doctor__first_name',
+        'referring_doctor__last_name',
+        'referring_doctor__id'
+    ).annotate(
+        total_orders=Count('id'),
+        total_revenue=Sum('test__price'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_orders')[:10]
+
+    # Top technicians
+    top_technicians = radiology_orders.filter(
+        technician__isnull=False
+    ).values(
+        'technician__first_name',
+        'technician__last_name',
+        'technician__id'
+    ).annotate(
+        total_orders=Count('id'),
+        total_revenue=Sum('test__price'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_orders')[:10]
+
+    # Overall statistics
+    overall_stats = radiology_orders.aggregate(
+        total_orders=Count('id'),
+        total_revenue=Sum('test__price'),
+        avg_revenue_per_order=Avg('test__price'),
+        unique_patients=Count('patient', distinct=True),
+        unique_tests=Count('test', distinct=True),
+        unique_doctors=Count('referring_doctor', distinct=True)
+    )
+
+    # Completion rate (completed vs total)
+    completed_orders = radiology_orders.filter(status='completed').count()
+    total_orders = radiology_orders.count()
+    completion_rate = (completed_orders / total_orders * 100) if total_orders > 0 else 0
+
+    # Average turnaround time for completed orders
+    completed_with_times = radiology_orders.filter(
+        status='completed',
+        completed_date__isnull=False
+    )
+
+    turnaround_times = []
+    for order in completed_with_times:
+        if order.completed_date and order.order_date:
+            delta = order.completed_date - order.order_date
+            turnaround_times.append(delta.total_seconds() / 3600)  # Convert to hours
+
+    avg_turnaround_hours = sum(turnaround_times) / len(turnaround_times) if turnaround_times else 0
+
+    # Get filter options
+    test_categories = RadiologyCategory.objects.all().order_by('name')
+    tests = RadiologyTest.objects.filter(is_active=True).order_by('name')
+
+    context = {
+        'title': 'Radiology Statistics and Reports',
+        'start_date': start_date,
+        'end_date': end_date,
+        'category_stats': category_stats,
+        'top_tests': top_tests,
+        'top_doctors': top_doctors,
+        'top_technicians': top_technicians,
+        'status_stats': status_stats,
+        'priority_stats': priority_stats,
+        'daily_stats': daily_stats,
+        'overall_stats': overall_stats,
+        'completion_rate': completion_rate,
+        'avg_turnaround_hours': avg_turnaround_hours,
+        'test_categories': test_categories,
+        'tests': tests,
+        'selected_category': test_category_id,
+        'selected_test': test_id,
+        'selected_status': status,
+        'selected_priority': priority,
+    }
+
+    return render(request, 'radiology/reports/radiology_statistics.html', context)

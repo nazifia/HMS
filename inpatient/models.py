@@ -1,7 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
-from patients.models import Patient
+from patients.models import Patient, PatientWallet
+from decimal import Decimal
 
 class Ward(models.Model):
     WARD_TYPE_CHOICES = (
@@ -92,6 +93,7 @@ class Admission(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     billed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     bed_history = models.ManyToManyField(Bed, through='BedTransfer', related_name='admission_history', through_fields=('admission', 'to_bed'))
     ward_history = models.ManyToManyField(Ward, through='WardTransfer', related_name='admission_history', through_fields=('admission', 'to_ward'))
 
@@ -111,12 +113,10 @@ class Admission(models.Model):
 
         if self.bed and self.bed.ward:
             daily_charge = self.bed.ward.charge_per_day
-            return -(daily_charge * duration)
+            return daily_charge * duration  # Return as a positive value
         return 0
 
     def save(self, *args, **kwargs):
-        from patients.models import PatientWallet # Import here to avoid circular dependency
-
         is_new = self.pk is None
         old_instance = None
 
@@ -125,6 +125,9 @@ class Admission(models.Model):
                 old_instance = Admission.objects.get(pk=self.pk)
             except Admission.DoesNotExist:
                 pass
+
+        # Calculate billed_amount before saving
+        self.billed_amount = self.get_total_cost()
 
         super().save(*args, **kwargs) # Save the instance first to ensure it has a PK
 
@@ -137,27 +140,7 @@ class Admission(models.Model):
                 self.bed.is_occupied = False
                 self.bed.save()
 
-        # Handle wallet debit for admission fees
-        if self.patient:
-            patient_wallet, created = PatientWallet.objects.get_or_create(patient=self.patient)
-            current_total_cost = self.get_total_cost() # This is already negative
-
-            # Calculate the difference to bill. Since current_total_cost is negative,
-            # a more negative value means more cost, so the difference will be negative.
-            amount_to_bill = current_total_cost - self.billed_amount
-
-            if amount_to_bill != 0:
-                # Debit the wallet. The amount_to_bill is already negative,
-                # so we pass its absolute value to debit and ensure it's a debit.
-                # The debit method expects a positive amount to subtract.
-                patient_wallet.debit(
-                    amount=abs(amount_to_bill),
-                    description=f"Admission fees for {self.patient.get_full_name()} (Admission ID: {self.id})",
-                    transaction_type="admission_fee",
-                    user=self.created_by # Assuming created_by is the user initiating the admission
-                )
-                self.billed_amount = current_total_cost # Update billed_amount after successful debit
-                self.save(update_fields=['billed_amount']) # Save only the billed_amount to avoid recursion
+        # No redirect from model save method
 
 class DailyRound(models.Model):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='daily_rounds')

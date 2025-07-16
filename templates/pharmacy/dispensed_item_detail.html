@@ -184,10 +184,16 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-pills me-2"></i>{{ title }}</h2>
         <div>
-            <a href="{% url 'pharmacy:prescription_detail' dispensing_log.prescription_item.prescription.id %}" 
-               class="btn btn-info me-2">
-                <i class="fas fa-file-prescription me-2"></i>View Prescription
-            </a>
+            {% if log_entry.prescription_item.prescription.id %}
+                <a href="{% url 'pharmacy:prescription_detail' log_entry.prescription_item.prescription.id %}"
+                   class="btn btn-info me-2">
+                    <i class="fas fa-file-prescription me-2"></i>View Prescription
+                </a>
+            {% else %}
+                <span class="btn btn-secondary disabled" title="No Prescription Available">
+                    <i class="fas fa-file-prescription me-2"></i>View Prescription
+                </span>
+            {% endif %}
             <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to Tracker
             </a>
@@ -211,20 +217,20 @@
                                 <div class="row">
                                     <div class="col-12 mb-2">
                                         <div class="info-label">Date & Time:</div>
-                                        <div class="info-value">{{ dispensing_log.dispensed_date|date:"F d, Y H:i:s" }}</div>
+                                        <div class="info-value">{{ log_entry.dispensed_date|date:"F d, Y H:i:s" }}</div>
                                     </div>
                                     <div class="col-12 mb-2">
                                         <div class="info-label">Dispensed By:</div>
                                         <div class="info-value">
                                             <i class="fas fa-user-md me-1"></i>
-                                            {{ dispensing_log.dispensed_by.get_full_name|default:"Unknown Staff" }}
+                                            {{ log_entry.dispensed_by.get_full_name|default:"Unknown Staff" }}
                                         </div>
                                     </div>
                                     <div class="col-12 mb-2">
                                         <div class="info-label">Quantity Dispensed:</div>
                                         <div class="info-value">
                                             <span class="badge badge-custom bg-light text-dark fs-6">
-                                                {{ dispensing_log.dispensed_quantity }} units
+                                                {{ log_entry.dispensed_quantity }} units
                                             </span>
                                         </div>
                                     </div>
@@ -232,7 +238,7 @@
                                         <div class="info-label">Total Price:</div>
                                         <div class="info-value">
                                             <span class="badge badge-custom bg-light text-dark fs-6">
-                                                ${{ dispensing_log.total_price_for_this_log|floatformat:2 }}
+                                                ₦{{ log_entry.total_price_for_this_log|floatformat:2 }}
                                             </span>
                                         </div>
                                     </div>
@@ -245,19 +251,19 @@
                                 <div class="row">
                                     <div class="col-12 mb-2">
                                         <div class="info-label">Name:</div>
-                                        <div class="info-value">{{ dispensing_log.prescription_item.medication.name }}</div>
+                                        <div class="info-value">{{ log_entry.prescription_item.medication.name }}</div>
                                     </div>
-                                    {% if dispensing_log.prescription_item.medication.generic_name %}
+                                    {% if log_entry.prescription_item.medication.generic_name %}
                                     <div class="col-12 mb-2">
                                         <div class="info-label">Generic Name:</div>
-                                        <div class="info-value">{{ dispensing_log.prescription_item.medication.generic_name }}</div>
+                                        <div class="info-value">{{ log_entry.prescription_item.medication.generic_name }}</div>
                                     </div>
                                     {% endif %}
                                     <div class="col-12 mb-2">
                                         <div class="info-label">Category:</div>
                                         <div class="info-value">
-                                            {% if dispensing_log.prescription_item.medication.category %}
-                                                {{ dispensing_log.prescription_item.medication.category.name }}
+                                            {% if log_entry.prescription_item.medication.category %}
+                                                {{ log_entry.prescription_item.medication.category.name }}
                                             {% else %}
                                                 <em>No category</em>
                                             {% endif %}
@@ -267,7 +273,7 @@
                                         <div class="info-label">Unit Price at Dispense:</div>
                                         <div class="info-value">
                                             <span class="badge badge-custom bg-light text-dark">
-                                                ${{ dispensing_log.unit_price_at_dispense|floatformat:2 }}
+                                                ₦{{ log_entry.unit_price_at_dispense|floatformat:2 }}
                                             </span>
                                         </div>
                                     </div>
@@ -333,12 +339,12 @@
                             </div>
                             <div class="col-12">
                                 <div class="info-label">Prescribed Quantity:</div>
-                                <div class="info-value">{{ dispensing_log.prescription_item.quantity }} units</div>
+                                <div class="info-value">{{ log_entry.prescription_item.quantity }} units</div>
                             </div>
-                            {% if dispensing_log.prescription_item.instructions %}
+                            {% if log_entry.prescription_item.instructions %}
                             <div class="col-12">
                                 <div class="info-label">Instructions:</div>
-                                <div class="info-value">{{ dispensing_log.prescription_item.instructions }}</div>
+                                <div class="info-value">{{ log_entry.prescription_item.instructions }}</div>
                             </div>
                             {% endif %}
                         </div>
@@ -385,19 +391,25 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-outline-primary">
-                            <i class="fas fa-file-prescription me-2"></i>View Full Prescription
-                        </a>
-                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?patient_name={{ prescription.patient.get_full_name|urlencode }}" 
+                        {% if log_entry.prescription_item.prescription.id %}
+                            <a href="{% url 'pharmacy:prescription_detail' log_entry.prescription_item.prescription.id %}" class="btn btn-outline-primary">
+                                <i class="fas fa-file-prescription me-2"></i>View Full Prescription
+                            </a>
+                        {% else %}
+                            <span class="btn btn-outline-secondary disabled" title="No Prescription Available">
+                                <i class="fas fa-file-prescription me-2"></i>View Full Prescription
+                            </span>
+                        {% endif %}
+                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?patient_name={{ log_entry.prescription_item.prescription.patient.get_full_name|urlencode }}"
                            class="btn btn-outline-info">
                             <i class="fas fa-user me-2"></i>Patient's Dispensing History
                         </a>
-                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?medication_name={{ dispensing_log.prescription_item.medication.name|urlencode }}" 
+                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?medication_name={{ log_entry.prescription_item.medication.name|urlencode }}"
                            class="btn btn-outline-success">
                             <i class="fas fa-pills me-2"></i>Medication Dispensing History
                         </a>
-                        {% if dispensing_log.dispensed_by %}
-                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?dispensed_by={{ dispensing_log.dispensed_by.id }}" 
+                        {% if log_entry.dispensed_by %}
+                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?dispensed_by={{ log_entry.dispensed_by.id }}"
                            class="btn btn-outline-warning">
                             <i class="fas fa-user-md me-2"></i>Staff Dispensing History
                         </a>

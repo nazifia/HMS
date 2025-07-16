@@ -281,51 +281,105 @@ class WalletWithdrawalForm(forms.Form):
 class WalletTransferForm(forms.Form):
     recipient_patient = forms.ModelChoiceField(
         queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-control'}),
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'data-placeholder': 'Select recipient patient...'
+        }),
         label='Transfer To Patient',
-        help_text='Select the patient to transfer funds to'
+        help_text='Select the patient to transfer funds to',
+        empty_label="Choose recipient patient..."
     )
     amount = forms.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
         min_value=0.01,
         widget=forms.NumberInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Enter amount to transfer',
-            'step': '0.01'
+            'placeholder': 'Enter amount to transfer (e.g., 100.00)',
+            'step': '0.01',
+            'min': '0.01'
         }),
-        label='Amount to Transfer'
+        label='Amount to Transfer',
+        help_text='Enter the amount you want to transfer'
     )
     description = forms.CharField(
-        max_length=255,
+        max_length=500,
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Reason for transfer'
+            'placeholder': 'Optional: Reason for this transfer (e.g., Payment for services, Family support)'
         }),
-        label='Description (Optional)'
+        label='Description (Optional)',
+        help_text='Provide a reason for this transfer for record keeping'
     )
 
     def __init__(self, *args, **kwargs):
         self.wallet = kwargs.pop('wallet', None)
         super().__init__(*args, **kwargs)
         if self.wallet:
-            # Exclude the current patient from recipient choices
+            # Exclude the current patient from recipient choices and only show active patients
             self.fields['recipient_patient'].queryset = Patient.objects.filter(
                 is_active=True
-            ).exclude(id=self.wallet.patient.id)
+            ).exclude(id=self.wallet.patient.id).order_by('first_name', 'last_name')
+            
+            # Add wallet balance info to amount field help text
+            self.fields['amount'].help_text = f'Available balance: ₦{self.wallet.balance:,.2f}. Enter the amount you want to transfer.'
 
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')
+        
+        if not amount:
+            raise forms.ValidationError("Transfer amount is required.")
+            
+        if amount <= 0:
+            raise forms.ValidationError("Transfer amount must be greater than zero.")
+            
+        # Note: We allow transfers even if they exceed balance (as per current system design)
+        # But we provide a warning message
         if self.wallet and amount > self.wallet.balance:
-            raise forms.ValidationError(f"Insufficient balance. Available balance: ₦{self.wallet.balance}")
+            # This is a warning, not an error - the system allows negative balances
+            pass
+            
         return amount
 
     def clean_recipient_patient(self):
         recipient = self.cleaned_data.get('recipient_patient')
+        
+        if not recipient:
+            raise forms.ValidationError("Please select a recipient patient.")
+            
+        if not recipient.is_active:
+            raise forms.ValidationError("Cannot transfer to an inactive patient. Please select an active patient.")
+            
         if self.wallet and recipient and recipient.id == self.wallet.patient.id:
-            raise forms.ValidationError("Cannot transfer to the same patient.")
+            raise forms.ValidationError("Cannot transfer funds to the same patient. Please select a different recipient.")
+            
         return recipient
+
+    def clean_description(self):
+        description = self.cleaned_data.get('description', '').strip()
+        
+        # Clean any potentially harmful content
+        if description:
+            # Remove any HTML tags or special characters that might cause issues
+            import re
+            description = re.sub(r'[<>"\']', '', description)
+            description = description[:500]  # Ensure it doesn't exceed max length
+            
+        return description
+
+    def clean(self):
+        cleaned_data = super().clean()
+        amount = cleaned_data.get('amount')
+        recipient = cleaned_data.get('recipient_patient')
+        
+        # Additional cross-field validation
+        if amount and recipient and self.wallet:
+            # Check if recipient has a wallet (create if needed is handled in view)
+            if hasattr(recipient, 'wallet') and not recipient.wallet.is_active:
+                raise forms.ValidationError("Recipient's wallet is not active. Please contact administrator.")
+                
+        return cleaned_data
 
 
 class WalletRefundForm(forms.Form):

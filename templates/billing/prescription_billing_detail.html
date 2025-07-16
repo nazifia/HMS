@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-prescription-bottle-alt me-2"></i>{{ title }}</h2>
+        <div>
+            <a href="{% url 'billing:medication_billing_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-outline-primary">
+                <i class="fas fa-eye me-2"></i>View Prescription
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Prescription Information -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Prescription Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Prescription ID:</strong> #{{ prescription.id }}</p>
+                            <p><strong>Date:</strong> {{ prescription.prescription_date|date:"F d, Y" }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-{{ prescription.status|default:'secondary' }}">
+                                    {{ prescription.get_status_display }}
+                                </span>
+                            </p>
+                            <p><strong>Type:</strong> {{ prescription.get_prescription_type_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+                            <p><strong>Patient ID:</strong> {{ prescription.patient.patient_id }}</p>
+                            <p><strong>Patient Type:</strong> 
+                                {% if prescription.patient.patient_type == 'nhia' %}
+                                    <span class="badge bg-success">NHIA</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ prescription.patient.get_patient_type_display }}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Breakdown -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>Pricing Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-pills me-2"></i>Total Medication Cost</h6>
+                                <h4>₦{{ pricing_breakdown.total_medication_cost|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            {% if pricing_breakdown.is_nhia_patient %}
+                                <div class="alert alert-success">
+                                    <h6><i class="fas fa-user me-2"></i>Patient Pays (10%)</h6>
+                                    <h4>₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</h4>
+                                </div>
+                                <div class="alert alert-warning">
+                                    <h6><i class="fas fa-shield-alt me-2"></i>NHIA Covers (90%)</h6>
+                                    <h4>₦{{ pricing_breakdown.nhia_portion|floatformat:2 }}</h4>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <h6><i class="fas fa-user me-2"></i>Patient Pays (100%)</h6>
+                                    <h4>₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</h4>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medication Items -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Medication Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Cost</th>
+                                    <th>Patient Pays</th>
+                                    {% if pricing_breakdown.is_nhia_patient %}
+                                    <th>NHIA Covers</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item_data in items_with_pricing %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item_data.item.medication.name }}</strong>
+                                        <div class="small text-muted">
+                                            {{ item_data.item.medication.strength }} - {{ item_data.item.medication.dosage_form }}
+                                        </div>
+                                    </td>
+                                    <td>{{ item_data.item.quantity }}</td>
+                                    <td>₦{{ item_data.item.medication.price|floatformat:2 }}</td>
+                                    <td>₦{{ item_data.total_cost|floatformat:2 }}</td>
+                                    <td class="text-success"><strong>₦{{ item_data.patient_pays|floatformat:2 }}</strong></td>
+                                    {% if pricing_breakdown.is_nhia_patient %}
+                                    <td class="text-warning">₦{{ item_data.nhia_covers|floatformat:2 }}</td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Section -->
+        <div class="col-md-4">
+            <!-- Payment Status -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Payment Status</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Payment Status:</strong> 
+                        <span class="badge bg-{{ prescription.payment_status|default:'secondary' }}">
+                            {{ prescription.get_payment_status_display }}
+                        </span>
+                    </p>
+                    
+                    {% if pharmacy_invoice %}
+                        <p><strong>Invoice ID:</strong> #{{ pharmacy_invoice.id }}</p>
+                        <p><strong>Total Amount:</strong> ₦{{ pharmacy_invoice.total_amount|floatformat:2 }}</p>
+                        <p><strong>Amount Paid:</strong> ₦{{ pharmacy_invoice.amount_paid|floatformat:2 }}</p>
+                        <p><strong>Balance:</strong> 
+                            <span class="text-danger"><strong>₦{{ pharmacy_invoice.get_balance|floatformat:2 }}</strong></span>
+                        </p>
+                    {% else %}
+                        <p class="text-muted">No invoice generated yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Payment Form -->
+            {% if pharmacy_invoice and pharmacy_invoice.get_balance > 0 %}
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Process Payment</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'billing:process_medication_payment' prescription.id %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Payment Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₦</span>
+                                <input type="number" class="form-control" id="amount" name="amount" 
+                                       step="0.01" min="0.01" max="{{ pharmacy_invoice.get_balance }}"
+                                       value="{{ pharmacy_invoice.get_balance }}" required>
+                            </div>
+                            <small class="text-muted">Maximum: ₦{{ pharmacy_invoice.get_balance|floatformat:2 }}</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="payment_method" class="form-label">Payment Method</label>
+                            <select class="form-control" id="payment_method" name="payment_method" required>
+                                <option value="">Select payment method</option>
+                                <option value="cash">Cash</option>
+                                <option value="credit_card">Credit Card</option>
+                                <option value="debit_card">Debit Card</option>
+                                <option value="upi">UPI</option>
+                                <option value="net_banking">Net Banking</option>
+                                <option value="insurance">Insurance</option>
+                                <option value="wallet">Wallet</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="transaction_id" class="form-label">Transaction ID (Optional)</label>
+                            <input type="text" class="form-control" id="transaction_id" name="transaction_id"
+                                   placeholder="Reference number for electronic payments">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="Additional payment notes"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-check-circle me-2"></i>Process Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Payment History -->
+            {% if payments %}
+            <div class="card mt-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Payment History</h5>
+                </div>
+                <div class="card-body">
+                    {% for payment in payments %}
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong>₦{{ payment.amount|floatformat:2 }}</strong>
+                            <small class="text-muted">{{ payment.payment_date|date:"M d, Y" }}</small>
+                        </div>
+                        <div class="small text-muted">
+                            {{ payment.get_payment_method_display }}
+                            {% if payment.transaction_id %}
+                                | ID: {{ payment.transaction_id }}
+                            {% endif %}
+                        </div>
+                        <div class="small text-muted">By: {{ payment.received_by.get_full_name }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const paymentMethod = document.getElementById('payment_method').value;
+            
+            if (!paymentMethod) {
+                e.preventDefault();
+                alert('Please select a payment method.');
+                return;
+            }
+            
+            if (!confirm(`Confirm payment of ₦${amount.toFixed(2)} via ${paymentMethod}?`)) {
+                e.preventDefault();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Dispensing AJAX</title>
+    <script>
+        function testAjax() {
+            const dispensaryId = document.getElementById('dispensary-id').value;
+            const prescriptionId = document.getElementById('prescription-id').value;
+            
+            console.log('Testing AJAX with:', {dispensaryId, prescriptionId});
+            
+            fetch(`/pharmacy/prescriptions/${prescriptionId}/stock-quantities/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': 'test-token'  // This would normally come from Django
+                },
+                body: `dispensary_id=${dispensaryId}`
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                document.getElementById('result').innerHTML = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Debug Dispensing AJAX</h1>
+    
+    <div>
+        <label>Prescription ID:</label>
+        <input type="number" id="prescription-id" value="3">
+    </div>
+    
+    <div>
+        <label>Dispensary ID:</label>
+        <input type="number" id="dispensary-id" value="1">
+    </div>
+    
+    <button onclick="testAjax()">Test AJAX Call</button>
+    
+    <h2>Result:</h2>
+    <pre id="result"></pre>
+</body>
+</html>

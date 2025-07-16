@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from decimal import Decimal
 import csv
 from .models import Invoice, InvoiceItem, Payment, Service
 from .forms import InvoiceForm, InvoiceItemForm, PaymentForm, ServiceForm, InvoiceSearchForm
@@ -380,6 +381,30 @@ def patient_invoices(request, patient_id):
     return render(request, 'billing/patient_invoices.html', context)
 
 @login_required
+def admission_invoices(request):
+    """View for listing all admissions with their billing status"""
+    admissions = Admission.objects.all().order_by('-admission_date')
+
+    for admission in admissions:
+        admission.balance_due = admission.billed_amount - admission.amount_paid
+        if admission.balance_due <= 0:
+            admission.payment_status_display = 'Paid'
+            admission.status_badge_class = 'success'
+        elif admission.amount_paid > 0:
+            admission.payment_status_display = 'Partially Paid'
+            admission.status_badge_class = 'warning'
+        else:
+            admission.payment_status_display = 'Pending'
+            admission.status_badge_class = 'danger'
+
+    context = {
+        'admissions': admissions,
+        'title': 'Admission Invoices'
+    }
+
+    return render(request, 'admissions/admission_invoices.html', context)
+
+@login_required
 def billing_reports(request):
     """View for billing summary and reporting"""
     # Revenue by month (last 12 months)
@@ -502,3 +527,338 @@ def create_invoice_for_prescription(request, prescription_id):
 
     messages.success(request, f'Invoice created for prescription #{prescription.id}.')
     return redirect('billing:invoice_detail', invoice_id=invoice.id)
+
+
+@login_required
+def medication_billing_dashboard(request):
+    """Dashboard for medication billing management"""
+    from pharmacy.models import Prescription
+    from pharmacy_billing.models import Invoice as PharmacyInvoice
+
+    # Get prescriptions with pending payments
+    pending_prescriptions = Prescription.objects.filter(
+        payment_status='unpaid'
+    ).select_related('patient', 'doctor').order_by('-prescription_date')
+
+    # Get pharmacy invoices
+    pharmacy_invoices = PharmacyInvoice.objects.filter(
+        status__in=['pending', 'partially_paid']
+    ).select_related('patient', 'prescription').order_by('-invoice_date')
+
+    # Statistics
+    total_pending_amount = sum(inv.get_balance() for inv in pharmacy_invoices)
+    total_prescriptions = pending_prescriptions.count()
+    total_invoices = pharmacy_invoices.count()
+
+    context = {
+        'pending_prescriptions': pending_prescriptions[:10],  # Show latest 10
+        'pharmacy_invoices': pharmacy_invoices[:10],  # Show latest 10
+        'total_pending_amount': total_pending_amount,
+        'total_prescriptions': total_prescriptions,
+        'total_invoices': total_invoices,
+        'title': 'Medication Billing Dashboard'
+    }
+
+    return render(request, 'billing/medication_billing_dashboard.html', context)
+
+
+@login_required
+def prescription_billing_detail(request, prescription_id):
+    """Detailed view for prescription billing with individual item breakdown"""
+    from pharmacy.models import Prescription
+    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+    prescription_items = prescription.items.all().select_related('medication')
+
+    # Get pricing breakdown
+    pricing_breakdown = prescription.get_pricing_breakdown()
+
+    # Get or create pharmacy invoice
+    pharmacy_invoice = None
+    try:
+        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+    except PharmacyInvoice.DoesNotExist:
+        pass
+
+    # Get payments if invoice exists
+    payments = []
+    if pharmacy_invoice:
+        payments = PharmacyPayment.objects.filter(invoice=pharmacy_invoice).order_by('-payment_date')
+
+    # Calculate item-level pricing
+    items_with_pricing = []
+    for item in prescription_items:
+        item_total = item.medication.price * item.quantity
+        if pricing_breakdown['is_nhia_patient']:
+            patient_pays = item_total * Decimal('0.10')
+            nhia_covers = item_total * Decimal('0.90')
+        else:
+            patient_pays = item_total
+            nhia_covers = Decimal('0.00')
+
+        items_with_pricing.append({
+            'item': item,
+            'total_cost': item_total,
+            'patient_pays': patient_pays,
+            'nhia_covers': nhia_covers
+        })
+
+    context = {
+        'prescription': prescription,
+        'prescription_items': prescription_items,
+        'items_with_pricing': items_with_pricing,
+        'pricing_breakdown': pricing_breakdown,
+        'pharmacy_invoice': pharmacy_invoice,
+        'payments': payments,
+        'title': f'Prescription Billing - #{prescription.id}'
+    }
+
+    return render(request, 'billing/prescription_billing_detail.html', context)
+
+
+@login_required
+def process_medication_payment(request, prescription_id):
+    """Process payment for medication prescription from billing office"""
+    from pharmacy.models import Prescription
+    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+    from pharmacy_billing.utils import create_pharmacy_invoice
+    from django.db import transaction
+
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+
+    # Get or create pharmacy invoice
+    pharmacy_invoice = None
+    try:
+        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+    except PharmacyInvoice.DoesNotExist:
+        # Create invoice using the utility function
+        total_price = prescription.get_total_prescribed_price()
+        pharmacy_invoice = create_pharmacy_invoice(request, prescription, total_price)
+        if not pharmacy_invoice:
+            messages.error(request, 'Failed to create invoice for this prescription.')
+            return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        payment_method = request.POST.get('payment_method')
+        transaction_id = request.POST.get('transaction_id', '')
+        notes = request.POST.get('notes', '')
+
+        try:
+            amount = Decimal(amount)
+            if amount <= 0:
+                messages.error(request, 'Payment amount must be greater than zero.')
+                return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+
+            if amount > pharmacy_invoice.get_balance():
+                messages.error(request, f'Payment amount cannot exceed the remaining balance of ₦{pharmacy_invoice.get_balance():.2f}.')
+                return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+
+            with transaction.atomic():
+                # Create payment record
+                payment = PharmacyPayment.objects.create(
+                    invoice=pharmacy_invoice,
+                    amount=amount,
+                    payment_method=payment_method,
+                    transaction_id=transaction_id,
+                    notes=notes,
+                    received_by=request.user
+                )
+
+                # Update invoice
+                pharmacy_invoice.amount_paid += amount
+                if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
+                    pharmacy_invoice.status = 'paid'
+                    prescription.payment_status = 'paid'
+                    prescription.save(update_fields=['payment_status'])
+                else:
+                    pharmacy_invoice.status = 'partially_paid'
+
+                pharmacy_invoice.save()
+
+                messages.success(request, f'Payment of ₦{amount:.2f} recorded successfully.')
+                return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid payment amount.')
+        except Exception as e:
+            messages.error(request, f'Error processing payment: {str(e)}')
+
+    return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+
+@login_required
+def create_invoice_for_admission(request, admission_id):
+    """Create an invoice for an admission if not already created."""
+    admission = get_object_or_404(Admission, id=admission_id)
+
+    # Check if an invoice already exists for this admission
+    if hasattr(admission, 'invoices') and admission.invoices.exists():
+        messages.info(request, 'Invoice already exists for this admission.')
+        return redirect('billing:admission_payment', admission_id=admission.id)
+
+    # Calculate total from admission cost
+    total_cost = admission.get_total_cost()
+
+    # You may want to select a Service for admission charges
+    # For simplicity, let's assume a generic 'Admission Charges' service exists
+    service = Service.objects.filter(name__icontains='Admission Charges').first()
+    if not service:
+        messages.error(request, 'Admission Charges service not found. Please create it in Billing > Services.')
+        return redirect('inpatient:admission_detail', admission_id=admission.id)
+
+    # Create the invoice
+    invoice = Invoice.objects.create(
+        patient=admission.patient,
+        status='pending',
+        total_amount=total_cost,
+        subtotal=total_cost, # Assuming no separate tax/discount for simplicity here
+        tax_amount=0,
+        discount_amount=0,
+        created_by=request.user,
+        admission=admission, # Link the invoice to the admission
+        source_app='inpatient'
+    )
+
+    # Add invoice item for admission charges
+    InvoiceItem.objects.create(
+        invoice=invoice,
+        service=service,
+        description=f"Admission Charges for {admission.get_duration()} days",
+        quantity=1,
+        unit_price=total_cost,
+        tax_percentage=0,
+        tax_amount=0,
+        discount_amount=0,
+        total_amount=total_cost
+    )
+
+    messages.success(request, f'Invoice created for admission #{admission.id}.')
+    return redirect('billing:admission_payment', admission_id=admission.id)
+
+
+@login_required
+def admission_payment(request, admission_id):
+    """Enhanced view for processing admission payments from billing office or patient wallet"""
+    from inpatient.models import Admission
+    from patients.models import PatientWallet
+    from .forms import AdmissionPaymentForm
+
+    admission = get_object_or_404(Admission, id=admission_id)
+
+    # Get or create invoice for this admission
+    invoice = None
+    if hasattr(admission, 'invoices') and admission.invoices.exists():
+        invoice = admission.invoices.first()
+    else:
+        # Create invoice if it doesn't exist
+        from billing.models import Service
+        try:
+            service = Service.objects.get(name__iexact="Admission")
+        except Service.DoesNotExist:
+            messages.error(request, 'Admission service not found. Please contact administrator.')
+            return redirect('inpatient:admission_detail', pk=admission.id)
+
+        total_cost = service.price
+        invoice = Invoice.objects.create(
+            patient=admission.patient,
+            status='pending',
+            total_amount=total_cost,
+            subtotal=total_cost,
+            tax_amount=0,
+            discount_amount=0,
+            created_by=request.user,
+            admission=admission,
+            source_app='inpatient'
+        )
+
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            service=service,
+            description=f"Admission Charges",
+            quantity=1,
+            unit_price=total_cost,
+            tax_percentage=0,
+            tax_amount=0,
+            discount_amount=0,
+            total_amount=total_cost
+        )
+
+    # Get patient wallet
+    patient_wallet = None
+    try:
+        patient_wallet = PatientWallet.objects.get(patient=admission.patient)
+    except PatientWallet.DoesNotExist:
+        # Create wallet if it doesn't exist
+        patient_wallet = PatientWallet.objects.create(
+            patient=admission.patient,
+            balance=0
+        )
+
+    remaining_amount = invoice.get_balance()
+
+    if remaining_amount <= 0:
+        messages.info(request, 'This admission has already been fully paid.')
+        return redirect('inpatient:admission_detail', pk=admission.id)
+
+    if request.method == 'POST':
+        form = AdmissionPaymentForm(
+            request.POST,
+            invoice=invoice,
+            patient_wallet=patient_wallet
+        )
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    payment = form.save(commit=False)
+                    payment.invoice = invoice
+                    payment.received_by = request.user
+
+                    payment_source = form.cleaned_data['payment_source']
+
+                    if payment_source == 'patient_wallet':
+                        # Force wallet payment method
+                        payment.payment_method = 'wallet'
+
+                    payment.save()
+
+                    # Audit log
+                    log_audit_action(
+                        request.user,
+                        'create',
+                        payment,
+                        f"Recorded {payment_source} payment of ₦{payment.amount:.2f} for admission {admission.id}"
+                    )
+
+                    # Notification
+                    InternalNotification.objects.create(
+                        user=admission.patient.primary_doctor if hasattr(admission.patient, 'primary_doctor') else request.user,
+                        message=f"Payment of ₦{payment.amount:.2f} recorded for admission {admission.id} via {payment_source}"
+                    )
+
+                    messages.success(request, f'Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+                    return redirect('inpatient:admission_detail', pk=admission.id)
+
+            except Exception as e:
+                messages.error(request, f'Error processing payment: {str(e)}')
+    else:
+        form = AdmissionPaymentForm(
+            invoice=invoice,
+            patient_wallet=patient_wallet,
+            initial={
+                'amount': remaining_amount,
+                'payment_date': timezone.now().date(),
+                'payment_method': 'cash'
+            }
+        )
+
+    context = {
+        'form': form,
+        'admission': admission,
+        'invoice': invoice,
+        'patient_wallet': patient_wallet,
+        'remaining_amount': remaining_amount,
+        'title': f'Payment for Admission #{admission.id}'
+    }
+
+    return render(request, 'billing/admission_payment.html', context)

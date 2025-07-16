@@ -79,50 +79,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Prescription form dynamic fields
-    if (document.getElementById('add-medication')) {
-        document.getElementById('add-medication').addEventListener('click', function() {
-            var medicationFields = document.getElementById('medication-fields');
-            var newRow = document.createElement('div');
-            newRow.className = 'row medication-row mb-3';
-            newRow.innerHTML = `
-                <div class="col-md-5">
-                    <select class="form-select" name="medication[]" required>
-                        <option value="">Select Medication</option>
-                        <!-- Options will be populated dynamically -->
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <input type="text" class="form-control" name="dosage[]" placeholder="Dosage" required>
-                </div>
-                <div class="col-md-3">
-                    <input type="text" class="form-control" name="frequency[]" placeholder="Frequency" required>
-                </div>
-                <div class="col-md-1">
-                    <button type="button" class="btn btn-danger remove-medication">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            medicationFields.appendChild(newRow);
-            
-            // Add event listener to the remove button
-            newRow.querySelector('.remove-medication').addEventListener('click', function() {
-                medicationFields.removeChild(newRow);
-            });
-            
-            // Populate medication options via AJAX
-            fetch('/pharmacy/api/medications/')
-                .then(response => response.json())
-                .then(data => {
-                    var select = newRow.querySelector('select');
-                    data.forEach(med => {
-                        var option = document.createElement('option');
-                        option.value = med.id;
-                        option.textContent = med.name;
-                        select.appendChild(option);
-                    });
-                });
-        });
-    }
+    // Add Medication Item
+    $('#add-medication-item').click(function() {
+        var formsetContainer = $('#medication-items-container');
+        var totalForms = $('#id_form-TOTAL_FORMS');
+        var formIndex = parseInt(totalForms.val());
+
+        var emptyFormTemplate = $('#empty-form-template').html();
+        var newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIndex);
+        var newForm = $(newFormHtml);
+
+        newForm.find('input, textarea').val(''); // Clear values
+        newForm.find('select').val('').trigger('change'); // Clear selected option and trigger change for Select2
+        newForm.find('.select2-container').remove(); // Remove old Select2 instance
+
+        formsetContainer.append(newForm);
+        initializeSelect2(newForm.find('select')); // Initialize Select2 on the new select
+
+        totalForms.val(formIndex + 1);
+    });
 });

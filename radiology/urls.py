@@ -14,5 +14,6 @@ urlpatterns = [
     path('<int:order_id>/cancel/', views.cancel_order, name='cancel_order'),
     path('<int:order_id>/result/', views.add_result, name='add_result'),
     path('sales-report/', views.radiology_sales_report, name='sales_report'),
+    path('reports/statistics/', views.radiology_statistics_report, name='radiology_statistics_report'),
     path('patient/<int:patient_id>/results/', views.patient_radiology_results, name='patient_results'),
 ]

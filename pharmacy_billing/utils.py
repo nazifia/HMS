@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from django.utils import timezone
-from billing.models import Invoice, InvoiceItem, Service
+from billing.models import Service
+from .models import Invoice as PharmacyInvoice
 from django.contrib import messages
 from nhia.models import NHIAPatient # Import NHIAPatient
 
@@ -16,15 +17,17 @@ def create_pharmacy_invoice(request, prescription, subtotal_value):
         messages.error(request, f"[create_pharmacy_invoice] Error fetching 'Medication Dispensing' service: {str(e)}. Invoice cannot be created.")
         return None
 
-    subtotal_value = Decimal(str(subtotal_value)).quantize(Decimal('0.01'))
-    
-    # Check if the patient is an NHIA patient
-    is_nhia_patient = (prescription.patient.patient_type == 'nhia')
+    # Use the prescription's patient payable amount method for consistent pricing
+    patient_payable_amount = prescription.get_patient_payable_amount()
+    subtotal_value = Decimal(str(patient_payable_amount)).quantize(Decimal('0.01'))
 
-    if is_nhia_patient:
-        # NHIA patients pay 10% of the medication cost
-        subtotal_value = subtotal_value * Decimal('0.10')
-        messages.info(request, f"[create_pharmacy_invoice] NHIA patient detected. Medication cost adjusted to 10%: {subtotal_value}")
+    # Get pricing breakdown for logging
+    pricing_breakdown = prescription.get_pricing_breakdown()
+
+    if pricing_breakdown['is_nhia_patient']:
+        messages.info(request, f"[create_pharmacy_invoice] NHIA patient detected. Total cost: ₦{pricing_breakdown['total_medication_cost']}, Patient pays 10%: ₦{subtotal_value}")
+    else:
+        messages.info(request, f"[create_pharmacy_invoice] Non-NHIA patient. Patient pays full cost: ₦{subtotal_value}")
 
     tax_percentage = pharmacy_service.tax_percentage if pharmacy_service and pharmacy_service.tax_percentage is not None else Decimal('0.00')
     tax_amount_calculated = Decimal('0.00')
@@ -39,49 +42,22 @@ def create_pharmacy_invoice(request, prescription, subtotal_value):
 
     invoice = None
     try:
-        messages.info(request, f"[create_pharmacy_invoice] Attempting to create Invoice object for Prescription ID: {prescription.id} with subtotal: {subtotal_value}, tax: {tax_amount_calculated}.")
-        invoice = Invoice.objects.create(
+        messages.info(request, f"[create_pharmacy_invoice] Attempting to create PharmacyInvoice object for Prescription ID: {prescription.id} with subtotal: {subtotal_value}, tax: {tax_amount_calculated}.")
+        invoice = PharmacyInvoice.objects.create(
             patient=prescription.patient,
             prescription=prescription,
             invoice_date=timezone.now().date(),
             due_date=timezone.now().date() + timezone.timedelta(days=7),
-            created_by=request.user,
             subtotal=subtotal_value,
             tax_amount=tax_amount_calculated,
             discount_amount=Decimal('0.00'),
-            status='pending',
-            source_app='pharmacy'
+            status='pending'
         )
-        messages.info(request, f"[create_pharmacy_invoice] Invoice object CREATED. ID: {invoice.id}, Number: {invoice.invoice_number}")
-    except Exception as e:
-        messages.error(request, f"[create_pharmacy_invoice] CRITICAL ERROR creating Invoice object: {str(e)}")
-        return None
-
-    try:
-        messages.info(request, f"[create_pharmacy_invoice] Attempting to create InvoiceItem for Invoice ID: {invoice.id}, Service ID: {pharmacy_service.id}, Unit Price: {subtotal_value}, Tax %: {tax_percentage}")
-        InvoiceItem.objects.create(
-            invoice=invoice,
-            service=pharmacy_service,
-            description=f"Medications for Prescription #{prescription.id} (Total Prescribed Value)",
-            quantity=1,
-            unit_price=subtotal_value,
-            tax_percentage=tax_percentage, 
-        )
-        messages.info(request, f"[create_pharmacy_invoice] InvoiceItem object CREATED for Invoice ID: {invoice.id}")
-    except Exception as e:
-        messages.error(request, f"[create_pharmacy_invoice] CRITICAL ERROR creating InvoiceItem object: {str(e)}. Data: invoice_id={invoice.id}, service_id={pharmacy_service.id}, unit_price={subtotal_value}")
-        if invoice and invoice.pk:
-            try:
-                invoice.delete()
-                messages.warning(request, f"[create_pharmacy_invoice] Orphaned Invoice ID: {invoice.id} deleted due to InvoiceItem creation failure.")
-            except Exception as del_e:
-                messages.error(request, f"[create_pharmacy_invoice] Failed to delete orphaned Invoice ID: {invoice.id}. Error: {del_e}")
-        return None
-
-    try:
-        invoice.save()
+        messages.info(request, f"[create_pharmacy_invoice] PharmacyInvoice object CREATED. ID: {invoice.id}")
         messages.info(request, f"[create_pharmacy_invoice] Final Invoice SAVE successful. ID: {invoice.id}, Total: {invoice.total_amount}")
     except Exception as e:
-        messages.error(request, f"[create_pharmacy_invoice] CRITICAL ERROR saving Invoice after InvoiceItem: {str(e)}")
+        messages.error(request, f"[create_pharmacy_invoice] CRITICAL ERROR creating PharmacyInvoice object: {str(e)}")
         return None
+
+    return invoice
     return invoice

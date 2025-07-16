@@ -251,37 +251,48 @@ class UserProfileForm(forms.ModelForm):
         profile_instance = None
 
         if user_instance:
-            # Populate CustomUser fields
-            initial_data['username'] = user_instance.username
-            initial_data['first_name'] = user_instance.first_name
-            initial_data['last_name'] = user_instance.last_name
-            initial_data['email'] = user_instance.email
-            # initial_data['phone_number'] = user_instance.phone_number # If editable
+            # Populate CustomUser fields with proper validation
+            initial_data['username'] = getattr(user_instance, 'username', '')
+            initial_data['first_name'] = getattr(user_instance, 'first_name', '')
+            initial_data['last_name'] = getattr(user_instance, 'last_name', '')
+            initial_data['email'] = getattr(user_instance, 'email', '')
+            # initial_data['phone_number'] = getattr(user_instance, 'phone_number', '') # If editable
 
             # Admin/Staff fields
-            initial_data['is_active_user'] = user_instance.is_active
+            initial_data['is_active_user'] = getattr(user_instance, 'is_active', True)
             if self.request_user and (self.request_user.is_staff or self.request_user.is_superuser):
                 initial_data['roles'] = user_instance.roles.all()
 
-
             # Populate CustomUserProfile fields
             # Access profile safely using the @property, which handles get_or_create
-            profile_instance = user_instance.profile
-            if profile_instance:
-                initial_data['contact_phone_number'] = profile_instance.phone_number
-                initial_data['address'] = profile_instance.address
-                # profile_picture is handled by ImageField widget
-                initial_data['date_of_birth'] = profile_instance.date_of_birth
-                initial_data['department'] = profile_instance.department # Assumes profile.department is a FK or CharField
-                initial_data['employee_id'] = profile_instance.employee_id
-                initial_data['specialization'] = profile_instance.specialization
-                initial_data['qualification'] = profile_instance.qualification
+            try:
+                profile_instance = user_instance.profile
+                if profile_instance:
+                    initial_data['contact_phone_number'] = getattr(profile_instance, 'phone_number', '')
+                    initial_data['address'] = getattr(profile_instance, 'address', '')
+                    # profile_picture is handled by ImageField widget
+                    initial_data['date_of_birth'] = getattr(profile_instance, 'date_of_birth', None)
+                    initial_data['department'] = getattr(profile_instance, 'department', None)
+                    initial_data['employee_id'] = getattr(profile_instance, 'employee_id', '')
+                    initial_data['specialization'] = getattr(profile_instance, 'specialization', '')
+                    initial_data['qualification'] = getattr(profile_instance, 'qualification', '')
+            except Exception as e:
+                # Log error but don't break form initialization
+                import logging
+                logging.warning(f"Error accessing user profile: {e}")
         
         kwargs['initial'] = initial_data
         super().__init__(*args, **kwargs)
 
+        # Add consistent CSS classes to all form fields
+        for field_name, field in self.fields.items():
+            if not isinstance(field.widget, (forms.CheckboxInput, forms.RadioSelect)):
+                existing_classes = field.widget.attrs.get('class', '')
+                if 'form-control' not in existing_classes:
+                    field.widget.attrs['class'] = (existing_classes + ' form-control').strip()
+
         # For ImageField, we don't want 'Currently: ... Clear' checkbox if no image
-        if profile_instance and not profile_instance.profile_picture:
+        if profile_instance and not getattr(profile_instance, 'profile_picture', None):
             self.fields['profile_picture'].widget.template_name = 'django/forms/widgets/clearable_file_input.html'
         
         # If the instance is a CustomUser, store its profile for the save method

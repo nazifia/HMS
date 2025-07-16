@@ -193,6 +193,110 @@ class Prescription(models.Model):
             total += item.medication.price * item.quantity # item.quantity is prescribed quantity
         return total
 
+    def get_patient_payable_amount(self):
+        """Calculate the amount patient needs to pay based on their type"""
+        from decimal import Decimal
+        total_price = Decimal(str(self.get_total_prescribed_price()))
+
+        # NHIA patients pay 10%, others pay 100%
+        if self.patient.patient_type == 'nhia':
+            return total_price * Decimal('0.10')
+        else:
+            return total_price
+
+    def get_pricing_breakdown(self):
+        """Get detailed pricing breakdown for the prescription"""
+        from decimal import Decimal
+        total_price = Decimal(str(self.get_total_prescribed_price()))
+        is_nhia = self.patient.patient_type == 'nhia'
+
+        if is_nhia:
+            patient_portion = total_price * Decimal('0.10')
+            nhia_portion = total_price * Decimal('0.90')
+        else:
+            patient_portion = total_price
+            nhia_portion = Decimal('0.00')
+
+        return {
+            'total_medication_cost': total_price,
+            'patient_portion': patient_portion,
+            'nhia_portion': nhia_portion,
+            'is_nhia_patient': is_nhia,
+            'discount_percentage': 90 if is_nhia else 0
+        }
+
+    def is_payment_verified(self):
+        """Check if the prescription payment has been verified and completed"""
+        # Check payment_status field first
+        if self.payment_status == 'paid':
+            return True
+        elif self.payment_status == 'waived':
+            return True
+        elif self.payment_status == 'unpaid':
+            # Double-check with invoice if it exists
+            if self.invoice:
+                return self.invoice.status == 'paid'
+            return False
+        return False
+
+    def can_be_dispensed(self):
+        """Check if prescription can be dispensed based on payment and other conditions"""
+        # Check if prescription is in a dispensable state
+        if self.status in ['cancelled', 'dispensed']:
+            return False, f'Cannot dispense prescription with status: {self.get_status_display()}'
+
+        # Check payment verification
+        if not self.is_payment_verified():
+            return False, 'Payment must be completed before dispensing medications'
+
+        # Check if there are items to dispense
+        pending_items = self.items.filter(is_dispensed=False)
+        if not pending_items.exists():
+            return False, 'All items in this prescription have been dispensed'
+
+        return True, 'Prescription is ready for dispensing'
+
+    def get_payment_status_display_info(self):
+        """Get detailed payment status information for display"""
+        if self.payment_status == 'paid':
+            return {
+                'status': 'paid',
+                'message': 'Payment completed',
+                'css_class': 'success',
+                'icon': 'check-circle'
+            }
+        elif self.payment_status == 'waived':
+            return {
+                'status': 'waived',
+                'message': 'Payment waived',
+                'css_class': 'info',
+                'icon': 'info-circle'
+            }
+        else:
+            # Check invoice status if available
+            if self.invoice:
+                if self.invoice.status == 'paid':
+                    return {
+                        'status': 'paid',
+                        'message': 'Payment completed via invoice',
+                        'css_class': 'success',
+                        'icon': 'check-circle'
+                    }
+                else:
+                    return {
+                        'status': 'unpaid',
+                        'message': f'Payment pending - Invoice #{self.invoice.id}',
+                        'css_class': 'warning',
+                        'icon': 'exclamation-triangle'
+                    }
+            else:
+                return {
+                    'status': 'unpaid',
+                    'message': 'Payment required',
+                    'css_class': 'danger',
+                    'icon': 'exclamation-circle'
+                }
+
 class PrescriptionItem(models.Model):
     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name='items')
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
@@ -219,6 +323,11 @@ class PrescriptionItem(models.Model):
     @property
     def remaining_quantity_to_dispense(self):
         return self.quantity - self.quantity_dispensed_so_far
+
+    @property
+    def remaining_quantity(self):
+        """Alias for remaining_quantity_to_dispense for cleaner template access"""
+        return self.remaining_quantity_to_dispense
 
 class DispensingLog(models.Model):
     """Logs each individual act of dispensing a medication item."""

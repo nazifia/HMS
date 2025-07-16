@@ -36,6 +36,7 @@ urlpatterns = [
     # API Endpoints
     path('api/tests/', views.test_api, name='test_api'),
 
-    # Sales Report
+    # Reports
     path('sales-report/', views.laboratory_sales_report, name='laboratory_sales_report'),
+    path('reports/statistics/', views.lab_statistics_report, name='lab_statistics_report'),
 ]

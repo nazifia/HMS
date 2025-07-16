@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% load static %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:medication_inventory_list' %}" class="btn btn-secondary">
+            <i class="fas fa-list"></i> View Inventory
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-plus-circle"></i> Add Medication Stock
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="addStockForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.medication.id_for_label }}" class="form-label">
+                                        <i class="fas fa-pills"></i> Medication *
+                                    </label>
+                                    {{ form.medication }}
+                                    {% if form.medication.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.medication.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.dispensary.id_for_label }}" class="form-label">
+                                        <i class="fas fa-hospital"></i> Dispensary *
+                                    </label>
+                                    {{ form.dispensary }}
+                                    {% if form.dispensary.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.dispensary.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.stock_quantity.id_for_label }}" class="form-label">
+                                        <i class="fas fa-boxes"></i> Stock Quantity to Add *
+                                    </label>
+                                    {{ form.stock_quantity }}
+                                    <small class="form-text text-muted">
+                                        Enter the number of units to add to the inventory
+                                    </small>
+                                    {% if form.stock_quantity.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.stock_quantity.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.reorder_level.id_for_label }}" class="form-label">
+                                        <i class="fas fa-exclamation-triangle"></i> Reorder Level
+                                    </label>
+                                    {{ form.reorder_level }}
+                                    <small class="form-text text-muted">
+                                        Minimum stock level before reordering is needed
+                                    </small>
+                                    {% if form.reorder_level.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.reorder_level.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Add Stock
+                            </button>
+                            <a href="{% url 'pharmacy:medication_inventory_list' %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-info-circle"></i> Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb"></i> Tips:</h6>
+                        <ul class="mb-0">
+                            <li>If the medication already exists in the selected dispensary, the quantity will be added to the existing stock.</li>
+                            <li>If this is a new medication for the dispensary, a new inventory record will be created.</li>
+                            <li>Set an appropriate reorder level to get alerts when stock is low.</li>
+                            <li>The last restock date will be automatically updated.</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Note:</h6>
+                        <p class="mb-0">Make sure to verify the medication and dispensary before adding stock. This action will immediately update the inventory.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for better dropdowns
+    $('#id_medication, #id_dispensary').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+    
+    // Form validation
+    $('#addStockForm').on('submit', function(e) {
+        let stockQuantity = parseInt($('#id_stock_quantity').val());
+        
+        if (stockQuantity <= 0) {
+            e.preventDefault();
+            alert('Stock quantity must be greater than 0.');
+            return false;
+        }
+        
+        // Show loading state
+        $(this).find('button[type="submit"]').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Adding Stock...');
+    });
+});
+</script>
+{% endblock %}

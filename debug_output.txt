@@ -587,3 +587,1366 @@ django.urls.exceptions.NoReverseMatch: Reverse for 'create_prescription' with no
 2025-07-06 16:05:19,722 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
 2025-07-06 17:10:57,167 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
 2025-07-06 17:11:18,590 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-06 17:31:46,498 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\apps.py changed, reloading.
+2025-07-06 17:32:32,276 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\signals.py changed, reloading.
+2025-07-06 17:42:25,880 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\models.py changed, reloading.
+2025-07-06 17:42:43,721 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\signals.py changed, reloading.
+2025-07-06 18:10:28,125 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-06 18:11:03,509 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-06 18:15:11,800 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\__init__.py changed, reloading.
+2025-07-06 18:20:35,164 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-06 18:22:01,577 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-07 09:29:09,515 - WARNING - Not Found: /favicon.ico
+2025-07-07 18:02:06,643 - WARNING - Not Found: /favicon.ico
+2025-07-07 18:14:06,534 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-07 18:15:50,600 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-07 18:32:03,072 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 07:16:56,635 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 07:17:16,401 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 07:17:24,015 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\signals.py changed, reloading.
+2025-07-08 07:17:33,899 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\apps.py changed, reloading.
+2025-07-08 07:17:46,525 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 07:19:04,277 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 07:19:51,185 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\views.py changed, reloading.
+2025-07-08 07:20:08,729 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\patients\views.py changed, reloading.
+2025-07-08 07:24:12,180 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 07:25:03,640 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 07:26:00,046 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 07:28:15,828 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 07:30:41,200 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 07:31:17,173 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:23:12,282 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:23:34,943 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:35:46,931 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:45:00,949 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:49:33,306 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:52:21,451 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\__init__.py changed, reloading.
+2025-07-08 16:55:02,456 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:55:16,910 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 16:55:31,841 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:04:29,321 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:04:42,787 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:07:20,974 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:09:02,286 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:16:02,028 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:27:48,348 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:42:45,122 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-08 17:57:18,546 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 17:59:20,205 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 17:59:20,366 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:03:08,883 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:03:10,273 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:13:40,675 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:13:40,748 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:16:07,758 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:16:07,936 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:16:08,464 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:26:16,542 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\forms.py changed, reloading.
+2025-07-08 18:26:16,655 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\forms.py changed, reloading.
+2025-07-08 18:26:16,944 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\forms.py changed, reloading.
+2025-07-08 18:27:33,595 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:27:33,692 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-08 18:27:35,562 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:10:02,583 - WARNING - Not Found: /Quit
+2025-07-09 06:10:22,293 - WARNING - Not Found: /Quit
+2025-07-09 06:22:41,447 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:22:41,689 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:22:52,483 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:22:52,743 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:25:12,778 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:25:12,890 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:25:26,133 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:25:26,266 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:25:42,046 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:25:43,042 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:26:11,504 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:26:11,826 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:26:11,892 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:26:41,823 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:26:42,100 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:26:42,737 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:27:14,314 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:27:14,728 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:27:14,953 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:27:55,326 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:27:55,405 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:27:56,625 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:28:44,538 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:28:44,667 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:28:44,763 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:29:25,230 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:29:25,293 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:29:25,953 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:30:04,538 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:30:05,283 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:30:05,764 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:30:37,477 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:30:37,852 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:30:37,844 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:31:08,158 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:31:08,253 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:31:08,812 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:31:46,765 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:31:47,975 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:31:48,065 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:32:38,049 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:32:38,332 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:32:38,371 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:36:40,501 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:36:40,534 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:54:06,033 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 06:54:06,203 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:01:18,916 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:01:19,628 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:01:19,636 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:04:53,493 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:04:53,857 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:04:53,898 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:05:49,075 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:05:49,090 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 07:05:50,146 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 10:43:29,813 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 15:47:13,625 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 17:14:32,649 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 17:14:44,084 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 17:17:08,803 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\urls.py changed, reloading.
+2025-07-09 17:17:16,745 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-09 17:45:43,475 - WARNING - Not Found: /favicon.ico
+2025-07-09 18:15:44,017 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-09 18:15:49,676 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-09 18:16:02,687 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-09 18:17:50,975 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-09 18:17:52,607 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-09 18:19:45,373 - ERROR - Internal Server Error: /billing/5/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py", line 163, in invoice_detail
+    return render(request, 'billing/invoice_detail.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 134, in render
+    compiled_parent = self.get_parent(context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 131, in get_parent
+    return self.find_template(parent, context)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 109, in find_template
+    template, origin = context.template.engine.find_template(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        template_name,
+        ^^^^^^^^^^^^^^
+        skip=history,
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 489, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 487, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 609, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 705, in __init__
+    filter_func = parser.find_filter(filter_name)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 615, in find_filter
+    raise TemplateSyntaxError("Invalid filter: '%s'" % filter_name)
+django.template.exceptions.TemplateSyntaxError: Invalid filter: 'add_class'
+2025-07-09 18:19:45,479 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-09 18:20:42,495 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-09 18:20:59,042 - WARNING - Not Found: /billing/api/services/1/
+2025-07-09 18:21:40,054 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-10 17:43:15,575 - WARNING - Not Found: /favicon.ico
+2025-07-10 17:50:01,744 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-10 17:50:17,566 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\apps.py changed, reloading.
+2025-07-10 17:50:44,772 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py changed, reloading.
+2025-07-10 17:50:54,647 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\urls.py changed, reloading.
+2025-07-10 17:56:59,619 - WARNING - Not Found: /billing/api/services/1/
+2025-07-10 18:03:39,545 - ERROR - Internal Server Error: /billing/admission-invoices/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py", line 392, in admission_invoices
+    return render(request, 'billing/admission_invoices.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: billing/admission_invoices.html
+2025-07-10 18:08:19,752 - ERROR - Internal Server Error: /billing/admission-invoices/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py", line 392, in admission_invoices
+    return render(request, 'billing/admission_invoices.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: billing/admission_invoices.html
+2025-07-10 18:09:42,783 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py changed, reloading.
+2025-07-10 18:10:20,649 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py changed, reloading.
+2025-07-10 18:10:41,244 - ERROR - Internal Server Error: /billing/admission-invoices/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 134, in render
+    compiled_parent = self.get_parent(context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 131, in get_parent
+    return self.find_template(parent, context)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 109, in find_template
+    template, origin = context.template.engine.find_template(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        template_name,
+        ^^^^^^^^^^^^^^
+        skip=history,
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 163, in find_template
+    raise TemplateDoesNotExist(name, tried=tried)
+django.template.exceptions.TemplateDoesNotExist: core/base.html
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py", line 392, in admission_invoices
+    return render(request, 'admissions/admission_invoices.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 109, in render
+    reraise(exc, self.backend)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 130, in reraise
+    raise new from exc
+django.template.exceptions.TemplateDoesNotExist: core/base.html
+2025-07-10 18:10:52,771 - ERROR - Internal Server Error: /billing/admission-invoices/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 134, in render
+    compiled_parent = self.get_parent(context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 131, in get_parent
+    return self.find_template(parent, context)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 109, in find_template
+    template, origin = context.template.engine.find_template(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        template_name,
+        ^^^^^^^^^^^^^^
+        skip=history,
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 163, in find_template
+    raise TemplateDoesNotExist(name, tried=tried)
+django.template.exceptions.TemplateDoesNotExist: core/base.html
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py", line 392, in admission_invoices
+    return render(request, 'admissions/admission_invoices.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 109, in render
+    reraise(exc, self.backend)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 130, in reraise
+    raise new from exc
+django.template.exceptions.TemplateDoesNotExist: core/base.html
+2025-07-10 18:15:51,707 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\models.py changed, reloading.
+2025-07-10 18:15:57,190 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-10 18:16:10,359 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\models.py changed, reloading.
+2025-07-10 18:16:35,455 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py changed, reloading.
+2025-07-10 18:17:03,592 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py changed, reloading.
+2025-07-10 18:17:15,478 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\urls.py changed, reloading.
+2025-07-10 18:18:08,179 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-10 18:18:27,088 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-10 18:18:50,619 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\models.py changed, reloading.
+2025-07-10 18:19:35,938 - ERROR - Internal Server Error: /billing/admission-invoices/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: inpatient_admission.amount_paid
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\billing\views.py", line 387, in admission_invoices
+    for admission in admissions:
+                     ^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 384, in __iter__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1935, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: no such column: inpatient_admission.amount_paid
+2025-07-10 18:22:12,543 - WARNING - Not Found: /inpatient/admissions/1/discharge/
+2025-07-10 18:22:24,908 - WARNING - Not Found: /inpatient/admissions/1/discharge/
+2025-07-10 18:24:46,202 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-10 18:34:25,669 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 06:13:43,340 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 06:22:17,951 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 06:22:29,498 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 06:29:36,773 - DEBUG - create_prescription view called.
+2025-07-11 06:36:20,830 - DEBUG - create_prescription view called.
+2025-07-11 06:38:27,527 - DEBUG - create_prescription view called.
+2025-07-11 06:40:16,070 - WARNING - Not Found: /favicon.ico
+2025-07-11 06:41:03,249 - WARNING - Not Found: /favicon.ico
+2025-07-11 06:43:22,440 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 06:43:52,478 - ERROR - Internal Server Error: /dashboard/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\dashboard\views.py", line 45, in dashboard
+    low_stock_medications = Medication.objects.filter(
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        is_active=True,
+        ^^^^^^^^^^^^^^^
+        stock_quantity__lte=F('reorder_level'),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stock_quantity__gt=0 # Ensure it's not completely out of stock if that's a separate category
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).order_by('stock_quantity')[:5]
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1481, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1499, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1506, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1643, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1675, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1523, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1330, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'stock_quantity' into field. Choices are: category, category_id, created_at, description, dosage_form, expiry_date, generic_name, id, inventories, is_active, manufacturer, name, precautions, prescriptionitem, price, purchaseitem, reorder_level, side_effects, storage_instructions, strength, updated_at
+2025-07-11 06:44:28,242 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\dashboard\views.py changed, reloading.
+2025-07-11 06:44:39,561 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\dashboard\views.py changed, reloading.
+2025-07-11 06:44:49,641 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\dashboard\views.py changed, reloading.
+2025-07-11 06:46:17,789 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 06:46:27,086 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 06:46:49,010 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 06:46:56,893 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 06:47:05,065 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 06:47:10,797 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 06:47:17,589 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 07:16:07,963 - WARNING - Not Found: /favicon.ico
+2025-07-11 07:18:01,905 - DEBUG - create_prescription view called.
+2025-07-11 07:23:43,529 - ERROR - Internal Server Error: /doctors/admin/doctors/add/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\core\decorators.py", line 29, in _wrapped_view
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\views.py", line 169, in add_doctor
+    if user_form.is_valid() and doctor_form.is_valid():
+       ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 206, in is_valid
+    return self.is_bound and not self.errors
+                                 ^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 201, in errors
+    self.full_clean()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 337, in full_clean
+    self._clean_fields()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 347, in _clean_fields
+    value = getattr(self, "clean_%s" % name)()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\forms.py", line 277, in clean_username
+    and self._meta.model.objects.filter(username__iexact=username).exists()
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\manager.py", line 196, in __get__
+    raise AttributeError(
+    ...<5 lines>...
+    )
+AttributeError: Manager isn't available; 'auth.User' has been swapped for 'accounts.CustomUser'
+2025-07-11 07:27:29,447 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\forms.py changed, reloading.
+2025-07-11 07:27:52,898 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\forms.py changed, reloading.
+2025-07-11 07:28:29,278 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\admin.py changed, reloading.
+2025-07-11 07:28:55,469 - ERROR - Internal Server Error: /doctors/admin/doctors/add/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\core\decorators.py", line 29, in _wrapped_view
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\views.py", line 169, in add_doctor
+    if user_form.is_valid() and doctor_form.is_valid():
+       ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 206, in is_valid
+    return self.is_bound and not self.errors
+                                 ^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 201, in errors
+    self.full_clean()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 337, in full_clean
+    self._clean_fields()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 347, in _clean_fields
+    value = getattr(self, "clean_%s" % name)()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\forms.py", line 41, in clean_phone_number
+    from accounts.models import UserProfile
+ImportError: cannot import name 'UserProfile' from 'accounts.models' (C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\models.py)
+2025-07-11 07:29:27,546 - ERROR - Internal Server Error: /doctors/admin/doctors/add/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\core\decorators.py", line 29, in _wrapped_view
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\views.py", line 169, in add_doctor
+    if user_form.is_valid() and doctor_form.is_valid():
+       ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 206, in is_valid
+    return self.is_bound and not self.errors
+                                 ^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 201, in errors
+    self.full_clean()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 337, in full_clean
+    self._clean_fields()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 347, in _clean_fields
+    value = getattr(self, "clean_%s" % name)()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\forms.py", line 41, in clean_phone_number
+    from accounts.models import UserProfile
+ImportError: cannot import name 'UserProfile' from 'accounts.models' (C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\models.py)
+2025-07-11 07:30:06,349 - ERROR - Internal Server Error: /doctors/admin/doctors/add/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\core\decorators.py", line 29, in _wrapped_view
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\views.py", line 169, in add_doctor
+    if user_form.is_valid() and doctor_form.is_valid():
+       ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 206, in is_valid
+    return self.is_bound and not self.errors
+                                 ^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 201, in errors
+    self.full_clean()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 337, in full_clean
+    self._clean_fields()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\forms.py", line 347, in _clean_fields
+    value = getattr(self, "clean_%s" % name)()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\forms.py", line 41, in clean_phone_number
+    from accounts.models import UserProfile
+ImportError: cannot import name 'UserProfile' from 'accounts.models' (C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\models.py)
+2025-07-11 08:50:47,106 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\doctors\forms.py changed, reloading.
+2025-07-11 08:58:04,722 - DEBUG - create_prescription view called.
+2025-07-11 09:00:18,641 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 09:00:25,084 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 09:01:53,450 - DEBUG - create_prescription view called.
+2025-07-11 09:04:28,479 - DEBUG - create_prescription view called.
+2025-07-11 09:04:28,487 - DEBUG - Form is valid: False
+2025-07-11 09:04:28,505 - ERROR - Form errors: <ul class="errorlist"><li>status<ul class="errorlist" id="id_status_error"><li>This field is required.</li></ul></li></ul>
+2025-07-11 09:04:28,524 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:07:34,885 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 09:08:23,772 - DEBUG - create_prescription view called.
+2025-07-11 09:08:23,787 - DEBUG - Form is valid: False
+2025-07-11 09:08:23,804 - ERROR - Form errors: <ul class="errorlist"><li>status<ul class="errorlist" id="id_status_error"><li>This field is required.</li></ul></li></ul>
+2025-07-11 09:08:23,934 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:09:36,888 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 09:11:00,167 - DEBUG - create_prescription view called.
+2025-07-11 09:11:00,199 - DEBUG - Form is valid: False
+2025-07-11 09:11:00,218 - ERROR - Form errors: <ul class="errorlist"><li>status<ul class="errorlist" id="id_status_error"><li>This field is required.</li></ul></li></ul>
+2025-07-11 09:11:00,484 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:11:10,066 - DEBUG - create_prescription view called.
+2025-07-11 09:11:10,074 - DEBUG - Form is valid: False
+2025-07-11 09:11:10,075 - ERROR - Form errors: <ul class="errorlist"><li>status<ul class="errorlist" id="id_status_error"><li>This field is required.</li></ul></li></ul>
+2025-07-11 09:11:10,113 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:11:54,877 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 09:14:22,980 - DEBUG - create_prescription view called.
+2025-07-11 09:14:22,994 - DEBUG - Form is valid: True
+2025-07-11 09:14:22,998 - DEBUG - Prescription saved: 2
+2025-07-11 09:14:23,002 - DEBUG - Prescription items created. Total price: 20.00
+2025-07-11 09:14:23,004 - ERROR - Service.DoesNotExist exception caught.
+2025-07-11 09:14:23,146 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:15:16,534 - DEBUG - create_prescription view called.
+2025-07-11 09:15:16,541 - DEBUG - Form is valid: True
+2025-07-11 09:15:16,551 - DEBUG - Prescription saved: 2
+2025-07-11 09:15:16,554 - DEBUG - Prescription items created. Total price: 600.00
+2025-07-11 09:15:16,556 - ERROR - Service.DoesNotExist exception caught.
+2025-07-11 09:15:16,575 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:18:08,156 - DEBUG - create_prescription view called.
+2025-07-11 09:18:08,164 - DEBUG - Form is valid: True
+2025-07-11 09:18:08,169 - DEBUG - Prescription saved: 2
+2025-07-11 09:18:08,173 - DEBUG - Prescription items created. Total price: 600.00
+2025-07-11 09:18:08,175 - ERROR - Service.DoesNotExist exception caught.
+2025-07-11 09:18:08,194 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:21:34,093 - DEBUG - create_prescription view called.
+2025-07-11 09:21:34,102 - DEBUG - Form is valid: True
+2025-07-11 09:21:34,107 - DEBUG - Prescription saved: 2
+2025-07-11 09:21:34,111 - DEBUG - Prescription items created. Total price: 600.00
+2025-07-11 09:21:34,114 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:21:34,140 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:22:02,319 - DEBUG - create_prescription view called.
+2025-07-11 09:22:02,329 - DEBUG - Form is valid: True
+2025-07-11 09:22:02,338 - DEBUG - Prescription saved: 2
+2025-07-11 09:22:02,341 - DEBUG - Prescription items created. Total price: 600.00
+2025-07-11 09:22:02,343 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:22:02,372 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:30:56,944 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:32:42,538 - DEBUG - create_prescription view called.
+2025-07-11 09:32:42,554 - DEBUG - Form is valid: True
+2025-07-11 09:32:42,565 - DEBUG - Prescription saved: 2
+2025-07-11 09:32:42,571 - DEBUG - Prescription items created. Total price: 600.00
+2025-07-11 09:32:42,580 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:32:42,903 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:40:19,646 - DEBUG - create_prescription view called.
+2025-07-11 09:40:19,652 - DEBUG - Form is valid: True
+2025-07-11 09:40:19,663 - DEBUG - Prescription saved: 2
+2025-07-11 09:40:19,666 - DEBUG - Prescription items created. Total price: 600.00
+2025-07-11 09:40:19,672 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:40:19,698 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:40:48,127 - DEBUG - create_prescription view called.
+2025-07-11 09:41:25,360 - DEBUG - create_prescription view called.
+2025-07-11 09:41:25,370 - DEBUG - Form is valid: True
+2025-07-11 09:41:25,375 - DEBUG - Prescription saved: 2
+2025-07-11 09:41:25,378 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 09:41:25,385 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:41:25,426 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:41:33,532 - DEBUG - create_prescription view called.
+2025-07-11 09:41:33,544 - DEBUG - Form is valid: True
+2025-07-11 09:41:33,553 - DEBUG - Prescription saved: 2
+2025-07-11 09:41:33,559 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 09:41:33,562 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:41:33,598 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:43:43,969 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:43:43,998 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:43:43,999 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:45:03,917 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:45:03,997 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:47:44,228 - DEBUG - create_prescription view called.
+2025-07-11 09:47:44,245 - DEBUG - Form is valid: True
+2025-07-11 09:47:44,269 - DEBUG - Prescription saved: 2
+2025-07-11 09:47:44,273 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 09:47:44,275 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:47:44,443 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 09:49:34,906 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:49:35,086 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:49:35,563 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 09:54:08,993 - DEBUG - create_prescription view called.
+2025-07-11 09:54:09,009 - DEBUG - Form is valid: True
+2025-07-11 09:54:09,016 - DEBUG - Prescription saved: 2
+2025-07-11 09:54:09,020 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 09:54:09,027 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 09:54:09,185 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 10:04:30,364 - DEBUG - create_prescription view called.
+2025-07-11 10:04:30,383 - DEBUG - Form is valid: True
+2025-07-11 10:04:30,408 - DEBUG - Prescription saved: 2
+2025-07-11 10:04:30,412 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 10:04:30,415 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 10:04:30,580 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 10:04:42,519 - DEBUG - create_prescription view called.
+2025-07-11 10:04:42,528 - DEBUG - Form is valid: True
+2025-07-11 10:04:42,537 - DEBUG - Prescription saved: 2
+2025-07-11 10:04:42,540 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 10:04:42,543 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 10:04:42,577 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 12:48:43,798 - DEBUG - create_prescription view called.
+2025-07-11 12:48:44,330 - DEBUG - Form is valid: True
+2025-07-11 12:48:44,337 - DEBUG - Prescription saved: 2
+2025-07-11 12:48:44,342 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 12:48:44,347 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 12:48:45,195 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 12:56:23,764 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 12:56:23,782 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\inpatient\views.py changed, reloading.
+2025-07-11 13:05:48,766 - DEBUG - create_prescription view called.
+2025-07-11 13:05:48,787 - DEBUG - Form is valid: True
+2025-07-11 13:05:48,812 - DEBUG - Prescription saved: 2
+2025-07-11 13:05:48,816 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 13:05:48,827 - ERROR - General exception caught: Invoice() got unexpected keyword arguments: 'service', 'notes'
+2025-07-11 13:05:48,996 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 13:09:27,607 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:09:27,726 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:09:49,432 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:09:49,440 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:12:36,032 - DEBUG - create_prescription view called.
+2025-07-11 13:12:36,052 - DEBUG - Form is valid: True
+2025-07-11 13:12:36,066 - DEBUG - Prescription saved: 2
+2025-07-11 13:12:36,069 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 13:12:36,084 - ERROR - General exception caught: Cannot assign "<Invoice: Invoice object (1)>": "Prescription.invoice" must be a "Invoice" instance.
+2025-07-11 13:12:36,286 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 13:12:44,580 - DEBUG - create_prescription view called.
+2025-07-11 13:12:44,588 - DEBUG - Form is valid: True
+2025-07-11 13:12:44,597 - DEBUG - Prescription saved: 2
+2025-07-11 13:12:44,600 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 13:12:44,605 - ERROR - General exception caught: Cannot assign "<Invoice: Invoice object (1)>": "Prescription.invoice" must be a "Invoice" instance.
+2025-07-11 13:12:44,632 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 13:12:51,966 - DEBUG - create_prescription view called.
+2025-07-11 13:12:51,972 - DEBUG - Form is valid: True
+2025-07-11 13:12:51,983 - DEBUG - Prescription saved: 2
+2025-07-11 13:12:51,986 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 13:12:51,992 - ERROR - General exception caught: Cannot assign "<Invoice: Invoice object (1)>": "Prescription.invoice" must be a "Invoice" instance.
+2025-07-11 13:12:52,018 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 13:14:12,854 - DEBUG - create_prescription view called.
+2025-07-11 13:14:12,868 - DEBUG - Form is valid: True
+2025-07-11 13:14:12,877 - DEBUG - Prescription saved: 2
+2025-07-11 13:14:12,882 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 13:14:12,887 - ERROR - General exception caught: Cannot assign "<Invoice: Invoice object (1)>": "Prescription.invoice" must be a "Invoice" instance.
+2025-07-11 13:14:12,916 - WARNING - Bad Request: /pharmacy/prescriptions/create/
+2025-07-11 13:15:33,186 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\models.py changed, reloading.
+2025-07-11 13:15:33,238 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\models.py changed, reloading.
+2025-07-11 13:20:01,569 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:20:02,347 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:20:53,740 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:20:54,236 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:21:02,080 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:21:02,426 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:21:10,044 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:21:10,436 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:21:24,619 - DEBUG - create_prescription view called.
+2025-07-11 13:21:24,635 - DEBUG - Form is valid: True
+2025-07-11 13:21:24,647 - DEBUG - Prescription saved: 2
+2025-07-11 13:21:24,651 - DEBUG - Prescription items created. Total price: 400.00
+2025-07-11 13:21:24,663 - DEBUG - Invoice created: 1
+2025-07-11 13:27:22,890 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:27:22,900 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:27:42,372 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:27:42,379 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:28:32,318 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:28:32,412 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:29:37,234 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:29:37,256 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:30:10,466 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:30:10,469 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:31:04,741 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:31:04,766 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:31:24,796 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:31:24,838 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:32:16,777 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:32:16,784 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:32:16,973 - ERROR - Internal Server Error: /pharmacy/prescriptions/2/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 875, in dispense_prescription
+    formset = DispenseItemFormSet(initial=initial_data, formset_kwargs={'prescription_items_qs': prescription_items})
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 271, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: BaseFormSet.__init__() got an unexpected keyword argument 'formset_kwargs'. Did you mean 'form_kwargs'?
+2025-07-11 13:32:47,476 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:32:47,479 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:32:47,517 - ERROR - Internal Server Error: /pharmacy/prescriptions/2/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 875, in dispense_prescription
+    formset = DispenseItemFormSet(initial=initial_data, formset_kwargs={'prescription_items_qs': prescription_items})
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 271, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: BaseFormSet.__init__() got an unexpected keyword argument 'formset_kwargs'. Did you mean 'form_kwargs'?
+2025-07-11 13:33:00,653 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:33:00,657 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:33:00,716 - ERROR - Internal Server Error: /pharmacy/prescriptions/2/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 875, in dispense_prescription
+    formset = DispenseItemFormSet(initial=initial_data, formset_kwargs={'prescription_items_qs': prescription_items})
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 271, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: BaseFormSet.__init__() got an unexpected keyword argument 'formset_kwargs'. Did you mean 'form_kwargs'?
+2025-07-11 13:36:37,057 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:36:37,166 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:37:38,006 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:37:38,009 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:37:38,366 - ERROR - Internal Server Error: /pharmacy/prescriptions/2/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 883, in dispense_prescription
+    return render(request, 'pharmacy/dispense_prescription.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 199, in render
+    len_values = len(values)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 121, in __len__
+    return len(self.forms)
+               ^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\utils\functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 206, in forms
+    self._construct_form(i, **self.get_form_kwargs(i))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 282, in _construct_form
+    return super()._construct_form(i, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 244, in _construct_form
+    form = self.form(**defaults)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 189, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: BaseForm.__init__() got an unexpected keyword argument 'prescription_items_qs'
+2025-07-11 13:40:40,554 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:40:40,556 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:40:40,676 - ERROR - Internal Server Error: /pharmacy/prescriptions/2/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 883, in dispense_prescription
+    return render(request, 'pharmacy/dispense_prescription.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 199, in render
+    len_values = len(values)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 121, in __len__
+    return len(self.forms)
+               ^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\utils\functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 206, in forms
+    self._construct_form(i, **self.get_form_kwargs(i))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 282, in _construct_form
+    return super()._construct_form(i, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 244, in _construct_form
+    form = self.form(**defaults)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 189, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: BaseForm.__init__() got an unexpected keyword argument 'prescription_items_qs'
+2025-07-11 13:42:19,213 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:42:19,217 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:42:19,359 - ERROR - Internal Server Error: /pharmacy/prescriptions/2/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 883, in dispense_prescription
+    return render(request, 'pharmacy/dispense_prescription.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 199, in render
+    len_values = len(values)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 121, in __len__
+    return len(self.forms)
+               ^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\utils\functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 206, in forms
+    self._construct_form(i, **self.get_form_kwargs(i))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 282, in _construct_form
+    return super()._construct_form(i, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 244, in _construct_form
+    form = self.form(**defaults)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 189, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: BaseForm.__init__() got an unexpected keyword argument 'prescription_items_qs'
+2025-07-11 13:44:06,509 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:44:06,515 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:44:15,890 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:44:15,894 - DEBUG - Initial data for formset: [{'item_id': 1}]
+2025-07-11 13:45:18,697 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:45:18,969 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:45:28,704 - DEBUG - Prescription items for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:45:28,712 - DEBUG - Prescription items to dispense for 2: <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:46:30,399 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:46:30,402 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:46:50,462 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:46:50,483 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:47:21,751 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:47:21,805 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:47:47,877 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:47:47,942 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:48:19,518 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:48:19,628 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:48:25,466 - DEBUG - Prescription items to dispense for 2 (POST): <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:48:25,467 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:48:25,468 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:48:25,468 - ERROR - Formset errors: [{'__all__': ['Form not initialized with a prescription item.']}, {'item_id': ['This field is required.'], '__all__': ['Form not initialized with a prescription item.']}]
+2025-07-11 13:49:05,566 - DEBUG - Prescription items to dispense for 2 (POST): <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:49:05,567 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:49:05,568 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:49:05,568 - ERROR - Formset errors: [{'__all__': ['Form not initialized with a prescription item.']}, {'item_id': ['This field is required.'], '__all__': ['Form not initialized with a prescription item.']}]
+2025-07-11 13:49:19,200 - DEBUG - Prescription items to dispense for 2 (POST): <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:49:19,202 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:49:19,202 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:49:19,203 - ERROR - Formset errors: [{'__all__': ['Form not initialized with a prescription item.']}, {'item_id': ['This field is required.'], '__all__': ['Form not initialized with a prescription item.']}]
+2025-07-11 13:50:31,686 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:50:31,689 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 13:50:51,524 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:50:51,538 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:51:17,711 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:51:17,733 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 13:53:05,325 - DEBUG - Prescription items to dispense for 2 (POST): <QuerySet [<PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>]>
+2025-07-11 13:53:05,327 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:53:05,328 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-11 13:53:05,328 - DEBUG - Formset initialized with 2 forms.
+2025-07-11 13:53:05,328 - DEBUG -   Form 0: prescription_item is present
+2025-07-11 13:53:05,329 - DEBUG - DispenseItemForm clean: Item ID None
+2025-07-11 13:53:05,329 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 30, dispensary: None
+2025-07-11 13:53:05,329 - ERROR - DispenseItemForm clean: Form not initialized with a prescription item.
+2025-07-11 13:53:05,360 - ERROR -   Form 0 errors: <ul class="errorlist"><li>__all__<ul class="errorlist nonfield"><li>Form not initialized with a prescription item.</li></ul></li></ul>
+2025-07-11 13:53:05,361 - ERROR - Error dispensing items: 'DispenseItemForm' object has no attribute 'cleaned_data'
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 894, in dispense_prescription
+    if form.cleaned_data.get('dispense_this_item'):
+       ^^^^^^^^^^^^^^^^^
+AttributeError: 'DispenseItemForm' object has no attribute 'cleaned_data'. Did you mean: 'changed_data'?
+2025-07-11 13:53:05,364 - DEBUG -   Form 1: prescription_item is present
+2025-07-11 13:53:05,364 - DEBUG - DispenseItemForm clean: Item ID None
+2025-07-11 13:53:05,364 - DEBUG -   dispense_this_item: True, quantity_to_dispense: None, dispensary: None
+2025-07-11 13:53:05,364 - ERROR - DispenseItemForm clean: Form not initialized with a prescription item.
+2025-07-11 13:53:05,365 - ERROR -   Form 1 errors: <ul class="errorlist"><li>item_id<ul class="errorlist" id="id_form-1-item_id_error"><li>This field is required.</li></ul></li><li>__all__<ul class="errorlist nonfield"><li>Form not initialized with a prescription item.</li></ul></li></ul>
+2025-07-11 14:51:52,808 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 14:51:52,894 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 14:52:30,947 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 14:52:31,015 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 14:53:28,406 - DEBUG - Prescription items to dispense for 2 (GET): 1 items found.
+2025-07-11 14:53:28,407 - DEBUG -   - Item ID: 1, Medication: AMLODIPINE, Remaining: 20
+2025-07-11 14:53:28,408 - DEBUG - Formset initialized with 0 forms.
+2025-07-11 14:53:36,255 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 14:53:36,841 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 14:54:00,414 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 14:54:01,202 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-11 14:54:52,510 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 14:54:52,607 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 14:55:28,557 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-11 14:55:28,574 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:05:06,041 - WARNING - Not Found: /favicon.ico
+2025-07-12 09:05:28,782 - DEBUG - Prescription items to dispense for 2 (GET): 1 items found.
+2025-07-12 09:05:28,787 - DEBUG - Initial data for formset (GET): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:05:28,788 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:05:28,788 - DEBUG - Formset initialized with 1 forms.
+2025-07-12 09:05:28,788 - DEBUG -   Form 0: prescription_item is present
+2025-07-12 09:07:38,787 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:07:38,850 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:07:39,020 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:07:39,024 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:07:51,463 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:07:51,815 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:07:52,285 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:08:27,090 - DEBUG - Prescription items to dispense for 2 (GET): 1 items found.
+2025-07-12 09:08:27,095 - DEBUG - Initial data for formset (GET): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:08:27,096 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:08:27,383 - ERROR - Internal Server Error: /pharmacy/prescriptions/2/dispense/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py", line 963, in dispense_prescription
+    )
+    
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 121, in __len__
+    return len(self.forms)
+               ^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\utils\functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 206, in forms
+    self._construct_form(i, **self.get_form_kwargs(i))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\forms\formsets.py", line 245, in _construct_form
+    self.add_fields(form, i)
+    ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py", line 311, in add_fields
+    form.prescription_item = self.prescription_items_qs[index]
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DispenseItemFormSet' object has no attribute 'prescription_items_qs'
+2025-07-12 09:10:18,444 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:10:18,479 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:10:18,487 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:10:18,638 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:10:32,924 - DEBUG - Prescription items to dispense for 2 (GET): 1 items found.
+2025-07-12 09:10:32,930 - DEBUG - Initial data for formset (GET): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:10:32,931 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:10:32,931 - DEBUG - Formset initialized with 1 forms.
+2025-07-12 09:10:32,931 - DEBUG -   Form 0: prescription_item is present
+2025-07-12 09:10:51,273 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:10:51,277 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:10:51,279 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:10:51,279 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:10:51,279 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 1, dispensary: None
+2025-07-12 09:10:51,280 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:10:51,281 - WARNING -   Validation Error: Item 1 cannot be dispensed.
+2025-07-12 09:10:51,281 - ERROR - Formset errors: [{'__all__': ['This item cannot be dispensed (fully dispensed or out of stock).']}]
+2025-07-12 09:10:58,462 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:10:58,470 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:10:58,471 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:10:58,471 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:10:58,471 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 1, dispensary: None
+2025-07-12 09:10:58,471 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:10:58,472 - WARNING -   Validation Error: Item 1 cannot be dispensed.
+2025-07-12 09:10:58,472 - ERROR - Formset errors: [{'__all__': ['This item cannot be dispensed (fully dispensed or out of stock).']}]
+2025-07-12 09:15:38,322 - DEBUG - Prescription items to dispense for 2 (GET): 1 items found.
+2025-07-12 09:15:38,329 - DEBUG - Initial data for formset (GET): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:15:38,329 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:15:38,329 - DEBUG - Formset initialized with 1 forms.
+2025-07-12 09:15:38,329 - DEBUG -   Form 0: prescription_item is present
+2025-07-12 09:16:57,924 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:16:58,053 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:16:58,089 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:16:58,660 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:17:11,934 - DEBUG - Prescription items to dispense for 2 (GET): 1 items found.
+2025-07-12 09:17:11,950 - DEBUG - Initial data for formset (GET): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:17:11,951 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:17:11,951 - DEBUG - Formset initialized with 1 forms.
+2025-07-12 09:17:11,952 - DEBUG -   Form 0: prescription_item is present
+2025-07-12 09:17:11,952 - DEBUG -     Form 0 prescription_item ID: 1
+2025-07-12 09:18:19,443 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:18:19,455 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:18:19,554 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:18:19,612 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:18:31,320 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:18:32,354 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:18:32,370 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:18:32,391 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:19:23,705 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:19:23,811 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:19:24,467 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:19:24,568 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:20:10,998 - DEBUG - GET Request: selected_dispensary_id=None, selected_dispensary=None
+2025-07-12 09:20:11,001 - DEBUG - Prescription items to dispense for 2 (GET): 1 items found.
+2025-07-12 09:20:11,008 - DEBUG - Initial data for formset (GET): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:20:11,009 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:20:11,009 - DEBUG - Formset initialized with 1 forms.
+2025-07-12 09:20:11,009 - DEBUG -   Form 0: prescription_item is present
+2025-07-12 09:20:11,009 - DEBUG -     Form 0 prescription_item ID: 1
+2025-07-12 09:20:28,178 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:20:28,183 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:20:28,184 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:20:28,184 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:20:28,185 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:20:28,185 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:20:28,185 - WARNING -   Validation Error: Item 1 cannot be dispensed.
+2025-07-12 09:20:28,186 - ERROR - Formset errors: [{'__all__': ['This item cannot be dispensed (fully dispensed or out of stock).']}]
+2025-07-12 09:20:40,015 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:20:40,018 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:20:40,019 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:20:40,019 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:20:40,020 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:20:40,020 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:20:40,020 - WARNING -   Validation Error: Item 1 cannot be dispensed.
+2025-07-12 09:20:40,020 - ERROR - Formset errors: [{'__all__': ['This item cannot be dispensed (fully dispensed or out of stock).']}]
+2025-07-12 09:21:17,238 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:21:17,240 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:21:17,241 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:21:17,242 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:21:17,242 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:21:17,242 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:21:17,243 - WARNING -   Validation Error: Item 1 cannot be dispensed.
+2025-07-12 09:21:17,243 - ERROR - Formset errors: [{'__all__': ['This item cannot be dispensed (fully dispensed or out of stock).']}]
+2025-07-12 09:22:04,034 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:22:04,410 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:22:04,959 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:22:05,587 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:22:43,910 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:22:44,246 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:22:44,256 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:22:44,758 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:10,647 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:10,723 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:11,409 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:11,554 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:33,604 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:33,636 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:33,950 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:33,943 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:46,872 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:46,945 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:47,254 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:23:47,268 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:24:19,604 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:24:21,622 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:24:21,627 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:24:21,629 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:24:21,629 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:24:21,629 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:24:21,629 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:24:21,631 - ERROR - Formset errors: [{'__all__': ['This item is out of stock at the selected dispensary.']}]
+2025-07-12 09:24:21,878 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:24:39,750 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:24:39,755 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:24:39,757 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:24:39,757 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:24:39,757 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:24:39,757 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:24:39,760 - ERROR - Formset errors: [{'__all__': ['This item is out of stock at the selected dispensary.']}]
+2025-07-12 09:24:39,875 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:24:49,289 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:24:49,294 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:24:49,295 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:24:49,296 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:24:49,296 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:24:49,296 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:24:49,299 - ERROR - Formset errors: [{'__all__': ['This item is out of stock at the selected dispensary.']}]
+2025-07-12 09:24:49,422 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:24:50,895 - WARNING - Not Found: /favicon.ico
+2025-07-12 09:28:09,110 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:28:13,623 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:28:13,628 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:28:13,630 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:28:13,630 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:28:13,631 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:28:13,631 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:28:13,632 - ERROR - Formset errors: [{'__all__': ['This item is out of stock at the selected dispensary.']}]
+2025-07-12 09:28:13,940 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:28:23,512 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:28:23,515 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:28:23,516 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:28:23,516 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:28:23,516 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:28:23,516 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:28:23,517 - ERROR - Formset errors: [{'__all__': ['This item is out of stock at the selected dispensary.']}]
+2025-07-12 09:28:23,632 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:28:32,404 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:28:32,409 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:28:32,410 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:28:32,411 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:28:32,411 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:28:32,411 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:28:32,412 - ERROR - Formset errors: [{'__all__': ['This item is out of stock at the selected dispensary.']}]
+2025-07-12 09:28:32,537 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:28:39,270 - DEBUG - Prescription items to dispense for 2 (POST): 1 items found.
+2025-07-12 09:28:39,272 - DEBUG - Initial data for formset (POST): [{'prescription_item': <PrescriptionItem: AMLODIPINE (20) for NAZIFI AHMAD>, 'item_id': 1}]
+2025-07-12 09:28:39,274 - DEBUG - DispenseItemForm __init__: prescription_item is None
+2025-07-12 09:28:39,275 - DEBUG - DispenseItemForm clean: Item ID 1
+2025-07-12 09:28:39,275 - DEBUG -   dispense_this_item: True, quantity_to_dispense: 20, dispensary: None
+2025-07-12 09:28:39,275 - DEBUG -   Remaining Qty: 20, Is Fully Dispensed: False, Available Stock: 0
+2025-07-12 09:28:39,277 - ERROR - Formset errors: [{'__all__': ['This item is out of stock at the selected dispensary.']}]
+2025-07-12 09:28:39,401 - WARNING - Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2025-07-12 09:29:35,392 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:29:35,604 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:29:35,626 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:29:35,658 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\forms.py changed, reloading.
+2025-07-12 09:29:47,325 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:29:47,911 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:29:47,997 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.
+2025-07-12 09:29:48,683 - INFO - C:\Users\dell\Desktop\MY_PRODUCTS\HMS\pharmacy\views.py changed, reloading.

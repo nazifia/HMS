@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+                    <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to Admission
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Admission Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-left-primary">
+                                <div class="card-body">
+                                    <h6 class="text-primary font-weight-bold">Admission Details</h6>
+                                    <p><strong>Patient:</strong> {{ admission.patient.get_full_name }}</p>
+                                    <p><strong>Patient Number:</strong> {{ admission.patient.patient_number }}</p>
+                                    <p><strong>Admission Date:</strong> {{ admission.admission_date|date:"Y-m-d H:i" }}</p>
+                                    <p><strong>Ward:</strong> {{ admission.bed.ward.name }}</p>
+                                    <p><strong>Bed:</strong> {{ admission.bed.bed_number }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-left-info">
+                                <div class="card-body">
+                                    <h6 class="text-info font-weight-bold">Payment Information</h6>
+                                    <p><strong>Total Amount:</strong> ₦{{ invoice.total_amount|floatformat:2 }}</p>
+                                    <p><strong>Amount Paid:</strong> ₦{{ invoice.amount_paid|floatformat:2 }}</p>
+                                    <p><strong>Remaining Balance:</strong> <span class="text-danger font-weight-bold">₦{{ remaining_amount|floatformat:2 }}</span></p>
+                                    {% if patient_wallet %}
+                                    <p><strong>Wallet Balance:</strong> <span class="{% if patient_wallet.balance >= remaining_amount %}text-success{% else %}text-warning{% endif %} font-weight-bold">₦{{ patient_wallet.balance|floatformat:2 }}</span></p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Form -->
+                    <form method="post" id="payment-form">
+                        {% csrf_token %}
+                        
+                        <!-- Payment Source Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-left-warning">
+                                    <div class="card-body">
+                                        <h6 class="text-warning font-weight-bold mb-3">Select Payment Source</h6>
+                                        <div class="form-group">
+                                            {{ form.payment_source.label_tag }}
+                                            <div class="mt-2">
+                                                {% for choice in form.payment_source %}
+                                                <div class="form-check form-check-inline">
+                                                    {{ choice.tag }}
+                                                    <label class="form-check-label ml-2" for="{{ choice.id_for_label }}">
+                                                        {{ choice.choice_label }}
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            {% if form.payment_source.help_text %}
+                                            <small class="form-text text-muted">{{ form.payment_source.help_text }}</small>
+                                            {% endif %}
+                                            {% if form.payment_source.errors %}
+                                            <div class="text-danger">{{ form.payment_source.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Details -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {{ form.amount.label_tag }}
+                                    {{ form.amount|add_class:"form-control" }}
+                                    {% if form.amount.errors %}
+                                    <div class="text-danger">{{ form.amount.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Maximum amount: ₦{{ remaining_amount|floatformat:2 }}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group" id="payment-method-group">
+                                    {{ form.payment_method.label_tag }}
+                                    {{ form.payment_method|add_class:"form-control" }}
+                                    {% if form.payment_method.errors %}
+                                    <div class="text-danger">{{ form.payment_method.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {{ form.payment_date.label_tag }}
+                                    {{ form.payment_date|add_class:"form-control" }}
+                                    {% if form.payment_date.errors %}
+                                    <div class="text-danger">{{ form.payment_date.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {{ form.transaction_id.label_tag }}
+                                    {{ form.transaction_id|add_class:"form-control" }}
+                                    {% if form.transaction_id.errors %}
+                                    <div class="text-danger">{{ form.transaction_id.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Optional: Reference number for the transaction</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.notes.label_tag }}
+                            {{ form.notes|add_class:"form-control" }}
+                            {% if form.notes.errors %}
+                            <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Form Errors -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Submit Button -->
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-credit-card"></i> Process Payment
+                            </button>
+                            <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('payment-form');
+    const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+    const paymentMethodSelect = document.getElementById('{{ form.payment_method.id_for_label }}');
+    const paymentSourceRadios = document.querySelectorAll('input[name="payment_source"]');
+    const paymentMethodGroup = document.getElementById('payment-method-group');
+    const transactionIdInput = document.getElementById('{{ form.transaction_id.id_for_label }}');
+    
+    const walletBalance = {{ patient_wallet.balance|default:0 }};
+    const maxAmount = {{ remaining_amount }};
+    
+    // Handle payment source change
+    function handlePaymentSourceChange() {
+        const selectedSource = document.querySelector('input[name="payment_source"]:checked').value;
+        
+        if (selectedSource === 'patient_wallet') {
+            // For wallet payments, force wallet method and disable selection
+            paymentMethodSelect.value = 'wallet';
+            paymentMethodSelect.disabled = true;
+            paymentMethodGroup.style.opacity = '0.6';
+            
+            // Update amount validation for wallet balance
+            amountInput.setAttribute('max', Math.min(walletBalance, maxAmount));
+            
+            // Hide transaction ID for wallet payments
+            transactionIdInput.closest('.form-group').style.display = 'none';
+        } else {
+            // For billing office payments, enable method selection and exclude wallet
+            paymentMethodSelect.disabled = false;
+            paymentMethodGroup.style.opacity = '1';
+            
+            // Remove wallet option from payment methods
+            Array.from(paymentMethodSelect.options).forEach(option => {
+                if (option.value === 'wallet') {
+                    option.style.display = 'none';
+                } else {
+                    option.style.display = 'block';
+                }
+            });
+            
+            // Reset to cash if wallet was selected
+            if (paymentMethodSelect.value === 'wallet') {
+                paymentMethodSelect.value = 'cash';
+            }
+            
+            // Reset amount validation
+            amountInput.setAttribute('max', maxAmount);
+            
+            // Show transaction ID for other payment methods
+            transactionIdInput.closest('.form-group').style.display = 'block';
+        }
+    }
+    
+    // Initialize payment source handling
+    paymentSourceRadios.forEach(radio => {
+        radio.addEventListener('change', handlePaymentSourceChange);
+    });
+    handlePaymentSourceChange();
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const amount = parseFloat(amountInput.value);
+        const selectedSource = document.querySelector('input[name="payment_source"]:checked').value;
+        const paymentMethod = paymentMethodSelect.value;
+        
+        if (isNaN(amount) || amount <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid payment amount.');
+            amountInput.focus();
+            return;
+        }
+        
+        if (amount > maxAmount) {
+            e.preventDefault();
+            alert(`Payment amount cannot exceed ₦${maxAmount.toFixed(2)}`);
+            amountInput.focus();
+            return;
+        }
+        
+        if (selectedSource === 'patient_wallet' && amount > walletBalance) {
+            e.preventDefault();
+            alert(`Insufficient wallet balance. Available: ₦${walletBalance.toFixed(2)}, Required: ₦${amount.toFixed(2)}`);
+            amountInput.focus();
+            return;
+        }
+        
+        // Confirm payment
+        const sourceText = selectedSource === 'patient_wallet' ? 'Patient Wallet' : 'Billing Office';
+        const methodText = paymentMethodSelect.options[paymentMethodSelect.selectedIndex].text;
+        
+        if (!confirm(`Confirm payment of ₦${amount.toFixed(2)} via ${sourceText} (${methodText})?`)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

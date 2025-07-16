@@ -3,6 +3,43 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .search-form .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .search-form .btn {
+        margin-right: 0.5rem;
+    }
+
+    .prescription-card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .prescription-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .search-highlight {
+        background-color: #fff3cd;
+        padding: 0.1rem 0.2rem;
+        border-radius: 0.2rem;
+    }
+
+    .form-control:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -14,17 +51,88 @@
 
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Search & Filter</h6>
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-search"></i> Search & Filter Prescriptions
+            </h6>
         </div>
         <div class="card-body">
-            <form method="get" class="form-inline">
-                {{ form.search|as_crispy_field }}
-                {{ form.status|as_crispy_field }}
-                {{ form.doctor|as_crispy_field }}
-                {{ form.date_from|as_crispy_field }}
-                {{ form.date_to|as_crispy_field }}
-                <button type="submit" class="btn btn-primary ml-2">Search</button>
-                <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-secondary ml-2">Reset</a>
+            <!-- Debug Information -->
+            {% if form %}
+                <div class="alert alert-info">
+                    <strong>Debug:</strong> Form is available. Fields:
+                    {% for field in form %}
+                        {{ field.name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <strong>Debug:</strong> Form is not available in context.
+                </div>
+            {% endif %}
+
+            <form method="get" class="search-form">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.search.id_for_label }}">{{ form.search.label }}</label>
+                            {{ form.search }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.patient_number.id_for_label }}">{{ form.patient_number.label }}</label>
+                            {{ form.patient_number }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.medication_name.id_for_label }}">{{ form.medication_name.label }}</label>
+                            {{ form.medication_name }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.doctor.id_for_label }}">{{ form.doctor.label }}</label>
+                            {{ form.doctor }}
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                            {{ form.status }}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.payment_status.id_for_label }}">{{ form.payment_status.label }}</label>
+                            {{ form.payment_status }}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.date_from.id_for_label }}">{{ form.date_from.label }}</label>
+                            {{ form.date_from }}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.date_to.id_for_label }}">{{ form.date_to.label }}</label>
+                            {{ form.date_to }}
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-group w-100">
+                            <button type="submit" class="btn btn-primary mr-2">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <a href="{% url 'pharmacy:prescription_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -43,6 +151,7 @@
                             <th>Doctor</th>
                             <th>Prescription Date</th>
                             <th>Status</th>
+                            <th>Payment Status</th>
                             <th>Type</th>
                             <th>Actions</th>
                         </tr>
@@ -53,12 +162,35 @@
                             <td>{{ prescription.patient.get_full_name }}</td>
                             <td>{{ prescription.doctor.get_full_name }}</td>
                             <td>{{ prescription.prescription_date }}</td>
-                            <td>{{ prescription.get_status_display }}</td>
+                            <td>
+                                <span class="badge badge-{{ prescription.status|default:'secondary' }}">
+                                    {{ prescription.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% with payment_info=prescription.get_payment_status_display_info %}
+                                <span class="badge badge-{{ payment_info.css_class }}">
+                                    <i class="fas fa-{{ payment_info.icon }}"></i> {{ payment_info.message }}
+                                </span>
+                                {% endwith %}
+                            </td>
                             <td>{{ prescription.get_prescription_type_display }}</td>
                             <td>
-                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-info btn-sm">View</a>
-                                <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success btn-sm">Dispense</a>
-                                <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-secondary btn-sm">Print</a>
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                {% if prescription.is_payment_verified %}
+                                    <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-pills"></i> Dispense
+                                    </a>
+                                {% else %}
+                                    <button type="button" class="btn btn-success btn-sm" disabled title="Payment required">
+                                        <i class="fas fa-lock"></i> Dispense
+                                    </button>
+                                {% endif %}
+                                <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-print"></i> Print
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -69,19 +201,31 @@
             <nav aria-label="Page navigation example">
                 <ul class="pagination justify-content-center">
                     {% if page_obj.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Previous</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                Previous
+                            </a>
+                        </li>
                     {% endif %}
 
                     {% for i in page_obj.paginator.page_range %}
                         {% if page_obj.number == i %}
-                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                            <li class="page-item active"><span class="page-link">{{ i }}</span></li>
                         {% else %}
-                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">{{ i }}</a></li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    {{ i }}
+                                </a>
+                            </li>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Next</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                Next
+                            </a>
+                        </li>
                     {% endif %}
                 </ul>
             </nav>
@@ -92,4 +236,103 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced search form functionality
+    const searchForm = document.querySelector('form[method="get"]');
+    const searchInput = document.querySelector('input[name="search"]');
+    const statusSelect = document.querySelector('select[name="status"]');
+    const paymentStatusSelect = document.querySelector('select[name="payment_status"]');
+
+    if (searchForm) {
+        // Add loading state to search button
+        const searchButton = searchForm.querySelector('button[type="submit"]');
+        const originalButtonText = searchButton.innerHTML;
+
+        searchForm.addEventListener('submit', function() {
+            searchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+            searchButton.disabled = true;
+        });
+
+        // Auto-submit on status change (optional)
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function() {
+                // Uncomment the next line if you want auto-submit on status change
+                // searchForm.submit();
+            });
+        }
+
+        if (paymentStatusSelect) {
+            paymentStatusSelect.addEventListener('change', function() {
+                // Uncomment the next line if you want auto-submit on payment status change
+                // searchForm.submit();
+            });
+        }
+
+        // Add search input enhancements
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                // Clear previous timeout
+                clearTimeout(searchTimeout);
+
+                // Add visual feedback
+                if (this.value.length > 0) {
+                    this.classList.add('border-primary');
+                } else {
+                    this.classList.remove('border-primary');
+                }
+
+                // Optional: Auto-search after user stops typing (uncomment if desired)
+                // searchTimeout = setTimeout(() => {
+                //     if (this.value.length >= 3 || this.value.length === 0) {
+                //         searchForm.submit();
+                //     }
+                // }, 1000);
+            });
+        }
+    }
+
+    // Add tooltips to action buttons
+    const actionButtons = document.querySelectorAll('[title]');
+    actionButtons.forEach(button => {
+        button.setAttribute('data-toggle', 'tooltip');
+        button.setAttribute('data-placement', 'top');
+    });
+
+    // Initialize tooltips if Bootstrap is available
+    if (typeof $ !== 'undefined' && $.fn.tooltip) {
+        $('[data-toggle="tooltip"]').tooltip();
+    }
+
+    // Add confirmation for delete actions
+    const deleteButtons = document.querySelectorAll('a[href*="delete"]');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to delete this prescription?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // Highlight search terms in results
+    const searchTerm = new URLSearchParams(window.location.search).get('search');
+    if (searchTerm && searchTerm.length > 0) {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach(cell => {
+                const text = cell.textContent;
+                if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    cell.innerHTML = cell.innerHTML.replace(regex, '<mark>$1</mark>');
+                }
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

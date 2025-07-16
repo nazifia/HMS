@@ -30,18 +30,91 @@ from core.models import send_notification_email, InternalNotification
 
 @login_required
 def result_list(request):
-    """View for listing all test results"""
+    """Enhanced view for listing all test results with comprehensive search"""
+    from .forms import TestResultSearchForm
+
     results_list = TestResult.objects.select_related(
         'test_request__patient', 'test', 'performed_by', 'verified_by'
     ).all().order_by('-result_date')
 
+    # Enhanced search form
+    search_form = TestResultSearchForm(request.GET or None)
+
+    if search_form.is_valid():
+        search_query = search_form.cleaned_data.get('search')
+        patient_number = search_form.cleaned_data.get('patient_number')
+        test_name = search_form.cleaned_data.get('test_name')
+        test_category = search_form.cleaned_data.get('test_category')
+        status = search_form.cleaned_data.get('status')
+        performed_by = search_form.cleaned_data.get('performed_by')
+        verified_by = search_form.cleaned_data.get('verified_by')
+        date_from = search_form.cleaned_data.get('date_from')
+        date_to = search_form.cleaned_data.get('date_to')
+
+        # Enhanced patient search by name, number, or phone
+        if search_query:
+            results_list = results_list.filter(
+                Q(test_request__patient__first_name__icontains=search_query) |
+                Q(test_request__patient__last_name__icontains=search_query) |
+                Q(test_request__patient__middle_name__icontains=search_query) |
+                Q(test_request__patient__patient_number__icontains=search_query) |
+                Q(test_request__patient__phone_number__icontains=search_query)
+            )
+
+        if patient_number:
+            results_list = results_list.filter(
+                Q(test_request__patient__patient_number__icontains=patient_number)
+            )
+
+        if test_name:
+            results_list = results_list.filter(
+                test__name__icontains=test_name
+            )
+
+        if test_category:
+            results_list = results_list.filter(
+                test__category=test_category
+            )
+
+        if status:
+            # Map status to appropriate field filtering
+            if status == 'verified':
+                results_list = results_list.filter(verified_by__isnull=False)
+            elif status == 'pending':
+                results_list = results_list.filter(
+                    performed_by__isnull=True,
+                    verified_by__isnull=True
+                )
+            elif status == 'in_progress':
+                results_list = results_list.filter(
+                    performed_by__isnull=False,
+                    verified_by__isnull=True
+                )
+            elif status == 'completed':
+                results_list = results_list.filter(
+                    performed_by__isnull=False
+                )
+
+        if performed_by:
+            results_list = results_list.filter(performed_by=performed_by)
+
+        if verified_by:
+            results_list = results_list.filter(verified_by=verified_by)
+
+        if date_from:
+            results_list = results_list.filter(result_date__gte=date_from)
+
+        if date_to:
+            results_list = results_list.filter(result_date__lte=date_to)
+
+    # Legacy query parameter support
     query = request.GET.get('q')
-    if query:
+    if query and not search_form.is_valid():
         results_list = results_list.filter(
             Q(test_request__patient__first_name__icontains=query) |
             Q(test_request__patient__last_name__icontains=query) |
             Q(test__name__icontains=query) |
-            Q(test_request__patient__patient_id__icontains=query)
+            Q(test_request__patient__patient_number__icontains=query)
         )
 
     paginator = Paginator(results_list, 15)
@@ -50,6 +123,7 @@ def result_list(request):
 
     context = {
         'page_obj': page_obj,
+        'search_form': search_form,
         'title': 'Test Results',
         'query': query,
     }
@@ -301,6 +375,143 @@ def delete_category(request, category_id):
     }
 
     return render(request, 'laboratory/delete_category.html', context)
+
+
+@login_required
+def lab_statistics_report(request):
+    """Comprehensive laboratory statistics and reporting"""
+    from django.db.models import Q, Sum, Count, Avg
+    from datetime import datetime, timedelta
+    from decimal import Decimal
+
+    # Get filter parameters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    test_category_id = request.GET.get('test_category')
+    test_id = request.GET.get('test')
+    status = request.GET.get('status')
+    priority = request.GET.get('priority')
+
+    # Default date range (last 30 days)
+    if not start_date:
+        start_date = (timezone.now() - timedelta(days=30)).date()
+    else:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+
+    if not end_date:
+        end_date = timezone.now().date()
+    else:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    # Base queryset for test requests
+    test_requests = TestRequest.objects.filter(
+        request_date__gte=start_date,
+        request_date__lte=end_date
+    ).select_related('patient', 'doctor', 'created_by')
+
+    # Apply filters
+    if test_category_id:
+        test_requests = test_requests.filter(tests__category_id=test_category_id)
+
+    if test_id:
+        test_requests = test_requests.filter(tests__id=test_id)
+
+    if status:
+        test_requests = test_requests.filter(status=status)
+
+    if priority:
+        test_requests = test_requests.filter(priority=priority)
+
+    # Test requests by category
+    category_stats = test_requests.values(
+        'tests__category__name',
+        'tests__category__id'
+    ).annotate(
+        total_requests=Count('id'),
+        total_revenue=Sum('tests__price'),
+        avg_price=Avg('tests__price'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_requests')
+
+    # Top tests by volume
+    top_tests = test_requests.values(
+        'tests__name',
+        'tests__id'
+    ).annotate(
+        total_requests=Count('id'),
+        total_revenue=Sum('tests__price'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_requests')[:10]
+
+    # Status distribution
+    status_stats = test_requests.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
+    # Priority distribution
+    priority_stats = test_requests.values('priority').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
+    # Daily test volume trend
+    daily_stats = test_requests.extra(
+        select={'day': 'DATE(request_date)'}
+    ).values('day').annotate(
+        daily_requests=Count('id'),
+        daily_revenue=Sum('tests__price')
+    ).order_by('day')
+
+    # Top requesting doctors
+    top_doctors = test_requests.values(
+        'doctor__first_name',
+        'doctor__last_name',
+        'doctor__id'
+    ).annotate(
+        total_requests=Count('id'),
+        total_revenue=Sum('tests__price'),
+        unique_patients=Count('patient', distinct=True)
+    ).order_by('-total_requests')[:10]
+
+    # Overall statistics
+    overall_stats = test_requests.aggregate(
+        total_requests=Count('id'),
+        total_revenue=Sum('tests__price'),
+        avg_revenue_per_request=Avg('tests__price'),
+        unique_patients=Count('patient', distinct=True),
+        unique_tests=Count('tests', distinct=True),
+        unique_doctors=Count('doctor', distinct=True)
+    )
+
+    # Completion rate (completed vs total)
+    completed_requests = test_requests.filter(status='completed').count()
+    total_requests = test_requests.count()
+    completion_rate = (completed_requests / total_requests * 100) if total_requests > 0 else 0
+
+    # Get filter options
+    test_categories = TestCategory.objects.all().order_by('name')
+    tests = Test.objects.all().order_by('name')
+
+    context = {
+        'title': 'Laboratory Statistics and Reports',
+        'start_date': start_date,
+        'end_date': end_date,
+        'category_stats': category_stats,
+        'top_tests': top_tests,
+        'top_doctors': top_doctors,
+        'status_stats': status_stats,
+        'priority_stats': priority_stats,
+        'daily_stats': daily_stats,
+        'overall_stats': overall_stats,
+        'completion_rate': completion_rate,
+        'test_categories': test_categories,
+        'tests': tests,
+        'selected_category': test_category_id,
+        'selected_test': test_id,
+        'selected_status': status,
+        'selected_priority': priority,
+    }
+
+    return render(request, 'laboratory/reports/lab_statistics.html', context)
 
 # Test Request and Result Views
 @login_required

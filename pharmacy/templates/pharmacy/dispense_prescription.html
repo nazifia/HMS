@@ -1,96 +1,639 @@
-{% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .dispensing-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .prescription-header {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-left: 4px solid #007bff;
+    }
+    
+    .dispensary-selection {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .items-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .table th {
+        background: #007bff;
+        color: white;
+        border: none;
+        font-weight: 600;
+    }
+    
+    .stock-status {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .payment-status .badge {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+    }
+
+    .payment-status .btn {
+        font-size: 0.8rem;
+    }
+    
+    .stock-available {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .stock-low {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .stock-out {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .stock-loading {
+        background: #e2e3e5;
+        color: #6c757d;
+    }
+    
+    .quantity-input {
+        width: 80px;
+    }
+    
+    .btn-dispense {
+        background: #28a745;
+        border-color: #28a745;
+        padding: 12px 30px;
+        font-weight: 600;
+    }
+    
+    .btn-dispense:hover {
+        background: #218838;
+        border-color: #1e7e34;
+    }
+    
+    .quick-actions {
+        margin-bottom: 15px;
+    }
+    
+    .alert {
+        border-radius: 8px;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
-    </div>
-
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Prescription Details - #{{ prescription.id }}</h6>
-        </div>
-        <div class="card-body">
-            <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
-            <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
-            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
-            <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
-            <p><strong>Type:</strong> {{ prescription.get_prescription_type_display }}</p>
-        </div>
-    </div>
-
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Dispense Medications</h6>
-        </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-
-                <div class="form-group mb-3">
-                    <label for="dispensary_select">Select Dispensary:</label>
-                    <select name="dispensary_select" id="dispensary_select" class="form-control">
-                        <option value="">-- Select a Dispensary --</option>
-                        {% for dispensary in dispensaries %}
-                            <option value="{{ dispensary.id }}" {% if dispensary.id|stringformat:"s" == selected_dispensary_id %}selected{% endif %}>{{ dispensary.name }}</option>
-                        {% endfor %}
-                    </select>
+<div class="dispensing-container">
+    <!-- Prescription Header -->
+    <div class="prescription-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h4 class="mb-2">{{ title }}</h4>
+                <p class="mb-1"><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+                <p class="mb-1"><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+                <p class="mb-0"><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="mb-2">
+                    <span class="badge badge-{{ prescription.status|default:'secondary' }} badge-lg">{{ prescription.get_status_display }}</span>
                 </div>
+                {% with payment_info=prescription.get_payment_status_display_info %}
+                <div class="payment-status">
+                    <span class="badge badge-{{ payment_info.css_class }} badge-lg">
+                        <i class="fas fa-{{ payment_info.icon }}"></i> {{ payment_info.message }}
+                    </span>
+                    {% if payment_info.status == 'unpaid' and prescription.invoice %}
+                        <div class="mt-2">
+                            <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-credit-card"></i> Pay Invoice
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endwith %}
+            </div>
+        </div>
+    </div>
 
-                {{ formset.management_form }}
-                <div class="table-responsive">
-                    <table class="table table-bordered" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Medication</th>
-                                <th>Prescribed Quantity</th>
-                                <th>Dispensed So Far</th>
-                                <th>Remaining</th>
-                                <th>Dispense?</th>
-                                <th>Quantity to Dispense</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for form in formset %}
-                            <tr>
-                                <td>{{ form.prescription_item.medication.name }} ({{ form.prescription_item.medication.strength }})</td>
-                                <td>{{ form.prescription_item.quantity }}</td>
-                                <td>{{ form.prescription_item.quantity_dispensed_so_far }}</td>
-                                <td>{{ form.prescription_item.remaining_quantity_to_dispense }}</td>
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Debug Information -->
+    <div class="alert alert-info">
+        <strong>Debug Info:</strong>
+        Prescription ID: {{ prescription.id }},
+        Items count: {{ prescription_items|length }},
+        {% if prescription_items %}
+            Items: {% for item in prescription_items %}{{ item.medication.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        {% else %}
+            No items found
+        {% endif %}
+    </div>
+
+    <!-- Dispensary Selection -->
+    <div class="dispensary-selection">
+        <h5 class="mb-3">Select Dispensary</h5>
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <select id="dispensary-select" class="form-select" required>
+                    <option value="">Choose dispensary...</option>
+                    {% for dispensary in dispensaries %}
+                        <option value="{{ dispensary.id }}">{{ dispensary.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <div id="dispensary-status" class="text-muted">
+                    <small>Please select a dispensary to view stock levels</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Verification Alert -->
+    {% if not prescription.is_payment_verified %}
+    <div class="alert alert-warning" role="alert">
+        <h5 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Payment Required</h5>
+        <p>This prescription cannot be dispensed until payment is completed.</p>
+        {% if prescription.invoice %}
+            <hr>
+            <p class="mb-0">
+                <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-warning">
+                    <i class="fas fa-credit-card"></i> Complete Payment
+                </a>
+            </p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Prescription Items -->
+    <div class="items-table">
+        <div class="table-responsive">
+            <form id="dispense-form" method="post" {% if not prescription.is_payment_verified %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
+                {% csrf_token %}
+                <input type="hidden" id="dispensary-id-input" name="dispensary_id" value="">
+                
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th width="5%">
+                                <input type="checkbox" id="select-all" class="form-check-input">
+                            </th>
+                            <th>Medication</th>
+                            <th>Prescribed Qty</th>
+                            <th>Dispensed</th>
+                            <th>Remaining</th>
+                            <th>Stock Status</th>
+                            <th>Dispense Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in prescription.items.all %}
+                            {% if not item.is_dispensed %}
+                            <tr data-item-id="{{ item.id }}">
                                 <td>
-                                    {{ form.item_id }}
-                                    {{ form.dispense_this_item }}
-                                    {% if form.dispense_this_item.field.widget.attrs.disabled %}
-                                        <span class="badge bg-secondary">{{ form.dispense_this_item.label }}</span>
-                                    {% endif %}
+                                    <input type="checkbox"
+                                           name="dispense_item_{{ item.id }}"
+                                           class="form-check-input item-checkbox">
                                 </td>
-                                <td>{{ form.quantity_to_dispense }}</td>
-                            </tr>
-                            {% if form.errors %}
-                            <tr>
-                                <td colspan="6">
-                                    <div class="alert alert-danger" role="alert">
-                                        {% for field in form %}
-                                            {% if field.errors %}
-                                                {{ field.label }}: {{ field.errors }}
-                                            {% endif %}
-                                        {% endfor %}
-                                        {{ form.non_field_errors }}
-                                    </div>
+                                <td>
+                                    <strong>{{ item.medication.name }}</strong>
+                                    <br><small class="text-muted">{{ item.medication.generic_name }}</small>
+                                </td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.quantity_dispensed_so_far }}</td>
+                                <td>{{ item.remaining_quantity_to_dispense }}</td>
+                                <td>
+                                    <span class="stock-status stock-loading" data-stock-cell>
+                                        <i class="fas fa-info-circle"></i> Select dispensary to check stock
+                                    </span>
+                                </td>
+                                <td>
+                                    <input type="number"
+                                           name="quantity_{{ item.id }}"
+                                           class="form-control quantity-input"
+                                           min="1"
+                                           max="{{ item.remaining_quantity_to_dispense }}"
+                                           value="{{ item.remaining_quantity_to_dispense }}">
                                 </td>
                             </tr>
                             {% endif %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Dispense Selected Items</button>
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-info-circle"></i>
+                                        No prescription items found
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                {% if prescription.items.all %}
+                    <div class="p-3 border-top">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="quick-actions">
+                                    <button type="button" id="select-all-btn" class="btn btn-outline-primary btn-sm">
+                                        Select All
+                                    </button>
+                                    <button type="button" id="clear-all-btn" class="btn btn-outline-secondary btn-sm">
+                                        Clear All
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <button type="submit" id="dispense-btn" class="btn btn-dispense">
+                                    <i class="fas fa-pills"></i> Dispense Selected Items
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dispensarySelect = document.getElementById('dispensary-select');
+    const dispensaryIdInput = document.getElementById('dispensary-id-input');
+    const dispensaryStatus = document.getElementById('dispensary-status');
+    const selectAllCheckbox = document.getElementById('select-all');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    const dispenseBtn = document.getElementById('dispense-btn');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    const quantityInputs = document.querySelectorAll('.quantity-input');
+    
+    // Handle dispensary selection
+    dispensarySelect.addEventListener('change', function() {
+        const dispensaryId = this.value;
+        dispensaryIdInput.value = dispensaryId;
+
+        if (dispensaryId) {
+            console.log('Dispensary selected:', dispensaryId);
+
+            // Show items as loading and fetch stock quantities
+            showItemsAsLoading();
+            fetchStockQuantities(dispensaryId);
+        } else {
+            // Even when no dispensary is selected, keep items visible
+            resetStockDisplay();
+            // Don't disable controls - keep items visible
+            console.log('No dispensary selected, but keeping items visible');
+        }
+    });
+
+    // Show items as loading immediately when dispensary is selected
+    function showItemsAsLoading() {
+        console.log('Showing items as loading...');
+        const stockCells = document.querySelectorAll('[data-stock-cell]');
+
+        stockCells.forEach((cell) => {
+            cell.className = 'stock-status stock-loading';
+            cell.innerHTML = '<span class="loading-spinner"></span> Loading...';
+
+            // Make sure the row is visible and enabled
+            const row = cell.closest('tr');
+            if (row) {
+                const checkbox = row.querySelector('.item-checkbox');
+                const quantityInput = row.querySelector('.quantity-input');
+
+                if (checkbox) checkbox.disabled = false;
+                if (quantityInput) quantityInput.disabled = false;
+
+                console.log('Enabled row for item:', row.dataset.itemId);
+            }
+        });
+
+        // Enable all controls
+        enableGlobalControls();
+
+        // Make sure the dispense button is enabled
+        if (dispenseBtn) dispenseBtn.disabled = false;
+    }
+    
+    // Fetch stock quantities via AJAX
+    function fetchStockQuantities(dispensaryId) {
+        console.log('Fetching stock quantities for dispensary:', dispensaryId);
+        dispensaryStatus.innerHTML = '<span class="loading-spinner"></span> Loading stock information...';
+
+        // Use the correct URL with the prescription ID
+        const url = `/pharmacy/prescriptions/{{ prescription.id }}/stock-quantities/`;
+        console.log('AJAX URL:', url);
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: `dispensary_id=${dispensaryId}`
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            if (data.success) {
+                updateStockDisplay(data.stock_quantities);
+                dispensaryStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i> Stock information loaded';
+            } else {
+                throw new Error(data.error || 'Failed to load stock information');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching stock:', error);
+            dispensaryStatus.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Error loading stock information: ' + error.message;
+            resetStockDisplay();
+
+            // Show items even if stock loading failed
+            enableItemsWithoutStock();
+        });
+    }
+    
+    // Update stock display
+    function updateStockDisplay(stockData) {
+        console.log('Updating stock display with data:', stockData);
+        const stockCells = document.querySelectorAll('[data-stock-cell]');
+        console.log('Found stock cells:', stockCells.length);
+
+        stockCells.forEach((cell, index) => {
+            const row = cell.closest('tr');
+            const itemId = row.dataset.itemId;
+            const checkbox = row.querySelector('.item-checkbox');
+            const quantityInput = row.querySelector('.quantity-input');
+            const stock = stockData[itemId] || 0;
+
+            console.log(`Item ${itemId}: stock = ${stock}`);
+
+            // Update stock display
+            if (stock > 10) {
+                cell.className = 'stock-status stock-available';
+                cell.innerHTML = `<i class="fas fa-check-circle"></i> ${stock} available`;
+            } else if (stock > 0) {
+                cell.className = 'stock-status stock-low';
+                cell.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${stock} available (Low)`;
+            } else {
+                cell.className = 'stock-status stock-out';
+                cell.innerHTML = `<i class="fas fa-times-circle"></i> Out of stock`;
+            }
+
+            // Always enable controls, but adjust max quantity based on stock
+            checkbox.disabled = false;
+            quantityInput.disabled = false;
+
+            if (stock > 0) {
+                // Set max quantity based on stock
+                quantityInput.max = Math.min(stock, parseInt(quantityInput.max));
+                quantityInput.value = Math.min(parseInt(quantityInput.value), stock);
+                console.log(`Enabled controls for item ${itemId} with ${stock} stock`);
+            } else {
+                // Even with no stock, keep controls enabled but show warning
+                console.log(`Warning: No stock for item ${itemId}, but keeping controls enabled`);
+                cell.innerHTML += ' <span class="text-danger">(Warning: No stock available)</span>';
+            }
+        });
+
+        enableGlobalControls();
+        updateDispenseButton();
+        console.log('Stock display update completed');
+    }
+    
+    // Reset stock display
+    function resetStockDisplay() {
+        console.log('Resetting stock display but keeping items visible');
+        const stockCells = document.querySelectorAll('[data-stock-cell]');
+        stockCells.forEach(cell => {
+            cell.className = 'stock-status stock-loading';
+            cell.innerHTML = '<i class="fas fa-info-circle"></i> Select dispensary to check stock';
+
+            // Keep the row visible and enabled
+            const row = cell.closest('tr');
+            if (row) {
+                const checkbox = row.querySelector('.item-checkbox');
+                const quantityInput = row.querySelector('.quantity-input');
+
+                if (checkbox) checkbox.disabled = false;
+                if (quantityInput) quantityInput.disabled = false;
+
+                console.log('Keeping row visible for item:', row.dataset.itemId);
+            }
+        });
+
+        // Keep global controls enabled
+        enableGlobalControls();
+    }
+    
+    // Disable all controls
+    function disableAllControls() {
+        itemCheckboxes.forEach(cb => {
+            cb.disabled = true;
+            cb.checked = false;
+        });
+        quantityInputs.forEach(input => input.disabled = true);
+        selectAllCheckbox.disabled = true;
+        selectAllBtn.disabled = true;
+        clearAllBtn.disabled = true;
+        dispenseBtn.disabled = true;
+    }
+    
+    // Enable global controls
+    function enableGlobalControls() {
+        console.log('Enabling global controls');
+        if (selectAllCheckbox) selectAllCheckbox.disabled = false;
+        if (selectAllBtn) selectAllBtn.disabled = false;
+        if (clearAllBtn) clearAllBtn.disabled = false;
+        if (dispenseBtn) dispenseBtn.disabled = false;
+
+        // Also enable all item controls
+        itemCheckboxes.forEach(cb => {
+            if (cb) cb.disabled = false;
+        });
+        quantityInputs.forEach(input => {
+            if (input) input.disabled = false;
+        });
+    }
+
+    // Enable items without stock information (for debugging)
+    function enableItemsWithoutStock() {
+        console.log('Enabling items without stock information');
+        const stockCells = document.querySelectorAll('[data-stock-cell]');
+
+        stockCells.forEach((cell) => {
+            const row = cell.closest('tr');
+            const checkbox = row.querySelector('.item-checkbox');
+            const quantityInput = row.querySelector('.quantity-input');
+
+            // Show as unknown stock but enable controls
+            cell.className = 'stock-status stock-loading';
+            cell.innerHTML = '<i class="fas fa-question-circle"></i> Stock unknown - proceed with caution';
+
+            // Enable controls
+            checkbox.disabled = false;
+            quantityInput.disabled = false;
+        });
+
+        enableGlobalControls();
+        updateDispenseButton();
+    }
+    
+    // Handle select all
+    selectAllCheckbox.addEventListener('change', function() {
+        const availableCheckboxes = Array.from(itemCheckboxes).filter(cb => !cb.disabled);
+        availableCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateDispenseButton();
+    });
+    
+    selectAllBtn.addEventListener('click', function() {
+        const availableCheckboxes = Array.from(itemCheckboxes).filter(cb => !cb.disabled);
+        availableCheckboxes.forEach(cb => cb.checked = true);
+        selectAllCheckbox.checked = true;
+        updateDispenseButton();
+    });
+    
+    // Handle clear all
+    clearAllBtn.addEventListener('click', function() {
+        itemCheckboxes.forEach(cb => cb.checked = false);
+        selectAllCheckbox.checked = false;
+        updateDispenseButton();
+    });
+    
+    // Handle individual checkbox changes
+    itemCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateDispenseButton);
+    });
+    
+    // Update dispense button state
+    function updateDispenseButton() {
+        const checkedBoxes = Array.from(itemCheckboxes).filter(cb => cb.checked);
+        // Only require items to be checked, not dispensary selection
+        dispenseBtn.disabled = checkedBoxes.length === 0;
+
+        // Update select all checkbox state
+        const availableCheckboxes = Array.from(itemCheckboxes).filter(cb => !cb.disabled);
+        const checkedAvailable = availableCheckboxes.filter(cb => cb.checked);
+        selectAllCheckbox.checked = availableCheckboxes.length > 0 && checkedAvailable.length === availableCheckboxes.length;
+        selectAllCheckbox.indeterminate = checkedAvailable.length > 0 && checkedAvailable.length < availableCheckboxes.length;
+    }
+    
+    // Form submission validation
+    document.getElementById('dispense-form').addEventListener('submit', function(e) {
+        // Check payment verification first
+        {% if not prescription.is_payment_verified %}
+        e.preventDefault();
+        alert('Payment must be completed before dispensing medications.');
+        return;
+        {% endif %}
+
+        const checkedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
+
+        if (checkedItems.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one item to dispense.');
+            return;
+        }
+        
+        if (!dispensarySelect.value) {
+            // For now, allow dispensing without dispensary selection for testing
+            console.warn('No dispensary selected, but allowing dispensing for testing');
+            // e.preventDefault();
+            // alert('Please select a dispensary.');
+            // return;
+        }
+        
+        // Validate quantities
+        let hasInvalidQuantity = false;
+        checkedItems.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const quantityInput = row.querySelector('.quantity-input');
+            const quantity = parseInt(quantityInput.value);
+            
+            if (!quantity || quantity <= 0) {
+                hasInvalidQuantity = true;
+            }
+        });
+        
+        if (hasInvalidQuantity) {
+            e.preventDefault();
+            alert('Please enter valid quantities for all selected items.');
+            return;
+        }
+        
+        // Confirm dispensing
+        if (!confirm(`Are you sure you want to dispense ${checkedItems.length} item(s)?`)) {
+            e.preventDefault();
+        }
+    });
+    
+    // Initialize - enable all controls by default
+    console.log('Page loaded, enabling all controls');
+    enableGlobalControls();
+
+    // Make sure all items are visible and enabled
+    const stockCells = document.querySelectorAll('[data-stock-cell]');
+    stockCells.forEach((cell) => {
+        const row = cell.closest('tr');
+        if (row) {
+            const checkbox = row.querySelector('.item-checkbox');
+            const quantityInput = row.querySelector('.quantity-input');
+
+            if (checkbox) checkbox.disabled = false;
+            if (quantityInput) quantityInput.disabled = false;
+
+            console.log('Enabled item on page load:', row.dataset.itemId);
+        }
+    });
+});
+</script>
 {% endblock %}

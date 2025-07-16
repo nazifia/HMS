@@ -294,10 +294,19 @@
                                     <br><small class="text-muted">units</small>
                                 </div>
                                 <div class="col-md-2 text-center">
-                                    <span class="price-badge">${{ log.total_price_for_this_log|floatformat:2 }}</span>
+                                    <span class="price-badge">₦{{ log.total_price_for_this_log|floatformat:2 }}</span>
                                     <br><small class="text-muted">total</small>
                                 </div>
                                 <div class="col-md-1 text-end">
+                                    {% if log.prescription_item.prescription.id %}
+                                        <a href="{% url 'pharmacy:prescription_detail' log.prescription_item.prescription.id %}" class="btn btn-sm btn-outline-info" title="View Prescription">
+                                            <i class="fas fa-file-prescription"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="btn btn-sm btn-outline-secondary disabled" title="No Prescription">
+                                            <i class="fas fa-file-prescription"></i>
+                                        </span>
+                                    {% endif %}
                                     <a href="{% url 'pharmacy:dispensed_item_detail' log.id %}" 
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i>
@@ -382,7 +391,7 @@
                                 </div>
                                 <div class="text-end">
                                     <span class="badge bg-primary">{{ med.total_quantity }}</span>
-                                    <br><small class="text-muted">${{ med.total_value|floatformat:2 }}</small>
+                                    <br><small class="text-muted">₦{{ med.total_value|floatformat:2 }}</small>
                                 </div>
                             </div>
                         </div>
@@ -412,7 +421,7 @@
                                 </div>
                                 <div class="text-end">
                                     <span class="badge bg-success">{{ staff.total_dispensed }}</span>
-                                    <br><small class="text-muted">${{ staff.total_value|floatformat:2 }}</small>
+                                    <br><small class="text-muted">₦{{ staff.total_value|floatformat:2 }}</small>
                                 </div>
                             </div>
                         </div>

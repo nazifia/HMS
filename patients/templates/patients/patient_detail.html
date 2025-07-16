@@ -109,6 +109,55 @@
                 {% endif %}
                 <hr>
 
+                <!-- Recent Admissions -->
+                <h5>Recent Admissions</h5>
+                {% if recent_admissions %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Date</th>
+                                    <th>Billed</th>
+                                    <th>Paid</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for admission in recent_admissions %}
+                                <tr>
+                                    <td>{{ admission.id }}</td>
+                                    <td>{{ admission.admission_date|date:"Y-m-d" }}</td>
+                                    <td>₦{{ admission.billed_amount|floatformat:2 }}</td>
+                                    <td>₦{{ admission.amount_paid|floatformat:2 }}</td>
+                                    <td>₦{{ admission.billed_amount|sub:admission.amount_paid|floatformat:2 }}</td>
+                                    <td>
+                                        {% if admission.get_total_cost <= admission.amount_paid %}
+                                            <span class="badge bg-success">Paid</span>
+                                        {% elif admission.amount_paid > 0 %}
+                                            <span class="badge bg-warning">Partially Paid</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-info btn-sm">View</a>
+                                        {% if admission.get_total_cost > admission.amount_paid %}
+                                            <a href="{% url 'billing:create_invoice_for_admission' admission.id %}" class="btn btn-success btn-sm">Pay</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p>No recent admissions found for this patient.</p>
+                {% endif %}
+                <hr>
+
                 <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">Edit Patient</a>
             </div>
         </div>
@@ -168,7 +217,7 @@
                 <a href="#" class="btn btn-info btn-block mb-2">New Appointment</a>
                 <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-warning btn-block mb-2">New Consultation</a>
                 <a href="{% url 'consultations:create_referral' %}" class="btn btn-info btn-block mb-2">Refer Patient</a>
-                <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success btn-block mb-2">Send Medication Prescription</a>
+                <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success btn-block mb-2" style="display: block !important; visibility: visible !important;">Send Medication Prescription</a>
                 <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-block mb-2">Edit Patient</a>
                 <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success btn-block mb-2">Wallet Dashboard</a>
             </div>

@@ -14,6 +14,83 @@
                 </a>
             </div>
             <div class="card-body">
+                <!-- Enhanced Search Form -->
+                {% if search_form %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-search"></i> Search Test Results
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="get">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.search.id_for_label }}">{{ search_form.search.label }}</label>
+                                        {{ search_form.search }}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.patient_number.id_for_label }}">{{ search_form.patient_number.label }}</label>
+                                        {{ search_form.patient_number }}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.test_name.id_for_label }}">{{ search_form.test_name.label }}</label>
+                                        {{ search_form.test_name }}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.test_category.id_for_label }}">{{ search_form.test_category.label }}</label>
+                                        {{ search_form.test_category }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.status.id_for_label }}">{{ search_form.status.label }}</label>
+                                        {{ search_form.status }}
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.performed_by.id_for_label }}">{{ search_form.performed_by.label }}</label>
+                                        {{ search_form.performed_by }}
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.date_from.id_for_label }}">{{ search_form.date_from.label }}</label>
+                                        {{ search_form.date_from }}
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="{{ search_form.date_to.id_for_label }}">{{ search_form.date_to.label }}</label>
+                                        {{ search_form.date_to }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-group w-100">
+                                        <button type="submit" class="btn btn-primary mr-2">
+                                            <i class="fas fa-search"></i> Search
+                                        </button>
+                                        <a href="{% url 'laboratory:result_list' %}" class="btn btn-secondary">
+                                            <i class="fas fa-times"></i> Clear
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Results Table -->
                 <div class="table-responsive">
                     <table class="table table-hover">

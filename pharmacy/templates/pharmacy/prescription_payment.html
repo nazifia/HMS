@@ -1,0 +1,473 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .payment-card {
+        border: 1px solid #e3e6f0;
+        border-radius: 0.35rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+    
+    .payment-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.35rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .payment-method-icon {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+    
+    .amount-display {
+        font-size: 2rem;
+        font-weight: bold;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    
+    .prescription-info {
+        background: #f8f9fc;
+        border-left: 4px solid #4e73df;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .btn-pay {
+        background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .btn-pay:hover {
+        background: linear-gradient(135deg, #13855c 0%, #1cc88a 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .payment-source-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid #e3e6f0 !important;
+    }
+
+    .payment-source-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .payment-source-card.border-primary {
+        border-color: #4e73df !important;
+        background-color: #f8f9fc !important;
+    }
+
+    .payment-source-card input[type="radio"] {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-credit-card text-primary"></i>
+            {{ title }}
+        </h1>
+        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Prescription
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Payment Summary -->
+        <div class="col-lg-4">
+            <div class="payment-summary">
+                <h5 class="mb-3">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    Payment Summary
+                </h5>
+                <div class="mb-3">
+                    <div class="amount-display">₦{{ remaining_amount|floatformat:2 }}</div>
+                    <small>Amount Due</small>
+                </div>
+                <hr style="border-color: rgba(255,255,255,0.3);">
+                <div class="row text-sm">
+                    <div class="col-6">
+                        <strong>Invoice Total:</strong><br>
+                        ₦{{ invoice.total_amount|floatformat:2 }}
+                    </div>
+                    <div class="col-6">
+                        <strong>Amount Paid:</strong><br>
+                        ₦{{ invoice.amount_paid|floatformat:2 }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prescription Info -->
+            <div class="prescription-info">
+                <h6 class="font-weight-bold text-primary mb-2">
+                    <i class="fas fa-prescription-bottle-alt"></i>
+                    Prescription Details
+                </h6>
+                <div class="text-sm">
+                    <p class="mb-1"><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+                    <p class="mb-1"><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+                    <p class="mb-1"><strong>Date:</strong> {{ prescription.date_prescribed|date:"M d, Y" }}</p>
+                    <p class="mb-0"><strong>Items:</strong> {{ prescription.items.count }} medication(s)</p>
+                </div>
+            </div>
+
+            <!-- NHIA Information -->
+            {% if pricing_breakdown %}
+            <div class="{% if pricing_breakdown.is_nhia_patient %}alert alert-info{% else %}alert alert-warning{% endif %} mb-3">
+                <h6 class="alert-heading">
+                    {% if pricing_breakdown.is_nhia_patient %}
+                    <i class="fas fa-shield-alt"></i> NHIA Patient
+                    {% else %}
+                    <i class="fas fa-user"></i> Non-NHIA Patient
+                    {% endif %}
+                </h6>
+                <div class="text-sm">
+                    <p class="mb-1"><strong>Total Medication Cost:</strong> ₦{{ pricing_breakdown.total_medication_cost|floatformat:2 }}</p>
+                    {% if pricing_breakdown.is_nhia_patient %}
+                    <p class="mb-1"><strong>Patient Pays (10%):</strong> <span class="text-success font-weight-bold">₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</span></p>
+                    <p class="mb-0"><strong>NHIA Covers (90%):</strong> <span class="text-primary font-weight-bold">₦{{ pricing_breakdown.nhia_portion|floatformat:2 }}</span></p>
+                    {% else %}
+                    <p class="mb-0"><strong>Patient Pays (100%):</strong> <span class="text-warning font-weight-bold">₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</span></p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Wallet Information -->
+            {% if patient_wallet %}
+            <div class="alert alert-secondary mb-3">
+                <h6 class="alert-heading"><i class="fas fa-wallet"></i> Patient Wallet</h6>
+                <p class="mb-0"><strong>Current Balance:</strong>
+                    <span class="{% if patient_wallet.balance >= remaining_amount %}text-success{% else %}text-warning{% endif %} font-weight-bold">
+                        ₦{{ patient_wallet.balance|floatformat:2 }}
+                    </span>
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Payment Form -->
+        <div class="col-lg-8">
+            <div class="card payment-card">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-money-bill-wave"></i>
+                        Process Payment
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="payment-form">
+                        {% csrf_token %}
+
+                        <!-- Payment Source Selection -->
+                        <div class="form-group mb-4">
+                            <label class="font-weight-bold mb-3">
+                                <i class="fas fa-hand-holding-usd text-warning"></i>
+                                Payment Source
+                            </label>
+                            <div class="row">
+                                {% for choice in form.payment_source %}
+                                <div class="col-md-6">
+                                    <div class="card border-2 payment-source-card" data-value="{{ choice.choice_value }}">
+                                        <div class="card-body text-center">
+                                            {{ choice.tag }}
+                                            <label class="form-check-label ml-2 font-weight-bold" for="{{ choice.id_for_label }}">
+                                                {% if choice.choice_value == 'billing_office' %}
+                                                <i class="fas fa-building text-primary"></i><br>
+                                                {{ choice.choice_label }}
+                                                {% else %}
+                                                <i class="fas fa-wallet text-success"></i><br>
+                                                {{ choice.choice_label }}
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.payment_source.help_text %}
+                            <small class="form-text text-muted">{{ form.payment_source.help_text }}</small>
+                            {% endif %}
+                            {% if form.payment_source.errors %}
+                            <div class="text-danger">{{ form.payment_source.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.amount.id_for_label }}" class="font-weight-bold">
+                                        <i class="fas fa-dollar-sign text-success"></i>
+                                        Payment Amount
+                                    </label>
+                                    {{ form.amount }}
+                                    {% if form.amount.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.amount.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">
+                                        Maximum: ₦{{ remaining_amount|floatformat:2 }}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.payment_method.id_for_label }}" class="font-weight-bold">
+                                        <i class="fas fa-credit-card text-info"></i>
+                                        Payment Method
+                                    </label>
+                                    {{ form.payment_method }}
+                                    {% if form.payment_method.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.payment_method.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.transaction_id.id_for_label }}" class="font-weight-bold">
+                                <i class="fas fa-hashtag text-warning"></i>
+                                Transaction ID <small class="text-muted">(Optional)</small>
+                            </label>
+                            {{ form.transaction_id }}
+                            {% if form.transaction_id.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.transaction_id.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Reference number for electronic payments
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}" class="font-weight-bold">
+                                <i class="fas fa-sticky-note text-secondary"></i>
+                                Payment Notes <small class="text-muted">(Optional)</small>
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.notes.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted">
+                                <small>
+                                    <i class="fas fa-shield-alt"></i>
+                                    Secure payment processing
+                                </small>
+                            </div>
+                            <div>
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" 
+                                   class="btn btn-secondary mr-2">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-success btn-pay">
+                                    <i class="fas fa-check-circle"></i>
+                                    Process Payment
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Payment Methods Info -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6 class="font-weight-bold text-primary mb-3">
+                        <i class="fas fa-info-circle"></i>
+                        Accepted Payment Methods
+                    </h6>
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-2">
+                            <i class="fas fa-money-bill-alt fa-2x text-success mb-2"></i>
+                            <div class="small">Cash</div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <i class="fas fa-credit-card fa-2x text-primary mb-2"></i>
+                            <div class="small">Credit Card</div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <i class="fas fa-mobile-alt fa-2x text-info mb-2"></i>
+                            <div class="small">Mobile Payment</div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <i class="fas fa-university fa-2x text-warning mb-2"></i>
+                            <div class="small">Bank Transfer</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('payment-form');
+    const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+    const paymentMethodSelect = document.getElementById('{{ form.payment_method.id_for_label }}');
+    const paymentSourceRadios = document.querySelectorAll('input[name="payment_source"]');
+    const paymentSourceCards = document.querySelectorAll('.payment-source-card');
+    const transactionIdInput = document.getElementById('{{ form.transaction_id.id_for_label }}');
+
+    const walletBalance = {{ patient_wallet.balance|default:0 }};
+    const maxAmount = {{ remaining_amount }};
+
+    // Handle payment source selection
+    function handlePaymentSourceChange() {
+        const selectedSource = document.querySelector('input[name="payment_source"]:checked').value;
+
+        // Update card styling
+        paymentSourceCards.forEach(card => {
+            const cardValue = card.getAttribute('data-value');
+            if (cardValue === selectedSource) {
+                card.classList.add('border-primary', 'bg-light');
+                card.classList.remove('border-secondary');
+            } else {
+                card.classList.remove('border-primary', 'bg-light');
+                card.classList.add('border-secondary');
+            }
+        });
+
+        if (selectedSource === 'patient_wallet') {
+            // For wallet payments, force wallet method and disable selection
+            paymentMethodSelect.value = 'wallet';
+            paymentMethodSelect.disabled = true;
+            paymentMethodSelect.closest('.form-group').style.opacity = '0.6';
+
+            // Update amount validation for wallet balance
+            amountInput.setAttribute('max', Math.min(walletBalance, maxAmount));
+
+            // Hide transaction ID for wallet payments
+            if (transactionIdInput) {
+                transactionIdInput.closest('.form-group').style.display = 'none';
+            }
+        } else {
+            // For billing office payments, enable method selection and exclude wallet
+            paymentMethodSelect.disabled = false;
+            paymentMethodSelect.closest('.form-group').style.opacity = '1';
+
+            // Remove wallet option from payment methods
+            Array.from(paymentMethodSelect.options).forEach(option => {
+                if (option.value === 'wallet') {
+                    option.style.display = 'none';
+                } else {
+                    option.style.display = 'block';
+                }
+            });
+
+            // Reset to cash if wallet was selected
+            if (paymentMethodSelect.value === 'wallet') {
+                paymentMethodSelect.value = 'cash';
+            }
+
+            // Reset amount validation
+            amountInput.setAttribute('max', maxAmount);
+
+            // Show transaction ID for other payment methods
+            if (transactionIdInput) {
+                transactionIdInput.closest('.form-group').style.display = 'block';
+            }
+        }
+    }
+
+    // Initialize payment source handling
+    paymentSourceRadios.forEach(radio => {
+        radio.addEventListener('change', handlePaymentSourceChange);
+    });
+
+    // Handle card clicks
+    paymentSourceCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const value = this.getAttribute('data-value');
+            const radio = document.querySelector(`input[name="payment_source"][value="${value}"]`);
+            if (radio) {
+                radio.checked = true;
+                handlePaymentSourceChange();
+            }
+        });
+    });
+
+    // Initialize
+    handlePaymentSourceChange();
+    
+    // Format amount input
+    amountInput.addEventListener('input', function() {
+        let value = this.value.replace(/[^\d.]/g, '');
+        if (value.split('.').length > 2) {
+            value = value.substring(0, value.lastIndexOf('.'));
+        }
+        this.value = value;
+    });
+    
+    // Enhanced form validation
+    form.addEventListener('submit', function(e) {
+        const amount = parseFloat(amountInput.value);
+        const selectedSource = document.querySelector('input[name="payment_source"]:checked').value;
+        const paymentMethod = paymentMethodSelect.value;
+
+        if (isNaN(amount) || amount <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid payment amount.');
+            amountInput.focus();
+            return;
+        }
+
+        if (amount > maxAmount) {
+            e.preventDefault();
+            alert(`Payment amount cannot exceed ₦${maxAmount.toFixed(2)}`);
+            amountInput.focus();
+            return;
+        }
+
+        if (selectedSource === 'patient_wallet' && amount > walletBalance) {
+            e.preventDefault();
+            alert(`Insufficient wallet balance. Available: ₦${walletBalance.toFixed(2)}, Required: ₦${amount.toFixed(2)}`);
+            amountInput.focus();
+            return;
+        }
+
+        // Enhanced confirmation with source and NHIA information
+        const sourceText = selectedSource === 'patient_wallet' ? 'Patient Wallet' : 'Billing Office';
+        const methodText = paymentMethodSelect.options[paymentMethodSelect.selectedIndex].text;
+        {% if pricing_breakdown.is_nhia_patient %}
+        const patientType = 'NHIA Patient (10% payment)';
+        {% else %}
+        const patientType = 'Non-NHIA Patient (100% payment)';
+        {% endif %}
+
+        if (!confirm(`Confirm payment of ₦${amount.toFixed(2)} for ${patientType} via ${sourceText} (${methodText})?`)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

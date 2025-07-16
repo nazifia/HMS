@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Prescription Information</h6>
+        </div>
+        <div class="card-body">
+            <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+            <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
+            <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Add New Medication</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.medication.id_for_label }}" class="form-label">Medication *</label>
+                            {{ form.medication }}
+                            {% if form.medication.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.medication.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.quantity.id_for_label }}" class="form-label">Quantity *</label>
+                            {{ form.quantity }}
+                            {% if form.quantity.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.quantity.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.dosage.id_for_label }}" class="form-label">Dosage *</label>
+                            {{ form.dosage }}
+                            {% if form.dosage.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.dosage.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.frequency.id_for_label }}" class="form-label">Frequency *</label>
+                            {{ form.frequency }}
+                            {% if form.frequency.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.frequency.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.duration.id_for_label }}" class="form-label">Duration *</label>
+                            {{ form.duration }}
+                            {% if form.duration.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.duration.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.instructions.id_for_label }}" class="form-label">Instructions</label>
+                            {{ form.instructions }}
+                            {% if form.instructions.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.instructions.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="dispensary" class="form-label">Select Dispensary</label>
+                    <select id="dispensary" name="dispensary" class="form-select select2">
+                        {% for dispensary in dispensaries %}
+                            <option value="{{ dispensary.id }}" {% if dispensary.id == selected_dispensary_id %}selected{% endif %}>
+                                {{ dispensary.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Add Medication</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#id_medication').select2({
+        placeholder: 'Select a medication',
+        allowClear: true
+    });
+
+    $('#dispensary').select2({
+        placeholder: 'Select a dispensary',
+        allowClear: true
+    });
+
+    $('#dispensary').change(function() {
+        const dispensary_id = $(this).val();
+        if (dispensary_id) {
+            window.location.href = updateUrlParameter(window.location.href, 'dispensary', dispensary_id);
+        }
+    });
+
+    function updateUrlParameter(url, param, paramVal) {
+        var newAdditionalURL = '';
+        var tempArray = url.split('?');
+        var baseURL = tempArray[0];
+        var additionalURL = tempArray[1];
+        var temp = '';
+        if (additionalURL) {
+            tempArray = additionalURL.split('&');
+            for (var i = 0; i < tempArray.length; i++) {
+                if (tempArray[i].split('=')[0] != param) {
+                    newAdditionalURL += temp + tempArray[i];
+                    temp = '&';
+                }
+            }
+        }
+
+        var rows_txt = temp + "" + param + "=" + paramVal;
+        return baseURL + '?' + newAdditionalURL + rows_txt;
+    }
+});
+</script>
+{% endblock %}

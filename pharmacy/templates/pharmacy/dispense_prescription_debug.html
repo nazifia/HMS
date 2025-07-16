@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Debug Dispensing - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Debug Dispensing Page</h1>
+    
+    <div class="alert alert-info">
+        <h4>Debug Information:</h4>
+        <p><strong>Prescription ID:</strong> {{ prescription.id }}</p>
+        <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+        <p><strong>Status:</strong> {{ prescription.status }}</p>
+        <p><strong>Total Items:</strong> {{ prescription.items.count }}</p>
+        <p><strong>Prescription Items Count:</strong> {{ prescription_items|length }}</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <h2>Prescription Items</h2>
+    
+    {% if prescription_items %}
+        <div class="alert alert-success">
+            <strong>✓ Items found!</strong> There are {{ prescription_items|length }} items to dispense.
+        </div>
+        
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Item ID</th>
+                    <th>Medication</th>
+                    <th>Prescribed Qty</th>
+                    <th>Dispensed</th>
+                    <th>Remaining</th>
+                    <th>Is Dispensed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in prescription_items %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td>{{ item.medication.name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.quantity_dispensed_so_far }}</td>
+                        <td>{{ item.remaining_quantity_to_dispense }}</td>
+                        <td>{{ item.is_dispensed }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <h3>Dispensaries</h3>
+        <ul>
+            {% for dispensary in dispensaries %}
+                <li>{{ dispensary.name }} (ID: {{ dispensary.id }})</li>
+            {% endfor %}
+        </ul>
+        
+    {% else %}
+        <div class="alert alert-danger">
+            <strong>❌ No items found!</strong> The prescription_items variable is empty.
+        </div>
+    {% endif %}
+
+    <h3>Raw Data</h3>
+    <pre>
+Prescription: {{ prescription }}
+Prescription Items: {{ prescription_items }}
+Dispensaries: {{ dispensaries }}
+    </pre>
+</div>
+{% endblock %}

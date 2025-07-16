@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from patients.models import Patient
 from appointments.models import Appointment
-from pharmacy.models import Medication, Prescription, MedicationCategory
+from pharmacy.models import Medication, Prescription, MedicationCategory, MedicationInventory
 from laboratory.models import TestRequest, TestResult, Test, TestCategory
 from billing.models import Invoice, Payment, Service, ServiceCategory
 from consultations.models import Consultation, ConsultingRoom, Referral, WaitingList
@@ -42,11 +42,10 @@ def dashboard(request):
     ).order_by('-request_date')[:5]
 
     # Get low stock medications
-    low_stock_medications = Medication.objects.filter(
-        is_active=True,
+    low_stock_medications = MedicationInventory.objects.filter(
         stock_quantity__lte=F('reorder_level'),
         stock_quantity__gt=0 # Ensure it's not completely out of stock if that's a separate category
-    ).order_by('stock_quantity')[:5]
+    ).select_related('medication', 'dispensary').order_by('stock_quantity')[:5]
 
     # Get recent invoices
     recent_invoices = Invoice.objects.order_by('-created_at')[:5]
@@ -133,8 +132,8 @@ def system_overview(request):
     context['medication_categories'] = MedicationCategory.objects.count()
     context['medications_in_inventory'] = Medication.objects.count()
     context['active_medications'] = Medication.objects.filter(is_active=True).count()
-    context['low_stock_medications_count'] = Medication.objects.filter(is_active=True, stock_quantity__lte=F('reorder_level'), stock_quantity__gt=0).count()
-    context['out_of_stock_medications_count'] = Medication.objects.filter(is_active=True, stock_quantity=0).count()
+    context['low_stock_medications_count'] = MedicationInventory.objects.filter(stock_quantity__lte=F('reorder_level'), stock_quantity__gt=0).count()
+    context['out_of_stock_medications_count'] = MedicationInventory.objects.filter(stock_quantity=0).count()
     context['total_prescriptions_issued'] = Prescription.objects.count()
 
     # Billing App

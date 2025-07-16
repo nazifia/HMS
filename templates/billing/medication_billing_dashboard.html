@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-pills me-2"></i>{{ title }}</h2>
+        <div>
+            <a href="{% url 'billing:list' %}" class="btn btn-outline-primary">
+                <i class="fas fa-file-invoice me-2"></i>All Invoices
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Pending Prescriptions</h5>
+                            <h2 class="mb-0">{{ total_prescriptions }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-prescription-bottle-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Unpaid Invoices</h5>
+                            <h2 class="mb-0">{{ total_invoices }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-file-invoice fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Total Pending Amount</h5>
+                            <h2 class="mb-0">₦{{ total_pending_amount|floatformat:2 }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-money-bill-wave fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Prescriptions -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-prescription-bottle-alt me-2"></i>Recent Pending Prescriptions</h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_prescriptions %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Patient</th>
+                                        <th>Type</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for prescription in pending_prescriptions %}
+                                    <tr>
+                                        <td>#{{ prescription.id }}</td>
+                                        <td>
+                                            <div>{{ prescription.patient.get_full_name }}</div>
+                                            <small class="text-muted">{{ prescription.patient.patient_id }}</small>
+                                            {% if prescription.patient.patient_type == 'nhia' %}
+                                                <span class="badge bg-success">NHIA</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ prescription.get_prescription_type_display }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'billing:prescription_billing_detail' prescription.id %}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No pending prescriptions found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pharmacy Invoices -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Recent Pharmacy Invoices</h5>
+                </div>
+                <div class="card-body">
+                    {% if pharmacy_invoices %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice</th>
+                                        <th>Patient</th>
+                                        <th>Amount</th>
+                                        <th>Balance</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for invoice in pharmacy_invoices %}
+                                    <tr>
+                                        <td>#{{ invoice.id }}</td>
+                                        <td>
+                                            <div>{{ invoice.patient.get_full_name }}</div>
+                                            <small class="text-muted">{{ invoice.patient.patient_id }}</small>
+                                        </td>
+                                        <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
+                                        <td>₦{{ invoice.get_balance|floatformat:2 }}</td>
+                                        <td>
+                                            {% if invoice.prescription %}
+                                                <a href="{% url 'billing:prescription_billing_detail' invoice.prescription.id %}" 
+                                                   class="btn btn-sm btn-warning">
+                                                    <i class="fas fa-credit-card"></i> Pay
+                                                </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No pharmacy invoices found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
