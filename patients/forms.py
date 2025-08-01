@@ -273,8 +273,8 @@ class WalletWithdrawalForm(forms.Form):
 
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')
-        if self.wallet and amount > self.wallet.balance:
-            raise forms.ValidationError(f"Insufficient balance. Available balance: ₦{self.wallet.balance}")
+        # Allow withdrawals even with insufficient balance (negative balance allowed)
+        # Wallet balance validation removed to support negative balances
         return amount
 
 
@@ -453,8 +453,8 @@ class WalletAdjustmentForm(forms.Form):
         adjustment_type = cleaned_data.get('adjustment_type')
         amount = cleaned_data.get('amount')
 
-        if adjustment_type == 'debit' and self.wallet and amount > self.wallet.balance:
-            raise forms.ValidationError(f"Insufficient balance for debit adjustment. Available balance: ₦{self.wallet.balance}")
+        # Allow debit adjustments even with insufficient balance (negative balance allowed)
+        # Wallet balance validation removed to support negative balances
 
         return cleaned_data
 

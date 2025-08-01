@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 from patients.models import Patient
 from django.conf import settings
 
@@ -181,7 +181,7 @@ class Prescription(models.Model):
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    invoice = models.OneToOneField('pharmacy_billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='prescription_invoice')
+    invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='prescription_invoice')
 
     def __str__(self):
         return f"Prescription for {self.patient.get_full_name()} - {self.prescription_date}"

@@ -7,7 +7,7 @@ from .models import (
     Specialization, Doctor, DoctorAvailability, DoctorLeave,
     DoctorEducation, DoctorExperience, DoctorReview
 )
-from accounts.models import Department
+from accounts.models import Department, CustomUser
 
 class SpecializationForm(forms.ModelForm):
     """Form for creating and editing specializations"""
@@ -68,7 +68,7 @@ def get_specialization_choices():
     return [(s.id, s.name) for s in Specialization.objects.all()]
 
 class DoctorAdminForm(forms.ModelForm):
-    user = forms.ModelChoiceField(queryset=User.objects.all(), required=True)
+    user = forms.ModelChoiceField(queryset=CustomUser.objects.all(), required=True)
 
     class Meta:
         model = Doctor

@@ -6,9 +6,9 @@ from .models import (
     PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory
 )
 from patients.models import Patient
-from billing.models import Invoice
 from django.contrib.auth import get_user_model
 from accounts.models import CustomUser
+from billing.models import Payment, Invoice
 User = get_user_model()
 
 class MedicationCategoryForm(forms.ModelForm):
@@ -106,7 +106,7 @@ class PrescriptionForm(forms.ModelForm):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, roles__name='doctor').distinct(),
+        queryset=CustomUser.objects.filter(is_active=True, roles__name='doctor').distinct(),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -125,7 +125,7 @@ class PrescriptionForm(forms.ModelForm):
             patient_id = self.initial.get('patient')
         if patient_id:
             self.fields['patient'].initial = patient_id
-            self.fields['patient'].widget = forms.HiddenInput()
+            # Keep patient field visible but pre-selected for user convenience
         # All users can select any doctor now
         # Ensure all patients are available for selection
         self.fields['patient'].queryset = Patient.objects.all()
@@ -397,92 +397,29 @@ class MedicationSearchForm(forms.Form):
     )
 
 class PrescriptionSearchForm(forms.Form):
-    """Enhanced form for searching prescriptions with comprehensive filters"""
+    """Form for searching prescriptions"""
 
     search = forms.CharField(
         required=False,
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Search by patient name, patient number, or phone',
-            'class': 'form-control'
-        }),
-        label='Patient Search'
+        widget=forms.TextInput(attrs={'placeholder': 'Search by patient name or ID'})
     )
 
-    patient_number = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Patient Number',
-            'class': 'form-control'
-        }),
-        label='Patient Number'
-    )
-
-    medication_name = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Medication Name',
-            'class': 'form-control'
-        }),
-        label='Medication'
-    )
-
-    status = forms.ChoiceField(
-        choices=[
-            ('', 'All Status'),
-            ('pending', 'Pending'),
-            ('dispensed', 'Dispensed'),
-            ('partially_dispensed', 'Partially Dispensed'),
-            ('cancelled', 'Cancelled')
-        ],
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='Status'
-    )
-
-    payment_status = forms.ChoiceField(
-        choices=[
-            ('', 'All Payment Status'),
-            ('pending', 'Pending Payment'),
-            ('paid', 'Paid'),
-            ('partially_paid', 'Partially Paid')
-        ],
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='Payment Status'
-    )
+    status = forms.CharField(widget=forms.HiddenInput(), initial='pending')
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, roles__name='doctor').distinct(),
+        queryset=CustomUser.objects.filter(is_active=True, roles__name='doctor').distinct(),
         required=False,
-        empty_label="All Doctors",
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='Prescribing Doctor'
+        empty_label="All Doctors"
     )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Safely get doctors with proper error handling
-        try:
-            self.fields['doctor'].queryset = User.objects.filter(
-                is_active=True,
-                roles__name='doctor'
-            ).distinct().order_by('first_name', 'last_name')
-        except Exception:
-            # Fallback to all active users if roles filtering fails
-            self.fields['doctor'].queryset = User.objects.filter(
-                is_active=True
-            ).order_by('first_name', 'last_name')
 
     date_from = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-        label='From Date'
+        widget=forms.DateInput(attrs={'type': 'date'})
     )
 
     date_to = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-        label='To Date'
+        widget=forms.DateInput(attrs={'type': 'date'})
     )
 
 
@@ -529,7 +466,7 @@ class DispensedItemsSearchForm(forms.Form):
     )
 
     dispensed_by = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True).order_by('first_name', 'last_name'),
+        queryset=CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name'),
         required=False,
         empty_label="All Staff",
         widget=forms.Select(attrs={'class': 'form-control'}),
@@ -620,8 +557,24 @@ class DispensaryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter manager choices to only show staff users
-        self.fields['manager'].queryset = User.objects.filter(is_active=True)
+        self.fields['manager'].queryset = CustomUser.objects.filter(is_active=True)
         self.fields['manager'].empty_label = "Select Manager (Optional)"
+
+class PrescriptionPaymentForm(forms.ModelForm):
+    """Form for processing payments for prescriptions"""
+
+    class Meta:
+        model = Payment
+        fields = ['amount', 'payment_method', 'notes']
+        widgets = {
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter payment amount'}),
+            'payment_method': forms.Select(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter any payment notes'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['payment_method'].choices = Invoice.PAYMENT_METHOD_CHOICES
 
 class MedicationInventoryForm(forms.ModelForm):
     """Form for managing medication inventory in dispensaries"""
@@ -635,99 +588,3 @@ class MedicationInventoryForm(forms.ModelForm):
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'reorder_level': forms.NumberInput(attrs={'class': 'form-control'}),
         }
-
-
-class PrescriptionPaymentForm(forms.ModelForm):
-    """Enhanced form for recording payments for prescription invoices with NHIA support"""
-
-    payment_source = forms.ChoiceField(
-        choices=[
-            ('billing_office', 'Billing Office Payment'),
-            ('patient_wallet', 'Patient Wallet Payment')
-        ],
-        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
-        label='Payment Source',
-        initial='billing_office'
-    )
-
-    class Meta:
-        from pharmacy_billing.models import Payment
-        model = Payment
-        fields = ['amount', 'payment_method', 'transaction_id', 'notes']
-        widgets = {
-            'amount': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0.01',
-                'placeholder': 'Enter payment amount'
-            }),
-            'payment_method': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'transaction_id': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Transaction ID (optional)'
-            }),
-            'notes': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Payment notes (optional)'
-            }),
-        }
-
-    def __init__(self, *args, **kwargs):
-        self.invoice = kwargs.pop('invoice', None)
-        self.prescription = kwargs.pop('prescription', None)
-        self.patient_wallet = kwargs.pop('patient_wallet', None)
-        super().__init__(*args, **kwargs)
-
-        if self.invoice:
-            remaining_amount = self.invoice.get_balance()
-            self.fields['amount'].initial = remaining_amount
-            self.fields['amount'].widget.attrs['max'] = str(remaining_amount)
-
-        # Add NHIA information to help text
-        if self.prescription:
-            pricing_breakdown = self.prescription.get_pricing_breakdown()
-            if pricing_breakdown['is_nhia_patient']:
-                self.fields['amount'].help_text = f"NHIA Patient: Pays 10% of medication cost (₦{pricing_breakdown['patient_portion']:.2f}). NHIA covers 90% (₦{pricing_breakdown['nhia_portion']:.2f})"
-            else:
-                self.fields['amount'].help_text = f"Non-NHIA Patient: Pays full medication cost (₦{pricing_breakdown['patient_portion']:.2f})"
-
-        # Update payment source help text with wallet balance
-        if self.patient_wallet:
-            wallet_balance = self.patient_wallet.balance
-            self.fields['payment_source'].help_text = f'Patient wallet balance: ₦{wallet_balance:.2f}'
-
-    def clean(self):
-        cleaned_data = super().clean()
-        payment_source = cleaned_data.get('payment_source')
-        amount = cleaned_data.get('amount')
-        payment_method = cleaned_data.get('payment_method')
-
-        if payment_source == 'patient_wallet':
-            # Force wallet payment method for wallet payments
-            cleaned_data['payment_method'] = 'wallet'
-
-            # Check wallet balance
-            if self.patient_wallet and amount:
-                if amount > self.patient_wallet.balance:
-                    raise forms.ValidationError(
-                        f'Insufficient wallet balance. Available: ₦{self.patient_wallet.balance:.2f}, Required: ₦{amount:.2f}'
-                    )
-        elif payment_source == 'billing_office':
-            # Ensure wallet is not selected for billing office payments
-            if payment_method == 'wallet':
-                raise forms.ValidationError('Wallet payment method is only available for patient wallet payments.')
-
-        return cleaned_data
-
-    def clean_amount(self):
-        amount = self.cleaned_data.get('amount')
-        if self.invoice and amount:
-            remaining_amount = self.invoice.get_balance()
-            if amount > remaining_amount:
-                raise forms.ValidationError(
-                    f'Payment amount cannot exceed the remaining balance of ₦{remaining_amount:.2f}'
-                )
-        return amount

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import payment_views
 
 app_name = 'inpatient'
 
@@ -24,4 +25,8 @@ urlpatterns = [
     path('reports/bed-occupancy/', views.bed_occupancy_report, name='bed_occupancy_report'),
     path('patient/<int:patient_id>/admissions/', views.patient_admissions, name='patient_admissions'),
     path('ajax/load-beds/', views.load_beds, name='ajax_load_beds'), # New URL pattern for AJAX
+
+    # Inpatient medication payment URLs
+    path('admissions/<int:admission_id>/medications/', payment_views.inpatient_medication_list, name='inpatient_medication_list'),
+    path('admissions/<int:admission_id>/medications/<int:prescription_id>/payment/', payment_views.inpatient_medication_payment, name='inpatient_medication_payment'),
 ]

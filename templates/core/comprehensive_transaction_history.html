@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        {% if patient %}
+        <div class="d-none d-sm-inline-block">
+            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Patient
+            </a>
+            <a href="{% url 'core:patient_financial_summary' patient.id %}" class="btn btn-sm btn-info shadow-sm">
+                <i class="fas fa-chart-line fa-sm text-white-50"></i> Financial Summary
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Transactions</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_transactions }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Amount</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_amount|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Date Range</div>
+                            <div class="h6 mb-0 font-weight-bold text-gray-800">{{ date_from|date:"M d" }} - {{ date_to|date:"M d, Y" }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Transaction Types</div>
+                            <div class="h6 mb-0 font-weight-bold text-gray-800">{{ summary_by_type|length }} Types</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tags fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary by Type -->
+    {% if summary_by_type %}
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Summary by Transaction Type</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Count</th>
+                                    <th>Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for type, data in summary_by_type.items %}
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-{% if type == 'wallet' %}primary{% elif type == 'billing' %}success{% elif type == 'pharmacy' %}info{% else %}secondary{% endif %}">
+                                            {{ type|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ data.count }}</td>
+                                    <td>₦{{ data.amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Filter Transactions</h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="filterForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date_from" class="form-label">From Date</label>
+                                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="date_to" class="form-label">To Date</label>
+                                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to|date:'Y-m-d' }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transaction_type" class="form-label">Transaction Type</label>
+                            <select class="form-select" id="transaction_type" name="transaction_type">
+                                <option value="all" {% if transaction_type == 'all' %}selected{% endif %}>All Types</option>
+                                <option value="wallet" {% if transaction_type == 'wallet' %}selected{% endif %}>Wallet Transactions</option>
+                                <option value="billing" {% if transaction_type == 'billing' %}selected{% endif %}>Billing Payments</option>
+                                <option value="pharmacy" {% if transaction_type == 'pharmacy' %}selected{% endif %}>Pharmacy Payments</option>
+                                <option value="admission" {% if transaction_type == 'admission' %}selected{% endif %}>Admission Payments</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter me-1"></i> Apply Filters
+                        </button>
+                        <a href="{% if patient %}{% url 'core:comprehensive_transaction_history' patient.id %}{% else %}{% url 'core:comprehensive_transaction_history' %}{% endif %}" class="btn btn-secondary">
+                            <i class="fas fa-undo me-1"></i> Reset
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Transaction List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Transaction Details</h6>
+        </div>
+        <div class="card-body">
+            {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="transactionTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Patient</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Reference</th>
+                            <th>Status</th>
+                            <th>Created By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.date|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <span class="badge badge-{% if transaction.source == 'wallet' %}primary{% elif transaction.source == 'billing' %}success{% elif transaction.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
+                                    {{ transaction.type }}
+                                </span>
+                                <br><small class="text-muted">{{ transaction.subtype }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ transaction.patient.get_full_name }}</strong>
+                                <br><small class="text-muted">{{ transaction.patient.patient_id }}</small>
+                            </td>
+                            <td>{{ transaction.description }}</td>
+                            <td>
+                                <strong>₦{{ transaction.amount|floatformat:2 }}</strong>
+                                {% if transaction.balance_after is not None %}
+                                <br><small class="text-muted">Balance: ₦{{ transaction.balance_after|floatformat:2 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <code>{{ transaction.reference }}</code>
+                            </td>
+                            <td>
+                                <span class="badge badge-success">{{ transaction.status }}</span>
+                            </td>
+                            <td>
+                                {% if transaction.created_by %}
+                                    {{ transaction.created_by.get_full_name }}
+                                {% else %}
+                                    <em class="text-muted">System</em>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-receipt fa-3x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-600">No transactions found</h5>
+                <p class="text-muted">No transactions match your current filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DataTable functionality would require including DataTables library
+    // For now, the table works fine without it
+    console.log('Transaction history loaded successfully');
+});
+</script>
+{% endblock %}

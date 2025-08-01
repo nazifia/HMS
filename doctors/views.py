@@ -17,7 +17,7 @@ from .forms import (
 )
 from core.decorators import admin_required, doctor_required
 from accounts.models import Department, CustomUserProfile
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 
 # Doctor List and Detail Views
 def doctor_list(request):

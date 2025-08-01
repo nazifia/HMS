@@ -704,7 +704,7 @@ def user_dashboard(request):
 #         action = request.POST.get('bulk_action')
 #         selected_ids = request.POST.getlist('selected_users')
 #         if selected_ids:
-#             qs = User.objects.filter(id__in=selected_ids)
+#             qs = CustomUser.objects.filter(id__in=selected_ids)
 #             if action == 'activate':
 #                 qs.update(is_active=True)
 #             elif action == 'deactivate':
@@ -812,7 +812,7 @@ def is_admin_or_staff(user):
 @login_required # Added @login_required as it's a dashboard
 @user_passes_test(is_admin_or_staff)
 def user_dashboard(request):
-    users_query = User.objects.all().prefetch_related('roles', 'profile') 
+    users_query = User.objects.all().prefetch_related('roles', 'profile')
     
     search_query = request.GET.get('search', '')
     role_filter = request.GET.get('role', '')

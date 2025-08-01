@@ -1,6 +1,6 @@
 from django import forms
 from django.utils import timezone
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 from .models import Designation, Shift, StaffSchedule, Leave, Attendance, Payroll
 from accounts.models import Department
 
@@ -61,7 +61,7 @@ class StaffScheduleForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter staff to only include active users
-        self.fields['staff'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['staff'].queryset = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
     
     def clean(self):
         cleaned_data = super().clean()
@@ -97,7 +97,7 @@ class LeaveForm(forms.ModelForm):
             self.fields['staff'].widget = forms.HiddenInput()
         else:
             # Filter staff to only include active users
-            self.fields['staff'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+            self.fields['staff'].queryset = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
     
     def clean(self):
         cleaned_data = super().clean()
@@ -171,7 +171,7 @@ class AttendanceForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter staff to only include active users
-        self.fields['staff'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['staff'].queryset = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
         
         # Set default date to today
         if not self.instance.pk and not self.initial.get('date'):
@@ -238,7 +238,7 @@ class PayrollForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter staff to only include active users
-        self.fields['staff'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['staff'].queryset = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
         
         # Set month choices
         self.fields['month'].widget.choices = [

@@ -99,8 +99,7 @@ def create_prescription(request, patient_id=None):
 
                 medication_dispensing_service = Service.objects.get(name__iexact="Medication Dispensing")
                 
-                InvoiceModel = apps.get_model('pharmacy_billing', 'Invoice')
-                InvoiceItemModel = apps.get_model('pharmacy_billing', 'InvoiceItem')
+                from billing.models import Invoice as InvoiceModel, InvoiceItem as InvoiceItemModel
 
                 invoice = InvoiceModel.objects.create(
                     patient=prescription.patient,
@@ -108,8 +107,10 @@ def create_prescription(request, patient_id=None):
                     due_date=timezone.now().date() + timezone.timedelta(days=30),
                     created_by=request.user,
                     subtotal=total_prescription_price,
+                    tax_amount=0,
                     total_amount=total_prescription_price,
                     status='pending',
+                    prescription=prescription,
                 )
 
                 InvoiceItemModel.objects.create(
@@ -118,6 +119,8 @@ def create_prescription(request, patient_id=None):
                     description=f'Invoice for Prescription {prescription.id}',
                     quantity=1,
                     unit_price=total_prescription_price,
+                    tax_amount=0,
+                    total_amount=total_prescription_price,
                 )
 
                 prescription.invoice = invoice

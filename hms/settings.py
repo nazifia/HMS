@@ -66,10 +66,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',    # Third-party apps
-    'widget_tweaks',  # Temporarily commented out
+    'widget_tweaks',
     'crispy_forms',
-    'django_bootstrap5',
-    'crispy_bootstrap5',  # Temporarily commented out
+    'crispy_bootstrap5',
 
     # HMS Apps
     'accounts',
@@ -241,9 +240,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
-# Crispy Forms settings
-CRISPY_ALLOWED_TEMPLATE_PACKS = ["bootstrap5"]
-CRISPY_TEMPLATE_PACK = "bootstrap5"
+# Crispy Forms settings (temporarily disabled)
+# Use default crispy forms template pack
+# CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 
 # REST framework configuration
@@ -315,3 +314,7 @@ HOSPITAL_NAME = 'City General Hospital'
 HOSPITAL_ADDRESS = '123 Medical Center Blvd, City, State 12345'
 HOSPITAL_PHONE = '(555) 123-4567'
 HOSPITAL_EMAIL = 'info@citygeneralhospital.com'
+
+# Crispy Forms Configuration
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"

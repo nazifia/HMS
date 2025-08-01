@@ -229,3 +229,34 @@ class ClinicalRecord(models.Model):
 
     class Meta:
         ordering = ['-date_time']
+
+
+class InpatientMedication(models.Model):
+    """Model to link prescriptions to admissions for inpatient medication management"""
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='medications')
+    prescription = models.ForeignKey('pharmacy.Prescription', on_delete=models.CASCADE, related_name='inpatient_medications')
+    ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='inpatient_medication_orders')
+    order_date = models.DateTimeField(default=timezone.now)
+    is_paid = models.BooleanField(default=False)
+    payment_source = models.CharField(
+        max_length=20,
+        choices=[
+            ('billing_office', 'Billing Office'),
+            ('patient_wallet', 'Patient Wallet'),
+        ],
+        null=True,
+        blank=True
+    )
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Medication for {self.admission.patient.get_full_name()} - {self.prescription.id}"
+
+    def get_total_cost(self):
+        """Calculate total cost of the prescription"""
+        return self.prescription.get_total_prescribed_price()
+
+    class Meta:
+        ordering = ['-order_date']

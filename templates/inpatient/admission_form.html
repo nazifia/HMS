@@ -128,6 +128,21 @@
                         </div>
                     </div>
                     
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="{{ form.admission_service.id_for_label }}" class="form-label">Admission Service <span class="text-danger">*</span></label>
+                                {{ form.admission_service|add_class:"form-select" }}
+                                {% if form.admission_service.errors %}
+                                    <div class="text-danger">
+                                        {{ form.admission_service.errors }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Service fee for admission</small>
+                            </div>
+                        </div>
+                    </div>
+                    
                     {% if form.instance.pk %}
                         <div class="row mb-3">
                             <div class="col-md-12">

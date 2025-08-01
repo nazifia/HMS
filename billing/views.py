@@ -235,7 +235,10 @@ def print_invoice(request, invoice_id):
 
 @login_required
 def record_payment(request, invoice_id):
-    """View for recording a payment for an invoice"""
+    """Enhanced view for recording payments with dual payment method support"""
+    from patients.models import PatientWallet
+    from django.db import transaction
+    
     invoice = get_object_or_404(Invoice, id=invoice_id)
 
     # Calculate remaining amount
@@ -245,43 +248,79 @@ def record_payment(request, invoice_id):
         messages.info(request, 'This invoice has already been fully paid.')
         return redirect('billing:detail', invoice_id=invoice.id)
 
-    if request.method == 'POST':
-        form = PaymentForm(request.POST)
-        if form.is_valid():
-            payment = form.save(commit=False)
-            payment.invoice = invoice
-            payment.received_by = request.user
+    # Get or create patient wallet
+    patient_wallet = None
+    try:
+        patient_wallet = PatientWallet.objects.get(patient=invoice.patient)
+    except PatientWallet.DoesNotExist:
+        # Create wallet if it doesn't exist
+        patient_wallet = PatientWallet.objects.create(
+            patient=invoice.patient,
+            balance=0
+        )
 
-            # Validate payment amount
-            if payment.amount > remaining_amount:
-                messages.error(request, f'Payment amount exceeds the remaining balance of ₦{remaining_amount:.2f}.')
-            else:
-                payment.save()
-                # Audit log
-                log_audit_action(request.user, 'create', payment, f"Recorded payment of ₦{payment.amount:.2f} for invoice {invoice.invoice_number}")
-                # Notification to billing/admin
-                InternalNotification.objects.create(
-                    user=invoice.created_by,
-                    message=f"Payment of ₦{payment.amount:.2f} recorded for invoice {invoice.invoice_number}"
-                )
-                send_notification_email(
-                    subject="Payment Recorded",
-                    message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number}.",
-                    recipient_list=[invoice.created_by.email]
-                )
-                messages.success(request, f'Payment of ₦{payment.amount:.2f} recorded successfully.')
-                return redirect('billing:detail', invoice_id=invoice.id)
+    if request.method == 'POST':
+        form = PaymentForm(
+            request.POST,
+            invoice=invoice,
+            patient_wallet=patient_wallet
+        )
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    payment = form.save(commit=False)
+                    payment.invoice = invoice
+                    payment.received_by = request.user
+
+                    payment_source = form.cleaned_data['payment_source']
+
+                    if payment_source == 'patient_wallet':
+                        # Force wallet payment method
+                        payment.payment_method = 'wallet'
+
+                    payment.save()
+
+                    # Audit log
+                    log_audit_action(
+                        request.user, 
+                        'create', 
+                        payment, 
+                        f"Recorded {payment_source} payment of ₦{payment.amount:.2f} for invoice {invoice.invoice_number}"
+                    )
+                    
+                    # Notification to billing/admin
+                    InternalNotification.objects.create(
+                        user=invoice.created_by,
+                        message=f"Payment of ₦{payment.amount:.2f} recorded for invoice {invoice.invoice_number} via {payment_source}"
+                    )
+                    
+                    send_notification_email(
+                        subject="Payment Recorded",
+                        message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number} via {payment_source.replace('_', ' ').title()}.",
+                        recipient_list=[invoice.created_by.email]
+                    )
+                    
+                    messages.success(request, f'Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+                    return redirect('billing:detail', invoice_id=invoice.id)
+                    
+            except Exception as e:
+                messages.error(request, f'Error processing payment: {str(e)}')
     else:
         # Pre-fill the amount with the remaining balance
-        form = PaymentForm(initial={
-            'amount': remaining_amount,
-            'payment_date': timezone.now().date(),
-            'payment_method': 'cash'
-        })
+        form = PaymentForm(
+            invoice=invoice,
+            patient_wallet=patient_wallet,
+            initial={
+                'amount': remaining_amount,
+                'payment_date': timezone.now().date(),
+                'payment_method': 'cash'
+            }
+        )
 
     context = {
         'form': form,
         'invoice': invoice,
+        'patient_wallet': patient_wallet,
         'remaining_amount': remaining_amount,
         'title': f'Record Payment for Invoice #{invoice.invoice_number}'
     }

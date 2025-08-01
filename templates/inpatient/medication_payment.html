@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load core_form_tags %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'inpatient:admission_detail' admission.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Admission
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Patient & Admission Info -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ admission.patient.get_full_name }}</p>
+                    <p><strong>Patient ID:</strong> {{ admission.patient.patient_id }}</p>
+                    <p><strong>Ward:</strong> {{ admission.bed.ward.name }}</p>
+                    <p><strong>Bed:</strong> {{ admission.bed.bed_number }}</p>
+                    <p><strong>Attending Doctor:</strong> {{ admission.attending_doctor.get_full_name }}</p>
+                    <p><strong>Admission Date:</strong> {{ admission.admission_date|date:"M d, Y H:i" }}</p>
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Prescription Details</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Prescription ID:</strong> {{ prescription.id }}</p>
+                    <p><strong>Prescribed by:</strong> {{ prescription.doctor.get_full_name }}</p>
+                    <p><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
+                    <p><strong>Type:</strong> {{ prescription.get_prescription_type_display }}</p>
+                    <p><strong>Total Cost:</strong> ₦{{ prescription.get_total_prescribed_price|floatformat:2 }}</p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge badge-{{ prescription.status|yesno:'success,warning' }}">
+                            {{ prescription.get_status_display }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            {% if patient_wallet %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Wallet Information</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Current Balance:</strong> 
+                        <span class="{% if patient_wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₦{{ patient_wallet.balance|floatformat:2 }}
+                        </span>
+                    </p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge badge-success">Active</span>
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Payment Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment Details</h6>
+                </div>
+                <div class="card-body">
+                    {% if invoice %}
+                    <div class="alert alert-info mb-4" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Invoice #{{ invoice.invoice_number }}</strong><br>
+                        Total Amount: ₦{{ invoice.total_amount|floatformat:2 }}<br>
+                        Amount Paid: ₦{{ invoice.amount_paid|floatformat:2 }}<br>
+                        <strong>Remaining Balance: ₦{{ remaining_amount|floatformat:2 }}</strong>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" id="medicationPaymentForm">
+                        {% csrf_token %}
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Payment Source Selection -->
+                        <div class="mb-4">
+                            <label class="form-label"><strong>Payment Source</strong></label>
+                            <div class="row">
+                                {% for choice in form.payment_source %}
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ choice.tag }}
+                                        <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                            {{ choice.choice_label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <small class="form-text text-muted">{{ form.payment_source.help_text }}</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                                {{ form.amount|add_class:"form-control" }}
+                                <div class="form-text">Enter the amount to pay (₦{{ remaining_amount|floatformat:2 }} remaining)</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_payment_method" class="form-label">Payment Method <span class="text-danger">*</span></label>
+                                {{ form.payment_method|add_class:"form-select" }}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_payment_date" class="form-label">Payment Date <span class="text-danger">*</span></label>
+                                {{ form.payment_date|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_transaction_id" class="form-label">Transaction ID</label>
+                                {{ form.transaction_id|add_class:"form-control" }}
+                                <div class="form-text">Optional reference number</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_notes" class="form-label">Payment Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            <div class="form-text">Optional notes about this payment</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-secondary me-md-2" onclick="window.location.href='{% url 'inpatient:admission_detail' admission.id %}'">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-credit-card me-1"></i> Process Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update payment method options based on payment source selection
+    const paymentSourceRadios = document.querySelectorAll('input[name="payment_source"]');
+    const paymentMethodSelect = document.getElementById('id_payment_method');
+    
+    paymentSourceRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'patient_wallet') {
+                // Update payment method to wallet when wallet is selected
+                paymentMethodSelect.value = 'wallet';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

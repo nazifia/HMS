@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'inpatient:admission_detail' admission.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Admission
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Patient Information -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                    <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                    <p><strong>Current Ward:</strong> {{ admission.bed.ward.name }}</p>
+                    <p><strong>Current Bed:</strong> {{ admission.bed.bed_number }}</p>
+                    <p><strong>Admission Date:</strong> {{ admission.admission_date|date:"M d, Y H:i" }}</p>
+                    <p><strong>Attending Doctor:</strong> {{ admission.attending_doctor.get_full_name }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transfer Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer Details</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="transferForm">
+                        {% csrf_token %}
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_to_ward" class="form-label">Transfer to Ward <span class="text-danger">*</span></label>
+                                {{ form.to_ward|add_class:"form-select" }}
+                                <div class="form-text">Select the destination ward</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_to_bed" class="form-label">Transfer to Bed <span class="text-danger">*</span></label>
+                                {{ form.to_bed|add_class:"form-select" }}
+                                <div class="form-text">Select an available bed in the chosen ward</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_notes" class="form-label">Transfer Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            <div class="form-text">Optional notes about the transfer</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-secondary me-md-2" onclick="window.location.href='{% url 'inpatient:admission_detail' admission.id %}'">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-exchange-alt me-1"></i> Transfer Patient
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle ward selection to filter beds
+    const wardSelect = document.getElementById('id_to_ward');
+    const bedSelect = document.getElementById('id_to_bed');
+    
+    wardSelect.addEventListener('change', function() {
+        const wardId = this.value;
+        
+        // Clear bed options
+        bedSelect.innerHTML = '<option value="">---------</option>';
+        
+        if (wardId) {
+            // Fetch available beds for the selected ward
+            fetch(`/inpatient/ajax/load-beds/?ward=${wardId}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(bed => {
+                        const option = document.createElement('option');
+                        option.value = bed.id;
+                        option.textContent = `Bed ${bed.bed_number}`;
+                        bedSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading beds:', error);
+                });
+        }
+    });
+});
+</script>
+{% endblock %}

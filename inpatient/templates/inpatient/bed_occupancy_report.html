@@ -1,74 +1,244 @@
 {% extends 'base.html' %}
 
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h2>{{ title }}</h2>
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div class="d-none d-sm-inline-block">
+            <small class="text-muted">Generated on {{ report_date|date:"M d, Y H:i" }}</small>
+        </div>
+    </div>
 
+    <!-- Overall Hospital Statistics -->
     <div class="row">
-        <div class="col-md-4">
-            <div class="card text-white bg-primary mb-3">
-                <div class="card-header">Total Beds</div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">{{ total_beds }}</h5>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Beds</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_beds_hospital }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bed fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
-                <div class="card-header">Available Beds</div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">{{ available_beds }}</h5>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Available Beds</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_available_hospital }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-danger mb-3">
-                <div class="card-header">Occupied Beds</div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">{{ occupied_beds }}</h5>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Occupied Beds</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_occupied_hospital }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-injured fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Occupancy Rate</div>
+                            <div class="row no-gutters align-items-center">
+                                <div class="col-auto">
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ overall_occupancy_rate|floatformat:1 }}%</div>
+                                </div>
+                                <div class="col">
+                                    <div class="progress progress-sm mr-2">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ overall_occupancy_rate }}%" aria-valuenow="{{ overall_occupancy_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header">
-            Overall Occupancy Rate
+    <!-- Additional Statistics Row -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Avg Length of Stay</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_length_of_stay|floatformat:1 }} days</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <h3 class="text-center">{{ occupancy_rate }}%</h3>
-            <canvas id="overallOccupancyChart"></canvas>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Recent Admissions (7 days)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ recent_admissions }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-plus fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">Recent Discharges (7 days)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ recent_discharges }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-minus fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-light shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Bed Turnover Rate</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ bed_turnover_rate|floatformat:1 }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-sync-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header">
-            Occupancy by Ward
+    <!-- Charts Row -->
+    <div class="row">
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Overall Bed Occupancy</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="overallOccupancyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Ward Occupancy Comparison</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-bar">
+                        <canvas id="wardOccupancyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Ward Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Detailed Ward Occupancy</h6>
         </div>
         <div class="card-body">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Ward</th>
-                        <th>Total Beds</th>
-                        <th>Occupied</th>
-                        <th>Available</th>
-                        <th>Occupancy Rate</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for ward in ward_occupancy %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="wardTable" width="100%" cellspacing="0">
+                    <thead>
                         <tr>
-                            <td>{{ ward.ward_name }}</td>
-                            <td>{{ ward.total }}</td>
-                            <td>{{ ward.occupied }}</td>
-                            <td>{{ ward.available }}</td>
-                            <td>{{ ward.occupancy_rate|floatformat:2 }}%</td>
+                            <th>Ward Name</th>
+                            <th>Type</th>
+                            <th>Total Beds</th>
+                            <th>Occupied</th>
+                            <th>Available</th>
+                            <th>Occupancy Rate</th>
+                            <th>Charge/Day</th>
+                            <th>Avg LOS</th>
+                            <th>Primary Doctor</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <canvas id="wardOccupancyChart"></canvas>
+                    </thead>
+                    <tbody>
+                        {% for ward in report_data %}
+                        <tr>
+                            <td><strong>{{ ward.ward_name }}</strong></td>
+                            <td>{{ ward.ward_type }}</td>
+                            <td>{{ ward.total_beds }}</td>
+                            <td>
+                                <span class="badge badge-danger">{{ ward.occupied_beds }}</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-success">{{ ward.available_beds }}</span>
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar
+                                        {% if ward.occupancy_rate >= 90 %}bg-danger
+                                        {% elif ward.occupancy_rate >= 70 %}bg-warning
+                                        {% else %}bg-success{% endif %}"
+                                        role="progressbar"
+                                        style="width: {{ ward.occupancy_rate }}%"
+                                        aria-valuenow="{{ ward.occupancy_rate }}"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100">
+                                        {{ ward.occupancy_rate|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>₦{{ ward.charge_per_day|floatformat:2 }}</td>
+                            <td>{{ ward.avg_length_of_stay|floatformat:1 }} days</td>
+                            <td>{{ ward.primary_doctor }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -82,25 +252,32 @@
     // Overall Occupancy Chart
     var ctxOverall = document.getElementById('overallOccupancyChart').getContext('2d');
     var overallOccupancyChart = new Chart(ctxOverall, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
             labels: ['Occupied', 'Available'],
             datasets: [{
-                data: [{{ occupied_beds }}, {{ available_beds }}],
-                backgroundColor: ['#dc3545', '#28a745'],
+                data: [{{ total_occupied_hospital }}, {{ total_available_hospital }}],
+                backgroundColor: ['#e74a3b', '#1cc88a'],
+                hoverBackgroundColor: ['#e74a3b', '#1cc88a'],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
             }]
         },
         options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: true,
-                    text: 'Overall Bed Occupancy'
-                }
-            }
+            maintainAspectRatio: false,
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+            },
+            legend: {
+                display: false
+            },
+            cutoutPercentage: 80,
         },
     });
 
@@ -109,11 +286,13 @@
     var wardNames = [];
     var wardOccupied = [];
     var wardAvailable = [];
+    var wardOccupancyRates = [];
 
-    {% for ward in ward_occupancy %}
+    {% for ward in report_data %}
         wardNames.push('{{ ward.ward_name }}');
-        wardOccupied.push({{ ward.occupied }});
-        wardAvailable.push({{ ward.available }});
+        wardOccupied.push({{ ward.occupied_beds }});
+        wardAvailable.push({{ ward.available_beds }});
+        wardOccupancyRates.push({{ ward.occupancy_rate|floatformat:1 }});
     {% endfor %}
 
     var wardOccupancyChart = new Chart(ctxWard, {
@@ -124,31 +303,67 @@
                 {
                     label: 'Occupied',
                     data: wardOccupied,
-                    backgroundColor: '#dc3545',
+                    backgroundColor: '#e74a3b',
                 },
                 {
                     label: 'Available',
                     data: wardAvailable,
-                    backgroundColor: '#28a745',
+                    backgroundColor: '#1cc88a',
                 }
             ]
         },
         options: {
-            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 25,
+                    top: 25,
+                    bottom: 0
+                }
+            },
             scales: {
                 x: {
                     stacked: true,
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 6
+                    }
                 },
                 y: {
                     stacked: true,
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        maxTicksLimit: 5,
+                        padding: 10,
+                    },
+                    grid: {
+                        color: "rgb(234, 236, 244)",
+                        drawBorder: false,
+                        borderDash: [2]
+                    }
                 }
             },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Bed Occupancy by Ward'
-                }
+            legend: {
+                display: true
+            },
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                titleMarginBottom: 10,
+                titleFontColor: '#6e707e',
+                titleFontSize: 14,
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                intersect: false,
+                mode: 'index',
+                caretPadding: 10,
             }
         }
     });

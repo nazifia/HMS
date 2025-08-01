@@ -448,12 +448,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        if (selectedSource === 'patient_wallet' && amount > walletBalance) {
-            e.preventDefault();
-            alert(`Insufficient wallet balance. Available: ₦${walletBalance.toFixed(2)}, Required: ₦${amount.toFixed(2)}`);
-            amountInput.focus();
-            return;
-        }
+        // Allow wallet payments even with insufficient balance (negative balance allowed)
+        // Wallet balance validation removed to support negative balances
 
         // Enhanced confirmation with source and NHIA information
         const sourceText = selectedSource === 'patient_wallet' ? 'Patient Wallet' : 'Billing Office';

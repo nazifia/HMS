@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import payment_views
 
 app_name = 'consultations'
 
@@ -47,4 +48,9 @@ urlpatterns = [
     path('doctor/consultation/<int:consultation_id>/lab-request/', views.create_lab_request, name='create_lab_request'),
     path('doctor/consultation/<int:consultation_id>/radiology-order/', views.create_radiology_order, name='create_radiology_order'),
     path('doctor/consultation/<int:consultation_id>/referral/', views.create_referral_from_consultation, name='create_referral_from_consultation'),
+    
+    # Payment management
+    path('consultation/<int:consultation_id>/payment/', payment_views.consultation_payment, name='consultation_payment'),
+    path('consultation/<int:consultation_id>/payment-history/', payment_views.consultation_payment_history, name='consultation_payment_history'),
+    path('ajax/wallet-balance/<int:patient_id>/', payment_views.get_wallet_balance, name='get_wallet_balance'),
 ]

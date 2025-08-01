@@ -2,7 +2,6 @@
 
 - [x] 1. Verify and enhance existing wallet transfer models
 
-
   - Review current PatientWallet and WalletTransaction models for transfer support
   - Ensure transfer-specific fields (transfer_to_wallet, transfer_from_wallet) are properly implemented
   - Validate existing transaction types include 'transfer_in' and 'transfer_out'
@@ -10,7 +9,6 @@
   - _Requirements: 1.5, 1.6, 3.2, 6.4_
 
 - [x] 2. Enhance wallet transfer form with improved validation
-
 
   - Review and improve WalletTransferForm class in patients/forms.py
   - Add enhanced validation messages for better user experience
@@ -21,7 +19,6 @@
 
 - [x] 3. Enhance wallet transfer view with better error handling
 
-
   - Review and improve wallet_transfer view in patients/views.py
   - Add comprehensive error handling and rollback mechanisms
   - Implement atomic transaction processing for transfers
@@ -30,8 +27,6 @@
   - _Requirements: 1.5, 1.8, 3.1, 4.4, 4.6_
 
 - [ ] 4. Improve transfer template with real-time validation
-
-
 
   - Enhance wallet_transfer.html template with better JavaScript validation
   - Add real-time transfer preview and balance calculation
@@ -49,8 +44,8 @@
   - Add validation for edge cases and business rules
   - _Requirements: 1.1, 1.5, 3.3, 4.1, 4.2, 4.3, 4.4_
 
-
 - [ ] 6. Enhance transaction record creation for transfers
+
   - Improve transaction record creation to properly link sender and recipient transactions
   - Ensure transfer descriptions clearly identify the other party
   - Add proper reference number generation for transfer tracking
@@ -78,7 +73,6 @@
 
 - [ ] 9. Add comprehensive transfer validation tests
 
-
   - Create unit tests for WalletTransferForm validation scenarios
   - Add tests for transfer processing success and failure cases
   - Implement tests for edge cases (zero amounts, self-transfers, inactive patients)
@@ -105,8 +99,6 @@
   - _Requirements: 6.1, 6.2, 6.5_
 
 - [x] 12. Create comprehensive transfer documentation and testing
-
-
 
   - Create user documentation for transfer functionality
   - Add inline help text and tooltips for transfer forms

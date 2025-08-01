@@ -322,7 +322,7 @@ class UserProfileForm(forms.ModelForm):
             
             # If submitted username is different from original, check for uniqueness
             if username != user_instance.username:
-                if User.objects.filter(username=username).exclude(pk=user_instance.pk).exists():
+                if CustomUser.objects.filter(username=username).exclude(pk=user_instance.pk).exists():
                     raise ValidationError("This username is already taken. Please choose a different one.")
         # For new users (no instance or instance without pk)
         else:
@@ -330,7 +330,7 @@ class UserProfileForm(forms.ModelForm):
                 raise ValidationError("Username cannot be blank.")
             
             # Check if username is taken for a new user
-            if User.objects.filter(username=username).exists():
+            if CustomUser.objects.filter(username=username).exists():
                 raise ValidationError("This username is already taken. Please choose a different one.")
                 
         return username
@@ -339,7 +339,7 @@ class UserProfileForm(forms.ModelForm):
         email = self.cleaned_data.get('email')
         user_instance = self.instance
         if user_instance and email and user_instance.email != email:
-            if User.objects.filter(email=email).exclude(pk=user_instance.pk).exists():
+            if CustomUser.objects.filter(email=email).exclude(pk=user_instance.pk).exists():
                 raise ValidationError("This email address is already in use.")
         return email
     
@@ -460,9 +460,9 @@ class UserProfileForm(forms.ModelForm):
         if self.instance and hasattr(self.instance, 'user') and self.instance.user:
             # Check if username is being changed and if the new one is unique
             if username and self.instance.user.username != username:
-                if User.objects.filter(username=username).exclude(pk=self.instance.user.pk).exists():
+                if CustomUser.objects.filter(username=username).exclude(pk=self.instance.user.pk).exists():
                     raise ValidationError("This username is already taken.")
-        elif username and User.objects.filter(username=username).exists():
+        elif username and CustomUser.objects.filter(username=username).exists():
             # This case is for new profile creation if that's allowed through this form,
             # but typically UserProfileForm is for existing users.
             raise ValidationError("This username is already taken.")
@@ -603,7 +603,7 @@ class PhoneNumberPasswordResetForm(PasswordResetForm):
 
         # Find user by phone_number (which is CustomUser.USERNAME_FIELD)
         try:
-            user = User.objects.get(phone_number=phone_number_input)
+            user = CustomUser.objects.get(phone_number=phone_number_input)
             if not user.email: # Check if the user has an email to send the reset link to
                 raise ValidationError("This user account does not have an email address for password reset.")
             # Store the user's actual email on the form instance for the save method
@@ -617,9 +617,9 @@ class PhoneNumberPasswordResetForm(PasswordResetForm):
         # Parent form calls this with the value from the 'email' field (our phone number).
         # We need to return a queryset of users matching this phone number.
         try:
-            return User.objects.filter(phone_number=email_field_value)
+            return CustomUser.objects.filter(phone_number=email_field_value)
         except User.DoesNotExist:
-            return User.objects.none()
+            return CustomUser.objects.none()
 
     def save(self, domain_override=None,
              subject_template_name='registration/password_reset_subject.txt',

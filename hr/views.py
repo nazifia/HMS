@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 from django.utils import timezone
 from datetime import timedelta
 from .models import Designation, Shift, StaffSchedule, Leave, Attendance, Payroll
@@ -18,7 +18,7 @@ from core.models import AuditLog, InternalNotification
 def user_management(request):
     """User Management Page (formerly staff_list)"""
     search_form = StaffSearchForm(request.GET)
-    staff_members = User.objects.filter(is_active=True).select_related('profile').order_by('first_name', 'last_name')
+    staff_members = CustomUser.objects.filter(is_active=True).select_related('profile').order_by('first_name', 'last_name')
 
     if search_form.is_valid():
         search_query = search_form.cleaned_data.get('search')
@@ -47,15 +47,15 @@ def user_management(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    role_counts = User.objects.filter(is_active=True).values('profile__role').annotate(count=Count('id'))
+    role_counts = CustomUser.objects.filter(is_active=True).values('profile__role').annotate(count=Count('id'))
     role_count_dict = {item['profile__role']: item['count'] for item in role_counts}
     doctors_count = role_count_dict.get('doctor', 0)
     nurses_count = role_count_dict.get('nurse', 0)
     admin_count = role_count_dict.get('admin', 0)
-    other_count = User.objects.filter(is_active=True).exclude(profile__role__in=['doctor', 'nurse', 'admin']).count()
+    other_count = CustomUser.objects.filter(is_active=True).exclude(profile__role__in=['doctor', 'nurse', 'admin']).count()
 
     audit_logs = AuditLog.objects.filter(
-        user__in=User.objects.all()
+        user__in=CustomUser.objects.all()
     ).order_by('-timestamp')[:10]
     user_notifications = InternalNotification.objects.filter(
         user=request.user,
@@ -92,7 +92,7 @@ def department_list(request):
     page_obj = paginator.get_page(page_number)
 
     for department in page_obj:
-        department.staff_count = User.objects.filter(profile__department=department, is_active=True).count()
+        department.staff_count = CustomUser.objects.filter(profile__department=department, is_active=True).count()
 
     context = {
         'page_obj': page_obj,
@@ -164,7 +164,7 @@ def delete_department(request, department_id):
     """View for deleting a department"""
     department = get_object_or_404(Department, id=department_id)
 
-    staff_count = User.objects.filter(profile__department=department).count()
+    staff_count = CustomUser.objects.filter(profile__department=department).count()
 
     if request.method == 'POST':
         if staff_count > 0:
@@ -414,8 +414,8 @@ def hr_dashboard(request):
     today = timezone.now().date()
 
     # Staff Metrics
-    total_staff = User.objects.filter(is_active=True).count()
-    new_staff_this_month = User.objects.filter(date_joined__month=today.month, date_joined__year=today.year).count()
+    total_staff = CustomUser.objects.filter(is_active=True).count()
+    new_staff_this_month = CustomUser.objects.filter(date_joined__month=today.month, date_joined__year=today.year).count()
     staff_on_leave_today = Leave.objects.filter(start_date__lte=today, end_date__gte=today, status='approved').count()
 
     # Attendance Metrics

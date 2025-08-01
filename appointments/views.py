@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
@@ -95,9 +95,9 @@ def create_appointment(request):
 
     if doctor_id:
         try:
-            doctor = User.objects.get(id=doctor_id)
+            doctor = CustomUser.objects.get(id=doctor_id)
             initial_data['doctor'] = doctor
-        except User.DoesNotExist:
+        except CustomUser.DoesNotExist:
             pass
 
     if request.method == 'POST':
@@ -218,13 +218,13 @@ def appointment_calendar(request):
     year = int(request.GET.get('year', timezone.now().year))
 
     # Get all doctors
-    doctors = User.objects.filter(is_active=True, profile__role='doctor')
+    doctors = CustomUser.objects.filter(is_active=True, profile__role='doctor')
     selected_doctor_id = request.GET.get('doctor')
 
     # Filter appointments by doctor if selected
     if selected_doctor_id:
         try:
-            selected_doctor = User.objects.get(id=selected_doctor_id)
+            selected_doctor = CustomUser.objects.get(id=selected_doctor_id)
             appointments = Appointment.objects.filter(
                 doctor=selected_doctor,
                 appointment_date__year=year,
@@ -373,7 +373,7 @@ def manage_doctor_schedule(request, doctor_id=None):
         form = DoctorScheduleForm(initial=initial_data)
 
     # Get all doctors for the dropdown
-    doctors = User.objects.filter(is_active=True, profile__role='doctor').order_by('last_name')
+    doctors = CustomUser.objects.filter(is_active=True, profile__role='doctor').order_by('last_name')
 
     context = {
         'form': form,
@@ -468,8 +468,8 @@ def get_available_slots(request):
 
     try:
         selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        doctor = User.objects.get(id=doctor_id)
-    except (ValueError, User.DoesNotExist):
+        doctor = CustomUser.objects.get(id=doctor_id)
+    except (ValueError, CustomUser.DoesNotExist):
         return JsonResponse({'error': 'Invalid date or doctor'}, status=400)
 
     # Check if doctor is on leave

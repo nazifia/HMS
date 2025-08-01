@@ -14,7 +14,7 @@ class RadiologyOrderForm(forms.ModelForm):
             patient_id = self.initial.get('patient')
         if patient_id:
             self.fields['patient'].initial = patient_id
-            self.fields['patient'].widget = forms.HiddenInput()
+            # Keep patient field visible but pre-selected for user convenience
         # Always set queryset for dropdowns
         self.fields['patient'].queryset = Patient.objects.all()
         self.fields['test'].queryset = RadiologyTest.objects.filter(is_active=True)

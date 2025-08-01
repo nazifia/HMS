@@ -54,7 +54,7 @@ class AppointmentForm(forms.ModelForm):
             patient_id = self.initial.get('patient')
         if patient_id:
             self.fields['patient'].initial = patient_id
-            self.fields['patient'].widget = forms.HiddenInput()
+            # Keep patient field visible but pre-selected for user convenience
         # Ensure all patients are available for selection
         self.fields['patient'].queryset = Patient.objects.all()
     

@@ -70,7 +70,18 @@ class InvoiceItemForm(forms.ModelForm):
         return cleaned_data
 
 class PaymentForm(forms.ModelForm):
-    """Form for recording payments"""
+    """Enhanced form for recording payments with dual payment method support"""
+    
+    payment_source = forms.ChoiceField(
+        choices=[
+            ('billing_office', 'Billing Office Payment'),
+            ('patient_wallet', 'Patient Wallet Payment')
+        ],
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        label='Payment Source',
+        initial='billing_office'
+    )
+    
     class Meta:
         model = Payment
         fields = ['amount', 'payment_method', 'payment_date', 'transaction_id', 'notes']
@@ -81,6 +92,35 @@ class PaymentForm(forms.ModelForm):
             'transaction_id': forms.TextInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        self.invoice = kwargs.pop('invoice', None)
+        self.patient_wallet = kwargs.pop('patient_wallet', None)
+        super().__init__(*args, **kwargs)
+        
+        # Add wallet balance info to the form if wallet is provided
+        if self.patient_wallet:
+            self.fields['payment_source'].help_text = f'Wallet Balance: ₦{self.patient_wallet.balance:.2f}'
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        payment_source = cleaned_data.get('payment_source')
+        amount = cleaned_data.get('amount')
+        
+        if payment_source == 'patient_wallet' and self.patient_wallet and amount:
+            if amount > self.patient_wallet.balance:
+                raise forms.ValidationError(
+                    f'Insufficient wallet balance. Available: ₦{self.patient_wallet.balance:.2f}, Required: ₦{amount:.2f}'
+                )
+        
+        if self.invoice and amount:
+            remaining_balance = self.invoice.get_balance()
+            if amount > remaining_balance:
+                raise forms.ValidationError(
+                    f'Payment amount exceeds remaining balance of ₦{remaining_balance:.2f}'
+                )
+        
+        return cleaned_data
 
 
 class AdmissionPaymentForm(forms.ModelForm):

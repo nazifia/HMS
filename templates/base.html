@@ -22,8 +22,6 @@
     {% load static %}
 {% load form_tags %}
     <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
-    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
-    <link rel="stylesheet" href="{% static 'css/dashboard_modern.css' %}">
 
     {% block extra_css %}{% endblock %}
     <style>
@@ -455,6 +453,101 @@
     <!-- Custom JS -->
     <script src="{% static 'js/main.js' %}"></script>
     <script src="{% static 'js/sidebar.js' %}"></script>
+
+    <!-- Modal Fix Script -->
+    <script>
+        $(document).ready(function() {
+            // Ensure modals work properly with custom CSS
+            $('.modal').on('show.bs.modal', function (e) {
+                $('body').addClass('modal-open');
+                $('#wrapper').addClass('modal-open');
+
+                // Ensure modal is properly positioned
+                $(this).css({
+                    'display': 'block',
+                    'pointer-events': 'auto'
+                });
+
+                // Initialize Select2 for elements in the modal
+                $(this).find('.select2').select2({
+                    dropdownParent: $(this),
+                    theme: 'bootstrap-5'
+                });
+            });
+
+            $('.modal').on('shown.bs.modal', function (e) {
+                // Ensure modal content is interactive
+                $(this).find('.modal-content').css('pointer-events', 'auto');
+                $(this).find('button, input, select, textarea, a').css('pointer-events', 'auto');
+
+                // Focus on first input after modal is fully shown
+                setTimeout(() => {
+                    $(this).find('input, select, textarea').first().focus();
+                }, 100);
+            });
+
+            $('.modal').on('hidden.bs.modal', function (e) {
+                $('body').removeClass('modal-open');
+                $('#wrapper').removeClass('modal-open');
+
+                // Reset pointer events
+                $(this).css('pointer-events', '');
+
+                // Destroy Select2 instances to prevent memory leaks
+                $(this).find('.select2').each(function() {
+                    if ($(this).hasClass('select2-hidden-accessible')) {
+                        $(this).select2('destroy');
+                    }
+                });
+            });
+
+            // Fix for modal backdrop click issues
+            $('.modal').on('click', function(e) {
+                if (e.target === this) {
+                    $(this).modal('hide');
+                }
+            });
+
+            // Handle clicks outside modal content to close modal
+            $(document).on('click', '.modal', function(e) {
+                if ($(e.target).hasClass('modal')) {
+                    $(this).modal('hide');
+                }
+            });
+
+            // Ensure modal content is clickable
+            $('.modal-content').on('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // Prevent form submission on Enter key in modal inputs (except textareas)
+            $('.modal').on('keypress', 'input:not([type="submit"])', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // Additional fix for modal interaction issues
+            $(document).on('click', '.modal-backdrop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('.modal.show').modal('hide');
+            });
+
+            // Handle ESC key to close modal
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape' && $('.modal.show').length > 0) {
+                    $('.modal.show').modal('hide');
+                }
+            });
+
+            // Ensure buttons in modals are clickable
+            $(document).on('click', '.modal button', function(e) {
+                e.stopPropagation();
+            });
+        });
+    </script>
 
     {% block extra_js %}{% endblock %}
 

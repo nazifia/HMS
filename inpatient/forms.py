@@ -227,6 +227,7 @@ class PatientTransferForm(forms.Form):
     notes = forms.CharField(widget=forms.Textarea, required=False)
 
     def __init__(self, *args, **kwargs):
+        self.current_bed = kwargs.pop('current_bed', None)
         super().__init__(*args, **kwargs)
         self.fields['to_bed'].queryset = Bed.objects.none() # Initialize with empty queryset
 

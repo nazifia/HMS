@@ -24,7 +24,7 @@ from .forms import (
     TestResultParameterFormSet # Import the new formset
 )
 from patients.models import Patient
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 import os
 from core.models import send_notification_email, InternalNotification
 
@@ -613,7 +613,7 @@ def create_test_request(request):
 
         try:
             patient = Patient.objects.get(id=patient_id)
-            doctor = User.objects.get(id=doctor_id)
+            doctor = CustomUser.objects.get(id=doctor_id)
             selected_tests = Test.objects.filter(id__in=tests_ids)
 
             if not selected_tests.exists():
@@ -1087,7 +1087,7 @@ def radiology_sales_report(request):
     from radiology.models import RadiologyOrder
     from django.db.models import Sum, F
     from django.utils import timezone
-    from django.contrib.auth.models import User
+    # from django.contrib.auth.models import User  # Using CustomUser instead
 
     today = timezone.now().date()
     month_start = today.replace(day=1)

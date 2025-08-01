@@ -35,55 +35,9 @@
                 Add Daily Round
             </button>
 
-            <!-- Daily Round Modal -->
-            <div class="modal fade" id="dailyRoundModal" tabindex="-1" aria-labelledby="dailyRoundModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="dailyRoundModalLabel">Add Daily Round</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="post">
-                            {% csrf_token %}
-                            <div class="modal-body">
-                                {{ round_form.as_p }}
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <input type="hidden" name="add_round" value="true">
-                                <button type="submit" class="btn btn-success">Save Daily Round</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nursingNoteModal">
                 Add Nursing Note
             </button>
-
-            <!-- Nursing Note Modal -->
-            <div class="modal fade" id="nursingNoteModal" tabindex="-1" aria-labelledby="nursingNoteModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="nursingNoteModalLabel">Add Nursing Note</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="post">
-                            {% csrf_token %}
-                            <div class="modal-body">
-                                {{ note_form.as_p }}
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <input type="hidden" name="add_note" value="true">
-                                <button type="submit" class="btn btn-success">Save Nursing Note</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
         </div>
         {% for round in daily_rounds %}
             <div class="card mb-2">
@@ -106,4 +60,118 @@
     </div>
 
 </div>
+
+<!-- Daily Round Modal -->
+<div class="modal fade" id="dailyRoundModal" tabindex="-1" aria-labelledby="dailyRoundModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dailyRoundModalLabel">Add Daily Round</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    {{ round_form.as_p }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <input type="hidden" name="add_round" value="true">
+                    <button type="submit" class="btn btn-success">Save Daily Round</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Nursing Note Modal -->
+<div class="modal fade" id="nursingNoteModal" tabindex="-1" aria-labelledby="nursingNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nursingNoteModalLabel">Add Nursing Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    {{ note_form.as_p }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <input type="hidden" name="add_note" value="true">
+                    <button type="submit" class="btn btn-success">Save Nursing Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Specific fixes for admission detail modals
+        $('#dailyRoundModal, #nursingNoteModal').on('show.bs.modal', function() {
+            // Ensure modal is above everything with new z-index hierarchy
+            $(this).css({
+                'z-index': '2050',
+                'pointer-events': 'auto',
+                'position': 'fixed',
+                'top': '0',
+                'left': '0',
+                'width': '100%',
+                'height': '100%'
+            });
+
+            // Ensure backdrop is properly positioned
+            $('.modal-backdrop').css({
+                'z-index': '2040',
+                'background-color': 'rgba(0, 0, 0, 0.5)',
+                'opacity': '0.5'
+            });
+
+            // Ensure modal dialog and content are properly positioned
+            $(this).find('.modal-dialog').css({
+                'z-index': '2060',
+                'position': 'relative'
+            });
+
+            $(this).find('.modal-content').css({
+                'z-index': '2070',
+                'position': 'relative',
+                'background-color': '#fff'
+            });
+        });
+
+        $('#dailyRoundModal, #nursingNoteModal').on('shown.bs.modal', function() {
+            // Make sure all form elements are interactive
+            $(this).find('input, select, textarea, button').each(function() {
+                $(this).css('pointer-events', 'auto');
+                $(this).prop('disabled', false);
+            });
+
+            // Focus on first input
+            $(this).find('input, select, textarea').first().focus();
+        });
+
+        // Handle modal button clicks explicitly
+        $(document).on('click', '#dailyRoundModal button, #nursingNoteModal button', function(e) {
+            e.stopPropagation();
+            // Allow the button click to proceed normally
+        });
+
+        // Handle form submission in modals
+        $(document).on('submit', '#dailyRoundModal form, #nursingNoteModal form', function(e) {
+            // Allow form submission to proceed
+            return true;
+        });
+
+        // Debug: Log modal events
+        $('#dailyRoundModal, #nursingNoteModal').on('show.bs.modal shown.bs.modal hide.bs.modal hidden.bs.modal', function(e) {
+            console.log('Modal event:', e.type, 'for modal:', this.id);
+        });
+    });
+</script>
 {% endblock %}

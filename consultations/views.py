@@ -6,7 +6,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
 from accounts.models import CustomUser
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User  # Already importing CustomUser
 from django.db import models
 
 from .models import ConsultingRoom, WaitingList, Consultation, ConsultationNote, Referral, SOAPNote

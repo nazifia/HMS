@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div class="d-none d-sm-inline-block">
+            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Patient
+            </a>
+            <a href="{% url 'core:comprehensive_transaction_history' patient.id %}" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-list fa-sm text-white-50"></i> Full Transaction History
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Info -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                            <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Phone:</strong> {{ patient.phone_number }}</p>
+                            <p><strong>Email:</strong> {{ patient.email|default:"Not provided" }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Date of Birth:</strong> {{ patient.date_of_birth|date:"M d, Y" }}</p>
+                            <p><strong>Gender:</strong> {{ patient.get_gender_display }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Registration Date:</strong> {{ patient.created_at|date:"M d, Y" }}</p>
+                            <p><strong>Total Invoices:</strong> {{ invoices_count }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Summary Cards -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Wallet Balance</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 {% if wallet_balance < 0 %}text-danger{% endif %}">
+                                ₦{{ wallet_balance|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Credits</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_credits|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-plus-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Debits</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_debits|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-minus-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Outstanding Balance</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ outstanding_balance|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Overview -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Transactions</h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in recent_transactions %}
+                                <tr>
+                                    <td>{{ transaction.date|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if transaction.type == 'Wallet' %}primary{% else %}success{% endif %}">
+                                            {{ transaction.type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ transaction.description }}</td>
+                                    <td>₦{{ transaction.amount|floatformat:2 }}</td>
+                                    <td><code>{{ transaction.reference }}</code></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'core:comprehensive_transaction_history' patient.id %}" class="btn btn-primary">
+                            <i class="fas fa-list me-1"></i> View All Transactions
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-receipt fa-3x text-gray-300 mb-3"></i>
+                        <h5 class="text-gray-600">No recent transactions</h5>
+                        <p class="text-muted">This patient has no recent financial activity.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Wallet Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Wallet Information</h6>
+                </div>
+                <div class="card-body">
+                    {% if wallet %}
+                    <p><strong>Status:</strong> 
+                        <span class="badge badge-{% if wallet.is_active %}success{% else %}danger{% endif %}">
+                            {% if wallet.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </p>
+                    <p><strong>Created:</strong> {{ wallet.created_at|date:"M d, Y" }}</p>
+                    <p><strong>Last Updated:</strong> {{ wallet.last_updated|date:"M d, Y H:i" }}</p>
+                    <p><strong>Current Balance:</strong> 
+                        <span class="{% if wallet_balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₦{{ wallet_balance|floatformat:2 }}
+                        </span>
+                    </p>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-wallet me-1"></i> Manage Wallet
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-wallet fa-2x text-gray-300 mb-2"></i>
+                        <p class="text-muted">No wallet found for this patient.</p>
+                        <p class="text-muted"><small>Wallet will be created automatically when needed.</small></p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Invoice Summary -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Invoice Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Total Invoiced:</span>
+                            <strong>₦{{ total_invoiced|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Total Paid:</span>
+                            <strong class="text-success">₦{{ total_paid|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Outstanding:</span>
+                            <strong class="{% if outstanding_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                ₦{{ outstanding_balance|floatformat:2 }}
+                            </strong>
+                        </div>
+                    </div>
+                    
+                    {% if outstanding_balance > 0 %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        This patient has outstanding invoices.
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'billing:patient_invoices' patient.id %}" class="btn btn-sm btn-info">
+                            <i class="fas fa-file-invoice me-1"></i> View Invoices
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

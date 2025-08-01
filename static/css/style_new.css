@@ -291,45 +291,9 @@ body {
     }
 }
 
-/* Restore sidebar display and layout */
-#wrapper {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    min-height: 100vh;
-    align-items: stretch;
-    position: relative;
-    gap: 0 !important;
-}
+/* Restore sidebar display and layout - REMOVED DUPLICATE */
 
-.sidebar {
-    display: block !important;
-    width: 14rem !important;
-    min-width: 12rem !important;
-    padding: 0;
-    margin: 0;
-    background: #343a40 !important;
-    color: #fff;
-    min-height: 100vh;
-    height: 100%;
-    position: relative;
-    z-index: 2;
-    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
-}
-
-#wrapper:before {
-    content: '';
-    display: block;
-    background: #343a40;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 14rem;
-    height: 100%;
-    min-height: 100vh;
-    z-index: 1;
-    pointer-events: none;
-}
+/* Removed wrapper:before pseudo-element */
 
 #content-wrapper {
     flex: 1 1 auto;
@@ -361,14 +325,7 @@ body {
     padding-left: 0 !important;
 }
 
-/* Remove sidebar width if any */
-.sidebar {
-    display: block !important;
-    width: 14rem !important;
-    min-width: 12rem !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
+/* Remove sidebar width if any - REMOVED DUPLICATE */
 
 /* Center auth forms and main content for login page */
 .auth-form, .login-card, .card.auth-card {
@@ -480,23 +437,7 @@ html, body {
     background: #f8f9fc;
 }
 
-/* 3. Sidebar Styles */
-#sidebar, .sidebar {
-    width: 250px;
-    min-width: 250px;
-    max-width: 250px;
-    height: 100vh;
-    background: #23272b;
-    color: #fff;
-    position: relative;
-    left: 0;
-    top: 0;
-    margin: 0;
-    padding: 0;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-}
+/* 3. Sidebar Styles - CONSOLIDATED */
 
 /* 4. Content Area */
 #content-wrapper {
@@ -607,27 +548,220 @@ html, body {
     box-sizing: inherit;
 }
 
-#wrapper {
-    display: flex;
-    flex-direction: row;
-    min-height: 100vh;
-    width: 100vw;
-    margin: 0;
-    padding: 0;
-    background: #f8f9fc;
+/* COMPREHENSIVE MODAL Z-INDEX FIX */
+/* Clear z-index hierarchy:
+   1-99: Base layout elements
+   100-999: Sidebar and navigation
+   1000-1999: Overlays and dropdowns
+   2000+: Modals (highest priority)
+*/
+
+.modal-backdrop {
+    z-index: 2040 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    opacity: 0.5 !important;
+    pointer-events: none !important;
 }
 
-/* Sidebar Styles */
+.modal {
+    z-index: 2050 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    outline: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    pointer-events: auto !important;
+}
+
+.modal-dialog {
+    z-index: 2060 !important;
+    position: relative !important;
+    pointer-events: auto !important;
+    margin: 1.75rem auto !important;
+    max-width: 500px !important;
+    width: auto !important;
+}
+
+/* Ensure modal content is clickable and properly positioned */
+.modal-content {
+    position: relative !important;
+    z-index: 2070 !important;
+    background-color: #fff !important;
+    border: 1px solid rgba(0,0,0,.2) !important;
+    border-radius: 0.375rem !important;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15) !important;
+    pointer-events: auto !important;
+    background-clip: padding-box !important;
+    outline: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+}
+
+/* Fix for modal backdrop click-through issue */
+body.modal-open {
+    overflow: hidden !important;
+    padding-right: 0 !important;
+}
+
+/* Ensure wrapper doesn't interfere with modal */
+#wrapper.modal-open {
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
+/* Re-enable pointer events for modal when wrapper is modal-open */
+#wrapper.modal-open .modal {
+    pointer-events: auto !important;
+}
+
+/* Prevent content wrapper from blocking modal interactions */
+#content-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+/* Ensure sidebar doesn't interfere with modal */
+#sidebar, .sidebar {
+    z-index: 100 !important;
+}
+
+/* Additional modal fixes */
+.modal-backdrop.show {
+    opacity: 0.5 !important;
+}
+
+/* Ensure modal is properly centered and accessible */
+.modal.show .modal-dialog {
+    transform: none !important;
+}
+
+/* Fix for form elements in modal */
+.modal .form-control,
+.modal .form-select,
+.modal .btn {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto !important;
+}
+
+/* Ensure dropdown menus in modals work */
+.modal .dropdown-menu {
+    z-index: 1080 !important;
+    pointer-events: auto !important;
+}
+
+/* Fix for date/time inputs in modals */
+.modal input[type="datetime-local"],
+.modal input[type="date"],
+.modal input[type="time"] {
+    z-index: 1;
+    position: relative;
+    pointer-events: auto !important;
+}
+
+/* Ensure all interactive elements in modal are clickable */
+.modal button,
+.modal input,
+.modal select,
+.modal textarea,
+.modal a,
+.modal label {
+    pointer-events: auto !important;
+}
+
+/* Fix for modal header and footer */
+.modal-header,
+.modal-body,
+.modal-footer {
+    pointer-events: auto !important;
+}
+
+/* Ensure close button works */
+.modal .btn-close {
+    pointer-events: auto !important;
+    z-index: 2080 !important;
+}
+
+/* ADDITIONAL MODAL FIXES FOR Z-INDEX ISSUES */
+/* Force modals to appear above all other elements */
+.modal.show {
+    z-index: 2050 !important;
+}
+
+.modal.show .modal-backdrop {
+    z-index: 2040 !important;
+}
+
+.modal.show .modal-dialog {
+    z-index: 2060 !important;
+}
+
+.modal.show .modal-content {
+    z-index: 2070 !important;
+}
+
+/* Ensure Select2 dropdowns in modals work */
+.select2-container {
+    z-index: 2080 !important;
+}
+
+.select2-dropdown {
+    z-index: 2090 !important;
+}
+
+/* Force all modal elements to be above sidebar and wrapper */
+.modal * {
+    position: relative;
+}
+
+/* Ensure modal backdrop covers everything */
+.modal-backdrop.show {
+    z-index: 2040 !important;
+    opacity: 0.5 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* WRAPPER Z-INDEX FIX */
+#wrapper {
+    display: flex !important;
+    flex-direction: row !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #f8f9fc !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Ensure wrapper doesn't block modal interactions */
+#wrapper.modal-open {
+    pointer-events: none !important;
+    z-index: 1 !important;
+}
+
+/* But allow content within wrapper to be interactive when not modal */
+#wrapper:not(.modal-open) {
+    pointer-events: auto !important;
+}
+
+/* Sidebar Styles - MAIN DEFINITION */
 #sidebar, .sidebar {
     width: 250px;
-    min-width: 220px;
-    max-width: 300px;
+    min-width: 250px;
+    max-width: 250px;
     height: 100vh;
     background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
     color: #fff;
-    position: relative;
-    left: 0;
-    top: 0;
     margin: 0;
     padding: 0;
     z-index: 100;
@@ -635,6 +769,7 @@ html, body {
     flex-direction: column;
     box-shadow: 2px 0 8px rgba(0,0,0,0.04);
     transition: width 0.2s;
+    position: relative;
 }
 
 .sidebar .sidebar-brand, #sidebar .sidebar-brand {

@@ -13,7 +13,7 @@ from consultations.models import Consultation, ConsultingRoom, Referral, Waiting
 from hr.models import Department as HRDepartment # Assuming 'Department' from hr.models is the intended HRDepartment.
 from inpatient.models import Admission, Bed, Ward
 from accounts.models import CustomUserProfile # Assuming UserProfile holds role and department for staff
-from django.contrib.auth.models import User
+from accounts.models import CustomUser
 
 @login_required
 def dashboard(request):
@@ -99,9 +99,9 @@ def system_overview(request):
     context = {'title': 'System Configuration Overview'}
 
     # Accounts App
-    context['total_users'] = User.objects.count()
-    context['superuser_count'] = User.objects.filter(is_superuser=True).count()
-    context['staff_count'] = User.objects.filter(is_staff=True, is_superuser=False).count()
+    context['total_users'] = CustomUser.objects.count()
+    context['superuser_count'] = CustomUser.objects.filter(is_superuser=True).count()
+    context['staff_count'] = CustomUser.objects.filter(is_staff=True, is_superuser=False).count()
     try:
         # Get role counts from the many-to-many relationship
         from accounts.models import Role
@@ -155,8 +155,8 @@ def system_overview(request):
 
     # HR App (Human Resources)
     context['hr_departments'] = HRDepartment.objects.count()
-    context['total_employees'] = User.objects.filter(is_staff=True).count()
-    context['active_employees'] = User.objects.filter(is_staff=True, is_active=True).count()
+    context['total_employees'] = CustomUser.objects.filter(is_staff=True).count()
+    context['active_employees'] = CustomUser.objects.filter(is_staff=True, is_active=True).count()
 
     # Inpatient App
     context['total_wards'] = Ward.objects.count()

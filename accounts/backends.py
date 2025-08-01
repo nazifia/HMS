@@ -86,8 +86,8 @@
 # #             if not user:
 # #                 # Try to find by username (standard Django authentication)
 # #                 try:
-# #                     user = User.objects.get(username=username)
-# #                 except User.DoesNotExist:
+# #                     user = CustomUser.objects.get(username=username)
+# #                 except CustomUser.DoesNotExist:
 # #                     return None
 
 # #             # Check password for the user we found
@@ -107,6 +107,7 @@
 from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth import get_user_model
 from django.db import models
+from accounts.models import CustomUser
 
 User = get_user_model()
 
@@ -130,14 +131,14 @@ class PhoneNumberBackend(BaseBackend):
 
         try:
             # Only authenticate using phone_number field
-            user = User.objects.get(phone_number=username)
+            user = CustomUser.objects.get(phone_number=username)
             if user.check_password(password):
                 print(f"App authentication successful for phone: {username}")
                 return user
             else:
                 print(f"App authentication failed: Incorrect password for {username}")
                 return None
-        except User.DoesNotExist:
+        except CustomUser.DoesNotExist:
             print(f"App authentication failed: User with phone_number {username} does not exist.")
             return None
         except Exception as e:
@@ -146,8 +147,8 @@ class PhoneNumberBackend(BaseBackend):
 
     def get_user(self, user_id):
         try:
-            return User.objects.get(pk=user_id)
-        except User.DoesNotExist:
+            return CustomUser.objects.get(pk=user_id)
+        except CustomUser.DoesNotExist:
             return None
 
 class AdminBackend(ModelBackend):
@@ -169,7 +170,7 @@ class AdminBackend(ModelBackend):
 
         try:
             # Authenticate using username field only (not phone number)
-            user = User.objects.get(username=username)
+            user = CustomUser.objects.get(username=username)
             if user.check_password(password):
                 # For admin requests, ensure user is staff
                 if is_admin_request and not user.is_staff:
@@ -180,7 +181,7 @@ class AdminBackend(ModelBackend):
             else:
                 print(f"Admin authentication failed: Incorrect password for {username}")
                 return None
-        except User.DoesNotExist:
+        except CustomUser.DoesNotExist:
             print(f"Admin authentication failed: User {username} does not exist.")
             return None
         except Exception as e:

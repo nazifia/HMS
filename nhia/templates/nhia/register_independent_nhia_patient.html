@@ -27,8 +27,10 @@
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         {{ form|crispy }}
-                        <button type="submit" class="btn btn-primary mt-3">Register NHIA Patient</button>
-                        <a href="{% url 'nhia:nhia_patient_list' %}" class="btn btn-secondary mt-3 ms-2">Cancel</a>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <button type="submit" class="btn btn-primary me-md-2">Register NHIA Patient</button>
+                            <a href="{% url 'nhia:nhia_patient_list' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
                     </form>
                 </div>
             </div>

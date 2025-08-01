@@ -446,8 +446,42 @@ def admission_list(request):
 def admission_detail(request, pk):
     """View for displaying admission details."""
     admission = get_object_or_404(Admission, pk=pk)
+    
+    # Handle POST requests for adding nursing notes and daily rounds
+    if request.method == 'POST':
+        if 'add_note' in request.POST:
+            note_form = NursingNoteForm(request.POST)
+            if note_form.is_valid():
+                nursing_note = note_form.save(commit=False)
+                nursing_note.admission = admission
+                nursing_note.save()
+                messages.success(request, 'Nursing note added successfully.')
+                return redirect('inpatient:admission_detail', pk=admission.pk)
+        elif 'add_round' in request.POST:
+            round_form = DailyRoundForm(request.POST)
+            if round_form.is_valid():
+                daily_round = round_form.save(commit=False)
+                daily_round.admission = admission
+                daily_round.save()
+                messages.success(request, 'Daily round added successfully.')
+                return redirect('inpatient:admission_detail', pk=admission.pk)
+    
+    # Initialize forms for GET requests
+    note_form = NursingNoteForm()
+    round_form = DailyRoundForm()
+    
+    # Get related data
+    daily_rounds = admission.daily_rounds.all().order_by('-date_time')
+    nursing_notes = admission.nursing_notes.all().order_by('-date_time')
+    clinical_records = admission.clinical_records.all().order_by('-date_time')
+    
     context = {
         'admission': admission,
+        'daily_rounds': daily_rounds,
+        'nursing_notes': nursing_notes,
+        'clinical_records': clinical_records,
+        'note_form': note_form,
+        'round_form': round_form,
         'title': f'Admission Details for {admission.patient.get_full_name()}'
     }
     return render(request, 'inpatient/admission_detail.html', context)
@@ -505,52 +539,40 @@ def create_admission(request):
                             wallet = PatientWallet.objects.get(patient=admission.patient)
                             logger.info(f'Found wallet for patient {wallet.patient.get_full_name()} with balance {wallet.balance}')
 
-                            if wallet.balance >= admission_service.price:
-                                logger.info('Wallet balance is sufficient. Proceeding with transaction.')
-                                # Create Invoice
-                                invoice = Invoice.objects.create(
-                                    patient=admission.patient,
-                                    invoice_date=timezone.now(),
-                                    due_date=timezone.now() + timedelta(days=7), # Example: due in 7 days
-                                    notes=form.cleaned_data['admission_notes'],
-                                    subtotal=admission_service.price,
-                                    tax_amount=0,
-                                    discount_amount=0,
-                                    total_amount=admission_service.price,
-                                    admission=admission, # Link invoice to admission
-                                    source_app='inpatient',
-                                ) 
-                                # Create InvoiceItem
-                                InvoiceItem.objects.create(
-                                    invoice=invoice,
-                                    service=admission_service,
-                                    quantity=1,
-                                    unit_price=admission_service.price,
-                                    total_amount=admission_service.price
-                                )
-                                # Deduct from wallet
-                                wallet.balance -= admission_service.price
-                                wallet.save()
-                                logger.info(f'Deducted {admission_service.price} from wallet. New balance: {wallet.balance}')
+                            logger.info('Proceeding with wallet transaction (negative balance allowed).')
+                            # Create Invoice
+                            invoice = Invoice.objects.create(
+                                patient=admission.patient,
+                                invoice_date=timezone.now(),
+                                due_date=timezone.now() + timedelta(days=7), # Example: due in 7 days
+                                notes=form.cleaned_data['admission_notes'],
+                                subtotal=admission_service.price,
+                                tax_amount=0,
+                                discount_amount=0,
+                                total_amount=admission_service.price,
+                                admission=admission, # Link invoice to admission
+                                source_app='inpatient',
+                            ) 
+                            # Create InvoiceItem
+                            InvoiceItem.objects.create(
+                                invoice=invoice,
+                                service=admission_service,
+                                quantity=1,
+                                unit_price=admission_service.price,
+                                total_amount=admission_service.price
+                            )
+                            # Deduct from wallet (allowing negative balance)
+                            wallet.debit(
+                                amount=admission_service.price,
+                                description=f'Admission fee for {admission.patient.get_full_name()}',
+                                transaction_type='admission_fee',
+                                user=request.user,
+                                invoice=invoice
+                            )
+                            logger.info(f'Deducted {admission_service.price} from wallet. New balance: {wallet.balance}')
 
-                                # Create WalletTransaction
-                                WalletTransaction.objects.create(
-                                    wallet=wallet,
-                                    transaction_type='admission_fee',
-                                    amount=admission_service.price,
-                                    description=f'Admission fee for {admission.patient.get_full_name()}',
-                                    invoice=invoice
-                                )
-
-                                messages.success(request, 'Admission created successfully and wallet deducted.')
-                                return redirect('inpatient:admission_detail', pk=admission.pk)
-                            else:
-                                messages.error(request, 'Insufficient wallet balance to cover admission fee.')
-                                logger.warning(
-                                f'Insufficient wallet balance for patient {admission.patient.get_full_name()}. '
-                                f'Balance: {wallet.balance}, Required: {admission_service.price}'
-                                )
-                                messages.warning(request, f'Patient {admission.patient.get_full_name()} admitted, but insufficient wallet balance for admission fee.')
+                            messages.success(request, 'Admission created successfully and wallet deducted.')
+                            return redirect('inpatient:admission_detail', pk=admission.pk)
 
                         except Service.DoesNotExist:
                             messages.error(request, 'Admission Fee service not found. Please configure it in the billing settings.')
@@ -724,24 +746,83 @@ def add_clinical_record(request, admission_id):
 
 @login_required
 def bed_occupancy_report(request):
-    """View for generating a bed occupancy report"""
-    wards = Ward.objects.all()
+    """Enhanced view for generating comprehensive bed occupancy report with statistics"""
+    from django.db.models import Count, Q, Avg
+    from datetime import datetime, timedelta
+
+    wards = Ward.objects.all().prefetch_related('beds__admissions')
     report_data = []
 
+    # Overall statistics
+    total_beds_hospital = Bed.objects.filter(is_active=True).count()
+    total_occupied_hospital = Bed.objects.filter(is_occupied=True, is_active=True).count()
+    total_available_hospital = total_beds_hospital - total_occupied_hospital
+    overall_occupancy_rate = (total_occupied_hospital / total_beds_hospital * 100) if total_beds_hospital > 0 else 0
+
+    # Calculate average length of stay
+    current_admissions = Admission.objects.filter(status='admitted')
+    avg_length_of_stay = 0
+    if current_admissions.exists():
+        total_days = sum([admission.get_duration() for admission in current_admissions])
+        avg_length_of_stay = total_days / current_admissions.count()
+
+    # Ward-specific statistics
     for ward in wards:
-        total_beds = ward.beds.count()
-        occupied_beds = ward.beds.filter(is_occupied=True).count()
+        total_beds = ward.beds.filter(is_active=True).count()
+        occupied_beds = ward.beds.filter(is_occupied=True, is_active=True).count()
+        available_beds = total_beds - occupied_beds
         occupancy_rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
+
+        # Get current admissions in this ward
+        current_ward_admissions = Admission.objects.filter(
+            bed__ward=ward,
+            status='admitted'
+        ).select_related('patient', 'attending_doctor')
+
+        # Calculate ward-specific average length of stay
+        ward_avg_los = 0
+        if current_ward_admissions.exists():
+            ward_total_days = sum([admission.get_duration() for admission in current_ward_admissions])
+            ward_avg_los = ward_total_days / current_ward_admissions.count()
+
         report_data.append({
             'ward_name': ward.name,
+            'ward_type': ward.get_ward_type_display(),
             'total_beds': total_beds,
             'occupied_beds': occupied_beds,
-            'occupancy_rate': occupancy_rate
+            'available_beds': available_beds,
+            'occupancy_rate': occupancy_rate,
+            'charge_per_day': ward.charge_per_day,
+            'avg_length_of_stay': ward_avg_los,
+            'current_admissions': current_ward_admissions,
+            'primary_doctor': ward.primary_doctor.get_full_name() if ward.primary_doctor else 'Not assigned'
         })
+
+    # Recent admissions and discharges (last 7 days)
+    last_week = timezone.now() - timedelta(days=7)
+    recent_admissions = Admission.objects.filter(
+        admission_date__gte=last_week
+    ).count()
+    recent_discharges = Admission.objects.filter(
+        discharge_date__gte=last_week,
+        status='discharged'
+    ).count()
+
+    # Bed turnover rate (discharges in last 7 days / total beds)
+    bed_turnover_rate = (recent_discharges / total_beds_hospital * 100) if total_beds_hospital > 0 else 0
 
     context = {
         'report_data': report_data,
-        'title': 'Bed Occupancy Report'
+        'total_beds_hospital': total_beds_hospital,
+        'total_occupied_hospital': total_occupied_hospital,
+        'total_available_hospital': total_available_hospital,
+        'overall_occupancy_rate': overall_occupancy_rate,
+        'avg_length_of_stay': avg_length_of_stay,
+        'recent_admissions': recent_admissions,
+        'recent_discharges': recent_discharges,
+        'bed_turnover_rate': bed_turnover_rate,
+        'report_date': timezone.now(),
+        'title': 'Comprehensive Bed Occupancy Report'
     }
 
     return render(request, 'inpatient/bed_occupancy_report.html', context)

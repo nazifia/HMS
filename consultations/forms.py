@@ -5,7 +5,7 @@ from patients.models import Patient, Vitals
 from appointments.models import Appointment
 from .models import ConsultingRoom, WaitingList, Consultation, ConsultationNote, Referral, SOAPNote
 from doctors.models import Specialization
-from accounts.models import Department
+from accounts.models import Department, CustomUser
 
 def get_active_consulting_rooms():
     """Utility to get all active consulting rooms as choices for forms or views."""
@@ -21,7 +21,7 @@ class ConsultationForm(forms.ModelForm):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
+        queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -76,7 +76,7 @@ class ReferralForm(forms.ModelForm):
     """Form for creating patient referrals"""
 
     referred_to = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
+        queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -149,7 +149,7 @@ class WaitingListForm(forms.ModelForm):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
+        queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )

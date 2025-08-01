@@ -88,7 +88,7 @@
                                     <ul class="list-group">
                                         {% for log in audit_logs %}
                                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>{{ log.timestamp|date:'M d, Y H:i' }} - {{ log.user.get_full_name|default:log.user.username }}: {{ log.action_type|capfirst }}</span>
+                                                <span>{{ log.timestamp|date:'M d, Y H:i' }} - {% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}System{% endif %}: {{ log.action|capfirst }}</span>
                                                 <span>{{ log.description }}</span>
                                             </li>
                                         {% endfor %}
