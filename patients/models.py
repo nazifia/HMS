@@ -351,6 +351,8 @@ class WalletTransaction(models.Model):
         ('transfer_in', 'Transfer In'),
         ('transfer_out', 'Transfer Out'),
         ('adjustment', 'Adjustment'),
+        ('admission_fee', 'Admission Fee'),
+        ('daily_admission_charge', 'Daily Admission Charge'),
     )
 
     STATUS_CHOICES = (
@@ -361,7 +363,7 @@ class WalletTransaction(models.Model):
     )
 
     wallet = models.ForeignKey(PatientWallet, on_delete=models.CASCADE, related_name='transactions')
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    transaction_type = models.CharField(max_length=30, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     balance_after = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField()

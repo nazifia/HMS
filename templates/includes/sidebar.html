@@ -316,6 +316,7 @@
                     <a class="collapse-item {% if request.path == '/theatre/surgeries/' %}active{% endif %}" href="{% url 'theatre:surgery_list' %}">Surgeries</a>
                     <a class="collapse-item {% if request.path == '/theatre/theatres/' %}active{% endif %}" href="{% url 'theatre:theatre_list' %}">Operation Theatres</a>
                     <a class="collapse-item {% if request.path == '/theatre/surgery-types/' %}active{% endif %}" href="{% url 'theatre:surgery_type_list' %}">Surgery Types</a>
+                    <a class="collapse-item {% if request.path == '/theatre/teams/' %}active{% endif %}" href="{% url 'theatre:team_list' %}">Surgical Teams</a>
                     <a class="collapse-item {% if request.path == '/theatre/equipment/' %}active{% endif %}" href="{% url 'theatre:equipment_list' %}">Equipment</a>
                     <a class="collapse-item {% if request.path == '/theatre/equipment/maintenance/' %}active{% endif %}" href="{% url 'theatre:equipment_maintenance' %}">Equipment Maintenance</a>
                     <div class="collapse-divider"></div>

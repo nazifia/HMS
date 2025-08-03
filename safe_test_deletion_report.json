@@ -1,0 +1,298 @@
+{
+  "summary": {
+    "total_operations": 28,
+    "passed": 26,
+    "failed": 0,
+    "warnings": 0,
+    "skipped": 2,
+    "success_rate": 92.85714285714286
+  },
+  "backup_location": "test_deletion_backup\\test_deletion_backup_20250802_091431",
+  "deleted_scripts": [
+    "final_test.py",
+    "quick_test.py",
+    "simple_test.py",
+    "simple_wallet_test.py",
+    "test_ajax.py",
+    "test_ajax_endpoint.py",
+    "test_dispensary.py",
+    "test_dispensary_view.py",
+    "test_dispensed_items.py",
+    "test_dispensing.py",
+    "test_dispensing_simple.py",
+    "test_dispensing_view.py",
+    "test_pharmacy_views.py",
+    "test_prescription_creation.py",
+    "test_pricing_logic.py",
+    "test_profile_fix.py",
+    "test_retainership_workflow.py",
+    "test_server_startup.py",
+    "test_wallet_transfer.py",
+    "setup_test_inventory.py"
+  ],
+  "skipped_scripts": [
+    [
+      "comprehensive_test.py",
+      "Contains Django TestCase classes"
+    ],
+    [
+      "test_payment_verification.py",
+      "Contains important Django test imports"
+    ]
+  ],
+  "failed_deletions": [],
+  "operations": [
+    {
+      "operation": "Dependency-Analysis",
+      "category": "ANALYSIS",
+      "status": "PASS",
+      "message": "No dependencies found in main codebase",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:31.725442"
+    },
+    {
+      "operation": "Backup-Creation",
+      "category": "BACKUP",
+      "status": "PASS",
+      "message": "Backup created at test_deletion_backup\\test_deletion_backup_20250802_091431",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:31.992367"
+    },
+    {
+      "operation": "Skip-comprehensive_test.py",
+      "category": "SKIP",
+      "status": "SKIP",
+      "message": "Skipped: Contains Django TestCase classes",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.007044"
+    },
+    {
+      "operation": "Delete-final_test.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.016413"
+    },
+    {
+      "operation": "Delete-quick_test.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.024399"
+    },
+    {
+      "operation": "Delete-simple_test.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.029384"
+    },
+    {
+      "operation": "Delete-simple_wallet_test.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.037583"
+    },
+    {
+      "operation": "Delete-test_ajax.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.045666"
+    },
+    {
+      "operation": "Delete-test_ajax_endpoint.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.061602"
+    },
+    {
+      "operation": "Delete-test_dispensary.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.075109"
+    },
+    {
+      "operation": "Delete-test_dispensary_view.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.077716"
+    },
+    {
+      "operation": "Delete-test_dispensed_items.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.089784"
+    },
+    {
+      "operation": "Delete-test_dispensing.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.108537"
+    },
+    {
+      "operation": "Delete-test_dispensing_simple.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.121335"
+    },
+    {
+      "operation": "Delete-test_dispensing_view.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.135715"
+    },
+    {
+      "operation": "Skip-test_payment_verification.py",
+      "category": "SKIP",
+      "status": "SKIP",
+      "message": "Skipped: Contains important Django test imports",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.143143"
+    },
+    {
+      "operation": "Delete-test_pharmacy_views.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.152505"
+    },
+    {
+      "operation": "Delete-test_prescription_creation.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.159200"
+    },
+    {
+      "operation": "Delete-test_pricing_logic.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.174525"
+    },
+    {
+      "operation": "Delete-test_profile_fix.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.177546"
+    },
+    {
+      "operation": "Delete-test_retainership_workflow.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.184878"
+    },
+    {
+      "operation": "Delete-test_server_startup.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.187878"
+    },
+    {
+      "operation": "Delete-test_wallet_transfer.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.191371"
+    },
+    {
+      "operation": "Delete-setup_test_inventory.py",
+      "category": "DELETE",
+      "status": "PASS",
+      "message": "Test script deleted successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.194810"
+    },
+    {
+      "operation": "Django-Setup",
+      "category": "VERIFICATION",
+      "status": "PASS",
+      "message": "Django configuration intact",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.206376"
+    },
+    {
+      "operation": "Model-Imports",
+      "category": "VERIFICATION",
+      "status": "PASS",
+      "message": "Core models importable",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.207690"
+    },
+    {
+      "operation": "Database-Operations",
+      "category": "VERIFICATION",
+      "status": "PASS",
+      "message": "Database accessible (Users: 40, Patients: 17)",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:32.236968"
+    },
+    {
+      "operation": "URL-Configuration",
+      "category": "VERIFICATION",
+      "status": "PASS",
+      "message": "URL routing functional",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T09:14:36.759794"
+    }
+  ]
+}

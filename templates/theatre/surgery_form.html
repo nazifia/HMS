@@ -1,6 +1,39 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
+{% block extra_css %}
+<style>
+.autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.autocomplete-results .list-group-item {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+.autocomplete-results .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.position-relative {
+    position: relative;
+}
+</style>
+{% endblock %}
+
 {% block title %}
 {% if form.instance.pk %}
 Edit Surgery
@@ -21,7 +54,20 @@ Create Surgery
                 
                 <div class="row">
                     <div class="col-md-6">
-                        {{ form.patient_search|as_crispy_field }}
+                        <div class="form-group">
+                            <label for="id_patient_search">Search Patient</label>
+                            <div class="position-relative">
+                                {{ form.patient_search|as_crispy_field }}
+                                <div id="patient-search-results" class="autocomplete-results" style="display: none;"></div>
+                            </div>
+                            <div id="selected-patient-info" class="mt-2" style="display: none;">
+                                <div class="alert alert-info">
+                                    <strong>Selected Patient:</strong>
+                                    <span id="patient-name"></span> (<span id="patient-id"></span>)
+                                    <br><small>Age: <span id="patient-age"></span> | Gender: <span id="patient-gender"></span> | Phone: <span id="patient-phone"></span></small>
+                                </div>
+                            </div>
+                        </div>
                         {{ form.patient }}
                     </div>
                     <div class="col-md-6">
@@ -132,13 +178,106 @@ document.addEventListener('DOMContentLoaded', function() {
     // Patient search functionality
     const patientSearchField = document.getElementById('id_patient_search');
     const patientIdField = document.getElementById('id_patient');
-    
+    const searchResults = document.getElementById('patient-search-results');
+    const selectedPatientInfo = document.getElementById('selected-patient-info');
+    let searchTimeout;
+
     if (patientSearchField) {
         patientSearchField.addEventListener('input', function() {
-            // Here you would typically implement AJAX search functionality
-            // For now, we'll just log the search term
-            console.log('Searching for patient:', patientSearchField.value);
+            const searchTerm = this.value.trim();
+
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+
+            if (searchTerm.length < 3) {
+                searchResults.style.display = 'none';
+                return;
+            }
+
+            // Debounce search
+            searchTimeout = setTimeout(() => {
+                fetch(`/patients/search/?term=${encodeURIComponent(searchTerm)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        displaySearchResults(data);
+                    })
+                    .catch(error => {
+                        console.error('Error searching patients:', error);
+                        searchResults.style.display = 'none';
+                    });
+            }, 300);
         });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!patientSearchField.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+    }
+
+    function displaySearchResults(patients) {
+        if (patients.length === 0) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        let html = '<div class="list-group">';
+        patients.forEach(patient => {
+            html += `
+                <a href="#" class="list-group-item list-group-item-action patient-result"
+                   data-patient-id="${patient.id}"
+                   data-patient-name="${patient.name}"
+                   data-patient-pid="${patient.patient_id}"
+                   data-patient-age="${patient.age}"
+                   data-patient-gender="${patient.gender}"
+                   data-patient-phone="${patient.phone}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${patient.name}</h6>
+                        <small>${patient.patient_id}</small>
+                    </div>
+                    <p class="mb-1">Age: ${patient.age} | Gender: ${patient.gender}</p>
+                    <small>Phone: ${patient.phone}</small>
+                </a>
+            `;
+        });
+        html += '</div>';
+
+        searchResults.innerHTML = html;
+        searchResults.style.display = 'block';
+
+        // Add click handlers to results
+        searchResults.querySelectorAll('.patient-result').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectPatient(this);
+            });
+        });
+    }
+
+    function selectPatient(element) {
+        const patientId = element.dataset.patientId;
+        const patientName = element.dataset.patientName;
+        const patientPid = element.dataset.patientPid;
+        const patientAge = element.dataset.patientAge;
+        const patientGender = element.dataset.patientGender;
+        const patientPhone = element.dataset.patientPhone;
+
+        // Set the hidden patient field
+        patientIdField.value = patientId;
+
+        // Update search field with patient name
+        patientSearchField.value = patientName;
+
+        // Show selected patient info
+        document.getElementById('patient-name').textContent = patientName;
+        document.getElementById('patient-id').textContent = patientPid;
+        document.getElementById('patient-age').textContent = patientAge;
+        document.getElementById('patient-gender').textContent = patientGender;
+        document.getElementById('patient-phone').textContent = patientPhone;
+
+        selectedPatientInfo.style.display = 'block';
+        searchResults.style.display = 'none';
     }
     
     // Team Formset

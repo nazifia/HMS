@@ -1,0 +1,21 @@
+{
+  "connection_pooling": {
+    "CONN_MAX_AGE": 600,
+    "CONN_HEALTH_CHECKS": true
+  },
+  "query_optimization": {
+    "SELECT_RELATED_DEPTH": 2,
+    "PREFETCH_RELATED_DEPTH": 1
+  },
+  "caching": {
+    "CACHE_TIMEOUT": 300,
+    "CACHE_KEY_PREFIX": "hms"
+  },
+  "indexes": [
+    "CREATE INDEX IF NOT EXISTS idx_patients_patient_id ON patients_patient(patient_id);",
+    "CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON pharmacy_prescription(patient_id);",
+    "CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments_appointment(appointment_date);",
+    "CREATE INDEX IF NOT EXISTS idx_invoices_patient ON billing_invoice(patient_id);",
+    "CREATE INDEX IF NOT EXISTS idx_users_username ON accounts_customuser(username);"
+  ]
+}

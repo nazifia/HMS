@@ -1,0 +1,299 @@
+{
+  "summary": {
+    "total_tests": 32,
+    "passed": 22,
+    "failed": 0,
+    "warnings": 10,
+    "success_rate": 68.75
+  },
+  "results": [
+    {
+      "test": "/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Accessible without auth",
+      "error": null,
+      "response_code": 200,
+      "timestamp": "2025-08-02T08:32:42.890919"
+    },
+    {
+      "test": "/accounts/login/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Accessible without auth",
+      "error": null,
+      "response_code": 200,
+      "timestamp": "2025-08-02T08:32:42.909978"
+    },
+    {
+      "test": "/dashboard/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.911784"
+    },
+    {
+      "test": "/patients/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.915331"
+    },
+    {
+      "test": "/doctors/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.917573"
+    },
+    {
+      "test": "/appointments/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.919336"
+    },
+    {
+      "test": "/pharmacy/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.921045"
+    },
+    {
+      "test": "/laboratory/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.924938"
+    },
+    {
+      "test": "/billing/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.928677"
+    },
+    {
+      "test": "/inpatient/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.932025"
+    },
+    {
+      "test": "/hr/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.933802"
+    },
+    {
+      "test": "/reporting/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.935728"
+    },
+    {
+      "test": "/consultations/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.938131"
+    },
+    {
+      "test": "/radiology/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.941694"
+    },
+    {
+      "test": "/theatre/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.944937"
+    },
+    {
+      "test": "/nhia/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.948098"
+    },
+    {
+      "test": "/retainership/",
+      "test_type": "URL_NO_AUTH",
+      "status": "PASS",
+      "message": "Redirects (likely to login)",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:42.950040"
+    },
+    {
+      "test": "/patients/register/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.353507"
+    },
+    {
+      "test": "/doctors/list/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.355342"
+    },
+    {
+      "test": "/appointments/create/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.363492"
+    },
+    {
+      "test": "/pharmacy/medications/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.365520"
+    },
+    {
+      "test": "/laboratory/tests/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.369883"
+    },
+    {
+      "test": "/billing/invoices/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.379483"
+    },
+    {
+      "test": "/inpatient/wards/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.382658"
+    },
+    {
+      "test": "/hr/departments/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.385992"
+    },
+    {
+      "test": "/reporting/dashboard/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.396827"
+    },
+    {
+      "test": "/consultations/rooms/",
+      "test_type": "SPECIFIC_URL",
+      "status": "WARN",
+      "message": "Redirects",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.399799"
+    },
+    {
+      "test": "/admin/",
+      "test_type": "ADMIN_URL",
+      "status": "PASS",
+      "message": "Admin URL accessible",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.446269"
+    },
+    {
+      "test": "/admin/login/",
+      "test_type": "ADMIN_URL",
+      "status": "PASS",
+      "message": "Admin URL accessible",
+      "error": null,
+      "response_code": 200,
+      "timestamp": "2025-08-02T08:32:46.824099"
+    },
+    {
+      "test": "/admin/accounts/",
+      "test_type": "ADMIN_URL",
+      "status": "PASS",
+      "message": "Admin URL accessible",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.826092"
+    },
+    {
+      "test": "/admin/patients/",
+      "test_type": "ADMIN_URL",
+      "status": "PASS",
+      "message": "Admin URL accessible",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.828007"
+    },
+    {
+      "test": "/admin/pharmacy/",
+      "test_type": "ADMIN_URL",
+      "status": "PASS",
+      "message": "Admin URL accessible",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:32:46.830682"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+{% if form.instance.pk %}
+Edit Team Member
+{% else %}
+Add Team Member
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                {% if form.instance.pk %}
+                Edit Team Member
+                {% else %}
+                Add Team Member
+                {% endif %}
+            </h2>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ form.surgery|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.staff|as_crispy_field }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ form.role|as_crispy_field }}
+                    </div>
+                </div>
+                
+                {{ form.usage_notes|as_crispy_field }}
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <a href="{% url 'theatre:team_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-populate staff field based on role selection
+    const roleField = document.getElementById('id_role');
+    const staffField = document.getElementById('id_staff');
+    
+    if (roleField && staffField) {
+        roleField.addEventListener('change', function() {
+            const selectedRole = this.value;
+            
+            // You can add logic here to filter staff based on role
+            // For example, only show surgeons when surgeon role is selected
+            console.log('Role selected:', selectedRole);
+        });
+    }
+});
+</script>
+{% endblock %}

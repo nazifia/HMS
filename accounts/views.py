@@ -638,10 +638,13 @@ def user_dashboard(request):
                 timestamp=timezone.now()
             )
             # Optional: send notification to superusers
-            InternalNotification.objects.create(
-                user=None,  # System-wide
-                message=f"Bulk user action '{action}' performed by {request.user.username}."
-            )
+            # Get all superusers to notify them about bulk actions
+            superusers = CustomUser.objects.filter(is_superuser=True)
+            for superuser in superusers:
+                InternalNotification.objects.create(
+                    user=superuser,
+                    message=f"Bulk user action '{action}' performed by {request.user.username}."
+                )
             return redirect('accounts:user_dashboard')
 
     # CSV export

@@ -44,6 +44,13 @@ urlpatterns = [
     path('equipment/<int:pk>/delete/', views.SurgicalEquipmentDeleteView.as_view(), name='equipment_delete'),
     path('equipment/maintenance/', views.EquipmentMaintenanceView.as_view(), name='equipment_maintenance'),
 
+    # Surgical Team URLs
+    path('teams/', views.SurgicalTeamListView.as_view(), name='team_list'),
+    path('teams/add/', views.SurgicalTeamCreateView.as_view(), name='team_create'),
+    path('teams/<int:pk>/', views.SurgicalTeamDetailView.as_view(), name='team_detail'),
+    path('teams/<int:pk>/edit/', views.SurgicalTeamUpdateView.as_view(), name='team_update'),
+    path('teams/<int:pk>/delete/', views.SurgicalTeamDeleteView.as_view(), name='team_delete'),
+
     # Reports
     path('reports/surgery-report/', views.SurgeryReportView.as_view(), name='surgery_report'),
     path('reports/statistics/', views.theatre_statistics_report, name='theatre_statistics_report'),

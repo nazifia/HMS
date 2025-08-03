@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .patient-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .stats-card {
+        border-left: 4px solid #4e73df;
+        background: #f8f9fc;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+
+    .prescription-card {
+        transition: transform 0.2s ease-in-out;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .prescription-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 15px;
+    }
+
+    .filter-form {
+        background: #f8f9fc;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .medication-list {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .prescription-actions {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .prescription-actions .btn {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Patient Information Header -->
+    <div class="patient-info-card">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-2">
+                    <i class="fas fa-user-circle"></i> {{ patient.get_full_name }}
+                </h2>
+                <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                <p class="mb-1"><strong>Phone:</strong> {{ patient.phone_number|default:"Not provided" }}</p>
+                <p class="mb-0"><strong>Date of Birth:</strong> {{ patient.date_of_birth|date:"M d, Y"|default:"Not provided" }}</p>
+            </div>
+            <div class="col-md-4 text-right">
+                <a href="{% url 'pharmacy:prescription_list' %}" class="btn btn-light">
+                    <i class="fas fa-arrow-left"></i> Back to All Prescriptions
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <i class="fas fa-prescription-bottle-alt fa-2x text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Prescriptions</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prescriptions }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <i class="fas fa-clock fa-2x text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pending</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_prescriptions }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <i class="fas fa-check-circle fa-2x text-success"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Dispensed</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ dispensed_prescriptions }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Unpaid</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ unpaid_prescriptions }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-filter"></i> Filter Prescriptions
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="filter-form">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="status">Status</label>
+                            <select name="status" id="status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                                <option value="dispensed" {% if status_filter == 'dispensed' %}selected{% endif %}>Dispensed</option>
+                                <option value="partially_dispensed" {% if status_filter == 'partially_dispensed' %}selected{% endif %}>Partially Dispensed</option>
+                                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                <option value="on_hold" {% if status_filter == 'on_hold' %}selected{% endif %}>On Hold</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="payment_status">Payment Status</label>
+                            <select name="payment_status" id="payment_status" class="form-control">
+                                <option value="">All Payment Statuses</option>
+                                <option value="unpaid" {% if payment_status_filter == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                                <option value="paid" {% if payment_status_filter == 'paid' %}selected{% endif %}>Paid</option>
+                                <option value="waived" {% if payment_status_filter == 'waived' %}selected{% endif %}>Waived</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="date_from">From Date</label>
+                            <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="date_to">To Date</label>
+                            <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <div class="form-group w-100">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Prescriptions List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                Prescription History ({{ page_obj.paginator.count }} total)
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                {% for prescription in page_obj %}
+                <div class="prescription-card card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="card-title">
+                                    <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="text-decoration-none">
+                                        Prescription #{{ prescription.id }}
+                                    </a>
+                                    <span class="status-badge badge 
+                                        {% if prescription.status == 'pending' %}badge-warning
+                                        {% elif prescription.status == 'approved' %}badge-info
+                                        {% elif prescription.status == 'dispensed' %}badge-success
+                                        {% elif prescription.status == 'partially_dispensed' %}badge-primary
+                                        {% elif prescription.status == 'cancelled' %}badge-danger
+                                        {% elif prescription.status == 'on_hold' %}badge-secondary
+                                        {% endif %}">
+                                        {{ prescription.get_status_display }}
+                                    </span>
+                                    <span class="status-badge badge 
+                                        {% if prescription.payment_status == 'unpaid' %}badge-danger
+                                        {% elif prescription.payment_status == 'paid' %}badge-success
+                                        {% elif prescription.payment_status == 'waived' %}badge-info
+                                        {% endif %}">
+                                        {{ prescription.get_payment_status_display }}
+                                    </span>
+                                </h6>
+                                <p class="card-text">
+                                    <strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}<br>
+                                    <strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}<br>
+                                    {% if prescription.diagnosis %}
+                                        <strong>Diagnosis:</strong> {{ prescription.diagnosis }}<br>
+                                    {% endif %}
+                                    <strong>Type:</strong> {{ prescription.get_prescription_type_display }}
+                                </p>
+                                <div class="medication-list">
+                                    <strong>Medications:</strong>
+                                    {% for item in prescription.items.all %}
+                                        {{ item.medication.name }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        No medications listed
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <div class="prescription-actions">
+                                    <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    {% if prescription.status == 'approved' and prescription.payment_status == 'paid' %}
+                                        <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-pills"></i> Dispense
+                                        </a>
+                                    {% endif %}
+                                    {% if prescription.status == 'pending' and prescription.payment_status == 'unpaid' %}
+                                        <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-credit-card"></i> Payment
+                                        </a>
+                                    {% endif %}
+                                </div>
+                                {% if prescription.get_total_prescribed_price %}
+                                    <div class="mt-2">
+                                        <small class="text-muted">Total: ₦{{ prescription.get_total_prescribed_price|floatformat:2 }}</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4">
+                    <i class="fas fa-prescription-bottle-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No prescriptions found</h5>
+                    <p class="text-muted">This patient has no prescriptions matching your criteria.</p>
+                </div>
+                {% endfor %}
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Prescription pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_status_filter %}&payment_status={{ payment_status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_status_filter %}&payment_status={{ payment_status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_status_filter %}&payment_status={{ payment_status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Next</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-prescription-bottle-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No prescriptions found</h5>
+                    <p class="text-muted">This patient has no prescriptions.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -644,7 +644,7 @@ def search_patients(request):
     search_term = request.GET.get('term', '')
 
     if len(search_term) < 3:
-        return HttpResponse([])
+        return JsonResponse([], safe=False)
 
     patients = Patient.objects.filter(
         Q(first_name__icontains=search_term) |
@@ -663,7 +663,7 @@ def search_patients(request):
         'age': patient.get_age()
     } for patient in patients]
 
-    return HttpResponse(render_to_string('patients/search_results.html', {'patients': results}))
+    return JsonResponse(results, safe=False)
 
 @login_required
 def edit_medical_history(request, history_id):

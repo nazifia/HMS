@@ -1,5 +1,6 @@
 import logging
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
@@ -397,29 +398,84 @@ class MedicationSearchForm(forms.Form):
     )
 
 class PrescriptionSearchForm(forms.Form):
-    """Form for searching prescriptions"""
+    """Enhanced form for searching prescriptions with comprehensive filters"""
 
     search = forms.CharField(
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': 'Search by patient name or ID'})
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by patient name, ID, or phone number',
+            'class': 'form-control'
+        }),
+        label='Patient Search'
     )
 
-    status = forms.CharField(widget=forms.HiddenInput(), initial='pending')
+    patient_number = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Enter patient ID/number',
+            'class': 'form-control'
+        }),
+        label='Patient Number'
+    )
+
+    medication_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by medication name',
+            'class': 'form-control'
+        }),
+        label='Medication Name'
+    )
+
+    status = forms.ChoiceField(
+        choices=[('', 'All Statuses')] + [
+            ('pending', 'Pending'),
+            ('approved', 'Approved'),
+            ('dispensed', 'Dispensed'),
+            ('partially_dispensed', 'Partially Dispensed'),
+            ('cancelled', 'Cancelled'),
+            ('on_hold', 'On Hold'),
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Status'
+    )
+
+    payment_status = forms.ChoiceField(
+        choices=[('', 'All Payment Statuses')] + [
+            ('unpaid', 'Unpaid'),
+            ('paid', 'Paid'),
+            ('waived', 'Waived'),
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Payment Status'
+    )
 
     doctor = forms.ModelChoiceField(
         queryset=CustomUser.objects.filter(is_active=True, roles__name='doctor').distinct(),
         required=False,
-        empty_label="All Doctors"
+        empty_label="All Doctors",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Doctor'
     )
 
     date_from = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date'})
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        label='From Date'
     )
 
     date_to = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date'})
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        label='To Date'
     )
 
 
@@ -561,20 +617,88 @@ class DispensaryForm(forms.ModelForm):
         self.fields['manager'].empty_label = "Select Manager (Optional)"
 
 class PrescriptionPaymentForm(forms.ModelForm):
-    """Form for processing payments for prescriptions"""
+    """Form for processing payments for prescriptions with dual payment method support"""
+
+    PAYMENT_SOURCE_CHOICES = [
+        ('direct', 'Direct Payment'),
+        ('patient_wallet', 'Patient Wallet'),
+    ]
+
+    payment_source = forms.ChoiceField(
+        choices=PAYMENT_SOURCE_CHOICES,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        initial='direct',
+        help_text="Choose payment method"
+    )
 
     class Meta:
         model = Payment
         fields = ['amount', 'payment_method', 'notes']
         widgets = {
-            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter payment amount'}),
+            'amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter payment amount',
+                'step': '0.01',
+                'min': '0.01'
+            }),
             'payment_method': forms.Select(attrs={'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter any payment notes'}),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter any payment notes'
+            }),
         }
 
     def __init__(self, *args, **kwargs):
+        # Extract custom parameters
+        self.invoice = kwargs.pop('invoice', None)
+        self.prescription = kwargs.pop('prescription', None)
+        self.patient_wallet = kwargs.pop('patient_wallet', None)
+
         super().__init__(*args, **kwargs)
+
+        # Set payment method choices
+        from billing.models import Invoice
         self.fields['payment_method'].choices = Invoice.PAYMENT_METHOD_CHOICES
+
+        # Update payment source field if wallet is available
+        if self.patient_wallet:
+            wallet_balance = self.patient_wallet.balance
+            self.fields['payment_source'].help_text = f'Wallet Balance: ₦{wallet_balance:.2f}'
+
+        # Set initial amount if invoice is provided
+        if self.invoice:
+            remaining_amount = self.invoice.get_balance()
+            self.fields['amount'].initial = remaining_amount
+
+    def clean(self):
+        cleaned_data = super().clean()
+        amount = cleaned_data.get('amount')
+        payment_source = cleaned_data.get('payment_source')
+        payment_method = cleaned_data.get('payment_method')
+
+        if not amount:
+            raise ValidationError("Payment amount is required.")
+
+        if amount <= 0:
+            raise ValidationError("Payment amount must be greater than zero.")
+
+        # Validate against invoice balance
+        if self.invoice:
+            remaining_balance = self.invoice.get_balance()
+            if amount > remaining_balance:
+                raise ValidationError(
+                    f"Payment amount (₦{amount:.2f}) cannot exceed the remaining balance (₦{remaining_balance:.2f})."
+                )
+
+        # Validate payment method for wallet payments
+        if payment_source == 'patient_wallet' and payment_method != 'wallet':
+            cleaned_data['payment_method'] = 'wallet'
+
+        # Allow wallet payments even with insufficient balance (negative balance allowed)
+        # Wallet balance validation removed to support negative balances
+
+        return cleaned_data
 
 class MedicationInventoryForm(forms.ModelForm):
     """Form for managing medication inventory in dispensaries"""

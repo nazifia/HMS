@@ -857,16 +857,82 @@ def prescription_list(request):
         if date_to:
             prescriptions = prescriptions.filter(prescription_date__lte=date_to)
 
-    paginator = Paginator(prescriptions, 10) # Show 10 prescriptions per page
+    paginator = Paginator(prescriptions, 15) # Show 15 prescriptions per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     context = {
         'page_obj': page_obj,
         'form': form,
-        'title': 'Prescription List'
+        'title': 'Prescription List',
+        'total_prescriptions': prescriptions.count()
     }
     return render(request, 'pharmacy/prescription_list.html', context)
+
+
+@login_required
+@permission_required('pharmacy.view_prescription', raise_exception=True)
+def patient_prescriptions(request, patient_id):
+    """View all prescriptions for a specific patient - enhanced for pharmacy staff"""
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    # Get all prescriptions for this patient
+    prescriptions = Prescription.objects.filter(patient=patient).select_related(
+        'doctor', 'invoice'
+    ).prefetch_related(
+        'items__medication'
+    ).order_by('-prescription_date')
+
+    # Apply additional filters if provided
+    status_filter = request.GET.get('status')
+    payment_status_filter = request.GET.get('payment_status')
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+
+    if status_filter:
+        prescriptions = prescriptions.filter(status=status_filter)
+
+    if payment_status_filter:
+        prescriptions = prescriptions.filter(payment_status=payment_status_filter)
+
+    if date_from:
+        try:
+            date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+            prescriptions = prescriptions.filter(prescription_date__gte=date_from)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            prescriptions = prescriptions.filter(prescription_date__lte=date_to)
+        except ValueError:
+            pass
+
+    # Calculate summary statistics
+    total_prescriptions = prescriptions.count()
+    pending_prescriptions = prescriptions.filter(status='pending').count()
+    dispensed_prescriptions = prescriptions.filter(status='dispensed').count()
+    unpaid_prescriptions = prescriptions.filter(payment_status='unpaid').count()
+
+    paginator = Paginator(prescriptions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'patient': patient,
+        'page_obj': page_obj,
+        'total_prescriptions': total_prescriptions,
+        'pending_prescriptions': pending_prescriptions,
+        'dispensed_prescriptions': dispensed_prescriptions,
+        'unpaid_prescriptions': unpaid_prescriptions,
+        'status_filter': status_filter,
+        'payment_status_filter': payment_status_filter,
+        'date_from': request.GET.get('date_from', ''),
+        'date_to': request.GET.get('date_to', ''),
+        'title': f'Prescriptions for {patient.get_full_name()}'
+    }
+    return render(request, 'pharmacy/patient_prescriptions.html', context)
 
 @login_required
 @permission_required('pharmacy.view_prescription', raise_exception=True)
@@ -1961,7 +2027,10 @@ def create_prescription_invoice(request, prescription_id):
                     description=f'{prescription_item.medication.name} - {prescription_item.dosage} ({prescription_item.quantity} units)',
                     quantity=prescription_item.quantity,
                     unit_price=prescription_item.medication.price,
-                    total_price=item_total
+                    tax_percentage=Decimal('0.00'),
+                    tax_amount=Decimal('0.00'),
+                    discount_amount=Decimal('0.00'),
+                    total_amount=item_total
                 )
 
             # Link invoice to prescription

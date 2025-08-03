@@ -1,0 +1,156 @@
+{
+  "summary": {
+    "total_tests": 16,
+    "passed": 8,
+    "failed": 0,
+    "warnings": 8,
+    "skipped": 0,
+    "success_rate": 50.0
+  },
+  "results": [
+    {
+      "test": "/api/accounts/users/",
+      "test_type": "API_NO_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:05.991053"
+    },
+    {
+      "test": "/api/accounts/roles/",
+      "test_type": "API_NO_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:05.992783"
+    },
+    {
+      "test": "/api/accounts/permissions/",
+      "test_type": "API_NO_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:05.994389"
+    },
+    {
+      "test": "/api/accounts/audit-logs/",
+      "test_type": "API_NO_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:05.996071"
+    },
+    {
+      "test": "/api/accounts/users/",
+      "test_type": "API_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:06.001093"
+    },
+    {
+      "test": "/api/accounts/roles/",
+      "test_type": "API_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:06.003297"
+    },
+    {
+      "test": "/api/accounts/permissions/",
+      "test_type": "API_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:06.005240"
+    },
+    {
+      "test": "/api/accounts/audit-logs/",
+      "test_type": "API_AUTH",
+      "status": "WARN",
+      "message": "Unexpected status",
+      "error": null,
+      "response_code": 302,
+      "timestamp": "2025-08-02T08:36:06.011510"
+    },
+    {
+      "test": "Patient-Wallet",
+      "test_type": "INTEGRATION",
+      "status": "PASS",
+      "message": "Patient wallet exists",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.053282"
+    },
+    {
+      "test": "User-Profile",
+      "test_type": "INTEGRATION",
+      "status": "PASS",
+      "message": "User profile exists",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.064215"
+    },
+    {
+      "test": "Department-Count",
+      "test_type": "INTEGRATION",
+      "status": "PASS",
+      "message": "Found 32 departments",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.072801"
+    },
+    {
+      "test": "Prescription-Creation",
+      "test_type": "WORKFLOW",
+      "status": "PASS",
+      "message": "Prescription created successfully",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.105309"
+    },
+    {
+      "test": "Prescription-Item",
+      "test_type": "WORKFLOW",
+      "status": "PASS",
+      "message": "Prescription item created",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.121769"
+    },
+    {
+      "test": "Appointment-Creation",
+      "test_type": "WORKFLOW",
+      "status": "PASS",
+      "message": "Appointment created successfully",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.130649"
+    },
+    {
+      "test": "User-Profile-Consistency",
+      "test_type": "CONSISTENCY",
+      "status": "PASS",
+      "message": "Users: 24, Profiles: 24",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.133964"
+    },
+    {
+      "test": "Patient-Wallet-Consistency",
+      "test_type": "CONSISTENCY",
+      "status": "PASS",
+      "message": "Patients: 10, Wallets: 8",
+      "error": null,
+      "response_code": null,
+      "timestamp": "2025-08-02T08:36:06.136353"
+    }
+  ]
+}

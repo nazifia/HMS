@@ -72,10 +72,9 @@
                     <h6 class="m-0 font-weight-bold text-primary">Upcoming Surgeries</h6>
                 </div>
                 <div class="card-body">
-                    {% with upcoming_surgeries=object.surgeries.filter.order_by 'scheduled_date' %}
                     {% if upcoming_surgeries %}
                     <div class="list-group">
-                        {% for surgery in upcoming_surgeries|slice:":5" %}
+                        {% for surgery in upcoming_surgeries %}
                         <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
                                 <h6 class="mb-1">{{ surgery.surgery_type }}</h6>
@@ -83,7 +82,7 @@
                             </div>
                             <p class="mb-1">Patient: {{ surgery.patient }}</p>
                             <small>
-                                Status: 
+                                Status:
                                 {% if surgery.status == 'scheduled' %}
                                 <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'in_progress' %}
@@ -99,17 +98,14 @@
                         </a>
                         {% endfor %}
                     </div>
-                    {% if upcoming_surgeries.count > 5 %}
                     <div class="text-center mt-3">
                         <a href="{% url 'theatre:surgery_list' %}?theatre={{ object.id }}" class="btn btn-sm btn-primary">
                             View All Surgeries
                         </a>
                     </div>
-                    {% endif %}
                     {% else %}
                     <p class="text-center">No upcoming surgeries scheduled for this theatre.</p>
                     {% endif %}
-                    {% endwith %}
                 </div>
             </div>
             

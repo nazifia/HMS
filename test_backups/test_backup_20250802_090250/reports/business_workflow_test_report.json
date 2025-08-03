@@ -1,0 +1,56 @@
+{
+  "summary": {
+    "total_tests": 5,
+    "passed": 4,
+    "failed": 1,
+    "warnings": 0,
+    "success_rate": 80.0
+  },
+  "results": [
+    {
+      "test": "Prescription-Creation",
+      "test_type": "WORKFLOW",
+      "status": "PASS",
+      "message": "Prescription created successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:40:58.257602"
+    },
+    {
+      "test": "Prescription-Item-Creation",
+      "test_type": "WORKFLOW",
+      "status": "PASS",
+      "message": "Prescription item created",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:40:58.285366"
+    },
+    {
+      "test": "Prescription-Workflow",
+      "test_type": "WORKFLOW",
+      "status": "FAIL",
+      "message": "Prescription workflow failed",
+      "error": "DispensingLog() got unexpected keyword arguments: 'quantity_dispensed'",
+      "details": null,
+      "timestamp": "2025-08-02T08:40:58.298579"
+    },
+    {
+      "test": "Invoice-Creation",
+      "test_type": "WORKFLOW",
+      "status": "PASS",
+      "message": "Invoice created successfully",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:40:58.321026"
+    },
+    {
+      "test": "Wallet-Payment",
+      "test_type": "WORKFLOW",
+      "status": "PASS",
+      "message": "Payment of 50.00 processed",
+      "error": null,
+      "details": "Wallet balance: 1000.00 -> 950.00",
+      "timestamp": "2025-08-02T08:40:58.366022"
+    }
+  ]
+}

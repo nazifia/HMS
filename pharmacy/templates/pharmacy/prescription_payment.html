@@ -358,9 +358,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (selectedSource === 'patient_wallet') {
-            // For wallet payments, force wallet method and disable selection
+            // For wallet payments, force wallet method and make it readonly
             paymentMethodSelect.value = 'wallet';
-            paymentMethodSelect.disabled = true;
+            paymentMethodSelect.disabled = false; // Keep enabled so value is submitted
+            paymentMethodSelect.style.pointerEvents = 'none'; // Prevent user interaction
             paymentMethodSelect.closest('.form-group').style.opacity = '0.6';
 
             // Update amount validation for wallet balance
@@ -373,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // For billing office payments, enable method selection and exclude wallet
             paymentMethodSelect.disabled = false;
+            paymentMethodSelect.style.pointerEvents = 'auto'; // Re-enable user interaction
             paymentMethodSelect.closest('.form-group').style.opacity = '1';
 
             // Remove wallet option from payment methods
@@ -432,6 +434,13 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         const amount = parseFloat(amountInput.value);
         const selectedSource = document.querySelector('input[name="payment_source"]:checked').value;
+
+        // Ensure payment method is set correctly for wallet payments
+        if (selectedSource === 'patient_wallet') {
+            paymentMethodSelect.value = 'wallet';
+            paymentMethodSelect.disabled = false; // Ensure it's submitted
+        }
+
         const paymentMethod = paymentMethodSelect.value;
 
         if (isNaN(amount) || amount <= 0) {
@@ -445,6 +454,14 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             alert(`Payment amount cannot exceed ₦${maxAmount.toFixed(2)}`);
             amountInput.focus();
+            return;
+        }
+
+        // Validate payment method selection
+        if (!paymentMethod || paymentMethod === '') {
+            e.preventDefault();
+            alert('Please select a payment method.');
+            paymentMethodSelect.focus();
             return;
         }
 

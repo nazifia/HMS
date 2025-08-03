@@ -825,11 +825,13 @@ def create_test_result(request, request_id):
                     user=test_request.doctor,
                     message=f"Lab result for {test_result.test.name} is now available for {test_request.patient.get_full_name()}"
                 )
-                send_notification_email(
-                    subject="Lab Result Available",
-                    message=f"Lab result for {test_result.test.name} is now available for {test_request.patient.get_full_name()}.",
-                    recipient_list=[test_request.doctor.email]
-                )
+                # Send email notification if doctor has email
+                if hasattr(test_request.doctor, 'email') and test_request.doctor.email:
+                    send_notification_email(
+                        subject="Lab Result Available",
+                        message=f"Lab result for {test_result.test.name} is now available for {test_request.patient.get_full_name()}.",
+                        recipient_list=[test_request.doctor.email]
+                    )
                 # SMS notification stub for doctor (if phone number is available)
                 if test_request.doctor.phone_number:
                     from core.utils import send_sms_notification

@@ -106,15 +106,18 @@ def create_invoice(request):
             # Audit log
             log_audit_action(request.user, 'create', invoice, f"Created invoice {invoice.invoice_number}")
             # Notification to billing/admin
-            InternalNotification.objects.create(
-                user=invoice.created_by,
-                message=f"Invoice {invoice.invoice_number} created for {invoice.patient.get_full_name()}"
-            )
-            send_notification_email(
-                subject="New Invoice Created",
-                message=f"Invoice {invoice.invoice_number} has been created for {invoice.patient.get_full_name()}.",
-                recipient_list=[invoice.created_by.email]
-            )
+            if invoice.created_by:
+                InternalNotification.objects.create(
+                    user=invoice.created_by,
+                    message=f"Invoice {invoice.invoice_number} created for {invoice.patient.get_full_name()}"
+                )
+            # Send email notification if user has email
+            if invoice.created_by and hasattr(invoice.created_by, 'email') and invoice.created_by.email:
+                send_notification_email(
+                    subject="New Invoice Created",
+                    message=f"Invoice {invoice.invoice_number} has been created for {invoice.patient.get_full_name()}.",
+                    recipient_list=[invoice.created_by.email]
+                )
             messages.success(request, f'Invoice {invoice.invoice_number} has been created successfully.')
             return redirect('billing:detail', invoice_id=invoice.id)
     else:
@@ -289,16 +292,19 @@ def record_payment(request, invoice_id):
                     )
                     
                     # Notification to billing/admin
-                    InternalNotification.objects.create(
-                        user=invoice.created_by,
-                        message=f"Payment of ₦{payment.amount:.2f} recorded for invoice {invoice.invoice_number} via {payment_source}"
-                    )
+                    if invoice.created_by:
+                        InternalNotification.objects.create(
+                            user=invoice.created_by,
+                            message=f"Payment of ₦{payment.amount:.2f} recorded for invoice {invoice.invoice_number} via {payment_source}"
+                        )
                     
-                    send_notification_email(
-                        subject="Payment Recorded",
-                        message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number} via {payment_source.replace('_', ' ').title()}.",
-                        recipient_list=[invoice.created_by.email]
-                    )
+                    # Send email notification if user has email
+                    if invoice.created_by and hasattr(invoice.created_by, 'email') and invoice.created_by.email:
+                        send_notification_email(
+                            subject="Payment Recorded",
+                            message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number} via {payment_source.replace('_', ' ').title()}.",
+                            recipient_list=[invoice.created_by.email]
+                        )
                     
                     messages.success(request, f'Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
                     return redirect('billing:detail', invoice_id=invoice.id)
@@ -870,8 +876,14 @@ def admission_payment(request, admission_id):
                     )
 
                     # Notification
+                    notification_user = request.user
+                    if hasattr(admission.patient, 'primary_doctor') and admission.patient.primary_doctor:
+                        notification_user = admission.patient.primary_doctor
+                    elif hasattr(admission, 'attending_doctor') and admission.attending_doctor:
+                        notification_user = admission.attending_doctor
+
                     InternalNotification.objects.create(
-                        user=admission.patient.primary_doctor if hasattr(admission.patient, 'primary_doctor') else request.user,
+                        user=notification_user,
                         message=f"Payment of ₦{payment.amount:.2f} recorded for admission {admission.id} via {payment_source}"
                     )
 

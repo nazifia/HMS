@@ -1,0 +1,21 @@
+{
+  "compression": {
+    "COMPRESS_ENABLED": true,
+    "COMPRESS_CSS_FILTERS": [
+      "compressor.filters.css_default.CssAbsoluteFilter",
+      "compressor.filters.cssmin.CSSMinFilter"
+    ],
+    "COMPRESS_JS_FILTERS": [
+      "compressor.filters.jsmin.JSMinFilter"
+    ]
+  },
+  "caching": {
+    "STATICFILES_STORAGE": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+    "STATIC_URL": "/static/",
+    "MEDIA_URL": "/media/"
+  },
+  "cdn": {
+    "USE_CDN": false,
+    "CDN_URL": "https://cdn.example.com"
+  }
+}

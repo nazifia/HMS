@@ -1,0 +1,28 @@
+{
+  "backup_timestamp": "20250802_091431",
+  "scripts_backed_up": [
+    "comprehensive_test.py",
+    "final_test.py",
+    "quick_test.py",
+    "simple_test.py",
+    "simple_wallet_test.py",
+    "test_ajax.py",
+    "test_ajax_endpoint.py",
+    "test_dispensary.py",
+    "test_dispensary_view.py",
+    "test_dispensed_items.py",
+    "test_dispensing.py",
+    "test_dispensing_simple.py",
+    "test_dispensing_view.py",
+    "test_payment_verification.py",
+    "test_pharmacy_views.py",
+    "test_prescription_creation.py",
+    "test_pricing_logic.py",
+    "test_profile_fix.py",
+    "test_retainership_workflow.py",
+    "test_server_startup.py",
+    "test_wallet_transfer.py",
+    "setup_test_inventory.py"
+  ],
+  "backup_location": "test_deletion_backup\\test_deletion_backup_20250802_091431"
+}

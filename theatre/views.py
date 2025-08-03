@@ -44,6 +44,15 @@ class OperationTheatreDetailView(LoginRequiredMixin, DetailView):
     model = OperationTheatre
     template_name = 'theatre/theatre_detail.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Get upcoming surgeries for this theatre
+        context['upcoming_surgeries'] = self.object.surgeries.filter(
+            scheduled_date__gte=timezone.now(),
+            status__in=['scheduled', 'in_progress']
+        ).order_by('scheduled_date')[:5]
+        return context
+
 class OperationTheatreCreateView(LoginRequiredMixin, CreateView):
     model = OperationTheatre
     form_class = OperationTheatreForm
@@ -271,6 +280,72 @@ class SurgicalEquipmentDeleteView(LoginRequiredMixin, DeleteView):
     model = SurgicalEquipment
     template_name = 'theatre/equipment_confirm_delete.html'
     success_url = reverse_lazy('theatre:equipment_list')
+
+
+# Surgical Team Management Views
+class SurgicalTeamListView(LoginRequiredMixin, ListView):
+    model = SurgicalTeam
+    template_name = 'theatre/team_list.html'
+    context_object_name = 'teams'
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = SurgicalTeam.objects.select_related('surgery', 'staff', 'surgery__patient').order_by('-surgery__scheduled_date')
+
+        # Add search functionality
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(staff__first_name__icontains=search_query) |
+                Q(staff__last_name__icontains=search_query) |
+                Q(surgery__patient__first_name__icontains=search_query) |
+                Q(surgery__patient__last_name__icontains=search_query) |
+                Q(role__icontains=search_query)
+            )
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('search', '')
+        return context
+
+
+class SurgicalTeamDetailView(LoginRequiredMixin, DetailView):
+    model = SurgicalTeam
+    template_name = 'theatre/team_detail.html'
+
+
+class SurgicalTeamCreateView(LoginRequiredMixin, CreateView):
+    model = SurgicalTeam
+    fields = ['surgery', 'staff', 'role', 'usage_notes']
+    template_name = 'theatre/team_form.html'
+    success_url = reverse_lazy('theatre:team_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Surgical team member added successfully.')
+        return super().form_valid(form)
+
+
+class SurgicalTeamUpdateView(LoginRequiredMixin, UpdateView):
+    model = SurgicalTeam
+    fields = ['surgery', 'staff', 'role', 'usage_notes']
+    template_name = 'theatre/team_form.html'
+    success_url = reverse_lazy('theatre:team_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Surgical team member updated successfully.')
+        return super().form_valid(form)
+
+
+class SurgicalTeamDeleteView(LoginRequiredMixin, DeleteView):
+    model = SurgicalTeam
+    template_name = 'theatre/team_confirm_delete.html'
+    success_url = reverse_lazy('theatre:team_list')
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Surgical team member deleted successfully.')
+        return super().delete(request, *args, **kwargs)
 
 
 class TheatreDashboardView(LoginRequiredMixin, TemplateView):

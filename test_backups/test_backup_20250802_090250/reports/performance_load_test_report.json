@@ -1,0 +1,111 @@
+{
+  "summary": {
+    "total_tests": 11,
+    "passed": 4,
+    "failed": 1,
+    "warnings": 5,
+    "skipped": 1,
+    "success_rate": 36.36363636363637
+  },
+  "results": [
+    {
+      "test": "Simple-Query-Performance",
+      "test_type": "DATABASE_PERFORMANCE",
+      "status": "PASS",
+      "message": "Query completed in 3.75ms",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:50.097935"
+    },
+    {
+      "test": "Complex-Query-Performance",
+      "test_type": "DATABASE_PERFORMANCE",
+      "status": "FAIL",
+      "message": "Complex query test failed",
+      "error": "Invalid field name(s) given in select_related: 'patientwallet'. Choices are: primary_doctor, wallet, nhia_info, retainership_info",
+      "details": null,
+      "timestamp": "2025-08-02T08:58:50.101266"
+    },
+    {
+      "test": "Aggregation-Performance",
+      "test_type": "DATABASE_PERFORMANCE",
+      "status": "PASS",
+      "message": "Aggregation completed in 1.68ms",
+      "error": null,
+      "details": "Patients: 17, Users: 40",
+      "timestamp": "2025-08-02T08:58:50.104416"
+    },
+    {
+      "test": "Home Page-Response-Time",
+      "test_type": "VIEW_PERFORMANCE",
+      "status": "WARN",
+      "message": "Slow response time: 1511.67ms",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:52.639116"
+    },
+    {
+      "test": "Login Page-Response-Time",
+      "test_type": "VIEW_PERFORMANCE",
+      "status": "PASS",
+      "message": "Response time: 4.46ms",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:52.644216"
+    },
+    {
+      "test": "Dashboard-Response-Time",
+      "test_type": "VIEW_PERFORMANCE",
+      "status": "WARN",
+      "message": "Non-200 response: 302",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:52.646511"
+    },
+    {
+      "test": "Patients List-Response-Time",
+      "test_type": "VIEW_PERFORMANCE",
+      "status": "WARN",
+      "message": "Non-200 response: 302",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:52.648791"
+    },
+    {
+      "test": "Doctors List-Response-Time",
+      "test_type": "VIEW_PERFORMANCE",
+      "status": "WARN",
+      "message": "Non-200 response: 302",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:52.651387"
+    },
+    {
+      "test": "Concurrent-Access",
+      "test_type": "LOAD_TESTING",
+      "status": "WARN",
+      "message": "Only 0/5 sessions successful",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:55.588571"
+    },
+    {
+      "test": "Memory-Usage",
+      "test_type": "PERFORMANCE",
+      "status": "SKIP",
+      "message": "psutil not available for memory testing",
+      "error": null,
+      "details": null,
+      "timestamp": "2025-08-02T08:58:55.590549"
+    },
+    {
+      "test": "Database-Connections",
+      "test_type": "DATABASE_PERFORMANCE",
+      "status": "PASS",
+      "message": "Executed 3 queries",
+      "error": null,
+      "details": "Connection handling working properly",
+      "timestamp": "2025-08-02T08:58:55.594097"
+    }
+  ]
+}

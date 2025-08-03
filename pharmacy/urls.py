@@ -34,6 +34,8 @@ urlpatterns = [
 
     # Prescription Management
     path('prescriptions/', views.prescription_list, name='prescriptions'),
+    path('prescriptions/list/', views.prescription_list, name='prescription_list'),
+    path('prescriptions/patient/<int:patient_id>/', views.patient_prescriptions, name='patient_prescriptions'),
     path('prescriptions/create/', views.create_prescription, name='create_prescription'),
     path('prescriptions/create/<int:patient_id>/', views.create_prescription, name='create_prescription'),
     path('prescriptions/<int:prescription_id>/', views.prescription_detail, name='prescription_detail'),
