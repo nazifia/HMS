@@ -737,6 +737,16 @@ def create_invoice_for_admission(request, admission_id):
     """Create an invoice for an admission if not already created."""
     admission = get_object_or_404(Admission, id=admission_id)
 
+    # Check if patient is NHIA - NHIA patients are exempt from admission fees
+    is_nhia_patient = hasattr(admission.patient, 'nhia_info') and admission.patient.nhia_info.is_active
+
+    if is_nhia_patient:
+        messages.info(request,
+            f'Patient {admission.patient.get_full_name()} is an NHIA patient and is exempt from admission fees. '
+            'No invoice will be created.'
+        )
+        return redirect('inpatient:admission_detail', pk=admission.id)
+
     # Check if an invoice already exists for this admission
     if hasattr(admission, 'invoices') and admission.invoices.exists():
         messages.info(request, 'Invoice already exists for this admission.')
@@ -790,6 +800,16 @@ def admission_payment(request, admission_id):
     from .forms import AdmissionPaymentForm
 
     admission = get_object_or_404(Admission, id=admission_id)
+
+    # Check if patient is NHIA - NHIA patients are exempt from admission fees
+    is_nhia_patient = hasattr(admission.patient, 'nhia_info') and admission.patient.nhia_info.is_active
+
+    if is_nhia_patient:
+        messages.info(request,
+            f'Patient {admission.patient.get_full_name()} is an NHIA patient and is exempt from admission fees. '
+            'No payment is required.'
+        )
+        return redirect('inpatient:admission_detail', pk=admission.id)
 
     # Get or create invoice for this admission
     invoice = None

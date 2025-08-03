@@ -12,11 +12,52 @@
                     <h3 class="card-title">{{ title }}</h3>
                 </div>
                 <div class="card-body">
+                    {% if patient %}
+                    <!-- Patient Information Section -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-user"></i> Creating Prescription for Selected Patient
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Patient:</strong> {{ patient.get_full_name }}<br>
+                                <strong>Patient ID:</strong> {{ patient.patient_id }}<br>
+                                <strong>Phone:</strong> {{ patient.phone_number|default:"N/A" }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Age:</strong> {{ patient.get_age }} years<br>
+                                <strong>Gender:</strong> {{ patient.get_gender_display }}<br>
+                                {% if patient.nhia_info %}
+                                <strong>NHIA:</strong> <span class="badge bg-success">{{ patient.nhia_info.nhia_reg_number }}</span>
+                                {% else %}
+                                <strong>NHIA:</strong> <span class="badge bg-secondary">Not Registered</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <hr class="my-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Patient has been automatically selected. You can focus on adding medications and prescription details.
+                        </small>
+                    </div>
+                    {% endif %}
+
                     <form method="post" id="prescription-form">
                         {% csrf_token %}
 
                         <h4>Prescription Details</h4>
-                        {{ prescription_form.patient|as_crispy_field }}
+                        {% if patient %}
+                            <!-- Hidden field for preselected patient -->
+                            {{ prescription_form.patient_hidden }}
+                            <!-- Show patient field as read-only -->
+                            <div class="mb-3">
+                                <label class="form-label">Patient</label>
+                                <input type="text" class="form-control" value="{{ patient.get_full_name }} ({{ patient.patient_id }})" readonly style="background-color: #e9ecef;">
+                                <small class="form-text text-muted">Patient is preselected from patient detail page</small>
+                            </div>
+                        {% else %}
+                            {{ prescription_form.patient|as_crispy_field }}
+                        {% endif %}
                         {{ prescription_form.doctor|as_crispy_field }}
                         {{ prescription_form.prescription_date|as_crispy_field }}
                         {{ prescription_form.diagnosis|as_crispy_field }}

@@ -107,6 +107,10 @@ class Admission(models.Model):
 
     def get_total_cost(self):
         """Calculate the total cost of the admission based on duration and bed charges"""
+        # Check if patient is NHIA - NHIA patients are exempt from admission fees
+        if hasattr(self.patient, 'nhia_info') and self.patient.nhia_info.is_active:
+            return 0  # NHIA patients don't pay admission fees
+
         duration = self.get_duration()
         if duration < 1:
             duration = 1  # Minimum 1 day charge

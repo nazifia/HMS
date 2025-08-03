@@ -167,6 +167,16 @@
                                 <i class="fas fa-vials"></i> View Lab Test Results
                             </a>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <button type="button" class="btn btn-warning btn-block" data-bs-toggle="modal" data-bs-target="#prescriptionModal">
+                                <i class="fas fa-pills"></i> Prescribe Medication
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-primary btn-block">
+                                <i class="fas fa-prescription-bottle"></i> Pharmacy Prescription
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

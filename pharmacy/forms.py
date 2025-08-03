@@ -118,18 +118,63 @@ class PrescriptionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)
+        preselected_patient = kwargs.pop('preselected_patient', None)
         super().__init__(*args, **kwargs)
+
+        # Handle patient preselection from multiple sources
         patient_id = None
-        if request:
+        patient_instance = None
+
+        # Priority: preselected_patient > request.GET > initial data
+        if preselected_patient:
+            patient_instance = preselected_patient
+            patient_id = preselected_patient.id
+        elif request:
             patient_id = request.GET.get('patient')
-        if not patient_id:
-            patient_id = self.initial.get('patient')
-        if patient_id:
-            self.fields['patient'].initial = patient_id
-            # Keep patient field visible but pre-selected for user convenience
-        # All users can select any doctor now
-        # Ensure all patients are available for selection
-        self.fields['patient'].queryset = Patient.objects.all()
+
+        if not patient_id and not patient_instance:
+            patient_instance = self.initial.get('patient')
+            if patient_instance:
+                patient_id = patient_instance.id
+
+        if patient_id and not patient_instance:
+            try:
+                patient_instance = Patient.objects.get(id=patient_id)
+            except Patient.DoesNotExist:
+                patient_instance = None
+
+        if patient_instance:
+            self.fields['patient'].initial = patient_instance
+            # Make patient field read-only when preselected
+            self.fields['patient'].widget.attrs.update({
+                'readonly': True,
+                'disabled': True,
+                'class': 'form-select',
+                'style': 'background-color: #e9ecef; cursor: not-allowed;'
+            })
+            # Limit queryset to only the selected patient
+            self.fields['patient'].queryset = Patient.objects.filter(id=patient_instance.id)
+            self.fields['patient'].empty_label = None
+
+            # Add a hidden field to ensure the patient is submitted
+            self.fields['patient_hidden'] = forms.ModelChoiceField(
+                queryset=Patient.objects.filter(id=patient_instance.id),
+                initial=patient_instance,
+                widget=forms.HiddenInput(),
+                required=True
+            )
+        else:
+            # Ensure all patients are available for selection when not preselected
+            self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # Handle patient field when it's disabled
+        if 'patient_hidden' in self.fields:
+            cleaned_data['patient'] = cleaned_data.get('patient_hidden')
+
+        return cleaned_data
 
     class Meta:
         model = Prescription
@@ -379,13 +424,19 @@ class MedicationSearchForm(forms.Form):
 
     search = forms.CharField(
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': 'Search by name, generic name, or category'})
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by name, generic name, or category',
+            'class': 'form-control'
+        }),
+        label='Search'
     )
 
     category = forms.ModelChoiceField(
         queryset=MedicationCategory.objects.all(),
         required=False,
-        empty_label="All Categories"
+        empty_label="All Categories",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Category'
     )
 
     is_active = forms.ChoiceField(
@@ -394,7 +445,9 @@ class MedicationSearchForm(forms.Form):
             ('active', 'Active'),
             ('inactive', 'Inactive')
         ],
-        required=False
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Status'
     )
 
 class PrescriptionSearchForm(forms.Form):
@@ -712,3 +765,78 @@ class MedicationInventoryForm(forms.ModelForm):
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'reorder_level': forms.NumberInput(attrs={'class': 'form-control'}),
         }
+
+
+class PharmacyDashboardSearchForm(forms.Form):
+    """Comprehensive search form for pharmacy dashboard"""
+
+    SEARCH_TYPE_CHOICES = [
+        ('', 'All'),
+        ('medications', 'Medications'),
+        ('prescriptions', 'Prescriptions'),
+        ('patients', 'Patients'),
+        ('suppliers', 'Suppliers'),
+    ]
+
+    search_query = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search medications, prescriptions, patients, or suppliers...',
+            'class': 'form-control',
+            'id': 'global-search'
+        }),
+        label='Search'
+    )
+
+    search_type = forms.ChoiceField(
+        choices=SEARCH_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Search In'
+    )
+
+    # Medication specific filters
+    medication_category = forms.ModelChoiceField(
+        queryset=MedicationCategory.objects.all(),
+        required=False,
+        empty_label="All Categories",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Medication Category'
+    )
+
+    stock_status = forms.ChoiceField(
+        choices=[
+            ('', 'All Stock Levels'),
+            ('in_stock', 'In Stock'),
+            ('low_stock', 'Low Stock'),
+            ('out_of_stock', 'Out of Stock'),
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Stock Status'
+    )
+
+    # Prescription specific filters
+    prescription_status = forms.ChoiceField(
+        choices=[
+            ('', 'All Statuses'),
+            ('pending', 'Pending'),
+            ('partially_dispensed', 'Partially Dispensed'),
+            ('dispensed', 'Fully Dispensed'),
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Prescription Status'
+    )
+
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='From Date'
+    )
+
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='To Date'
+    )

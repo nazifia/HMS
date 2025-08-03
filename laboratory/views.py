@@ -604,9 +604,10 @@ def create_test_request(request):
         # This view now primarily handles submissions from the modal on patient_detail page
         # or a dedicated TestRequestForm if you have one that includes billing initiation.
         
-        patient_id = request.POST.get('patient')
+        patient_id = request.POST.get('patient') or request.POST.get('patient_hidden')
         doctor_id = request.POST.get('doctor') # Ensure this name matches your form/modal
-        tests_ids = request.POST.getlist('tests')
+        tests_ids_str = request.POST.get('tests', '')
+        tests_ids = [t.strip() for t in tests_ids_str.split(',') if t.strip()] if tests_ids_str else []
         priority = request.POST.get('priority', 'normal')
         request_date_str = request.POST.get('request_date')
         notes = request.POST.get('notes', '')
@@ -711,25 +712,43 @@ def create_test_request(request):
         # Fallback redirect
         return redirect(request.META.get('HTTP_REFERER', 'patients:list'))
 
-    else: # GET request for a dedicated form page (if you have one)
+    else: # GET request for a dedicated form page
         patient_id = request.GET.get('patient')
+        patient = None
         initial_data = {}
+
         if patient_id:
             try:
                 patient = Patient.objects.get(id=patient_id)
                 initial_data['patient'] = patient
+                initial_data['doctor'] = request.user
+                initial_data['request_date'] = timezone.now().date()
             except Patient.DoesNotExist:
                 pass
-        # This form is for a dedicated page, not the modal which posts directly.
-        form = TestRequestForm(initial=initial_data)
-        # Ensure all patients are available for selection
-        form.fields['patient'].queryset = Patient.objects.all()
+
+        # Create form with patient preselection
+        form = TestRequestForm(
+            initial=initial_data,
+            request=request,
+            preselected_patient=patient
+        )
+
+        # Get all tests organized by category for the enhanced interface
+        test_categories = TestCategory.objects.prefetch_related('tests').filter(
+            tests__is_active=True
+        ).distinct().order_by('name')
+
+        # Get all tests for search functionality
+        all_tests = Test.objects.filter(is_active=True).select_related('category').order_by('category__name', 'name')
 
     context = {
         'form': form,
+        'patient': patient,
+        'test_categories': test_categories,
+        'all_tests': all_tests,
         'title': 'Create New Test Request'
     }
-    return render(request, 'laboratory/test_request_form.html', context)
+    return render(request, 'laboratory/enhanced_test_request_form.html', context)
 
 @login_required
 def test_request_detail(request, request_id):

@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Tracking
+            </a>
+            {% if referral.referred_to == request.user or referral.referring_doctor == request.user %}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+                <i class="fas fa-edit"></i> Update Status
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Referral Information -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-exchange-alt"></i> Referral Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Patient:</strong></td>
+                                    <td>
+                                        <a href="{% url 'patients:patient_detail' referral.patient.id %}">
+                                            {{ referral.patient.get_full_name }}
+                                        </a>
+                                        <small class="text-muted d-block">{{ referral.patient.patient_id }}</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Referring Doctor:</strong></td>
+                                    <td>{{ referral.referring_doctor.get_full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Referred To:</strong></td>
+                                    <td>{{ referral.referred_to.get_full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Referral Date:</strong></td>
+                                    <td>{{ referral.referral_date|date:"M d, Y H:i" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        <span class="badge {% if referral.status == 'pending' %}bg-warning{% elif referral.status == 'accepted' %}bg-info{% elif referral.status == 'completed' %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ referral.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Updated:</strong></td>
+                                    <td>{{ referral.updated_at|date:"M d, Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Original Consultation:</strong></td>
+                                    <td>
+                                        {% if referral.consultation %}
+                                        <a href="{% url 'consultations:consultation_detail' referral.consultation.id %}">
+                                            View Consultation
+                                        </a>
+                                        {% else %}
+                                        N/A
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h6><strong>Reason for Referral:</strong></h6>
+                            <p class="text-muted">{{ referral.reason }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if referral.notes %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h6><strong>Notes & Status History:</strong></h6>
+                            <div class="bg-light p-3 rounded">
+                                <pre class="mb-0">{{ referral.notes }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Follow-up Consultations -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-stethoscope"></i> Follow-up Consultations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if follow_up_consultations %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Doctor</th>
+                                    <th>Chief Complaint</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consultation in follow_up_consultations %}
+                                <tr>
+                                    <td>{{ consultation.consultation_date|date:"M d, Y" }}</td>
+                                    <td>{{ consultation.doctor.get_full_name }}</td>
+                                    <td>{{ consultation.chief_complaint|truncatechars:50 }}</td>
+                                    <td>
+                                        <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No follow-up consultations yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Patient Summary -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user"></i> Patient Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <h5>{{ referral.patient.get_full_name }}</h5>
+                        <p class="text-muted">{{ referral.patient.patient_id }}</p>
+                    </div>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td>Age:</td>
+                            <td>{{ referral.patient.get_age }} years</td>
+                        </tr>
+                        <tr>
+                            <td>Gender:</td>
+                            <td>{{ referral.patient.get_gender_display }}</td>
+                        </tr>
+                        <tr>
+                            <td>Phone:</td>
+                            <td>{{ referral.patient.phone_number|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <td>NHIA:</td>
+                            <td>
+                                {% if referral.patient.nhia_info %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Not Registered</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="text-center">
+                        <a href="{% url 'patients:patient_detail' referral.patient.id %}" class="btn btn-sm btn-outline-primary">
+                            View Full Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Referrals -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Referrals for Patient
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if patient_referrals %}
+                    {% for ref in patient_referrals %}
+                    <div class="mb-2 p-2 border rounded">
+                        <small class="text-muted">{{ ref.referral_date|date:"M d, Y" }}</small>
+                        <div>
+                            <strong>From:</strong> {{ ref.referring_doctor.get_full_name }}<br>
+                            <strong>To:</strong> {{ ref.referred_to.get_full_name }}<br>
+                            <span class="badge {% if ref.status == 'pending' %}bg-warning{% elif ref.status == 'accepted' %}bg-info{% elif ref.status == 'completed' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ ref.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted text-center">No other referrals for this patient.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if referral.referred_to == request.user and referral.status == 'pending' %}
+                        <a href="{% url 'consultations:create_consultation' %}?patient={{ referral.patient.id }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus"></i> Start Consultation
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'consultations:create_referral' referral.patient.id %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-share"></i> Create New Referral
+                        </a>
+                        <a href="{% url 'pharmacy:create_prescription' referral.patient.id %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-prescription"></i> Create Prescription
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Referral Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status" class="form-select" required>
+                            {% for value, label in referral.STATUS_CHOICES %}
+                            <option value="{{ value }}" {% if value == referral.status %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status_notes" class="form-label">Notes (Optional)</label>
+                        <textarea name="status_notes" id="status_notes" class="form-control" rows="3" placeholder="Add notes about this status change..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

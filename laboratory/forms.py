@@ -80,18 +80,65 @@ class TestRequestForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)
+        preselected_patient = kwargs.pop('preselected_patient', None)
         super().__init__(*args, **kwargs)
-        patient_id = None
-        if request:
-            patient_id = request.GET.get('patient')
-        if not patient_id:
-            patient_id = self.initial.get('patient')
-        if patient_id:
-            self.fields['patient'].initial = patient_id
-            # Keep patient field visible but pre-selected for user convenience
 
-        # Ensure all patients are available for selection
-        self.fields['patient'].queryset = Patient.objects.all()
+        # Handle patient preselection
+        patient_id = None
+        patient_instance = None
+
+        if preselected_patient:
+            patient_instance = preselected_patient
+            patient_id = preselected_patient.id
+        elif request:
+            patient_id = request.GET.get('patient')
+
+        if not patient_id and not patient_instance:
+            patient_instance = self.initial.get('patient')
+            if patient_instance:
+                patient_id = patient_instance.id
+
+        if patient_id and not patient_instance:
+            try:
+                patient_instance = Patient.objects.get(id=patient_id)
+            except Patient.DoesNotExist:
+                patient_instance = None
+
+        if patient_instance:
+            self.fields['patient'].initial = patient_instance
+            # Make patient field read-only when preselected
+            self.fields['patient'].widget.attrs.update({
+                'readonly': True,
+                'disabled': True,
+                'class': 'form-select',
+                'style': 'background-color: #e9ecef; cursor: not-allowed;'
+            })
+            # Limit queryset to only the selected patient
+            self.fields['patient'].queryset = Patient.objects.filter(id=patient_instance.id)
+            self.fields['patient'].empty_label = None
+
+            # Add a hidden field to ensure the patient is submitted
+            self.fields['patient_hidden'] = forms.ModelChoiceField(
+                queryset=Patient.objects.filter(id=patient_instance.id),
+                initial=patient_instance,
+                widget=forms.HiddenInput(),
+                required=True
+            )
+        else:
+            # Ensure all patients are available for selection when not preselected
+            self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
+
+        # Organize tests by category for better display
+        self.fields['tests'].queryset = Test.objects.filter(is_active=True).select_related('category').order_by('category__name', 'name')
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # Handle patient field when it's disabled
+        if 'patient_hidden' in self.fields:
+            cleaned_data['patient'] = cleaned_data.get('patient_hidden')
+
+        return cleaned_data
 
 class TestResultForm(forms.ModelForm):
     """Form for creating and editing test results"""

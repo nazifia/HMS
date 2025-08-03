@@ -43,22 +43,10 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
                 total_amount=instance.get_total_cost()
             )
 
-            # Get or create patient wallet
-            wallet, created = PatientWallet.objects.get_or_create(
-                patient=instance.patient,
-                defaults={'balance': 0}
-            )
-
-            # Deduct admission fee from wallet (allowing negative balance)
-            if instance.get_total_cost() > 0:
-                wallet.debit(
-                    amount=instance.get_total_cost(),
-                    description=f'Admission fee for {instance.patient.get_full_name()}',
-                    transaction_type='admission_fee',
-                    user=instance.created_by,
-                    invoice=invoice
-                )
-                logger.info(f'Deducted ₦{instance.get_total_cost()} from wallet for admission {instance.id}. New balance: ₦{wallet.balance}')
+            # Invoice created successfully - payment must be processed manually
+            # Note: Automatic wallet deduction has been disabled to comply with
+            # requirement that invoices should not be auto-paid
+            logger.info(f'Invoice created for admission {instance.id}. Manual payment processing required.')
 
         except Exception as e:
             logger.error(f'Error processing admission invoice and wallet deduction for admission {instance.id}: {str(e)}')

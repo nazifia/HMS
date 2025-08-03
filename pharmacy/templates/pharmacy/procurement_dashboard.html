@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:supplier_list' %}" class="btn btn-info">
+                <i class="fas fa-building"></i> Manage Suppliers
+            </a>
+            <a href="{% url 'pharmacy:manage_purchases' %}" class="btn btn-primary">
+                <i class="fas fa-shopping-cart"></i> Purchase Orders
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Orders</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pending_orders }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Pending Value</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_pending_value|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Low Stock Items</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ low_stock_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Quick Actions</div>
+                            <div class="mt-2">
+                                <a href="{% url 'pharmacy:inventory_list' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-pills"></i> View Inventory
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pending Purchase Orders -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-shopping-cart"></i> Pending Purchase Orders
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if pending_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Supplier</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in pending_orders %}
+                                <tr>
+                                    <td>{{ order.invoice_number }}</td>
+                                    <td>{{ order.supplier.name }}</td>
+                                    <td>{{ order.purchase_date|date:"M d" }}</td>
+                                    <td>₦{{ order.total_amount|floatformat:2 }}</td>
+                                    <td>
+                                        <a href="{% url 'pharmacy:purchase_detail' order.id %}" class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No pending purchase orders.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Low Stock Alerts -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Low Stock Alerts
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if low_stock_medications %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Location</th>
+                                    <th>Current</th>
+                                    <th>Reorder</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inventory in low_stock_medications %}
+                                <tr>
+                                    <td>{{ inventory.medication.name|truncatechars:20 }}</td>
+                                    <td>{{ inventory.dispensary.name }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">{{ inventory.stock_quantity }}</span>
+                                    </td>
+                                    <td>{{ inventory.reorder_level }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-success" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#procureModal{{ inventory.medication.id }}">
+                                            <i class="fas fa-shopping-cart"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">All medications are adequately stocked.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders and Top Suppliers -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Orders
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Supplier</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>{{ order.invoice_number }}</td>
+                                    <td>{{ order.supplier.name }}</td>
+                                    <td>{{ order.purchase_date|date:"M d" }}</td>
+                                    <td>
+                                        <span class="badge {% if order.payment_status == 'paid' %}bg-success{% else %}bg-warning{% endif %}">
+                                            {{ order.get_payment_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>₦{{ order.total_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No recent orders.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Top Suppliers (Last 90 Days)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if top_suppliers %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Supplier</th>
+                                    <th>Orders</th>
+                                    <th>Total Value</th>
+                                    <th>Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for supplier in top_suppliers %}
+                                <tr>
+                                    <td>{{ supplier.supplier__name|truncatechars:20 }}</td>
+                                    <td>{{ supplier.order_count }}</td>
+                                    <td>₦{{ supplier.total_value|floatformat:2 }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-primary" role="progressbar" 
+                                                 style="width: {% widthratio supplier.total_value top_suppliers.0.total_value 100 %}%">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No supplier data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Procurement Modals for Low Stock Items -->
+{% for inventory in low_stock_medications %}
+<div class="modal fade" id="procureModal{{ inventory.medication.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Procure {{ inventory.medication.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:create_procurement_request' inventory.medication.id %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="alert alert-warning">
+                        <strong>Low Stock Alert:</strong> Current stock is {{ inventory.stock_quantity }} units, 
+                        reorder level is {{ inventory.reorder_level }} units.
+                    </div>
+                    <div class="mb-3">
+                        <label for="supplier{{ inventory.medication.id }}" class="form-label">Select Supplier</label>
+                        <select name="supplier" id="supplier{{ inventory.medication.id }}" class="form-select supplier-select" required>
+                            <option value="">Choose supplier...</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="quantity{{ inventory.medication.id }}" class="form-label">Quantity</label>
+                            <input type="number" name="quantity" id="quantity{{ inventory.medication.id }}" 
+                                   class="form-control" min="1" value="{{ inventory.reorder_level|add:inventory.reorder_level }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="unit_price{{ inventory.medication.id }}" class="form-label">Unit Price</label>
+                            <input type="number" name="unit_price" id="unit_price{{ inventory.medication.id }}" 
+                                   class="form-control" step="0.01" min="0" value="{{ inventory.medication.price }}" required>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label for="notes{{ inventory.medication.id }}" class="form-label">Notes</label>
+                        <textarea name="notes" id="notes{{ inventory.medication.id }}" class="form-control" rows="2">Low stock procurement - urgent reorder needed</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-shopping-cart"></i> Create Procurement Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load suppliers for procurement modals
+    fetch('{% url "pharmacy:api_suppliers" %}')
+        .then(response => response.json())
+        .then(suppliers => {
+            document.querySelectorAll('.supplier-select').forEach(select => {
+                suppliers.forEach(supplier => {
+                    const option = document.createElement('option');
+                    option.value = supplier.id;
+                    option.textContent = supplier.name;
+                    select.appendChild(option);
+                });
+            });
+        })
+        .catch(error => console.error('Error loading suppliers:', error));
+});
+</script>
+{% endblock %}

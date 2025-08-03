@@ -24,6 +24,10 @@ urlpatterns = [
     # Referral management
     path('doctor/referrals/', views.referral_list, name='referral_list'),
     path('doctor/referrals/<int:referral_id>/update-status/', views.update_referral_status, name='update_referral_status'),
+    path('referrals/', views.referral_tracking, name='referral_tracking'),
+    path('referrals/<int:referral_id>/', views.referral_detail, name='referral_detail'),
+    path('referrals/<int:referral_id>/update-status/', views.update_referral_status_detailed, name='update_referral_status_detailed'),
+    path('referrals/create/', views.create_referral, name='create_referral'),
     path('referrals/create/<int:patient_id>/', views.create_referral, name='create_referral'),
 
     # Consulting Room management

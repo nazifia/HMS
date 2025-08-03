@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'laboratory:test_requests' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Test Requests
+            </a>
+        </div>
+    </div>
+
+    {% if patient %}
+    <!-- Patient Information Section -->
+    <div class="alert alert-info">
+        <h5 class="alert-heading">
+            <i class="fas fa-user"></i> Creating Test Request for Selected Patient
+        </h5>
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Patient:</strong> {{ patient.get_full_name }}<br>
+                <strong>Patient ID:</strong> {{ patient.patient_id }}<br>
+                <strong>Phone:</strong> {{ patient.phone_number|default:"N/A" }}
+            </div>
+            <div class="col-md-6">
+                <strong>Age:</strong> {{ patient.get_age }} years<br>
+                <strong>Gender:</strong> {{ patient.get_gender_display }}<br>
+                {% if patient.nhia_info %}
+                <strong>NHIA:</strong> <span class="badge bg-success">{{ patient.nhia_info.nhia_reg_number }}</span>
+                {% else %}
+                <strong>NHIA:</strong> <span class="badge bg-secondary">Not Registered</span>
+                {% endif %}
+            </div>
+        </div>
+        <hr class="my-2">
+        <small class="text-muted">
+            <i class="fas fa-info-circle"></i> 
+            Patient has been automatically selected. You can focus on selecting tests and request details.
+        </small>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Test Request Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-vial"></i> Test Request Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="test-request-form">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {% if patient %}
+                                    <!-- Hidden field for preselected patient -->
+                                    {{ form.patient_hidden }}
+                                    <!-- Show patient field as read-only -->
+                                    <label class="form-label">Patient</label>
+                                    <input type="text" class="form-control" value="{{ patient.get_full_name }} ({{ patient.patient_id }})" readonly style="background-color: #e9ecef;">
+                                    <small class="form-text text-muted">Patient is preselected from patient detail page</small>
+                                {% else %}
+                                    <label for="{{ form.patient.id_for_label }}" class="form-label">Patient</label>
+                                    {{ form.patient|add_class:"form-control select2" }}
+                                    {% if form.patient.errors %}
+                                        <div class="text-danger">{{ form.patient.errors }}</div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.doctor.id_for_label }}" class="form-label">Requesting Doctor</label>
+                                {{ form.doctor|add_class:"form-control select2" }}
+                                {% if form.doctor.errors %}
+                                    <div class="text-danger">{{ form.doctor.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.request_date.id_for_label }}" class="form-label">Request Date</label>
+                                {{ form.request_date|add_class:"form-control" }}
+                                {% if form.request_date.errors %}
+                                    <div class="text-danger">{{ form.request_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">Priority</label>
+                                {{ form.priority|add_class:"form-control" }}
+                                {% if form.priority.errors %}
+                                    <div class="text-danger">{{ form.priority.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
+                                {{ form.status|add_class:"form-control" }}
+                                {% if form.status.errors %}
+                                    <div class="text-danger">{{ form.status.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Hidden field for selected tests -->
+                        <input type="hidden" name="tests" id="selected-tests" value="">
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'laboratory:test_requests' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled>
+                                <i class="fas fa-save"></i> Create Test Request
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Selection Panel -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-search"></i> Select Tests
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <!-- Search Box -->
+                    <div class="mb-3">
+                        <input type="text" id="test-search" class="form-control" placeholder="Search tests...">
+                    </div>
+                    
+                    <!-- Category Filter -->
+                    <div class="mb-3">
+                        <select id="category-filter" class="form-select">
+                            <option value="">All Categories</option>
+                            {% for category in test_categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Selected Tests Summary -->
+                    <div class="mb-3">
+                        <h6>Selected Tests (<span id="selected-count">0</span>)</h6>
+                        <div id="selected-tests-list" class="border rounded p-2" style="min-height: 60px; max-height: 150px; overflow-y: auto;">
+                            <small class="text-muted">No tests selected</small>
+                        </div>
+                        <div class="mt-2">
+                            <strong>Total Cost: ₦<span id="total-cost">0.00</span></strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Tests -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Available Tests
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row" id="tests-container">
+                {% for category in test_categories %}
+                <div class="col-12 mb-4 test-category" data-category="{{ category.id }}">
+                    <h6 class="text-primary">{{ category.name }}</h6>
+                    <div class="row">
+                        {% for test in category.tests.all %}
+                        <div class="col-md-6 col-lg-4 mb-2">
+                            <div class="card test-card" data-test-id="{{ test.id }}" data-category="{{ category.id }}" data-test-name="{{ test.name|lower }}" data-price="{{ test.price }}">
+                                <div class="card-body p-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input test-checkbox" type="checkbox" value="{{ test.id }}" id="test_{{ test.id }}">
+                                        <label class="form-check-label" for="test_{{ test.id }}">
+                                            <strong>{{ test.name }}</strong>
+                                            <small class="d-block text-muted">₦{{ test.price }}</small>
+                                            {% if test.sample_type %}
+                                            <small class="d-block text-info">{{ test.sample_type }}</small>
+                                            {% endif %}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectedTests = new Set();
+    const testSearch = document.getElementById('test-search');
+    const categoryFilter = document.getElementById('category-filter');
+    const selectedTestsInput = document.getElementById('selected-tests');
+    const selectedTestsList = document.getElementById('selected-tests-list');
+    const selectedCount = document.getElementById('selected-count');
+    const totalCost = document.getElementById('total-cost');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    function updateSelectedTests() {
+        const testsArray = Array.from(selectedTests);
+        selectedTestsInput.value = testsArray.join(',');
+        
+        // Update count
+        selectedCount.textContent = testsArray.length;
+        
+        // Update list
+        if (testsArray.length === 0) {
+            selectedTestsList.innerHTML = '<small class="text-muted">No tests selected</small>';
+            submitBtn.disabled = true;
+        } else {
+            let html = '';
+            let total = 0;
+            testsArray.forEach(testId => {
+                const testCard = document.querySelector(`[data-test-id="${testId}"]`);
+                const testName = testCard.querySelector('label strong').textContent;
+                const price = parseFloat(testCard.dataset.price);
+                total += price;
+                html += `<span class="badge bg-primary me-1 mb-1">${testName} <button type="button" class="btn-close btn-close-white btn-sm ms-1" onclick="removeTest('${testId}')"></button></span>`;
+            });
+            selectedTestsList.innerHTML = html;
+            totalCost.textContent = total.toFixed(2);
+            submitBtn.disabled = false;
+        }
+    }
+    
+    window.removeTest = function(testId) {
+        selectedTests.delete(testId);
+        document.getElementById(`test_${testId}`).checked = false;
+        updateSelectedTests();
+    };
+    
+    // Handle test selection
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('test-checkbox')) {
+            const testId = e.target.value;
+            if (e.target.checked) {
+                selectedTests.add(testId);
+            } else {
+                selectedTests.delete(testId);
+            }
+            updateSelectedTests();
+        }
+    });
+    
+    // Search functionality
+    testSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const testCards = document.querySelectorAll('.test-card');
+        
+        testCards.forEach(card => {
+            const testName = card.dataset.testName;
+            if (testName.includes(searchTerm)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+    
+    // Category filter
+    categoryFilter.addEventListener('change', function() {
+        const categoryId = this.value;
+        const categories = document.querySelectorAll('.test-category');
+        
+        categories.forEach(category => {
+            if (!categoryId || category.dataset.category === categoryId) {
+                category.style.display = 'block';
+            } else {
+                category.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

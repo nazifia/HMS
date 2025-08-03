@@ -4,6 +4,7 @@ app_name = 'pharmacy'
 
 urlpatterns = [
     path('dashboard/', views.pharmacy_dashboard, name='dashboard'),
+    path('features/', views.features_showcase, name='features_showcase'),
     # Inventory Management
     path('inventory/', views.inventory_list, name='inventory'),
     path('inventory/add/', views.add_medication, name='add_medication'),
@@ -18,12 +19,22 @@ urlpatterns = [
 
     # Supplier Management
     path('suppliers/', views.manage_suppliers, name='manage_suppliers'),
+    path('suppliers/list/', views.supplier_list, name='supplier_list'),
+    path('suppliers/<int:supplier_id>/', views.supplier_detail, name='supplier_detail'),
     path('suppliers/<int:supplier_id>/edit/', views.edit_supplier, name='edit_supplier'),
     path('suppliers/<int:supplier_id>/delete/', views.delete_supplier, name='delete_supplier'),
+    path('suppliers/<int:supplier_id>/quick-procurement/', views.quick_procurement, name='quick_procurement'),
+
+    # Procurement Management
+    path('procurement/', views.procurement_dashboard, name='procurement_dashboard'),
+    path('medications/<int:medication_id>/procure/', views.create_procurement_request, name='create_procurement_request'),
+    path('api/suppliers/', views.api_suppliers, name='api_suppliers'),
 
     # Purchase Management
     path('purchases/', views.manage_purchases, name='manage_purchases'),
+    path('purchases/list/', views.manage_purchases, name='purchase_list'),
     path('purchases/add/', views.add_purchase, name='add_purchase'),
+    path('purchases/create/', views.add_purchase, name='create_purchase'),
     path('purchases/<int:purchase_id>/', views.purchase_detail, name='purchase_detail'),
     path('purchases/items/<int:item_id>/delete/', views.delete_purchase_item, name='delete_purchase_item'),
 
@@ -38,6 +49,8 @@ urlpatterns = [
     path('prescriptions/patient/<int:patient_id>/', views.patient_prescriptions, name='patient_prescriptions'),
     path('prescriptions/create/', views.create_prescription, name='create_prescription'),
     path('prescriptions/create/<int:patient_id>/', views.create_prescription, name='create_prescription'),
+    path('prescriptions/pharmacy-create/', views.pharmacy_create_prescription, name='pharmacy_create_prescription'),
+    path('prescriptions/pharmacy-create/<int:patient_id>/', views.pharmacy_create_prescription, name='pharmacy_create_prescription'),
     path('prescriptions/<int:prescription_id>/', views.prescription_detail, name='prescription_detail'),
     path('prescriptions/<int:prescription_id>/print/', views.print_prescription, name='print_prescription'),
     path('prescriptions/<int:prescription_id>/status/', views.update_prescription_status, name='update_prescription_status'),
@@ -50,6 +63,7 @@ urlpatterns = [
 
     # Payment Management
     path('prescriptions/<int:prescription_id>/payment/', views.prescription_payment, name='prescription_payment'),
+    path('prescriptions/<int:prescription_id>/payment/billing-office/', views.billing_office_medication_payment, name='billing_office_medication_payment'),
     path('prescriptions/<int:prescription_id>/payment/create-invoice/', views.create_prescription_invoice, name='create_prescription_invoice'),
 
     # API Endpoints

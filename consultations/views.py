@@ -507,6 +507,167 @@ def update_referral_status(request, referral_id):
 
     return redirect('consultations:referral_list')
 
+@login_required
+def referral_detail(request, referral_id):
+    """Detailed view of a referral with comprehensive tracking"""
+    referral = get_object_or_404(Referral, id=referral_id)
+
+    # Check permissions - referring doctor, referred doctor, or admin can view
+    if (referral.referring_doctor != request.user and
+        referral.referred_to != request.user and
+        not request.user.is_superuser):
+        messages.error(request, "You don't have permission to view this referral.")
+        return redirect('consultations:referral_list')
+
+    # Get related consultations
+    follow_up_consultations = Consultation.objects.filter(
+        patient=referral.patient,
+        doctor=referral.referred_to,
+        consultation_date__gte=referral.referral_date
+    ).order_by('-consultation_date')
+
+    # Get referral history for this patient
+    patient_referrals = Referral.objects.filter(
+        patient=referral.patient
+    ).exclude(id=referral.id).order_by('-referral_date')[:5]
+
+    context = {
+        'referral': referral,
+        'follow_up_consultations': follow_up_consultations,
+        'patient_referrals': patient_referrals,
+        'title': f'Referral Details - {referral.patient.get_full_name()}'
+    }
+
+    return render(request, 'consultations/referral_detail.html', context)
+
+@login_required
+def referral_tracking(request):
+    """Comprehensive referral tracking dashboard"""
+    user_roles = list(request.user.roles.values_list('name', flat=True))
+
+    # Base queryset
+    referrals = Referral.objects.select_related(
+        'patient', 'referring_doctor', 'referred_to', 'consultation'
+    ).order_by('-referral_date')
+
+    # Filter based on user role and permissions
+    if 'admin' not in user_roles and not request.user.is_superuser:
+        # Non-admin users see only their referrals
+        referrals = referrals.filter(
+            Q(referring_doctor=request.user) | Q(referred_to=request.user)
+        )
+
+    # Apply filters
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        referrals = referrals.filter(status=status_filter)
+
+    patient_search = request.GET.get('patient', '')
+    if patient_search:
+        referrals = referrals.filter(
+            Q(patient__first_name__icontains=patient_search) |
+            Q(patient__last_name__icontains=patient_search) |
+            Q(patient__patient_id__icontains=patient_search)
+        )
+
+    doctor_filter = request.GET.get('doctor', '')
+    if doctor_filter:
+        referrals = referrals.filter(
+            Q(referring_doctor__id=doctor_filter) |
+            Q(referred_to__id=doctor_filter)
+        )
+
+    date_from = request.GET.get('date_from', '')
+    if date_from:
+        referrals = referrals.filter(referral_date__date__gte=date_from)
+
+    date_to = request.GET.get('date_to', '')
+    if date_to:
+        referrals = referrals.filter(referral_date__date__lte=date_to)
+
+    # Statistics
+    total_referrals = referrals.count()
+    pending_referrals = referrals.filter(status='pending').count()
+    completed_referrals = referrals.filter(status='completed').count()
+
+    # Pagination
+    paginator = Paginator(referrals, 20)
+    page_number = request.GET.get('page')
+    referrals = paginator.get_page(page_number)
+
+    # Get doctors for filter dropdown
+    doctors = CustomUser.objects.filter(
+        is_active=True,
+        profile__specialization__isnull=False
+    ).order_by('first_name', 'last_name')
+
+    context = {
+        'referrals': referrals,
+        'doctors': doctors,
+        'status_filter': status_filter,
+        'patient_search': patient_search,
+        'doctor_filter': doctor_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'total_referrals': total_referrals,
+        'pending_referrals': pending_referrals,
+        'completed_referrals': completed_referrals,
+        'title': 'Referral Tracking Dashboard'
+    }
+
+    return render(request, 'consultations/referral_tracking.html', context)
+
+@login_required
+def update_referral_status_detailed(request, referral_id):
+    """Enhanced referral status update with notes and tracking"""
+    referral = get_object_or_404(Referral, id=referral_id)
+
+    # Check permissions
+    if (referral.referred_to != request.user and
+        referral.referring_doctor != request.user and
+        not request.user.is_superuser):
+        messages.error(request, "You don't have permission to update this referral.")
+        return redirect('consultations:referral_tracking')
+
+    if request.method == 'POST':
+        status = request.POST.get('status')
+        notes = request.POST.get('status_notes', '')
+
+        if status in dict(Referral.STATUS_CHOICES):
+            old_status = referral.status
+            referral.status = status
+
+            # Add status update notes
+            if notes:
+                if referral.notes:
+                    referral.notes += f"\n\n[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
+                else:
+                    referral.notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
+
+            referral.save()
+
+            # Create notification for the other party
+            if referral.referred_to == request.user:
+                # Notify referring doctor
+                from core.models import InternalNotification
+                InternalNotification.objects.create(
+                    user=referral.referring_doctor,
+                    message=f"Referral for {referral.patient.get_full_name()} has been {status} by Dr. {request.user.get_full_name()}"
+                )
+            else:
+                # Notify referred doctor
+                from core.models import InternalNotification
+                InternalNotification.objects.create(
+                    user=referral.referred_to,
+                    message=f"Referral for {referral.patient.get_full_name()} status updated to {status} by Dr. {request.user.get_full_name()}"
+                )
+
+            messages.success(request, f"Referral status updated to {status}.")
+        else:
+            messages.error(request, "Invalid status.")
+
+    return redirect('consultations:referral_detail', referral_id=referral.id)
+
 # Consulting Room Views
 @login_required
 def consulting_room_list(request):

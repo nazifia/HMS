@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:supplier_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Suppliers
+            </a>
+            <a href="{% url 'pharmacy:edit_supplier' supplier.id %}" class="btn btn-primary">
+                <i class="fas fa-edit"></i> Edit Supplier
+            </a>
+        </div>
+    </div>
+
+    <!-- Supplier Information -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-building"></i> Supplier Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Name:</strong></td>
+                                    <td>{{ supplier.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Contact Person:</strong></td>
+                                    <td>{{ supplier.contact_person|default:"N/A" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td>{{ supplier.email|default:"N/A" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phone:</strong></td>
+                                    <td>{{ supplier.phone_number }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Address:</strong></td>
+                                    <td>{{ supplier.address }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>City:</strong></td>
+                                    <td>{{ supplier.city }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>State:</strong></td>
+                                    <td>{{ supplier.state }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Country:</strong></td>
+                                    <td>{{ supplier.country }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        {% if supplier.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Purchase Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <h4 class="text-primary">{{ total_purchases }}</h4>
+                            <small class="text-muted">Total Purchases</small>
+                        </div>
+                        <div class="mb-3">
+                            <h4 class="text-success">₦{{ total_amount|floatformat:2 }}</h4>
+                            <small class="text-muted">Total Amount</small>
+                        </div>
+                        <div class="mb-3">
+                            <a href="{% url 'pharmacy:create_purchase' %}?supplier={{ supplier.id }}" class="btn btn-success btn-block">
+                                <i class="fas fa-plus"></i> New Purchase Order
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Purchases -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-shopping-cart"></i> Recent Purchases
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if purchases %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for purchase in purchases %}
+                                <tr>
+                                    <td>{{ purchase.invoice_number }}</td>
+                                    <td>{{ purchase.purchase_date|date:"M d, Y" }}</td>
+                                    <td>₦{{ purchase.total_amount }}</td>
+                                    <td>
+                                        <span class="badge {% if purchase.payment_status == 'paid' %}bg-success{% elif purchase.payment_status == 'partial' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                            {{ purchase.get_payment_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'pharmacy:purchase_list' %}?supplier={{ supplier.id }}" class="btn btn-sm btn-outline-primary">
+                            View All Purchases
+                        </a>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No purchases found for this supplier.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Items -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-pills"></i> Recent Items Purchased
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_items %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in recent_items %}
+                                <tr>
+                                    <td>{{ item.medication.name|truncatechars:25 }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>₦{{ item.unit_price }}</td>
+                                    <td>{{ item.purchase.purchase_date|date:"M d" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No items purchased from this supplier yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Procurement -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-truck"></i> Quick Procurement
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Select medications to create a quick purchase order from this supplier.</p>
+                    <form method="post" action="{% url 'pharmacy:quick_procurement' supplier.id %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="medication-select">Select Medication:</label>
+                                <select name="medication" id="medication-select" class="form-select" required>
+                                    <option value="">Choose medication...</option>
+                                    {% for medication in medications %}
+                                    <option value="{{ medication.id }}">{{ medication.name }} - ₦{{ medication.price }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="quantity">Quantity:</label>
+                                <input type="number" name="quantity" id="quantity" class="form-control" min="1" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="unit_price">Unit Price:</label>
+                                <input type="number" name="unit_price" id="unit_price" class="form-control" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-plus"></i> Add to Purchase Order
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

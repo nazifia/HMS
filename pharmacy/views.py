@@ -49,12 +49,24 @@ def create_prescription(request, patient_id=None):
     if patient_id:
         patient = get_object_or_404(Patient, id=patient_id)
 
+    # Also check for patient in GET parameters (from patient detail page)
+    if not patient and request.GET.get('patient'):
+        try:
+            patient = get_object_or_404(Patient, id=request.GET.get('patient'))
+        except (ValueError, Patient.DoesNotExist):
+            pass
+
     initial_data = {}
     if patient:
         initial_data['patient'] = patient
 
     if request.method == 'POST':
-        prescription_form = PrescriptionForm(request.POST, request=request, initial=initial_data)
+        prescription_form = PrescriptionForm(
+            request.POST,
+            request=request,
+            initial=initial_data,
+            preselected_patient=patient
+        )
         logging.debug(f"Form is valid: {prescription_form.is_valid()}")
         if not prescription_form.is_valid():
             logging.error(f"Form errors: {prescription_form.errors}")
@@ -151,7 +163,11 @@ def create_prescription(request, patient_id=None):
             }
             return render(request, 'pharmacy/create_prescription.html', context, status=400)
     else:
-        prescription_form = PrescriptionForm(request=request, initial=initial_data)
+        prescription_form = PrescriptionForm(
+            request=request,
+            initial=initial_data,
+            preselected_patient=patient
+        )
 
     context = {
         'prescription_form': prescription_form,
@@ -343,8 +359,128 @@ def medication_autocomplete(request):
 
 @login_required
 def pharmacy_dashboard(request):
+    from .forms import PharmacyDashboardSearchForm
+    from django.db.models import Count, Sum, Q
+    from datetime import datetime, timedelta
+
+    # Initialize search form
+    search_form = PharmacyDashboardSearchForm(request.GET or None)
+
+    # Calculate dashboard statistics
+    total_prescriptions = Prescription.objects.count()
+    total_medications = Medication.objects.filter(is_active=True).count()
+
+    # Calculate medications in stock (with inventory)
+    medications_in_stock = MedicationInventory.objects.filter(
+        stock_quantity__gt=0
+    ).values('medication').distinct().count()
+
+    # Calculate low stock alerts
+    low_stock_count = MedicationInventory.objects.filter(
+        stock_quantity__lte=F('reorder_level')
+    ).count()
+
+    # Calculate expiring medications (within 30 days)
+    thirty_days_from_now = timezone.now().date() + timedelta(days=30)
+    expiring_soon = Medication.objects.filter(
+        expiry_date__lte=thirty_days_from_now,
+        expiry_date__gte=timezone.now().date(),
+        is_active=True
+    ).count()
+
+    # Recent dispensing activity (last 10)
+    recent_dispensing = DispensingLog.objects.select_related(
+        'prescription_item__prescription__patient',
+        'prescription_item__medication',
+        'dispensed_by__profile',
+        'dispensary'
+    ).order_by('-dispensed_at')[:10]
+
+    # Top dispensed medications (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    top_medications = DispensingLog.objects.filter(
+        dispensed_at__gte=thirty_days_ago
+    ).values(
+        'prescription_item__medication__name'
+    ).annotate(
+        total_dispensed=Sum('quantity_dispensed')
+    ).order_by('-total_dispensed')[:5]
+
+    # Search functionality
+    search_results = {}
+    if search_form.is_valid() and search_form.cleaned_data.get('search_query'):
+        query = search_form.cleaned_data['search_query']
+        search_type = search_form.cleaned_data.get('search_type', '')
+
+        if not search_type or search_type == 'medications':
+            medications = Medication.objects.filter(
+                Q(name__icontains=query) |
+                Q(generic_name__icontains=query) |
+                Q(category__name__icontains=query)
+            ).filter(is_active=True)
+
+            # Apply additional filters
+            category = search_form.cleaned_data.get('medication_category')
+            if category:
+                medications = medications.filter(category=category)
+
+            stock_status = search_form.cleaned_data.get('stock_status')
+            if stock_status:
+                if stock_status == 'in_stock':
+                    medications = medications.filter(inventories__stock_quantity__gt=0)
+                elif stock_status == 'low_stock':
+                    medications = medications.filter(inventories__stock_quantity__lte=F('inventories__reorder_level'))
+                elif stock_status == 'out_of_stock':
+                    medications = medications.filter(inventories__stock_quantity=0)
+
+            search_results['medications'] = medications[:20]
+
+        if not search_type or search_type == 'prescriptions':
+            prescriptions = Prescription.objects.filter(
+                Q(patient__first_name__icontains=query) |
+                Q(patient__last_name__icontains=query) |
+                Q(patient__patient_id__icontains=query) |
+                Q(items__medication__name__icontains=query)
+            ).distinct()
+
+            # Apply date filters
+            date_from = search_form.cleaned_data.get('date_from')
+            date_to = search_form.cleaned_data.get('date_to')
+            if date_from:
+                prescriptions = prescriptions.filter(created_at__date__gte=date_from)
+            if date_to:
+                prescriptions = prescriptions.filter(created_at__date__lte=date_to)
+
+            search_results['prescriptions'] = prescriptions[:20]
+
+        if not search_type or search_type == 'patients':
+            patients = Patient.objects.filter(
+                Q(first_name__icontains=query) |
+                Q(last_name__icontains=query) |
+                Q(patient_id__icontains=query) |
+                Q(phone_number__icontains=query)
+            ).filter(is_active=True)
+            search_results['patients'] = patients[:20]
+
+        if not search_type or search_type == 'suppliers':
+            suppliers = Supplier.objects.filter(
+                Q(name__icontains=query) |
+                Q(contact_person__icontains=query) |
+                Q(email__icontains=query)
+            ).filter(is_active=True)
+            search_results['suppliers'] = suppliers[:20]
+
     context = {
-        'title': 'Pharmacy Dashboard'
+        'title': 'Pharmacy Dashboard',
+        'search_form': search_form,
+        'search_results': search_results,
+        'total_prescriptions': total_prescriptions,
+        'total_medications': total_medications,
+        'medications_in_stock': medications_in_stock,
+        'low_stock_count': low_stock_count,
+        'expiring_soon': expiring_soon,
+        'recent_dispensing': recent_dispensing,
+        'top_medications': top_medications,
     }
     return render(request, 'pharmacy/pharmacy_dashboard.html', context)
 
@@ -688,6 +824,283 @@ def delete_supplier(request, supplier_id):
     return render(request, 'pharmacy/confirm_delete_supplier.html', context)
 
 @login_required
+@permission_required('pharmacy.view_supplier', raise_exception=True)
+def supplier_detail(request, supplier_id):
+    """Detailed view of a supplier with purchase history and procurement options"""
+    supplier = get_object_or_404(Supplier, id=supplier_id)
+
+    # Get purchase history
+    purchases = Purchase.objects.filter(supplier=supplier).order_by('-purchase_date')[:10]
+
+    # Calculate statistics
+    total_purchases = Purchase.objects.filter(supplier=supplier).count()
+    total_amount = Purchase.objects.filter(supplier=supplier).aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+
+    # Recent purchase items
+    recent_items = PurchaseItem.objects.filter(
+        purchase__supplier=supplier
+    ).select_related('medication', 'purchase').order_by('-purchase__purchase_date')[:10]
+
+    # Available medications for procurement
+    medications = Medication.objects.filter(is_active=True).order_by('name')
+
+    context = {
+        'supplier': supplier,
+        'purchases': purchases,
+        'recent_items': recent_items,
+        'medications': medications,
+        'total_purchases': total_purchases,
+        'total_amount': total_amount,
+        'title': f'Supplier Details - {supplier.name}'
+    }
+    return render(request, 'pharmacy/supplier_detail.html', context)
+
+@login_required
+@permission_required('pharmacy.view_supplier', raise_exception=True)
+def supplier_list(request):
+    """List all suppliers with search and filter functionality"""
+    suppliers = Supplier.objects.all().order_by('name')
+
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        suppliers = suppliers.filter(
+            Q(name__icontains=search_query) |
+            Q(contact_person__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(city__icontains=search_query)
+        )
+
+    # Filter by active status
+    is_active = request.GET.get('is_active', '')
+    if is_active:
+        suppliers = suppliers.filter(is_active=(is_active == 'true'))
+
+    # Pagination
+    paginator = Paginator(suppliers, 20)
+    page_number = request.GET.get('page')
+    suppliers = paginator.get_page(page_number)
+
+    context = {
+        'suppliers': suppliers,
+        'search_query': search_query,
+        'is_active': is_active,
+        'title': 'Suppliers'
+    }
+    return render(request, 'pharmacy/supplier_list.html', context)
+
+@login_required
+@permission_required('pharmacy.add_purchase', raise_exception=True)
+def quick_procurement(request, supplier_id):
+    """Quick procurement functionality to add items to a purchase order"""
+    supplier = get_object_or_404(Supplier, id=supplier_id)
+
+    if request.method == 'POST':
+        medication_id = request.POST.get('medication')
+        quantity = request.POST.get('quantity')
+        unit_price = request.POST.get('unit_price')
+
+        try:
+            medication = Medication.objects.get(id=medication_id)
+            quantity = int(quantity)
+            unit_price = float(unit_price)
+
+            # Check if there's an existing pending purchase order for this supplier
+            pending_purchase = Purchase.objects.filter(
+                supplier=supplier,
+                payment_status='pending'
+            ).first()
+
+            if not pending_purchase:
+                # Create a new purchase order
+                from datetime import date
+                pending_purchase = Purchase.objects.create(
+                    supplier=supplier,
+                    purchase_date=date.today(),
+                    invoice_number=f"PO-{supplier.id}-{timezone.now().strftime('%Y%m%d%H%M%S')}",
+                    total_amount=0,
+                    payment_status='pending',
+                    created_by=request.user,
+                    notes=f"Quick procurement order created on {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+                )
+
+            # Add or update the purchase item
+            purchase_item, created = PurchaseItem.objects.get_or_create(
+                purchase=pending_purchase,
+                medication=medication,
+                defaults={
+                    'quantity': quantity,
+                    'unit_price': unit_price,
+                    'total_price': quantity * unit_price
+                }
+            )
+
+            if not created:
+                # Update existing item
+                purchase_item.quantity += quantity
+                purchase_item.total_price = purchase_item.quantity * purchase_item.unit_price
+                purchase_item.save()
+
+            # Update purchase total
+            total = PurchaseItem.objects.filter(purchase=pending_purchase).aggregate(
+                total=Sum(F('quantity') * F('unit_price'))
+            )['total'] or 0
+            pending_purchase.total_amount = total
+            pending_purchase.save()
+
+            messages.success(request, f"Added {quantity} units of {medication.name} to purchase order.")
+
+        except (Medication.DoesNotExist, ValueError, TypeError) as e:
+            messages.error(request, "Invalid data provided. Please check your inputs.")
+
+    return redirect('pharmacy:supplier_detail', supplier_id=supplier.id)
+
+@login_required
+@permission_required('pharmacy.add_purchase', raise_exception=True)
+def create_procurement_request(request, medication_id):
+    """Create a procurement request for a specific medication"""
+    medication = get_object_or_404(Medication, id=medication_id)
+
+    if request.method == 'POST':
+        supplier_id = request.POST.get('supplier')
+        quantity = request.POST.get('quantity')
+        unit_price = request.POST.get('unit_price')
+        notes = request.POST.get('notes', '')
+
+        try:
+            supplier = Supplier.objects.get(id=supplier_id)
+            quantity = int(quantity)
+            unit_price = float(unit_price)
+
+            # Check if there's an existing pending purchase order for this supplier
+            pending_purchase = Purchase.objects.filter(
+                supplier=supplier,
+                payment_status='pending'
+            ).first()
+
+            if not pending_purchase:
+                # Create a new purchase order
+                from datetime import date
+                pending_purchase = Purchase.objects.create(
+                    supplier=supplier,
+                    purchase_date=date.today(),
+                    invoice_number=f"PR-{supplier.id}-{timezone.now().strftime('%Y%m%d%H%M%S')}",
+                    total_amount=0,
+                    payment_status='pending',
+                    created_by=request.user,
+                    notes=f"Procurement request created on {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+                )
+
+            # Add or update the purchase item
+            purchase_item, created = PurchaseItem.objects.get_or_create(
+                purchase=pending_purchase,
+                medication=medication,
+                defaults={
+                    'quantity': quantity,
+                    'unit_price': unit_price,
+                    'total_price': quantity * unit_price
+                }
+            )
+
+            if not created:
+                # Update existing item
+                purchase_item.quantity += quantity
+                purchase_item.total_price = purchase_item.quantity * purchase_item.unit_price
+                purchase_item.save()
+
+            # Update purchase total
+            total = PurchaseItem.objects.filter(purchase=pending_purchase).aggregate(
+                total=Sum(F('quantity') * F('unit_price'))
+            )['total'] or 0
+            pending_purchase.total_amount = total
+
+            # Add notes if provided
+            if notes:
+                if pending_purchase.notes:
+                    pending_purchase.notes += f"\n\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] {medication.name}: {notes}"
+                else:
+                    pending_purchase.notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')}] {medication.name}: {notes}"
+
+            pending_purchase.save()
+
+            messages.success(request,
+                f"Procurement request created successfully! Added {quantity} units of {medication.name} "
+                f"to purchase order #{pending_purchase.invoice_number} from {supplier.name}."
+            )
+
+        except (Supplier.DoesNotExist, ValueError, TypeError) as e:
+            messages.error(request, "Invalid data provided. Please check your inputs.")
+
+    return redirect('pharmacy:inventory_list')
+
+@login_required
+def api_suppliers(request):
+    """API endpoint to get suppliers for AJAX requests"""
+    suppliers = Supplier.objects.filter(is_active=True).values('id', 'name')
+    return JsonResponse(list(suppliers), safe=False)
+
+@login_required
+@permission_required('pharmacy.view_purchase', raise_exception=True)
+def procurement_dashboard(request):
+    """Comprehensive procurement dashboard for pharmacy staff"""
+
+    # Get pending purchase orders
+    pending_orders = Purchase.objects.filter(
+        payment_status='pending'
+    ).select_related('supplier').order_by('-created_at')
+
+    # Get recent completed orders
+    recent_orders = Purchase.objects.filter(
+        payment_status__in=['paid', 'partial']
+    ).select_related('supplier').order_by('-purchase_date')[:10]
+
+    # Get low stock medications that need procurement
+    low_stock_medications = MedicationInventory.objects.filter(
+        stock_quantity__lte=F('reorder_level')
+    ).select_related('medication', 'dispensary').order_by('stock_quantity')
+
+    # Calculate statistics
+    total_pending_value = pending_orders.aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+
+    total_pending_orders = pending_orders.count()
+    low_stock_count = low_stock_medications.count()
+
+    # Get top suppliers by order value
+    top_suppliers = Purchase.objects.filter(
+        created_at__gte=timezone.now() - timedelta(days=90)
+    ).values(
+        'supplier__name'
+    ).annotate(
+        total_value=Sum('total_amount'),
+        order_count=Count('id')
+    ).order_by('-total_value')[:5]
+
+    context = {
+        'pending_orders': pending_orders,
+        'recent_orders': recent_orders,
+        'low_stock_medications': low_stock_medications,
+        'total_pending_value': total_pending_value,
+        'total_pending_orders': total_pending_orders,
+        'low_stock_count': low_stock_count,
+        'top_suppliers': top_suppliers,
+        'title': 'Procurement Dashboard'
+    }
+
+    return render(request, 'pharmacy/procurement_dashboard.html', context)
+
+@login_required
+def features_showcase(request):
+    """Features showcase page demonstrating all new functionality"""
+    context = {
+        'title': 'HMS Pharmacy Features Showcase'
+    }
+    return render(request, 'pharmacy/features_showcase.html', context)
+
+@login_required
 @permission_required('pharmacy.view_purchase', raise_exception=True)
 def manage_purchases(request):
     purchases = Purchase.objects.all().select_related('supplier', 'created_by').order_by('-purchase_date')
@@ -987,12 +1400,24 @@ def update_prescription_status(request, prescription_id):
 @login_required
 # @permission_required('pharmacy.change_prescription', raise_exception=True)  # Temporarily disabled for testing
 def dispense_prescription(request, prescription_id):
-    """Modern dispensing view with formset support"""
+    """Modern dispensing view with formset support and enhanced payment verification"""
     print(f"=== DISPENSE VIEW CALLED FOR PRESCRIPTION {prescription_id} ===")
 
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
-    # Check if prescription can be dispensed (includes payment verification)
+    # Enhanced payment verification
+    if not prescription.is_payment_verified():
+        messages.error(request,
+            'Payment must be completed before dispensing medications. '
+            'Please process payment through the billing office or patient wallet first.'
+        )
+        # Redirect to payment page if invoice exists, otherwise to prescription detail
+        if hasattr(prescription, 'invoice') and prescription.invoice:
+            return redirect('pharmacy:prescription_payment', prescription_id=prescription.id)
+        else:
+            return redirect('pharmacy:create_prescription_invoice', prescription_id=prescription.id)
+
+    # Check if prescription can be dispensed (includes other conditions)
     can_dispense, reason = prescription.can_be_dispensed()
     if not can_dispense:
         messages.warning(request, reason)
@@ -1209,16 +1634,13 @@ def _update_prescription_status_after_dispensing(prescription):
         prescription.status = 'dispensed'
         prescription.save()
 
-        # Update invoice status if exists
+        # Note: Invoice status should only be updated through payment processing, not dispensing
+        # Dispensing indicates service delivery, but payment status should remain separate
         if prescription.invoice:
             try:
-                # Mark invoice as completed/fulfilled
-                if prescription.invoice.status in ['pending', 'partial']:
-                    prescription.invoice.status = 'paid'  # Assuming dispensing means service delivered
-                    prescription.invoice.save()
-                    logging.info(f"Invoice {prescription.invoice.id} marked as paid after full dispensing of prescription {prescription.id}")
+                logging.info(f"Prescription {prescription.id} fully dispensed. Invoice {prescription.invoice.id} payment status: {prescription.invoice.status}")
             except Exception as e:
-                logging.error(f"Error updating invoice status for prescription {prescription.id}: {str(e)}")
+                logging.error(f"Error logging invoice status for prescription {prescription.id}: {str(e)}")
     else:
         # Some items dispensed but not all
         prescription.status = 'partially_dispensed'
@@ -1967,6 +2389,269 @@ def prescription_payment(request, prescription_id):
     }
 
     return render(request, 'pharmacy/prescription_payment.html', context)
+
+@login_required
+@permission_required('billing.add_payment', raise_exception=True)
+def billing_office_medication_payment(request, prescription_id):
+    """Billing office interface for processing medication payments"""
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+
+    # Check if prescription already has payment verified
+    if prescription.is_payment_verified():
+        messages.info(request, 'This prescription has already been paid for.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+    # Get or create invoice for the prescription
+    invoice = None
+    if hasattr(prescription, 'invoices') and prescription.invoices.exists():
+        invoice = prescription.invoices.first()
+    elif hasattr(prescription, 'invoice') and prescription.invoice:
+        invoice = prescription.invoice
+
+    if not invoice:
+        messages.warning(request, 'No invoice found for this prescription. Creating invoice...')
+        return redirect('pharmacy:create_prescription_invoice', prescription_id=prescription.id)
+
+    # Calculate remaining amount
+    remaining_amount = invoice.get_balance()
+
+    if remaining_amount <= 0:
+        messages.info(request, 'This invoice has already been fully paid.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+    # Get patient wallet
+    from patients.models import PatientWallet
+    patient_wallet = None
+    try:
+        patient_wallet = PatientWallet.objects.get(patient=prescription.patient)
+    except PatientWallet.DoesNotExist:
+        patient_wallet = PatientWallet.objects.create(
+            patient=prescription.patient,
+            balance=0
+        )
+
+    # Get pricing breakdown for NHIA display
+    pricing_breakdown = prescription.get_pricing_breakdown()
+
+    if request.method == 'POST':
+        form = PrescriptionPaymentForm(
+            request.POST,
+            invoice=invoice,
+            prescription=prescription,
+            patient_wallet=patient_wallet
+        )
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    payment = form.save(commit=False)
+                    payment.invoice = invoice
+                    payment.received_by = request.user
+
+                    payment_source = form.cleaned_data['payment_source']
+
+                    if payment_source == 'patient_wallet':
+                        payment.payment_method = 'wallet'
+                        # Deduct from wallet
+                        patient_wallet.debit(
+                            amount=payment.amount,
+                            description=f"Medication payment for prescription #{prescription.id}",
+                            transaction_type="medication_payment",
+                            user=request.user,
+                            invoice=invoice,
+                            payment_instance=payment
+                        )
+
+                    payment.save()
+
+                    # Update invoice amounts and status
+                    invoice.amount_paid += payment.amount
+                    if invoice.amount_paid >= invoice.total_amount:
+                        invoice.status = 'paid'
+                        invoice.payment_date = payment.payment_date
+                        invoice.payment_method = payment.payment_method
+                        prescription.payment_status = 'paid'
+                        prescription.save(update_fields=['payment_status'])
+                    else:
+                        invoice.status = 'partially_paid'
+                    invoice.save()
+
+                    # Enhanced success message
+                    payment_type = "NHIA Patient (10%)" if pricing_breakdown['is_nhia_patient'] else "Non-NHIA Patient (100%)"
+                    messages.success(request,
+                        f'Payment of ₦{payment.amount:.2f} recorded successfully for {payment_type} '
+                        f'via {payment_source.replace("_", " ").title()}. '
+                        f'Prescription is now ready for dispensing.'
+                    )
+                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+            except Exception as e:
+                messages.error(request, f'Error processing payment: {str(e)}')
+    else:
+        form = PrescriptionPaymentForm(
+            invoice=invoice,
+            prescription=prescription,
+            patient_wallet=patient_wallet,
+            initial={
+                'amount': remaining_amount,
+                'payment_date': timezone.now().date(),
+                'payment_method': 'cash',
+                'payment_source': 'billing_office'
+            }
+        )
+
+    context = {
+        'form': form,
+        'prescription': prescription,
+        'invoice': invoice,
+        'patient_wallet': patient_wallet,
+        'pricing_breakdown': pricing_breakdown,
+        'remaining_amount': remaining_amount,
+        'title': f'Billing Office - Medication Payment for Prescription #{prescription.id}',
+        'is_billing_office': True
+    }
+
+    return render(request, 'pharmacy/billing_office_medication_payment.html', context)
+
+@login_required
+@permission_required('pharmacy.add_prescription', raise_exception=True)
+def pharmacy_create_prescription(request, patient_id=None):
+    """Pharmacy staff prescription creation with enhanced workflow"""
+    from core.decorators import pharmacist_required
+
+    # Check if user is pharmacy staff
+    user_roles = list(request.user.roles.values_list('name', flat=True))
+    if not any(role in ['pharmacist', 'admin'] for role in user_roles):
+        messages.error(request, 'Only pharmacy staff can create prescriptions through this interface.')
+        return redirect('pharmacy:pharmacy_dashboard')
+
+    patient = None
+    if patient_id:
+        patient = get_object_or_404(Patient, id=patient_id)
+
+    # Also check for patient in GET parameters
+    if not patient and request.GET.get('patient'):
+        try:
+            patient = get_object_or_404(Patient, id=request.GET.get('patient'))
+        except (ValueError, Patient.DoesNotExist):
+            pass
+
+    initial_data = {}
+    if patient:
+        initial_data['patient'] = patient
+
+    # Set the doctor to the current user if they are a pharmacist creating the prescription
+    initial_data['doctor'] = request.user
+
+    if request.method == 'POST':
+        prescription_form = PrescriptionForm(
+            request.POST,
+            request=request,
+            initial=initial_data,
+            preselected_patient=patient
+        )
+
+        if prescription_form.is_valid():
+            try:
+                with transaction.atomic():
+                    prescription = prescription_form.save(commit=False)
+                    prescription.created_by = request.user
+                    # For pharmacy staff prescriptions, set doctor to the pharmacist
+                    prescription.doctor = request.user
+                    prescription.save()
+
+                    total_prescription_price = Decimal('0.00')
+                    medication_ids = request.POST.getlist('medication[]')
+                    quantities = request.POST.getlist('quantity[]')
+                    dosages = request.POST.getlist('dosage[]')
+                    frequencies = request.POST.getlist('frequency[]')
+                    durations = request.POST.getlist('duration[]')
+                    instructions_list = request.POST.getlist('instructions[]')
+
+                    for i, medication_id in enumerate(medication_ids):
+                        if medication_id:
+                            medication = Medication.objects.get(id=medication_id)
+                            quantity = int(quantities[i]) if i < len(quantities) and quantities[i] else 1
+                            dosage = dosages[i] if i < len(dosages) else ''
+                            frequency = frequencies[i] if i < len(frequencies) else ''
+                            duration = durations[i] if i < len(durations) else ''
+                            instructions = instructions_list[i] if i < len(instructions_list) else ''
+
+                            PrescriptionItem.objects.create(
+                                prescription=prescription,
+                                medication=medication,
+                                dosage=dosage,
+                                frequency=frequency,
+                                duration=duration,
+                                instructions=instructions,
+                                quantity=quantity
+                            )
+                            total_prescription_price += medication.price * quantity
+
+                    # Create invoice for pharmacy prescription
+                    try:
+                        service = Service.objects.get(name__iexact="Medication Dispensing")
+
+                        # Calculate pricing based on NHIA status
+                        pricing_breakdown = prescription.get_pricing_breakdown()
+                        final_amount = pricing_breakdown['patient_pays']
+
+                        invoice = Invoice.objects.create(
+                            patient=prescription.patient,
+                            status='pending',
+                            total_amount=final_amount,
+                            subtotal=final_amount,
+                            tax_amount=0,
+                            discount_amount=0,
+                            created_by=request.user,
+                            source_app='pharmacy'
+                        )
+
+                        InvoiceItem.objects.create(
+                            invoice=invoice,
+                            service=service,
+                            description=f"Pharmacy Prescription #{prescription.id} - {prescription.items.count()} medications",
+                            quantity=1,
+                            unit_price=final_amount,
+                            tax_amount=0,
+                            total_amount=final_amount,
+                        )
+
+                        prescription.invoice = invoice
+                        prescription.save()
+
+                    except Service.DoesNotExist:
+                        messages.warning(request,
+                            "Prescription created successfully, but invoice creation failed. "
+                            "Please create an invoice manually before dispensing."
+                        )
+
+                    messages.success(request,
+                        f'Prescription created successfully by pharmacy staff! '
+                        f'Total cost: ₦{total_prescription_price:.2f}'
+                    )
+                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+            except Exception as e:
+                messages.error(request, f'Error creating prescription: {str(e)}')
+
+        else:
+            messages.error(request, 'Please correct the form errors below.')
+    else:
+        prescription_form = PrescriptionForm(
+            request=request,
+            initial=initial_data,
+            preselected_patient=patient
+        )
+
+    context = {
+        'prescription_form': prescription_form,
+        'medications': Medication.objects.filter(is_active=True),
+        'title': 'Pharmacy Staff - Create Prescription',
+        'patient': patient,
+        'is_pharmacy_staff': True,
+        'current_user': request.user,
+    }
+    return render(request, 'pharmacy/pharmacy_create_prescription.html', context)
 
 
 @login_required

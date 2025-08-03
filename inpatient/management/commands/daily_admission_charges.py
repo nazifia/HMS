@@ -1,6 +1,6 @@
 """
-Django management command to automatically deduct daily admission charges 
-from patient wallets at 12:00 AM for all active admissions.
+Django management command to automatically create daily admission charge invoices
+for all active admissions at 12:00 AM. Payment must be processed manually.
 
 This command should be run daily via cron job at 12:00 AM.
 Example cron entry:
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Automatically deduct daily admission charges from patient wallets for active admissions'
+    help = 'Create daily admission charge invoices for active admissions (payment must be processed manually)'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -177,18 +177,12 @@ class Command(BaseCommand):
                 total_amount=daily_charge
             )
 
-            # Deduct from wallet
-            wallet.debit(
-                amount=daily_charge,
-                description=f'Daily admission charge for {charge_date} - {admission.patient.get_full_name()}',
-                transaction_type='daily_admission_charge',
-                user=admission.attending_doctor,
-                invoice=invoice
-            )
-
+            # Invoice created successfully - payment must be processed manually
+            # Note: Automatic wallet deduction has been disabled to comply with
+            # requirement that invoices should not be auto-paid
             logger.info(
-                f'Applied daily charge of ₦{daily_charge} for admission {admission.id} on {charge_date}. '
-                f'New wallet balance: ₦{wallet.balance}'
+                f'Daily charge invoice of ₦{daily_charge} created for admission {admission.id} on {charge_date}. '
+                f'Manual payment processing required.'
             )
 
         return daily_charge

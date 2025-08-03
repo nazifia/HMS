@@ -78,11 +78,13 @@ class Command(BaseCommand):
                     # Pharmacy inventory
                     'add_medication', 'view_medication', 'change_medication',
                     'view_medicationcategory', 'add_medicationcategory', 'change_medicationcategory',
-                    # Prescriptions
-                    'view_prescription', 'change_prescription',
+                    # Prescriptions - including creation for pharmacy staff
+                    'add_prescription', 'view_prescription', 'change_prescription',
                     'add_dispenseditem', 'view_dispenseditem', 'change_dispenseditem',
                     # Pharmacy billing
                     'add_pharmacybill', 'view_pharmacybill', 'change_pharmacybill',
+                    # Patient access for prescription creation
+                    'view_patient',
                 ]
             },
             {

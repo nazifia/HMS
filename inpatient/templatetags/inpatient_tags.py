@@ -88,10 +88,14 @@ def calculate_admission_cost(admission):
     """
     if not admission or not admission.bed or not admission.bed.ward:
         return 0
-    
+
+    # Check if patient is NHIA - NHIA patients are exempt from admission fees
+    if hasattr(admission.patient, 'nhia_info') and admission.patient.nhia_info.is_active:
+        return 0
+
     duration = admission.get_duration()
     if duration < 1:
         duration = 1  # Minimum 1 day charge
-    
+
     daily_charge = admission.bed.ward.charge_per_day
     return daily_charge * duration

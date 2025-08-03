@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:manage_suppliers' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Add New Supplier
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-search"></i> Search & Filter
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <label for="search" class="form-label">Search Suppliers</label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           placeholder="Search by name, contact person, email, or city..." 
+                           value="{{ search_query }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="is_active" class="form-label">Status</label>
+                    <select name="is_active" id="is_active" class="form-select">
+                        <option value="">All Suppliers</option>
+                        <option value="true" {% if is_active == 'true' %}selected{% endif %}>Active Only</option>
+                        <option value="false" {% if is_active == 'false' %}selected{% endif %}>Inactive Only</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <a href="{% url 'pharmacy:supplier_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Suppliers List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-building"></i> Suppliers ({{ suppliers.paginator.count }} total)
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if suppliers %}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Contact Person</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>City</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier in suppliers %}
+                        <tr>
+                            <td>
+                                <strong>{{ supplier.name }}</strong>
+                            </td>
+                            <td>{{ supplier.contact_person|default:"N/A" }}</td>
+                            <td>{{ supplier.phone_number }}</td>
+                            <td>{{ supplier.email|default:"N/A" }}</td>
+                            <td>{{ supplier.city }}</td>
+                            <td>
+                                {% if supplier.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'pharmacy:supplier_detail' supplier.id %}" 
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'pharmacy:edit_supplier' supplier.id %}" 
+                                       class="btn btn-outline-info" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'pharmacy:create_purchase' %}?supplier={{ supplier.id }}" 
+                                       class="btn btn-outline-success" title="Create Purchase Order">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </a>
+                                    {% if supplier.is_active %}
+                                    <a href="{% url 'pharmacy:delete_supplier' supplier.id %}" 
+                                       class="btn btn-outline-danger" title="Deactivate">
+                                        <i class="fas fa-ban"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if suppliers.has_other_pages %}
+            <nav aria-label="Suppliers pagination">
+                <ul class="pagination justify-content-center">
+                    {% if suppliers.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ suppliers.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">Previous</a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in suppliers.paginator.page_range %}
+                        {% if suppliers.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > suppliers.number|add:'-3' and num < suppliers.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if suppliers.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ suppliers.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ suppliers.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if is_active %}&is_active={{ is_active }}{% endif %}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-building fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No suppliers found</h5>
+                <p class="text-muted">
+                    {% if search_query or is_active %}
+                        No suppliers match your search criteria. Try adjusting your filters.
+                    {% else %}
+                        Get started by adding your first supplier.
+                    {% endif %}
+                </p>
+                <a href="{% url 'pharmacy:manage_suppliers' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add New Supplier
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Suppliers</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ suppliers.paginator.count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-building fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Active Suppliers</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ suppliers.object_list|length }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

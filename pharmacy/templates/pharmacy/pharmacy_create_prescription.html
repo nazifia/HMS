@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- Pharmacy Staff Alert -->
+            <div class="alert alert-info">
+                <h5 class="alert-heading">
+                    <i class="fas fa-pills"></i> Pharmacy Staff Prescription Creation
+                </h5>
+                <p class="mb-2">
+                    You are creating a prescription as pharmacy staff. This prescription will be attributed to you 
+                    as the prescribing pharmacist and can be immediately processed for dispensing.
+                </p>
+                <small class="text-muted">
+                    <i class="fas fa-user"></i> Prescribing Pharmacist: {{ current_user.get_full_name }}
+                </small>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    {% if patient %}
+                    <!-- Patient Information Section -->
+                    <div class="alert alert-success">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-user"></i> Creating Prescription for Selected Patient
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Patient:</strong> {{ patient.get_full_name }}<br>
+                                <strong>Patient ID:</strong> {{ patient.patient_id }}<br>
+                                <strong>Phone:</strong> {{ patient.phone_number|default:"N/A" }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Age:</strong> {{ patient.get_age }} years<br>
+                                <strong>Gender:</strong> {{ patient.get_gender_display }}<br>
+                                {% if patient.nhia_info %}
+                                <strong>NHIA:</strong> <span class="badge bg-success">{{ patient.nhia_info.nhia_reg_number }}</span>
+                                {% else %}
+                                <strong>NHIA:</strong> <span class="badge bg-secondary">Not Registered</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <hr class="my-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Patient has been automatically selected. Focus on adding medications and prescription details.
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" id="prescription-form">
+                        {% csrf_token %}
+
+                        <h4>Prescription Details</h4>
+                        
+                        {% if patient %}
+                            <!-- Hidden field for preselected patient -->
+                            {{ prescription_form.patient_hidden }}
+                            <!-- Show patient field as read-only -->
+                            <div class="mb-3">
+                                <label class="form-label">Patient</label>
+                                <input type="text" class="form-control" value="{{ patient.get_full_name }} ({{ patient.patient_id }})" readonly style="background-color: #e9ecef;">
+                                <small class="form-text text-muted">Patient is preselected</small>
+                            </div>
+                        {% else %}
+                            {{ prescription_form.patient|as_crispy_field }}
+                        {% endif %}
+
+                        <!-- Doctor field (hidden for pharmacy staff) -->
+                        <input type="hidden" name="doctor" value="{{ current_user.id }}">
+                        <div class="mb-3">
+                            <label class="form-label">Prescribing Pharmacist</label>
+                            <input type="text" class="form-control" value="{{ current_user.get_full_name }}" readonly style="background-color: #e9ecef;">
+                            <small class="form-text text-muted">You are the prescribing pharmacist for this prescription</small>
+                        </div>
+
+                        {{ prescription_form.prescription_date|as_crispy_field }}
+                        {{ prescription_form.diagnosis|as_crispy_field }}
+                        {{ prescription_form.prescription_type|as_crispy_field }}
+                        {{ prescription_form.notes|as_crispy_field }}
+
+                        <hr>
+                        <h4>Medications</h4>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Pharmacy Staff Responsibility:</strong> 
+                            As a pharmacist, ensure all medications are appropriate, check for drug interactions, 
+                            and verify dosages before creating this prescription.
+                        </div>
+
+                        <div id="medication-items-container">
+                            <!-- Initial medication form -->
+                            <div class="medication-item mb-3 p-3 border rounded bg-light">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="medication_0">Medication</label>
+                                        <select name="medication[]" id="medication_0" class="form-select medication-select" required>
+                                            <option value="">Select Medication</option>
+                                            {% for medication in medications %}
+                                            <option value="{{ medication.id }}" data-price="{{ medication.price }}">
+                                                {{ medication.name }} - ₦{{ medication.price }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="quantity_0">Quantity</label>
+                                        <input type="number" name="quantity[]" id="quantity_0" class="form-control quantity-input" min="1" value="1" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="dosage_0">Dosage</label>
+                                        <input type="text" name="dosage[]" id="dosage_0" class="form-control" placeholder="e.g., 1 tablet" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="frequency_0">Frequency</label>
+                                        <input type="text" name="frequency[]" id="frequency_0" class="form-control" placeholder="e.g., twice daily" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="duration_0">Duration</label>
+                                        <input type="text" name="duration[]" id="duration_0" class="form-control" placeholder="e.g., 7 days" required>
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger btn-sm remove-medication-item">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-12">
+                                        <label for="instructions_0">Instructions</label>
+                                        <input type="text" name="instructions[]" id="instructions_0" class="form-control" placeholder="e.g., take after meals">
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-12">
+                                        <small class="text-muted">
+                                            <strong>Cost:</strong> <span class="item-cost">₦0.00</span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-success btn-sm mb-3" id="add-medication-item">
+                            <i class="fas fa-plus"></i> Add Another Medication
+                        </button>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5>Total Prescription Cost: <span id="total-cost">₦0.00</span></h5>
+                                        <small class="text-muted">This will be adjusted based on NHIA status during billing</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-prescription-bottle"></i> Create Prescription
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let medicationCounter = 1;
+    
+    function updateTotalCost() {
+        let total = 0;
+        document.querySelectorAll('.medication-item').forEach(function(item) {
+            const select = item.querySelector('.medication-select');
+            const quantityInput = item.querySelector('.quantity-input');
+            const costSpan = item.querySelector('.item-cost');
+            
+            if (select.value && quantityInput.value) {
+                const price = parseFloat(select.options[select.selectedIndex].dataset.price || 0);
+                const quantity = parseInt(quantityInput.value || 0);
+                const itemCost = price * quantity;
+                
+                costSpan.textContent = '₦' + itemCost.toFixed(2);
+                total += itemCost;
+            } else {
+                costSpan.textContent = '₦0.00';
+            }
+        });
+        
+        document.getElementById('total-cost').textContent = '₦' + total.toFixed(2);
+    }
+    
+    document.getElementById('add-medication-item').addEventListener('click', function() {
+        const container = document.getElementById('medication-items-container');
+        const newItem = container.querySelector('.medication-item').cloneNode(true);
+        
+        // Update IDs and clear values
+        newItem.querySelectorAll('input, select').forEach(function(input) {
+            if (input.id) {
+                input.id = input.id.replace(/\d+/, medicationCounter);
+            }
+            if (input.type !== 'hidden') {
+                input.value = '';
+            }
+        });
+        
+        // Update labels
+        newItem.querySelectorAll('label').forEach(function(label) {
+            if (label.getAttribute('for')) {
+                label.setAttribute('for', label.getAttribute('for').replace(/\d+/, medicationCounter));
+            }
+        });
+        
+        container.appendChild(newItem);
+        medicationCounter++;
+        updateTotalCost();
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-medication-item') || e.target.closest('.remove-medication-item')) {
+            const items = document.querySelectorAll('.medication-item');
+            if (items.length > 1) {
+                e.target.closest('.medication-item').remove();
+                updateTotalCost();
+            } else {
+                alert('At least one medication is required.');
+            }
+        }
+    });
+    
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('medication-select') || e.target.classList.contains('quantity-input')) {
+            updateTotalCost();
+        }
+    });
+    
+    // Initial cost calculation
+    updateTotalCost();
+});
+</script>
+{% endblock %}

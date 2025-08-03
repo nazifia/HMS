@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}HMS Pharmacy Features Showcase{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-star"></i> HMS Pharmacy Features Showcase
+        </h1>
+        <div>
+            <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-tachometer-alt"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Feature Categories -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-rocket"></i> New Features & Enhancements
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-primary h-100">
+                                <div class="card-body">
+                                    <h6 class="text-primary">
+                                        <i class="fas fa-search"></i> Enhanced Search
+                                    </h6>
+                                    <p class="text-sm">Comprehensive search across medications, prescriptions, patients, and suppliers with advanced filtering.</p>
+                                    <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-sm btn-outline-primary">Try Search</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-success h-100">
+                                <div class="card-body">
+                                    <h6 class="text-success">
+                                        <i class="fas fa-truck"></i> Procurement System
+                                    </h6>
+                                    <p class="text-sm">Complete supplier management with procurement requests, purchase orders, and inventory tracking.</p>
+                                    <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-sm btn-outline-success">View Procurement</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-info h-100">
+                                <div class="card-body">
+                                    <h6 class="text-info">
+                                        <i class="fas fa-credit-card"></i> Payment Integration
+                                    </h6>
+                                    <p class="text-sm">Manual payment verification with billing office integration and NHIA support.</p>
+                                    <a href="{% url 'pharmacy:prescription_list' %}" class="btn btn-sm btn-outline-info">View Prescriptions</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-warning h-100">
+                                <div class="card-body">
+                                    <h6 class="text-warning">
+                                        <i class="fas fa-user-md"></i> Pharmacy Prescriptions
+                                    </h6>
+                                    <p class="text-sm">Pharmacists can now create prescriptions with proper workflow and permissions.</p>
+                                    <a href="{% url 'pharmacy:pharmacy_create_prescription' %}" class="btn btn-sm btn-outline-warning">Create Prescription</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-danger h-100">
+                                <div class="card-body">
+                                    <h6 class="text-danger">
+                                        <i class="fas fa-shield-alt"></i> NHIA Integration
+                                    </h6>
+                                    <p class="text-sm">Automatic NHIA patient detection with proper billing exemptions and pricing.</p>
+                                    <a href="{% url 'patients:patient_list' %}" class="btn btn-sm btn-outline-danger">View Patients</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-secondary h-100">
+                                <div class="card-body">
+                                    <h6 class="text-secondary">
+                                        <i class="fas fa-exchange-alt"></i> Referral Tracking
+                                    </h6>
+                                    <p class="text-sm">Complete referral lifecycle management with status tracking and notifications.</p>
+                                    <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-sm btn-outline-secondary">Track Referrals</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Demonstrations -->
+    <div class="row">
+        <!-- Search Demo -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-search"></i> Search Functionality Demo
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Try the enhanced search:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search medications, patients, prescriptions..." id="demo-search">
+                            <button class="btn btn-primary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <select class="form-select form-select-sm">
+                                <option>All Categories</option>
+                                <option>Antibiotics</option>
+                                <option>Analgesics</option>
+                                <option>Vitamins</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select class="form-select form-select-sm">
+                                <option>All Status</option>
+                                <option>In Stock</option>
+                                <option>Low Stock</option>
+                                <option>Out of Stock</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Search works across multiple data types with real-time filtering and pagination.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Procurement Demo -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-shopping-cart"></i> Procurement Workflow Demo
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6 class="timeline-title">1. Identify Low Stock</h6>
+                                <p class="text-sm">System automatically identifies medications below reorder level.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-info"></div>
+                            <div class="timeline-content">
+                                <h6 class="timeline-title">2. Select Supplier</h6>
+                                <p class="text-sm">Choose from active suppliers with contact information and history.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-warning"></div>
+                            <div class="timeline-content">
+                                <h6 class="timeline-title">3. Create Purchase Order</h6>
+                                <p class="text-sm">Generate purchase order with quantities and pricing.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6 class="timeline-title">4. Track & Receive</h6>
+                                <p class="text-sm">Monitor order status and update inventory upon receipt.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment & NHIA Demo -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-credit-card"></i> Payment System Demo
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">Enhanced Payment Flow</h6>
+                        <ul class="mb-0">
+                            <li>Manual payment verification before dispensing</li>
+                            <li>Billing office integration for staff payments</li>
+                            <li>Patient wallet support</li>
+                            <li>Multiple payment methods</li>
+                            <li>NHIA pricing (10% for NHIA, 100% for non-NHIA)</li>
+                        </ul>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="text-success">NHIA Patient</h5>
+                                    <p class="mb-0">Pays 10% of medication cost</p>
+                                    <small class="text-muted">Automatic detection</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="text-primary">Non-NHIA</h5>
+                                    <p class="mb-0">Pays 100% of medication cost</p>
+                                    <small class="text-muted">Standard pricing</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Request Demo -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-secondary">
+                        <i class="fas fa-vial"></i> Enhanced Test Requests
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Features:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Patient preselection from patient page</li>
+                            <li><i class="fas fa-check text-success"></i> Searchable test catalog</li>
+                            <li><i class="fas fa-check text-success"></i> Category-based filtering</li>
+                            <li><i class="fas fa-check text-success"></i> Real-time cost calculation</li>
+                            <li><i class="fas fa-check text-success"></i> Visual test selection interface</li>
+                        </ul>
+                    </div>
+                    <div class="demo-test-selection">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="demo-test1">
+                                    <label class="form-check-label" for="demo-test1">
+                                        <strong>Complete Blood Count</strong>
+                                        <small class="d-block text-muted">₦2,500</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="demo-test2">
+                                    <label class="form-check-label" for="demo-test2">
+                                        <strong>Liver Function Test</strong>
+                                        <small class="d-block text-muted">₦3,200</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <strong>Total: ₦<span id="demo-total">0</span></strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-link"></i> Quick Access to New Features
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-outline-primary btn-block">
+                                <i class="fas fa-tachometer-alt"></i> Enhanced Dashboard
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'pharmacy:inventory_list' %}" class="btn btn-outline-success btn-block">
+                                <i class="fas fa-pills"></i> Smart Inventory
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-outline-info btn-block">
+                                <i class="fas fa-shopping-cart"></i> Procurement Hub
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-outline-warning btn-block">
+                                <i class="fas fa-exchange-alt"></i> Referral Tracker
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -35px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -30px;
+    top: 17px;
+    width: 2px;
+    height: calc(100% + 5px);
+    background-color: #e3e6f0;
+}
+
+.timeline-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.demo-test-selection .form-check {
+    margin-bottom: 10px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Demo test selection calculator
+    const checkboxes = document.querySelectorAll('#demo-test1, #demo-test2');
+    const totalSpan = document.getElementById('demo-total');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            let total = 0;
+            if (document.getElementById('demo-test1').checked) total += 2500;
+            if (document.getElementById('demo-test2').checked) total += 3200;
+            totalSpan.textContent = total.toLocaleString();
+        });
+    });
+});
+</script>
+{% endblock %}

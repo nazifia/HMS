@@ -26,24 +26,63 @@
                     <p><strong>Status:</strong>
                         <span class="badge badge-{{ prescription.status|default:'secondary' }}">{{ prescription.get_status_display }}</span>
                     </p>
-                    {% with payment_info=prescription.get_payment_status_display_info %}
+                    <p><strong>Created At:</strong> {{ prescription.created_at|date:"Y-m-d H:i" }}</p>
+                    <p><strong>Last Updated:</strong> {{ prescription.updated_at|date:"Y-m-d H:i" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Status and Options Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Payment Information</h6>
+        </div>
+        <div class="card-body">
+            {% with payment_info=prescription.get_payment_status_display_info %}
+            <div class="row">
+                <div class="col-md-6">
                     <p><strong>Payment Status:</strong>
                         <span class="badge badge-{{ payment_info.css_class }}">
                             <i class="fas fa-{{ payment_info.icon }}"></i> {{ payment_info.message }}
                         </span>
                     </p>
-                    {% if payment_info.status == 'unpaid' and prescription.invoice %}
-                    <p><strong>Invoice:</strong>
-                        <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-sm btn-warning">
-                            <i class="fas fa-credit-card"></i> Pay Invoice #{{ prescription.invoice.id }}
-                        </a>
-                    </p>
+                    {% if payment_info.status == 'paid' %}
+                        <div class="mt-2">
+                            <small class="text-success">
+                                <i class="fas fa-check-circle"></i> Payment completed - Ready for dispensing
+                            </small>
+                        </div>
                     {% endif %}
-                    {% endwith %}
-                    <p><strong>Created At:</strong> {{ prescription.created_at|date:"Y-m-d H:i" }}</p>
-                    <p><strong>Last Updated:</strong> {{ prescription.updated_at|date:"Y-m-d H:i" }}</p>
+                </div>
+                <div class="col-md-6">
+                    {% if payment_info.status == 'unpaid' %}
+                        {% if prescription.invoice %}
+                        <div>
+                            <strong>Payment Options:</strong>
+                            <div class="btn-group-vertical d-block mt-2">
+                                <a href="{% url 'pharmacy:billing_office_medication_payment' prescription.id %}" class="btn btn-sm btn-primary mb-1">
+                                    <i class="fas fa-building"></i> Billing Office Payment
+                                </a>
+                                <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-sm btn-success mb-1">
+                                    <i class="fas fa-wallet"></i> Patient Wallet Payment
+                                </a>
+                                <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-file-invoice"></i> View Invoice #{{ prescription.invoice.id }}
+                                </a>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div>
+                            <a href="{% url 'pharmacy:create_prescription_invoice' prescription.id %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-plus"></i> Create Invoice
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
+            {% endwith %}
         </div>
     </div>
 
