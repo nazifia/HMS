@@ -1,6 +1,6 @@
 """
-Django management command to automatically create daily admission charge invoices
-for all active admissions at 12:00 AM. Payment must be processed manually.
+Django management command to automatically deduct daily admission charges
+from patient wallets for all active admissions at 12:00 AM.
 
 This command should be run daily via cron job at 12:00 AM.
 Example cron entry:
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Create daily admission charge invoices for active admissions (payment must be processed manually)'
+    help = 'Automatically deduct daily admission charges from patient wallets for active admissions'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -109,7 +109,7 @@ class Command(BaseCommand):
         if not dry_run and processed_count > 0:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f'Daily admission charges for {target_date} completed successfully!'
+                    f'Daily admission charges automatically deducted from patient wallets for {target_date}!'
                 )
             )
 
@@ -138,51 +138,38 @@ class Command(BaseCommand):
         if dry_run:
             return daily_charge
 
-        # Create daily charge transaction
+        # Automatically deduct daily charge from patient wallet
         with transaction.atomic():
-            # Create or get admission service
-            service, _ = Service.objects.get_or_create(
-                name="Daily Admission Charge",
-                defaults={
-                    'price': daily_charge,
-                    'category_id': 1,  # Assuming category 1 is for inpatient services
-                    'description': 'Daily charge for hospital admission'
-                }
-            )
+            try:
+                # Deduct from patient wallet
+                wallet.debit(
+                    amount=daily_charge,
+                    description=f"Daily admission charge for {charge_date} - {admission.bed.ward.name}",
+                    transaction_type="daily_admission_charge",
+                    user=admission.attending_doctor
+                )
 
-            # Create invoice for daily charge
-            invoice = Invoice.objects.create(
-                patient=admission.patient,
-                invoice_date=charge_date,
-                due_date=charge_date,
-                status='pending',
-                source_app='inpatient',
-                created_by=admission.attending_doctor,
-                subtotal=daily_charge,
-                tax_amount=Decimal('0.00'),
-                total_amount=daily_charge,
-                admission=admission
-            )
+                logger.info(
+                    f'Daily charge of ₦{daily_charge} automatically deducted from wallet for '
+                    f'patient {admission.patient.get_full_name()} (Admission {admission.id}) on {charge_date}. '
+                    f'New wallet balance: ₦{wallet.balance}'
+                )
 
-            # Add invoice item
-            InvoiceItem.objects.create(
-                invoice=invoice,
-                service=service,
-                description=f"Daily admission charge for {charge_date}",
-                quantity=1,
-                unit_price=daily_charge,
-                tax_percentage=Decimal('0.00'),
-                tax_amount=Decimal('0.00'),
-                discount_amount=Decimal('0.00'),
-                total_amount=daily_charge
-            )
+                # Send notification if wallet balance is low or negative
+                if wallet.balance < 0:
+                    logger.warning(
+                        f'Patient {admission.patient.get_full_name()} wallet balance is now negative: ₦{wallet.balance}'
+                    )
+                elif wallet.balance < daily_charge:
+                    logger.warning(
+                        f'Patient {admission.patient.get_full_name()} wallet balance is low: ₦{wallet.balance}'
+                    )
 
-            # Invoice created successfully - payment must be processed manually
-            # Note: Automatic wallet deduction has been disabled to comply with
-            # requirement that invoices should not be auto-paid
-            logger.info(
-                f'Daily charge invoice of ₦{daily_charge} created for admission {admission.id} on {charge_date}. '
-                f'Manual payment processing required.'
-            )
+            except Exception as e:
+                logger.error(
+                    f'Failed to deduct daily charge for admission {admission.id}: {str(e)}'
+                )
+                # Continue processing other admissions even if one fails
+                return None
 
         return daily_charge

@@ -16,6 +16,55 @@
         </div>
     </div>
 
+    <!-- Analytics Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-line"></i> Analytics & Reports
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'pharmacy:procurement_analytics' %}" class="btn btn-outline-primary btn-block">
+                                <i class="fas fa-chart-bar"></i> Procurement Analytics
+                                <small class="d-block text-muted">Supplier performance, cost analysis, trends</small>
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'pharmacy:revenue_analysis' %}" class="btn btn-outline-success btn-block">
+                                <i class="fas fa-dollar-sign"></i> Revenue Analysis
+                                <small class="d-block text-muted">Sales performance, profit margins, trends</small>
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'pharmacy:expense_analysis' %}" class="btn btn-outline-danger btn-block">
+                                <i class="fas fa-money-bill-wave"></i> Expense Analysis
+                                <small class="d-block text-muted">Cost optimization, supplier efficiency</small>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-outline-info btn-block">
+                                <i class="fas fa-warehouse"></i> Bulk Store Management
+                                <small class="d-block text-muted">Central storage, medication transfers</small>
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'pharmacy:reorder_suggestions' %}" class="btn btn-outline-warning btn-block">
+                                <i class="fas fa-magic"></i> Automated Reorder Suggestions
+                                <small class="d-block text-muted">AI-powered procurement recommendations</small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">

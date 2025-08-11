@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<style>
+    .analytics-card {
+        transition: transform 0.2s;
+    }
+    .analytics-card:hover {
+        transform: translateY(-2px);
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+    }
+    .table-responsive {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button class="btn btn-primary" onclick="exportReport()">
+                <i class="fas fa-download"></i> Export Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Key Metrics Row -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 analytics-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Procurement Value
+                            </div>
+                            <div class="metric-value text-gray-800">₦{{ total_procurement_value|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 analytics-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Avg Processing Time
+                            </div>
+                            <div class="metric-value text-gray-800">
+                                {% if avg_processing_time %}
+                                    {{ avg_processing_time.days }} days
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 analytics-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Active Suppliers
+                            </div>
+                            <div class="metric-value text-gray-800">{{ supplier_performance|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-building fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 analytics-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Categories Tracked
+                            </div>
+                            <div class="metric-value text-gray-800">{{ category_performance|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tags fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Monthly Procurement Costs Chart -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Procurement Costs</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Performance Chart -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Category Performance</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supplier Performance Table -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Supplier Performance Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="supplierTable">
+                            <thead>
+                                <tr>
+                                    <th>Supplier</th>
+                                    <th>Total Orders</th>
+                                    <th>Total Value</th>
+                                    <th>Avg Order Value</th>
+                                    <th>On-Time Deliveries</th>
+                                    <th>Performance Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for supplier in supplier_performance %}
+                                <tr>
+                                    <td>{{ supplier.supplier__name }}</td>
+                                    <td>{{ supplier.total_orders }}</td>
+                                    <td>₦{{ supplier.total_value|floatformat:2 }}</td>
+                                    <td>₦{{ supplier.avg_order_value|floatformat:2 }}</td>
+                                    <td>{{ supplier.on_time_deliveries }}</td>
+                                    <td>
+                                        {% with score=supplier.on_time_deliveries|mul:100|div:supplier.total_orders %}
+                                            <span class="badge badge-{% if score >= 90 %}success{% elif score >= 70 %}warning{% else %}danger{% endif %}">
+                                                {{ score|floatformat:1 }}%
+                                            </span>
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Medications by Cost -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Medications by Cost</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Total Cost</th>
+                                    <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for med in medication_analysis|slice:":10" %}
+                                <tr>
+                                    <td>{{ med.medication__name|truncatechars:20 }}</td>
+                                    <td>₦{{ med.total_cost|floatformat:2 }}</td>
+                                    <td>{{ med.total_quantity }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Turnover Analysis -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Inventory Turnover Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="turnoverTable">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Current Stock</th>
+                                    <th>Total Dispensed</th>
+                                    <th>Turnover Ratio</th>
+                                    <th>Status</th>
+                                    <th>Recommendation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in inventory_turnover|slice:":20" %}
+                                <tr>
+                                    <td>{{ item.medication.name }}</td>
+                                    <td>{{ item.stock_quantity }}</td>
+                                    <td>{{ item.total_dispensed|default:0 }}</td>
+                                    <td>{{ item.turnover_ratio|floatformat:2|default:"N/A" }}</td>
+                                    <td>
+                                        {% with ratio=item.turnover_ratio|default:0 %}
+                                            <span class="badge badge-{% if ratio >= 4 %}success{% elif ratio >= 2 %}warning{% else %}danger{% endif %}">
+                                                {% if ratio >= 4 %}Fast Moving{% elif ratio >= 2 %}Moderate{% else %}Slow Moving{% endif %}
+                                            </span>
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% with ratio=item.turnover_ratio|default:0 %}
+                                            {% if ratio >= 4 %}
+                                                Increase stock
+                                            {% elif ratio >= 2 %}
+                                                Monitor closely
+                                            {% else %}
+                                                Reduce orders
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Monthly Procurement Costs Chart
+const monthlyData = {
+    labels: [
+        {% for item in monthly_costs %}
+            '{{ item.month|date:"M Y" }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    datasets: [{
+        label: 'Procurement Costs',
+        data: [
+            {% for item in monthly_costs %}
+                {{ item.total_cost|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.1
+    }]
+};
+
+const monthlyChart = new Chart(document.getElementById('monthlyChart'), {
+    type: 'line',
+    data: monthlyData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₦' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Category Performance Chart
+const categoryData = {
+    labels: [
+        {% for item in category_performance|slice:":6" %}
+            '{{ item.medication__category__name }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    datasets: [{
+        data: [
+            {% for item in category_performance|slice:":6" %}
+                {{ item.total_value|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        backgroundColor: [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+        ]
+    }]
+};
+
+const categoryChart = new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: categoryData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Export functionality
+function exportReport() {
+    window.print();
+}
+
+// Initialize DataTables for better table functionality
+$(document).ready(function() {
+    $('#supplierTable, #turnoverTable').DataTable({
+        pageLength: 10,
+        order: [[2, 'desc']]
+    });
+});
+</script>
+{% endblock %}

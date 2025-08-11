@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from datetime import timedelta, datetime
 import csv
 from decimal import Decimal
 from django.db import transaction
@@ -394,16 +395,16 @@ def pharmacy_dashboard(request):
         'prescription_item__medication',
         'dispensed_by__profile',
         'dispensary'
-    ).order_by('-dispensed_at')[:10]
+    ).order_by('-dispensed_date')[:10]
 
     # Top dispensed medications (last 30 days)
     thirty_days_ago = timezone.now() - timedelta(days=30)
     top_medications = DispensingLog.objects.filter(
-        dispensed_at__gte=thirty_days_ago
+        dispensed_date__gte=thirty_days_ago
     ).values(
         'prescription_item__medication__name'
     ).annotate(
-        total_dispensed=Sum('quantity_dispensed')
+        total_dispensed=Sum('dispensed_quantity')
     ).order_by('-total_dispensed')[:5]
 
     # Search functionality
@@ -1091,6 +1092,703 @@ def procurement_dashboard(request):
     }
 
     return render(request, 'pharmacy/procurement_dashboard.html', context)
+
+@login_required
+@permission_required('pharmacy.view_purchase', raise_exception=True)
+def procurement_analytics(request):
+    """Advanced procurement analytics and reporting"""
+    from django.db.models import Avg, Max, Min, StdDev, Case, When, Value, F
+    from django.db.models.functions import TruncMonth, TruncWeek
+    from django.db import models
+
+    # Date range for analysis (default to last 12 months)
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=365)
+
+    # Supplier Performance Analysis
+    supplier_performance = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date]
+    ).values(
+        'supplier__name', 'supplier__id'
+    ).annotate(
+        total_orders=Count('id'),
+        total_value=Sum('total_amount'),
+        avg_order_value=Avg('total_amount'),
+        on_time_deliveries=Count('id', filter=Q(payment_status='paid')),
+        pending_orders=Count('id', filter=Q(payment_status='pending'))
+    ).order_by('-total_value')
+
+    # Cost Analysis and Trends
+    monthly_procurement_costs = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date]
+    ).annotate(
+        month=TruncMonth('purchase_date')
+    ).values('month').annotate(
+        total_cost=Sum('total_amount'),
+        order_count=Count('id'),
+        avg_order_value=Avg('total_amount')
+    ).order_by('month')
+
+    # Medication Cost Analysis
+    medication_cost_analysis = PurchaseItem.objects.filter(
+        purchase__purchase_date__range=[start_date, end_date]
+    ).values(
+        'medication__name', 'medication__id'
+    ).annotate(
+        total_quantity=Sum('quantity'),
+        total_cost=Sum('total_price'),
+        avg_unit_price=Avg('unit_price'),
+        min_price=Min('unit_price'),
+        max_price=Max('unit_price'),
+        price_variance=StdDev('unit_price'),
+        order_frequency=Count('purchase', distinct=True)
+    ).order_by('-total_cost')
+
+    # Procurement Efficiency Metrics
+    total_procurement_value = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date]
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
+
+    # Calculate average order processing time manually to avoid SQLite datetime aggregation issues
+    paid_orders = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date],
+        payment_status='paid'
+    ).exclude(created_at__isnull=True)
+
+    avg_order_processing_time = None
+    if paid_orders.exists():
+        total_processing_time = 0
+        order_count = 0
+        for order in paid_orders:
+            if order.created_at:
+                # Calculate processing time in days
+                processing_time = (timezone.now() - order.created_at).days
+                total_processing_time += processing_time
+                order_count += 1
+
+        if order_count > 0:
+            avg_order_processing_time = total_processing_time / order_count
+
+    # Inventory Turnover Analysis
+    from django.db.models import Subquery, OuterRef
+    inventory_turnover = MedicationInventory.objects.select_related(
+        'medication'
+    ).annotate(
+        total_dispensed=Subquery(
+            DispensingLog.objects.filter(
+                prescription_item__medication=OuterRef('medication')
+            ).values('prescription_item__medication').annotate(
+                total=Sum('dispensed_quantity')
+            ).values('total')[:1]
+        ),
+        avg_stock=Avg('stock_quantity'),
+        turnover_ratio=F('total_dispensed') / F('avg_stock')
+    ).order_by('-turnover_ratio')
+
+    # Top Performing Categories
+    category_performance = PurchaseItem.objects.filter(
+        purchase__purchase_date__range=[start_date, end_date]
+    ).values(
+        'medication__category__name'
+    ).annotate(
+        total_value=Sum('total_price'),
+        total_quantity=Sum('quantity'),
+        avg_price=Avg('unit_price')
+    ).order_by('-total_value')
+
+    context = {
+        'supplier_performance': supplier_performance,
+        'monthly_costs': monthly_procurement_costs,
+        'medication_analysis': medication_cost_analysis,
+        'total_procurement_value': total_procurement_value,
+        'avg_processing_time': avg_order_processing_time,
+        'inventory_turnover': inventory_turnover,
+        'category_performance': category_performance,
+        'start_date': start_date,
+        'end_date': end_date,
+        'title': 'Procurement Analytics'
+    }
+
+    return render(request, 'pharmacy/procurement_analytics.html', context)
+
+@login_required
+@permission_required('pharmacy.view_prescription', raise_exception=True)
+def revenue_analysis(request):
+    """Comprehensive revenue analysis for pharmacy operations"""
+    from django.db.models import Case, When, Value, CharField, F, Sum, Count, Avg
+    from django.db.models.functions import Coalesce, TruncMonth, TruncWeek
+    from django.db import models
+
+    # Date range for analysis (default to last 12 months)
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=365)
+
+    # Revenue from Prescription Sales
+    prescription_revenue = DispensingLog.objects.filter(
+        dispensed_at__date__range=[start_date, end_date]
+    ).aggregate(
+        total_revenue=Sum(F('quantity_dispensed') * F('medication__price')),
+        total_prescriptions=Count('prescription', distinct=True),
+        total_medications_dispensed=Sum('quantity_dispensed')
+    )
+
+    # Monthly Revenue Trends
+    monthly_revenue = DispensingLog.objects.filter(
+        dispensed_at__date__range=[start_date, end_date]
+    ).annotate(
+        month=TruncMonth('dispensed_at')
+    ).values('month').annotate(
+        revenue=Sum(F('quantity_dispensed') * F('medication__price')),
+        prescriptions=Count('prescription', distinct=True),
+        medications_sold=Sum('quantity_dispensed')
+    ).order_by('month')
+
+    # Medication Revenue Analysis
+    medication_revenue = DispensingLog.objects.filter(
+        dispensed_at__date__range=[start_date, end_date]
+    ).values(
+        'medication__name', 'medication__id'
+    ).annotate(
+        total_revenue=Sum(F('quantity_dispensed') * F('medication__price')),
+        total_quantity=Sum('quantity_dispensed'),
+        avg_price=Avg('medication__price'),
+        profit_margin=Case(
+            When(medication__price__gt=0, then=(F('medication__price') - Avg('medication__purchaseitem__unit_price')) / F('medication__price') * 100),
+            default=Value(0),
+            output_field=models.DecimalField()
+        )
+    ).order_by('-total_revenue')
+
+    # Profit Margin Analysis
+    profit_analysis = PurchaseItem.objects.filter(
+        purchase__purchase_date__range=[start_date, end_date]
+    ).values(
+        'medication__name', 'medication__id'
+    ).annotate(
+        avg_cost_price=Avg('unit_price'),
+        current_selling_price=F('medication__price'),
+        profit_per_unit=F('medication__price') - Avg('unit_price'),
+        profit_margin_percent=Case(
+            When(medication__price__gt=0, then=(F('medication__price') - Avg('unit_price')) / F('medication__price') * 100),
+            default=Value(0),
+            output_field=models.DecimalField()
+        )
+    ).order_by('-profit_margin_percent')
+
+    # Category Revenue Performance
+    category_revenue = DispensingLog.objects.filter(
+        dispensed_at__date__range=[start_date, end_date]
+    ).values(
+        'medication__category__name'
+    ).annotate(
+        total_revenue=Sum(F('quantity_dispensed') * F('medication__price')),
+        total_quantity=Sum('quantity_dispensed'),
+        avg_price=Avg('medication__price')
+    ).order_by('-total_revenue')
+
+    # Patient Revenue Analysis
+    patient_revenue = DispensingLog.objects.filter(
+        dispensed_at__date__range=[start_date, end_date]
+    ).values(
+        'prescription__patient__first_name',
+        'prescription__patient__last_name',
+        'prescription__patient__id'
+    ).annotate(
+        total_spent=Sum(F('quantity_dispensed') * F('medication__price')),
+        total_prescriptions=Count('prescription', distinct=True),
+        total_medications=Sum('quantity_dispensed')
+    ).order_by('-total_spent')[:20]  # Top 20 patients
+
+    # Revenue Performance Metrics
+    total_revenue = prescription_revenue['total_revenue'] or 0
+    total_cost = PurchaseItem.objects.filter(
+        purchase__purchase_date__range=[start_date, end_date]
+    ).aggregate(total=Sum('total_price'))['total'] or 0
+
+    gross_profit = total_revenue - total_cost
+    profit_margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+    # Weekly Revenue Trends
+    weekly_revenue = DispensingLog.objects.filter(
+        dispensed_at__date__range=[start_date, end_date]
+    ).annotate(
+        week=TruncWeek('dispensed_at')
+    ).values('week').annotate(
+        revenue=Sum(F('quantity_dispensed') * F('medication__price'))
+    ).order_by('week')
+
+    context = {
+        'prescription_revenue': prescription_revenue,
+        'monthly_revenue': monthly_revenue,
+        'medication_revenue': medication_revenue,
+        'profit_analysis': profit_analysis,
+        'category_revenue': category_revenue,
+        'patient_revenue': patient_revenue,
+        'total_revenue': total_revenue,
+        'total_cost': total_cost,
+        'gross_profit': gross_profit,
+        'profit_margin': profit_margin,
+        'weekly_revenue': weekly_revenue,
+        'start_date': start_date,
+        'end_date': end_date,
+        'title': 'Revenue Analysis'
+    }
+
+    return render(request, 'pharmacy/revenue_analysis.html', context)
+
+@login_required
+@permission_required('pharmacy.view_purchase', raise_exception=True)
+def expense_analysis(request):
+    """Comprehensive expense analysis for pharmacy operations"""
+    from django.db.models import Case, When, Value, F, Sum, Count, Avg, Min, Max, StdDev
+    from django.db.models.functions import TruncMonth
+    from django.db import models
+
+    # Date range for analysis (default to last 12 months)
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=365)
+
+    # Total Procurement Expenses
+    procurement_expenses = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date]
+    ).aggregate(
+        total_expenses=Sum('total_amount'),
+        total_orders=Count('id'),
+        avg_order_value=Avg('total_amount'),
+        pending_payments=Sum('total_amount', filter=Q(payment_status='pending'))
+    )
+
+    # Monthly Expense Trends
+    monthly_expenses = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date]
+    ).annotate(
+        month=TruncMonth('purchase_date')
+    ).values('month').annotate(
+        total_expenses=Sum('total_amount'),
+        order_count=Count('id'),
+        avg_order_value=Avg('total_amount')
+    ).order_by('month')
+
+    # Supplier Expense Analysis
+    supplier_expenses = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date]
+    ).values(
+        'supplier__name', 'supplier__id'
+    ).annotate(
+        total_spent=Sum('total_amount'),
+        order_count=Count('id'),
+        avg_order_value=Avg('total_amount'),
+        payment_efficiency=Case(
+            When(total_amount__gt=0, then=Sum('total_amount', filter=Q(payment_status='paid')) / Sum('total_amount') * 100),
+            default=Value(0),
+            output_field=models.DecimalField()
+        )
+    ).order_by('-total_spent')
+
+    # Category Expense Analysis
+    category_expenses = PurchaseItem.objects.filter(
+        purchase__purchase_date__range=[start_date, end_date]
+    ).values(
+        'medication__category__name'
+    ).annotate(
+        total_cost=Sum('total_price'),
+        total_quantity=Sum('quantity'),
+        avg_unit_cost=Avg('unit_price'),
+        order_frequency=Count('purchase', distinct=True)
+    ).order_by('-total_cost')
+
+    # Medication Cost Efficiency Analysis
+    medication_cost_efficiency = PurchaseItem.objects.filter(
+        purchase__purchase_date__range=[start_date, end_date]
+    ).values(
+        'medication__name', 'medication__id'
+    ).annotate(
+        total_cost=Sum('total_price'),
+        total_quantity=Sum('quantity'),
+        avg_unit_cost=Avg('unit_price'),
+        min_unit_cost=Min('unit_price'),
+        max_unit_cost=Max('unit_price'),
+        cost_variance=StdDev('unit_price'),
+        potential_savings=Case(
+            When(unit_price__gt=Min('unit_price'),
+                 then=(Avg('unit_price') - Min('unit_price')) * Sum('quantity')),
+            default=Value(0),
+            output_field=models.DecimalField()
+        )
+    ).order_by('-potential_savings')
+
+    # Payment Status Analysis
+    payment_analysis = Purchase.objects.filter(
+        purchase_date__range=[start_date, end_date]
+    ).values('payment_status').annotate(
+        count=Count('id'),
+        total_amount=Sum('total_amount')
+    )
+
+    # Cost Optimization Opportunities
+    # Find medications with high price variance between suppliers
+    price_variance_opportunities = PurchaseItem.objects.filter(
+        purchase__purchase_date__range=[start_date, end_date]
+    ).values(
+        'medication__name'
+    ).annotate(
+        avg_price=Avg('unit_price'),
+        min_price=Min('unit_price'),
+        max_price=Max('unit_price'),
+        price_range=Max('unit_price') - Min('unit_price'),
+        supplier_count=Count('purchase__supplier', distinct=True)
+    ).filter(
+        supplier_count__gt=1,
+        price_range__gt=0
+    ).order_by('-price_range')
+
+    # Expense Ratios and KPIs
+    total_expenses = procurement_expenses['total_expenses'] or 0
+
+    # Calculate expense ratios
+    expense_ratios = {
+        'procurement_to_revenue': 0,
+        'avg_monthly_expense': total_expenses / 12 if total_expenses > 0 else 0,
+        'expense_per_order': procurement_expenses['avg_order_value'] or 0
+    }
+
+    # Get revenue for ratio calculation
+    total_revenue = DispensingLog.objects.filter(
+        dispensed_at__date__range=[start_date, end_date]
+    ).aggregate(
+        revenue=Sum(F('quantity_dispensed') * F('medication__price'))
+    )['revenue'] or 0
+
+    if total_revenue > 0:
+        expense_ratios['procurement_to_revenue'] = (total_expenses / total_revenue) * 100
+
+    context = {
+        'procurement_expenses': procurement_expenses,
+        'monthly_expenses': monthly_expenses,
+        'supplier_expenses': supplier_expenses,
+        'category_expenses': category_expenses,
+        'medication_efficiency': medication_cost_efficiency,
+        'payment_analysis': payment_analysis,
+        'optimization_opportunities': price_variance_opportunities,
+        'expense_ratios': expense_ratios,
+        'total_expenses': total_expenses,
+        'total_revenue': total_revenue,
+        'start_date': start_date,
+        'end_date': end_date,
+        'title': 'Expense Analysis'
+    }
+
+    return render(request, 'pharmacy/expense_analysis.html', context)
+
+@login_required
+@permission_required('pharmacy.view_purchase', raise_exception=True)
+def automated_reorder_suggestions(request):
+    """Generate automated reorder suggestions based on consumption patterns"""
+
+    # Get medications that need reordering based on various criteria
+    suggestions = []
+
+    # Criteria 1: Stock below reorder level
+    low_stock_items = MedicationInventory.objects.filter(
+        stock_quantity__lte=F('reorder_level')
+    ).select_related('medication')
+
+    for item in low_stock_items:
+        # Calculate suggested order quantity based on consumption rate
+        last_30_days_consumption = DispensingLog.objects.filter(
+            medication=item.medication,
+            dispensed_at__gte=timezone.now() - timedelta(days=30)
+        ).aggregate(total=Sum('quantity_dispensed'))['total'] or 0
+
+        # Calculate monthly consumption rate
+        monthly_consumption = last_30_days_consumption
+
+        # Suggest 2-3 months worth of stock
+        suggested_quantity = max(monthly_consumption * 2, item.reorder_level * 2)
+
+        # Find best supplier based on price and reliability
+        best_supplier = get_best_supplier_for_medication(item.medication)
+
+        suggestions.append({
+            'medication': item.medication,
+            'current_stock': item.stock_quantity,
+            'reorder_level': item.reorder_level,
+            'monthly_consumption': monthly_consumption,
+            'suggested_quantity': suggested_quantity,
+            'best_supplier': best_supplier,
+            'urgency': 'high' if item.stock_quantity <= item.reorder_level * 0.5 else 'medium'
+        })
+
+    # Criteria 2: Fast-moving items that might run out soon
+    from django.db.models import Subquery, OuterRef
+    last_30_days = timezone.now() - timedelta(days=30)
+    fast_moving_items = MedicationInventory.objects.annotate(
+        consumption_rate=Subquery(
+            DispensingLog.objects.filter(
+                medication=OuterRef('medication'),
+                dispensed_date__gte=last_30_days
+            ).values('medication').annotate(
+                total=Sum('dispensed_quantity')
+            ).values('total')[:1]
+        )
+    ).filter(
+        consumption_rate__gt=0,
+        stock_quantity__gt=F('reorder_level')
+    ).select_related('medication')
+
+    for item in fast_moving_items:
+        consumption_rate = item.consumption_rate or 0
+        days_until_reorder = (item.stock_quantity - item.reorder_level) / (consumption_rate / 30) if consumption_rate > 0 else 999
+
+        if days_until_reorder <= 14:  # Will hit reorder level in 2 weeks
+            best_supplier = get_best_supplier_for_medication(item.medication)
+            suggested_quantity = consumption_rate * 2  # 2 months worth
+
+            suggestions.append({
+                'medication': item.medication,
+                'current_stock': item.stock_quantity,
+                'reorder_level': item.reorder_level,
+                'monthly_consumption': consumption_rate,
+                'suggested_quantity': suggested_quantity,
+                'best_supplier': best_supplier,
+                'urgency': 'medium',
+                'days_until_reorder': int(days_until_reorder)
+            })
+
+    context = {
+        'suggestions': suggestions,
+        'title': 'Automated Reorder Suggestions'
+    }
+
+    return render(request, 'pharmacy/reorder_suggestions.html', context)
+
+def get_best_supplier_for_medication(medication):
+    """Get the best supplier for a medication based on price and reliability"""
+
+    # Get recent purchase data for this medication
+    recent_purchases = PurchaseItem.objects.filter(
+        medication=medication,
+        purchase__purchase_date__gte=timezone.now().date() - timedelta(days=180)
+    ).select_related('purchase__supplier')
+
+    if not recent_purchases.exists():
+        return None
+
+    # Calculate supplier scores
+    supplier_scores = {}
+
+    for purchase_item in recent_purchases:
+        supplier = purchase_item.purchase.supplier
+
+        if supplier.id not in supplier_scores:
+            supplier_scores[supplier.id] = {
+                'supplier': supplier,
+                'total_orders': 0,
+                'avg_price': 0,
+                'prices': [],
+                'on_time_deliveries': 0,
+                'total_deliveries': 0
+            }
+
+        supplier_scores[supplier.id]['total_orders'] += 1
+        supplier_scores[supplier.id]['prices'].append(purchase_item.unit_price)
+        supplier_scores[supplier.id]['total_deliveries'] += 1
+
+        # Count on-time deliveries (paid orders are considered delivered)
+        if purchase_item.purchase.payment_status == 'paid':
+            supplier_scores[supplier.id]['on_time_deliveries'] += 1
+
+    # Calculate final scores
+    best_supplier = None
+    best_score = 0
+
+    for supplier_id, data in supplier_scores.items():
+        avg_price = sum(data['prices']) / len(data['prices'])
+        reliability_score = data['on_time_deliveries'] / data['total_deliveries'] if data['total_deliveries'] > 0 else 0
+
+        # Score based on price (lower is better) and reliability (higher is better)
+        # Normalize price score (assuming lower prices are better)
+        price_score = 1 / avg_price if avg_price > 0 else 0
+
+        # Combined score (weighted: 60% reliability, 40% price)
+        combined_score = (reliability_score * 0.6) + (price_score * 0.4)
+
+        if combined_score > best_score:
+            best_score = combined_score
+            best_supplier = data['supplier']
+            best_supplier.avg_price = avg_price
+            best_supplier.reliability_score = reliability_score
+
+    return best_supplier
+
+@login_required
+@permission_required('pharmacy.view_bulkstoreinventory', raise_exception=True)
+def bulk_store_dashboard(request):
+    """Dashboard for bulk store management"""
+    from .models import BulkStore, BulkStoreInventory, MedicationTransfer
+
+    # Get or create main bulk store
+    bulk_store, created = BulkStore.objects.get_or_create(
+        name='Main Bulk Store',
+        defaults={
+            'location': 'Central Storage Area',
+            'description': 'Main bulk storage for all procured medications',
+            'capacity': 50000,
+            'temperature_controlled': True,
+            'humidity_controlled': True,
+            'security_level': 'high',
+            'is_active': True
+        }
+    )
+
+    # Get bulk store inventory
+    bulk_inventory = BulkStoreInventory.objects.filter(
+        bulk_store=bulk_store,
+        stock_quantity__gt=0
+    ).select_related('medication', 'supplier').order_by('medication__name')
+
+    # Get recent transfers
+    recent_transfers = MedicationTransfer.objects.filter(
+        from_bulk_store=bulk_store
+    ).select_related(
+        'medication', 'to_active_store__dispensary', 'requested_by'
+    ).order_by('-requested_at')[:10]
+
+    # Get pending transfer requests
+    pending_transfers = MedicationTransfer.objects.filter(
+        from_bulk_store=bulk_store,
+        status='pending'
+    ).select_related(
+        'medication', 'to_active_store__dispensary', 'requested_by'
+    ).order_by('requested_at')
+
+    # Calculate statistics
+    total_medications = bulk_inventory.count()
+    total_stock_value = bulk_inventory.aggregate(
+        total=Sum(F('stock_quantity') * F('unit_cost'))
+    )['total'] or 0
+
+    low_stock_items = bulk_inventory.filter(stock_quantity__lte=50)
+    expiring_soon = bulk_inventory.filter(
+        expiry_date__lte=timezone.now().date() + timedelta(days=30)
+    ).exclude(expiry_date__isnull=True)
+
+    context = {
+        'bulk_store': bulk_store,
+        'bulk_inventory': bulk_inventory,
+        'recent_transfers': recent_transfers,
+        'pending_transfers': pending_transfers,
+        'total_medications': total_medications,
+        'total_stock_value': total_stock_value,
+        'low_stock_count': low_stock_items.count(),
+        'expiring_soon_count': expiring_soon.count(),
+        'title': 'Bulk Store Dashboard'
+    }
+
+    return render(request, 'pharmacy/bulk_store_dashboard.html', context)
+
+@login_required
+@permission_required('pharmacy.add_medicationtransfer', raise_exception=True)
+def request_medication_transfer(request):
+    """Request transfer of medication from bulk store to active store"""
+    from .models import BulkStore, ActiveStore, BulkStoreInventory, MedicationTransfer
+
+    if request.method == 'POST':
+        medication_id = request.POST.get('medication')
+        active_store_id = request.POST.get('active_store')
+        quantity = int(request.POST.get('quantity', 0))
+        notes = request.POST.get('notes', '')
+
+        try:
+            medication = get_object_or_404(Medication, id=medication_id)
+            active_store = get_object_or_404(ActiveStore, id=active_store_id)
+
+            # Get main bulk store
+            bulk_store = BulkStore.objects.get(name='Main Bulk Store')
+
+            # Check if sufficient stock exists in bulk store
+            bulk_inventory = BulkStoreInventory.objects.filter(
+                medication=medication,
+                bulk_store=bulk_store,
+                stock_quantity__gte=quantity
+            ).first()
+
+            if not bulk_inventory:
+                messages.error(request, f'Insufficient stock in bulk store for {medication.name}')
+                return redirect('pharmacy:bulk_store_dashboard')
+
+            # Create transfer request
+            transfer = MedicationTransfer.objects.create(
+                medication=medication,
+                from_bulk_store=bulk_store,
+                to_active_store=active_store,
+                quantity=quantity,
+                batch_number=bulk_inventory.batch_number,
+                expiry_date=bulk_inventory.expiry_date,
+                unit_cost=bulk_inventory.unit_cost,
+                requested_by=request.user,
+                notes=notes
+            )
+
+            messages.success(
+                request,
+                f'Transfer request created for {quantity} units of {medication.name} '
+                f'to {active_store.dispensary.name}'
+            )
+
+        except Exception as e:
+            messages.error(request, f'Error creating transfer request: {str(e)}')
+
+    return redirect('pharmacy:bulk_store_dashboard')
+
+@login_required
+@permission_required('pharmacy.change_medicationtransfer', raise_exception=True)
+def approve_medication_transfer(request, transfer_id):
+    """Approve a medication transfer request"""
+    from .models import MedicationTransfer
+
+    transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
+
+    if transfer.can_approve():
+        transfer.approved_by = request.user
+        transfer.approved_at = timezone.now()
+        transfer.status = 'in_transit'
+        transfer.save()
+
+        messages.success(
+            request,
+            f'Transfer approved: {transfer.quantity} units of {transfer.medication.name} '
+            f'to {transfer.to_active_store.dispensary.name}'
+        )
+    else:
+        messages.error(request, 'Transfer cannot be approved in current status')
+
+    return redirect('pharmacy:bulk_store_dashboard')
+
+@login_required
+@permission_required('pharmacy.change_medicationtransfer', raise_exception=True)
+def execute_medication_transfer(request, transfer_id):
+    """Execute an approved medication transfer"""
+    from .models import MedicationTransfer
+
+    transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
+
+    try:
+        if transfer.can_execute():
+            transfer.execute_transfer(request.user)
+
+            messages.success(
+                request,
+                f'Transfer completed: {transfer.quantity} units of {transfer.medication.name} '
+                f'moved to {transfer.to_active_store.dispensary.name}'
+            )
+        else:
+            messages.error(request, 'Transfer cannot be executed in current status')
+
+    except Exception as e:
+        messages.error(request, f'Error executing transfer: {str(e)}')
+
+    return redirect('pharmacy:bulk_store_dashboard')
 
 @login_required
 def features_showcase(request):

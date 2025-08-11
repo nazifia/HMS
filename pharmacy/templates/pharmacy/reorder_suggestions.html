@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .suggestion-card {
+        transition: transform 0.2s;
+    }
+    .suggestion-card:hover {
+        transform: translateY(-2px);
+    }
+    .urgency-high {
+        border-left: 4px solid #dc3545;
+    }
+    .urgency-medium {
+        border-left: 4px solid #ffc107;
+    }
+    .urgency-low {
+        border-left: 4px solid #28a745;
+    }
+    .supplier-info {
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 10px;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button class="btn btn-success" onclick="processAllSuggestions()">
+                <i class="fas fa-magic"></i> Process All Suggestions
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                High Priority
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ suggestions|length|add:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Total Suggestions
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ suggestions|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Estimated Value
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ₦{% widthratio suggestions|length 1 50000 %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Automation Score
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">95%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-robot fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reorder Suggestions -->
+    <div class="row">
+        {% for suggestion in suggestions %}
+        <div class="col-lg-6 mb-4">
+            <div class="card suggestion-card urgency-{{ suggestion.urgency }} shadow h-100">
+                <div class="card-header py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            {{ suggestion.medication.name }}
+                        </h6>
+                        <span class="badge badge-{% if suggestion.urgency == 'high' %}danger{% elif suggestion.urgency == 'medium' %}warning{% else %}success{% endif %}">
+                            {{ suggestion.urgency|title }} Priority
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Stock Information -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Current Stock</small>
+                            <div class="font-weight-bold">{{ suggestion.current_stock }} units</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Reorder Level</small>
+                            <div class="font-weight-bold">{{ suggestion.reorder_level }} units</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Monthly Consumption</small>
+                            <div class="font-weight-bold">{{ suggestion.monthly_consumption }} units</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Suggested Quantity</small>
+                            <div class="font-weight-bold text-success">{{ suggestion.suggested_quantity }} units</div>
+                        </div>
+                    </div>
+
+                    {% if suggestion.days_until_reorder %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-clock"></i> Will reach reorder level in {{ suggestion.days_until_reorder }} days
+                    </div>
+                    {% endif %}
+
+                    <!-- Supplier Recommendation -->
+                    {% if suggestion.best_supplier %}
+                    <div class="supplier-info">
+                        <h6 class="text-primary mb-2">
+                            <i class="fas fa-building"></i> Recommended Supplier
+                        </h6>
+                        <div class="row">
+                            <div class="col-8">
+                                <strong>{{ suggestion.best_supplier.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ suggestion.best_supplier.contact_person }}</small>
+                                <br>
+                                <small class="text-muted">{{ suggestion.best_supplier.phone }}</small>
+                            </div>
+                            <div class="col-4 text-right">
+                                <div class="text-success font-weight-bold">
+                                    ₦{{ suggestion.best_supplier.avg_price|floatformat:2 }}
+                                </div>
+                                <small class="text-muted">per unit</small>
+                                <br>
+                                <span class="badge badge-success">
+                                    {{ suggestion.best_supplier.reliability_score|mul:100|floatformat:0 }}% reliable
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No supplier data available. Please select manually.
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="mt-3">
+                        <button class="btn btn-success btn-sm" onclick="createProcurementOrder({{ suggestion.medication.id }}, {{ suggestion.suggested_quantity }}, {% if suggestion.best_supplier %}{{ suggestion.best_supplier.id }}{% else %}null{% endif %})">
+                            <i class="fas fa-shopping-cart"></i> Create Order
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="adjustSuggestion({{ suggestion.medication.id }})">
+                            <i class="fas fa-edit"></i> Adjust
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="dismissSuggestion({{ suggestion.medication.id }})">
+                            <i class="fas fa-times"></i> Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h4 class="text-success">All Good!</h4>
+                    <p class="text-muted">No reorder suggestions at this time. All medications are adequately stocked.</p>
+                    <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Adjustment Modal -->
+<div class="modal fade" id="adjustmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adjust Reorder Suggestion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adjustmentForm">
+                    <div class="mb-3">
+                        <label for="adjustedQuantity" class="form-label">Adjusted Quantity</label>
+                        <input type="number" class="form-control" id="adjustedQuantity" min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustmentReason" class="form-label">Reason for Adjustment</label>
+                        <textarea class="form-control" id="adjustmentReason" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveAdjustment()">Save Adjustment</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentMedicationId = null;
+
+function createProcurementOrder(medicationId, quantity, supplierId) {
+    if (supplierId) {
+        // Create order with recommended supplier
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/pharmacy/medications/${medicationId}/procure/`;
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.innerHTML = `
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+            <input type="hidden" name="supplier" value="${supplierId}">
+            <input type="hidden" name="quantity" value="${quantity}">
+            <input type="hidden" name="notes" value="Automated reorder suggestion">
+        `;
+        
+        document.body.appendChild(form);
+        form.submit();
+    } else {
+        // Redirect to manual procurement page
+        window.location.href = `/pharmacy/medications/${medicationId}/procure/`;
+    }
+}
+
+function adjustSuggestion(medicationId) {
+    currentMedicationId = medicationId;
+    const modal = new bootstrap.Modal(document.getElementById('adjustmentModal'));
+    modal.show();
+}
+
+function saveAdjustment() {
+    const quantity = document.getElementById('adjustedQuantity').value;
+    const reason = document.getElementById('adjustmentReason').value;
+    
+    if (quantity && currentMedicationId) {
+        createProcurementOrder(currentMedicationId, quantity, null);
+    }
+}
+
+function dismissSuggestion(medicationId) {
+    if (confirm('Are you sure you want to dismiss this suggestion?')) {
+        // Hide the suggestion card
+        const card = event.target.closest('.col-lg-6');
+        card.style.display = 'none';
+        
+        // You could also send an AJAX request to mark it as dismissed
+        console.log(`Dismissed suggestion for medication ${medicationId}`);
+    }
+}
+
+function processAllSuggestions() {
+    if (confirm('This will create procurement orders for all high-priority suggestions. Continue?')) {
+        const highPrioritySuggestions = document.querySelectorAll('.urgency-high .btn-success');
+        highPrioritySuggestions.forEach(button => {
+            button.click();
+        });
+    }
+}
+</script>
+{% endblock %}

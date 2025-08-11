@@ -781,7 +781,10 @@ def waiting_list(request):
     # Filter by doctor
     doctor = request.GET.get('doctor', '')
     if doctor:
-        waiting_entries = waiting_entries.filter(doctor__id=doctor)
+        if doctor == 'unassigned':
+            waiting_entries = waiting_entries.filter(doctor__isnull=True)
+        else:
+            waiting_entries = waiting_entries.filter(doctor__id=doctor)
 
     # Filter by consulting room
     consulting_room = request.GET.get('consulting_room', '')
@@ -836,7 +839,10 @@ def add_to_waiting_list(request, patient_id=None):
             waiting_entry.created_by = request.user
             waiting_entry.save()
 
-            messages.success(request, f"{waiting_entry.patient.get_full_name()} added to waiting list for Dr. {waiting_entry.doctor.get_full_name()} in Room {waiting_entry.consulting_room.room_number}.")
+            if waiting_entry.doctor:
+                messages.success(request, f"{waiting_entry.patient.get_full_name()} added to waiting list for Dr. {waiting_entry.doctor.get_full_name()} in Room {waiting_entry.consulting_room.room_number}.")
+            else:
+                messages.success(request, f"{waiting_entry.patient.get_full_name()} added to waiting list in Room {waiting_entry.consulting_room.room_number} (No specific doctor assigned).")
             return redirect('consultations:waiting_list')
     else:
         form = WaitingListForm(initial=initial_data)

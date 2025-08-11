@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<style>
+    .expense-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #dc3545;
+    }
+    .expense-card:hover {
+        transform: translateY(-2px);
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #dc3545;
+    }
+    .savings-opportunity {
+        color: #28a745;
+        font-weight: bold;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+    }
+    .optimization-card {
+        border-left: 4px solid #ffc107;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button class="btn btn-danger" onclick="exportReport()">
+                <i class="fas fa-download"></i> Export Expense Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Expense Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card expense-card shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Total Expenses
+                            </div>
+                            <div class="metric-value">₦{{ total_expenses|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Avg Monthly Expense
+                            </div>
+                            <div class="metric-value text-warning">₦{{ expense_ratios.avg_monthly_expense|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Expense to Revenue Ratio
+                            </div>
+                            <div class="metric-value text-info">{{ expense_ratios.procurement_to_revenue|floatformat:1 }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Pending Payments
+                            </div>
+                            <div class="metric-value text-success">₦{{ procurement_expenses.pending_payments|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Trends Charts -->
+    <div class="row mb-4">
+        <!-- Monthly Expense Trend -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Expense Trends</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyExpenseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Status Distribution -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="paymentStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supplier Expense Analysis -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Supplier Expense Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="supplierExpenseTable">
+                            <thead>
+                                <tr>
+                                    <th>Supplier</th>
+                                    <th>Total Spent</th>
+                                    <th>Orders</th>
+                                    <th>Avg Order Value</th>
+                                    <th>Payment Efficiency</th>
+                                    <th>Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for supplier in supplier_expenses %}
+                                <tr>
+                                    <td>{{ supplier.supplier__name }}</td>
+                                    <td>₦{{ supplier.total_spent|floatformat:2 }}</td>
+                                    <td>{{ supplier.order_count }}</td>
+                                    <td>₦{{ supplier.avg_order_value|floatformat:2 }}</td>
+                                    <td>{{ supplier.payment_efficiency|floatformat:1 }}%</td>
+                                    <td>
+                                        {% with efficiency=supplier.payment_efficiency|default:0 %}
+                                            <span class="badge badge-{% if efficiency >= 90 %}success{% elif efficiency >= 70 %}warning{% else %}danger{% endif %}">
+                                                {% if efficiency >= 90 %}Excellent{% elif efficiency >= 70 %}Good{% else %}Poor{% endif %}
+                                            </span>
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Expense Breakdown -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Category Expenses</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Total Cost</th>
+                                    <th>% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in category_expenses|slice:":8" %}
+                                <tr>
+                                    <td>{{ category.medication__category__name|truncatechars:15 }}</td>
+                                    <td>₦{{ category.total_cost|floatformat:2 }}</td>
+                                    <td>{{ category.total_cost|mul:100|div:total_expenses|floatformat:1 }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost Optimization Opportunities -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card optimization-card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-lightbulb"></i> Cost Optimization Opportunities
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="optimizationTable">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Current Avg Price</th>
+                                    <th>Lowest Price Found</th>
+                                    <th>Highest Price Found</th>
+                                    <th>Price Range</th>
+                                    <th>Potential Savings</th>
+                                    <th>Suppliers</th>
+                                    <th>Recommendation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for opportunity in optimization_opportunities|slice:":15" %}
+                                <tr>
+                                    <td>{{ opportunity.medication__name }}</td>
+                                    <td>₦{{ opportunity.avg_price|floatformat:2 }}</td>
+                                    <td class="text-success">₦{{ opportunity.min_price|floatformat:2 }}</td>
+                                    <td class="text-danger">₦{{ opportunity.max_price|floatformat:2 }}</td>
+                                    <td>₦{{ opportunity.price_range|floatformat:2 }}</td>
+                                    <td class="savings-opportunity">
+                                        ₦{{ opportunity.avg_price|sub:opportunity.min_price|floatformat:2 }}
+                                    </td>
+                                    <td>{{ opportunity.supplier_count }}</td>
+                                    <td>
+                                        {% if opportunity.price_range > 10 %}
+                                            <span class="badge badge-warning">Negotiate Better Prices</span>
+                                        {% elif opportunity.price_range > 5 %}
+                                            <span class="badge badge-info">Review Suppliers</span>
+                                        {% else %}
+                                            <span class="badge badge-success">Optimal Pricing</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medication Cost Efficiency -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Medication Cost Efficiency Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="efficiencyTable">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Total Cost</th>
+                                    <th>Quantity</th>
+                                    <th>Avg Unit Cost</th>
+                                    <th>Cost Variance</th>
+                                    <th>Potential Savings</th>
+                                    <th>Efficiency Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for med in medication_efficiency|slice:":20" %}
+                                <tr>
+                                    <td>{{ med.medication__name }}</td>
+                                    <td>₦{{ med.total_cost|floatformat:2 }}</td>
+                                    <td>{{ med.total_quantity }}</td>
+                                    <td>₦{{ med.avg_unit_cost|floatformat:2 }}</td>
+                                    <td>₦{{ med.cost_variance|floatformat:2|default:"0.00" }}</td>
+                                    <td class="savings-opportunity">₦{{ med.potential_savings|floatformat:2|default:"0.00" }}</td>
+                                    <td>
+                                        {% with variance=med.cost_variance|default:0 %}
+                                            <span class="badge badge-{% if variance <= 1 %}success{% elif variance <= 3 %}warning{% else %}danger{% endif %}">
+                                                {% if variance <= 1 %}Excellent{% elif variance <= 3 %}Good{% else %}Poor{% endif %}
+                                            </span>
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Monthly Expense Chart
+const monthlyExpenseData = {
+    labels: [
+        {% for item in monthly_expenses %}
+            '{{ item.month|date:"M Y" }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    datasets: [{
+        label: 'Total Expenses',
+        data: [
+            {% for item in monthly_expenses %}
+                {{ item.total_expenses|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        borderColor: 'rgb(220, 53, 69)',
+        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+        tension: 0.1,
+        fill: true
+    }, {
+        label: 'Order Count',
+        data: [
+            {% for item in monthly_expenses %}
+                {{ item.order_count|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        borderColor: 'rgb(255, 193, 7)',
+        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+        tension: 0.1,
+        yAxisID: 'y1'
+    }]
+};
+
+const monthlyExpenseChart = new Chart(document.getElementById('monthlyExpenseChart'), {
+    type: 'line',
+    data: monthlyExpenseData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₦' + value.toLocaleString();
+                    }
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                beginAtZero: true,
+                grid: {
+                    drawOnChartArea: false,
+                }
+            }
+        }
+    }
+});
+
+// Payment Status Chart
+const paymentStatusData = {
+    labels: [
+        {% for item in payment_analysis %}
+            '{{ item.payment_status|title }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    datasets: [{
+        data: [
+            {% for item in payment_analysis %}
+                {{ item.total_amount|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+    }]
+};
+
+const paymentStatusChart = new Chart(document.getElementById('paymentStatusChart'), {
+    type: 'pie',
+    data: paymentStatusData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Export functionality
+function exportReport() {
+    window.print();
+}
+
+// Initialize DataTables
+$(document).ready(function() {
+    $('#supplierExpenseTable, #optimizationTable, #efficiencyTable').DataTable({
+        pageLength: 10,
+        order: [[1, 'desc']]
+    });
+});
+</script>
+{% endblock %}

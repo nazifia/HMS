@@ -29,6 +29,7 @@
                         <label for="doctor" class="form-label">Doctor</label>
                         <select class="form-control select2" id="doctor" name="doctor">
                             <option value="">All Doctors</option>
+                            <option value="unassigned" {% if doctor == "unassigned" %}selected{% endif %}>Unassigned</option>
                             {% for doc in doctors %}
                                 <option value="{{ doc.id }}" {% if doctor == doc.id|stringformat:"s" %}selected{% endif %}>Dr. {{ doc.get_full_name }}</option>
                             {% endfor %}
@@ -99,7 +100,13 @@
                                             <br>
                                             <small class="text-muted">{{ entry.patient.patient_id }}</small>
                                         </td>
-                                        <td>Dr. {{ entry.doctor.get_full_name }}</td>
+                                        <td>
+                                            {% if entry.doctor %}
+                                                Dr. {{ entry.doctor.get_full_name }}
+                                            {% else %}
+                                                <span class="text-muted">No specific doctor</span>
+                                            {% endif %}
+                                        </td>
                                         <td>{{ entry.consulting_room.room_number }}</td>
                                         <td>{{ entry.check_in_time|date:"M d, Y" }} at {{ entry.check_in_time|time:"h:i A" }}</td>
                                         <td>

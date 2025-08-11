@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bulk-store-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #17a2b8;
+    }
+    .bulk-store-card:hover {
+        transform: translateY(-2px);
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #17a2b8;
+    }
+    .transfer-status {
+        font-size: 0.8rem;
+    }
+    .low-stock {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .expiring-soon {
+        color: #ffc107;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Procurement
+            </a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
+                <i class="fas fa-exchange-alt"></i> Request Transfer
+            </button>
+        </div>
+    </div>
+
+    <!-- Bulk Store Overview -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card bulk-store-card shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Total Medications
+                            </div>
+                            <div class="metric-value">{{ total_medications }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-pills fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Stock Value
+                            </div>
+                            <div class="metric-value text-success">₦{{ total_stock_value|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Low Stock Items
+                            </div>
+                            <div class="metric-value text-warning">{{ low_stock_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Expiring Soon
+                            </div>
+                            <div class="metric-value text-danger">{{ expiring_soon_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-times fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Transfer Requests -->
+    {% if pending_transfers %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-clock"></i> Pending Transfer Requests
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>To Dispensary</th>
+                                    <th>Requested By</th>
+                                    <th>Requested At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in pending_transfers %}
+                                <tr>
+                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>{{ transfer.quantity }}</td>
+                                    <td>{{ transfer.to_active_store.dispensary.name }}</td>
+                                    <td>{{ transfer.requested_by.get_full_name }}</td>
+                                    <td>{{ transfer.requested_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'pharmacy:approve_medication_transfer' transfer.id %}" 
+                                           class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i> Approve
+                                        </a>
+                                        <a href="{% url 'pharmacy:execute_medication_transfer' transfer.id %}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-shipping-fast"></i> Execute
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bulk Store Inventory -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-warehouse"></i> Bulk Store Inventory
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="inventoryTable">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Stock Quantity</th>
+                                    <th>Unit Cost</th>
+                                    <th>Total Value</th>
+                                    <th>Batch Number</th>
+                                    <th>Expiry Date</th>
+                                    <th>Supplier</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in bulk_inventory %}
+                                <tr>
+                                    <td>{{ item.medication.name }}</td>
+                                    <td>
+                                        {% if item.stock_quantity <= 50 %}
+                                            <span class="low-stock">{{ item.stock_quantity }}</span>
+                                        {% else %}
+                                            {{ item.stock_quantity }}
+                                        {% endif %}
+                                    </td>
+                                    <td>₦{{ item.unit_cost|floatformat:2 }}</td>
+                                    <td>₦{{ item.stock_quantity|mul:item.unit_cost|floatformat:2 }}</td>
+                                    <td>{{ item.batch_number|default:"N/A" }}</td>
+                                    <td>
+                                        {% if item.expiry_date %}
+                                            {% if item.days_until_expiry <= 30 %}
+                                                <span class="expiring-soon">{{ item.expiry_date|date:"M d, Y" }}</span>
+                                            {% else %}
+                                                {{ item.expiry_date|date:"M d, Y" }}
+                                            {% endif %}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.supplier.name|default:"N/A" }}</td>
+                                    <td>
+                                        {% if item.is_expired %}
+                                            <span class="badge badge-danger">Expired</span>
+                                        {% elif item.days_until_expiry <= 30 %}
+                                            <span class="badge badge-warning">Expiring Soon</span>
+                                        {% elif item.stock_quantity <= 50 %}
+                                            <span class="badge badge-warning">Low Stock</span>
+                                        {% else %}
+                                            <span class="badge badge-success">Good</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transfers -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Transfers
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>To Dispensary</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in recent_transfers %}
+                                <tr>
+                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>{{ transfer.quantity }}</td>
+                                    <td>{{ transfer.to_active_store.dispensary.name }}</td>
+                                    <td>
+                                        <span class="badge transfer-status badge-{% if transfer.status == 'completed' %}success{% elif transfer.status == 'pending' %}warning{% elif transfer.status == 'in_transit' %}info{% else %}secondary{% endif %}">
+                                            {{ transfer.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ transfer.requested_at|date:"M d, Y" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transfer Request Modal -->
+<div class="modal fade" id="transferModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Request Medication Transfer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:request_medication_transfer' %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="medication" class="form-label">Medication</label>
+                        <select class="form-control" id="medication" name="medication" required>
+                            <option value="">Select Medication</option>
+                            {% for item in bulk_inventory %}
+                                <option value="{{ item.medication.id }}">
+                                    {{ item.medication.name }} ({{ item.stock_quantity }} available)
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="active_store" class="form-label">Destination Dispensary</label>
+                        <select class="form-control" id="active_store" name="active_store" required>
+                            <option value="">Select Dispensary</option>
+                            <!-- This would be populated with active stores -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Request Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#inventoryTable').DataTable({
+        pageLength: 25,
+        order: [[0, 'asc']]
+    });
+});
+</script>
+{% endblock %}

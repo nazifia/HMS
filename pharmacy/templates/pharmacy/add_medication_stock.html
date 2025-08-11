@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Add Medication Stock</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.medication.id_for_label }}">Medication</label>
+                                    {{ form.medication }}
+                                    {% if form.medication.errors %}
+                                        <div class="text-danger">{{ form.medication.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.dispensary.id_for_label }}">Dispensary</label>
+                                    {{ form.dispensary }}
+                                    {% if form.dispensary.errors %}
+                                        <div class="text-danger">{{ form.dispensary.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.stock_quantity.id_for_label }}">Stock Quantity</label>
+                                    {{ form.stock_quantity }}
+                                    {% if form.stock_quantity.errors %}
+                                        <div class="text-danger">{{ form.stock_quantity.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.reorder_level.id_for_label }}">Reorder Level</label>
+                                    {{ form.reorder_level }}
+                                    {% if form.reorder_level.errors %}
+                                        <div class="text-danger">{{ form.reorder_level.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.unit_cost.id_for_label }}">Unit Cost</label>
+                                    {{ form.unit_cost }}
+                                    {% if form.unit_cost.errors %}
+                                        <div class="text-danger">{{ form.unit_cost.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.expiry_date.id_for_label }}">Expiry Date</label>
+                                    {{ form.expiry_date }}
+                                    {% if form.expiry_date.errors %}
+                                        <div class="text-danger">{{ form.expiry_date.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.batch_number.id_for_label }}">Batch Number</label>
+                            {{ form.batch_number }}
+                            {% if form.batch_number.errors %}
+                                <div class="text-danger">{{ form.batch_number.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}">Notes</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Add Stock
+                            </button>
+                            <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add Bootstrap classes to form fields
+    const formFields = document.querySelectorAll('select, input[type="text"], input[type="number"], input[type="date"], textarea');
+    formFields.forEach(field => {
+        field.classList.add('form-control');
+    });
+});
+</script>
+{% endblock %}

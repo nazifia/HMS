@@ -4,9 +4,11 @@ app_name = 'pharmacy'
 
 urlpatterns = [
     path('dashboard/', views.pharmacy_dashboard, name='dashboard'),
+    path('dashboard/main/', views.pharmacy_dashboard, name='pharmacy_dashboard'),
     path('features/', views.features_showcase, name='features_showcase'),
     # Inventory Management
     path('inventory/', views.inventory_list, name='inventory'),
+    path('inventory/list/', views.inventory_list, name='inventory_list'),
     path('inventory/add/', views.add_medication, name='add_medication'),
     path('inventory/<int:medication_id>/', views.medication_detail, name='medication_detail'),
     path('inventory/<int:medication_id>/edit/', views.edit_medication, name='edit_medication'),
@@ -27,8 +29,18 @@ urlpatterns = [
 
     # Procurement Management
     path('procurement/', views.procurement_dashboard, name='procurement_dashboard'),
+    path('procurement/analytics/', views.procurement_analytics, name='procurement_analytics'),
+    path('procurement/reorder-suggestions/', views.automated_reorder_suggestions, name='reorder_suggestions'),
+    path('revenue/analysis/', views.revenue_analysis, name='revenue_analysis'),
+    path('expense/analysis/', views.expense_analysis, name='expense_analysis'),
     path('medications/<int:medication_id>/procure/', views.create_procurement_request, name='create_procurement_request'),
     path('api/suppliers/', views.api_suppliers, name='api_suppliers'),
+
+    # Bulk Store Management
+    path('bulk-store/', views.bulk_store_dashboard, name='bulk_store_dashboard'),
+    path('bulk-store/transfer/request/', views.request_medication_transfer, name='request_medication_transfer'),
+    path('bulk-store/transfer/<int:transfer_id>/approve/', views.approve_medication_transfer, name='approve_medication_transfer'),
+    path('bulk-store/transfer/<int:transfer_id>/execute/', views.execute_medication_transfer, name='execute_medication_transfer'),
 
     # Purchase Management
     path('purchases/', views.manage_purchases, name='manage_purchases'),

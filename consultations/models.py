@@ -32,7 +32,7 @@ class WaitingList(models.Model):
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='waiting_entries')
     consulting_room = models.ForeignKey(ConsultingRoom, on_delete=models.CASCADE, related_name='waiting_patients')
-    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_patients')
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_patients', null=True, blank=True)
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='waiting_entry')
     check_in_time = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='waiting')

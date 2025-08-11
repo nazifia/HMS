@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<style>
+    .revenue-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #28a745;
+    }
+    .revenue-card:hover {
+        transform: translateY(-2px);
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #28a745;
+    }
+    .profit-positive {
+        color: #28a745;
+    }
+    .profit-negative {
+        color: #dc3545;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+    }
+    .performance-badge {
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button class="btn btn-success" onclick="exportReport()">
+                <i class="fas fa-download"></i> Export Revenue Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Revenue Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card revenue-card shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Revenue
+                            </div>
+                            <div class="metric-value">₦{{ total_revenue|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Gross Profit
+                            </div>
+                            <div class="metric-value {% if gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                                ₦{{ gross_profit|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Profit Margin
+                            </div>
+                            <div class="metric-value {% if profit_margin >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                                {{ profit_margin|floatformat:1 }}%
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Prescriptions
+                            </div>
+                            <div class="metric-value text-primary">{{ prescription_revenue.total_prescriptions }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-prescription fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Trends Charts -->
+    <div class="row mb-4">
+        <!-- Monthly Revenue Trend -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Revenue Trends</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyRevenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Revenue Distribution by Category -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Revenue by Category</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="categoryRevenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performing Medications -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Revenue Generating Medications</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="medicationRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Total Revenue</th>
+                                    <th>Quantity Sold</th>
+                                    <th>Avg Price</th>
+                                    <th>Profit Margin</th>
+                                    <th>Performance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for med in medication_revenue|slice:":15" %}
+                                <tr>
+                                    <td>{{ med.medication__name }}</td>
+                                    <td>₦{{ med.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ med.total_quantity }}</td>
+                                    <td>₦{{ med.avg_price|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="{% if med.profit_margin >= 20 %}text-success{% elif med.profit_margin >= 10 %}text-warning{% else %}text-danger{% endif %}">
+                                            {{ med.profit_margin|floatformat:1 }}%
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% with margin=med.profit_margin|default:0 %}
+                                            <span class="badge performance-badge badge-{% if margin >= 20 %}success{% elif margin >= 10 %}warning{% else %}danger{% endif %}">
+                                                {% if margin >= 20 %}Excellent{% elif margin >= 10 %}Good{% else %}Poor{% endif %}
+                                            </span>
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profit Analysis Summary -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Profit Analysis Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-primary">High Margin Medications</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                {% for med in profit_analysis|slice:":5" %}
+                                <tr>
+                                    <td>{{ med.medication__name|truncatechars:20 }}</td>
+                                    <td class="text-success">{{ med.profit_margin_percent|floatformat:1 }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-info">Revenue Insights</h6>
+                        <ul class="list-unstyled">
+                            <li><small><i class="fas fa-chart-line text-success"></i> 
+                                Avg Revenue per Prescription: ₦{{ total_revenue|div:prescription_revenue.total_prescriptions|floatformat:2 }}</small></li>
+                            <li><small><i class="fas fa-pills text-info"></i> 
+                                Total Medications Dispensed: {{ prescription_revenue.total_medications_dispensed }}</small></li>
+                            <li><small><i class="fas fa-calculator text-warning"></i> 
+                                Avg Revenue per Medication: ₦{{ total_revenue|div:prescription_revenue.total_medications_dispensed|floatformat:2 }}</small></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Patients by Revenue -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Patients by Revenue</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Total Spent</th>
+                                    <th>Prescriptions</th>
+                                    <th>Avg per Visit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for patient in patient_revenue|slice:":10" %}
+                                <tr>
+                                    <td>{{ patient.prescription__patient__first_name }} {{ patient.prescription__patient__last_name }}</td>
+                                    <td>₦{{ patient.total_spent|floatformat:2 }}</td>
+                                    <td>{{ patient.total_prescriptions }}</td>
+                                    <td>₦{{ patient.total_spent|div:patient.total_prescriptions|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Revenue Trend -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Weekly Revenue Trend</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="weeklyRevenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Monthly Revenue Chart
+const monthlyRevenueData = {
+    labels: [
+        {% for item in monthly_revenue %}
+            '{{ item.month|date:"M Y" }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    datasets: [{
+        label: 'Revenue',
+        data: [
+            {% for item in monthly_revenue %}
+                {{ item.revenue|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        borderColor: 'rgb(40, 167, 69)',
+        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+        tension: 0.1,
+        fill: true
+    }, {
+        label: 'Prescriptions',
+        data: [
+            {% for item in monthly_revenue %}
+                {{ item.prescriptions|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        tension: 0.1,
+        yAxisID: 'y1'
+    }]
+};
+
+const monthlyRevenueChart = new Chart(document.getElementById('monthlyRevenueChart'), {
+    type: 'line',
+    data: monthlyRevenueData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₦' + value.toLocaleString();
+                    }
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                beginAtZero: true,
+                grid: {
+                    drawOnChartArea: false,
+                }
+            }
+        }
+    }
+});
+
+// Category Revenue Chart
+const categoryRevenueData = {
+    labels: [
+        {% for item in category_revenue|slice:":6" %}
+            '{{ item.medication__category__name }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    datasets: [{
+        data: [
+            {% for item in category_revenue|slice:":6" %}
+                {{ item.total_revenue|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        backgroundColor: [
+            '#28a745', '#17a2b8', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14'
+        ]
+    }]
+};
+
+const categoryRevenueChart = new Chart(document.getElementById('categoryRevenueChart'), {
+    type: 'doughnut',
+    data: categoryRevenueData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Weekly Revenue Chart
+const weeklyRevenueData = {
+    labels: [
+        {% for item in weekly_revenue|slice:"-8:" %}
+            '{{ item.week|date:"M d" }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    datasets: [{
+        label: 'Weekly Revenue',
+        data: [
+            {% for item in weekly_revenue|slice:"-8:" %}
+                {{ item.revenue|default:0 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        borderColor: 'rgb(255, 193, 7)',
+        backgroundColor: 'rgba(255, 193, 7, 0.2)',
+        tension: 0.1
+    }]
+};
+
+const weeklyRevenueChart = new Chart(document.getElementById('weeklyRevenueChart'), {
+    type: 'bar',
+    data: weeklyRevenueData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₦' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Export functionality
+function exportReport() {
+    window.print();
+}
+
+// Initialize DataTable
+$(document).ready(function() {
+    $('#medicationRevenueTable').DataTable({
+        pageLength: 10,
+        order: [[1, 'desc']]
+    });
+});
+</script>
+{% endblock %}

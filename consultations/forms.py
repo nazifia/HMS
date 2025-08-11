@@ -151,7 +151,8 @@ class WaitingListForm(forms.ModelForm):
     doctor = forms.ModelChoiceField(
         queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Doctor"
+        empty_label="Select Doctor (Optional)",
+        required=False
     )
 
     consulting_room = forms.ModelChoiceField(

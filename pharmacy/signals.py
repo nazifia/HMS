@@ -1,12 +1,15 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Prescription, PrescriptionItem
+from .models import Prescription, PrescriptionItem, Dispensary, ActiveStore
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from billing.models import Invoice
 
 from decimal import Decimal
 from django.db import transaction
+import logging
+
+logger = logging.getLogger(__name__)
 
 # @receiver(post_save, sender=Prescription)
 # def create_or_update_invoice_on_prescription_save(sender, instance, created, **kwargs):
@@ -68,3 +71,33 @@ from django.db import transaction
 #         # If no items left, delete the invoice
 #         Invoice.objects.filter(prescription=prescription).delete()
 #     # Disabled: Invoice update now handled in pharmacy dispensing step
+
+
+@receiver(post_save, sender=Dispensary)
+def create_active_store_for_dispensary(sender, instance, created, **kwargs):
+    """
+    Automatically create an ActiveStore when a new Dispensary is created.
+    """
+    if created:
+        try:
+            with transaction.atomic():
+                active_store = ActiveStore.objects.create(
+                    dispensary=instance,
+                    name=f"{instance.name} - Active Store",
+                    location=instance.location or "Same as dispensary",
+                    description=f"Active storage area for {instance.name} dispensary",
+                    capacity=1000,  # Default capacity
+                    temperature_controlled=False,
+                    humidity_controlled=False,
+                    security_level='basic',
+                    is_active=True
+                )
+
+                logger.info(
+                    f"Successfully created ActiveStore '{active_store.name}' for dispensary '{instance.name}'"
+                )
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create ActiveStore for dispensary '{instance.name}': {str(e)}"
+            )

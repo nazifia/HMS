@@ -5,6 +5,28 @@ from django.utils import timezone
 register = template.Library()
 
 @register.filter
+def div(value, arg):
+    """
+    Divides the value by the argument.
+    Usage: {{ value|div:arg }}
+    """
+    try:
+        return float(value) / float(arg) if float(arg) != 0 else 0
+    except (ValueError, TypeError, ZeroDivisionError):
+        return 0
+
+@register.filter
+def mul(value, arg):
+    """
+    Multiplies the value by the argument.
+    Usage: {{ value|mul:arg }}
+    """
+    try:
+        return float(value) * float(arg)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
 def prescription_status_badge(status):
     """
     Return a Bootstrap badge for prescription status
