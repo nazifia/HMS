@@ -27,6 +27,17 @@ def mul(value, arg):
         return 0
 
 @register.filter
+def sub(value, arg):
+    """
+    Subtracts the argument from the value.
+    Usage: {{ value|sub:arg }}
+    """
+    try:
+        return float(value) - float(arg)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
 def prescription_status_badge(status):
     """
     Return a Bootstrap badge for prescription status

@@ -168,7 +168,9 @@ def create_consultation(request, patient_id):
         if form.is_valid() and vitals_form.is_valid():
             consultation = form.save(commit=False)
             consultation.patient = patient
-            consultation.doctor = request.user
+            # Only set doctor if not already set by the form
+            if not consultation.doctor:
+                consultation.doctor = request.user
 
             # Set the appointment if it exists
             if appointment:
@@ -869,22 +871,25 @@ def update_waiting_status(request, entry_id):
 
             # If status is 'in_progress', create a consultation if it doesn't exist
             if status == 'in_progress' and not hasattr(waiting_entry, 'consultation'):
-                consultation = Consultation.objects.create(
-                    patient=waiting_entry.patient,
-                    doctor=waiting_entry.doctor,
-                    consulting_room=waiting_entry.consulting_room,
-                    waiting_list_entry=waiting_entry,
-                    appointment=waiting_entry.appointment,
-                    chief_complaint="",
-                    symptoms="",
-                    status='in_progress'
-                )
-
-                # Get the latest vitals if they exist
-                latest_vitals = Vitals.objects.filter(patient=waiting_entry.patient).order_by('-date_time').first()
-                if latest_vitals:
-                    consultation.vitals = latest_vitals
-                    consultation.save()
+                if waiting_entry.doctor is not None:
+                    consultation = Consultation.objects.create(
+                        patient=waiting_entry.patient,
+                        doctor=waiting_entry.doctor,
+                        consulting_room=waiting_entry.consulting_room,
+                        waiting_list_entry=waiting_entry,
+                        appointment=waiting_entry.appointment,
+                        chief_complaint="",
+                        symptoms="",
+                        status='in_progress'
+                    )
+                    # Get the latest vitals if they exist
+                    latest_vitals = Vitals.objects.filter(patient=waiting_entry.patient).order_by('-date_time').first()
+                    if latest_vitals:
+                        consultation.vitals = latest_vitals
+                        consultation.save()
+                else:
+                    messages.error(request, "Cannot start consultation: No doctor assigned to this waiting entry.")
+                    return redirect('consultations:waiting_list')
 
             messages.success(request, f"Status updated to {waiting_entry.get_status_display()}.")
         else:
@@ -1035,12 +1040,18 @@ def doctor_consultation(request, consultation_id):
 @doctor_required
 def create_prescription(request, consultation_id):
     """View for creating a prescription from a consultation"""
-    consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
+    # Allow access to consultations without doctors or where current user is the doctor
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+
+    # Check if user has permission to create prescription for this consultation
+    if consultation.doctor and consultation.doctor != request.user:
+        messages.error(request, "You can only create prescriptions for your own consultations.")
+        return redirect('consultations:consultation_detail', consultation_id=consultation.id)
 
     # Create a new prescription
     prescription = Prescription.objects.create(
         patient=consultation.patient,
-        doctor=request.user,
+        doctor=consultation.doctor or request.user,  # Use consultation doctor or current user
         prescription_date=timezone.now().date(),
         diagnosis=consultation.diagnosis,
         status='pending',

@@ -70,7 +70,7 @@
                 <div class="card-body">
                     <h5 class="card-title">Today's Dispensed Items</h5>
                     <p class="card-text">{{ stats.today.total_items|default:0 }} items</p>
-                    <p class="card-text">Value: ${{ stats.today.total_value|default:"0.00" }}</p>
+                    <p class="card-text">Value: ₦{{ stats.today.total_value|default:"0.00" }}</p>
                 </div>
             </div>
         </div>
@@ -79,7 +79,7 @@
                 <div class="card-body">
                     <h5 class="card-title">This Week's Dispensed Items</h5>
                     <p class="card-text">{{ stats.this_week.total_items|default:0 }} items</p>
-                    <p class="card-text">Value: ${{ stats.this_week.total_value|default:"0.00" }}</p>
+                    <p class="card-text">Value: ₦{{ stats.this_week.total_value|default:"0.00" }}</p>
                 </div>
             </div>
         </div>
@@ -88,7 +88,7 @@
                 <div class="card-body">
                     <h5 class="card-title">This Month's Dispensed Items</h5>
                     <p class="card-text">{{ stats.this_month.total_items|default:0 }} items</p>
-                    <p class="card-text">Value: ${{ stats.this_month.total_value|default:"0.00" }}</p>
+                    <p class="card-text">Value: ₦{{ stats.this_month.total_value|default:"0.00" }}</p>
                 </div>
             </div>
         </div>

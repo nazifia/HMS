@@ -32,6 +32,7 @@ urlpatterns = [
     path('procurement/analytics/', views.procurement_analytics, name='procurement_analytics'),
     path('procurement/reorder-suggestions/', views.automated_reorder_suggestions, name='reorder_suggestions'),
     path('revenue/analysis/', views.revenue_analysis, name='revenue_analysis'),
+    path('revenue/comprehensive/', views.comprehensive_revenue_analysis, name='comprehensive_revenue_analysis'),
     path('expense/analysis/', views.expense_analysis, name='expense_analysis'),
     path('medications/<int:medication_id>/procure/', views.create_procurement_request, name='create_procurement_request'),
     path('api/suppliers/', views.api_suppliers, name='api_suppliers'),

@@ -120,15 +120,31 @@ class Invoice(models.Model):
             elif self.amount_paid == 0 and self.status not in ['draft', 'cancelled']:
                  self.status = 'pending' # Or back to pending if payment was reversed for e.g.
         elif self.total_amount == 0 and self.status not in ['draft', 'cancelled']:
-            self.status = 'paid' # Consider 0 amount invoices as paid unless draft/cancelled
+            # Only auto-mark zero amount invoices as paid if explicitly marked for auto-payment
+            # This prevents accidental auto-payment of invoices with calculation errors
+            if hasattr(self, '_auto_pay_zero_amount') and self._auto_pay_zero_amount:
+                self.status = 'paid'
+            else:
+                self.status = 'pending'  # Keep zero amount invoices as pending by default
 
         super().save(*args, **kwargs)
 
         # If the invoice is marked as paid and is linked to a prescription, update the prescription's payment_status
+        # Only update if this is a legitimate payment (not automatic zero-amount)
         if self.status == 'paid' and self.prescription:
             try:
                 prescription = Prescription.objects.get(id=self.prescription.id)
-                if prescription.payment_status != 'paid':
+                # Only auto-update prescription payment status if:
+                # 1. There was actual payment processing (manual payment), OR
+                # 2. The total amount is greater than 0 (indicating legitimate payment), OR
+                # 3. This is explicitly marked as an auto-pay zero amount invoice
+                should_update = (
+                    hasattr(self, '_manual_payment_processed') or
+                    self.total_amount > 0 or
+                    (hasattr(self, '_auto_pay_zero_amount') and self._auto_pay_zero_amount)
+                )
+
+                if prescription.payment_status != 'paid' and should_update:
                     prescription.payment_status = 'paid'
                     prescription.save(update_fields=['payment_status'])
             except Prescription.DoesNotExist:

@@ -66,8 +66,7 @@ class PurchaseForm(forms.ModelForm):
     class Meta:
         model = Purchase
         fields = [
-            'supplier', 'purchase_date', 'invoice_number', 'total_amount',
-            'payment_status', 'notes'
+            'supplier', 'purchase_date', 'payment_status', 'notes'
         ]
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 3}),

@@ -96,6 +96,43 @@ class Purchase(models.Model):
     def __str__(self):
         return f"Purchase #{self.invoice_number} - {self.supplier.name}"
 
+    def calculate_total_amount(self):
+        """Calculate total amount from all purchase items"""
+        from django.db.models import Sum, F
+        total = self.items.aggregate(
+            total=Sum(F('quantity') * F('unit_price'))
+        )['total'] or 0
+        return total
+
+    def update_total_amount(self):
+        """Update the total_amount field based on current items"""
+        self.total_amount = self.calculate_total_amount()
+        self.save(update_fields=['total_amount'])
+
+    def get_items_count(self):
+        """Get total number of different items in this purchase"""
+        return self.items.count()
+
+    def get_total_quantity(self):
+        """Get total quantity of all items in this purchase"""
+        from django.db.models import Sum
+        return self.items.aggregate(total=Sum('quantity'))['total'] or 0
+
+    def can_be_approved(self):
+        """Check if purchase can be approved"""
+        return (
+            self.approval_status == 'pending' and
+            self.items.exists() and
+            self.total_amount > 0
+        )
+
+    def can_be_paid(self):
+        """Check if purchase can be paid"""
+        return (
+            self.approval_status == 'approved' and
+            self.payment_status in ['pending', 'partial']
+        )
+
 class PurchaseApproval(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='approvals')
     approver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -125,6 +162,7 @@ class PurchaseItem(models.Model):
         return f"{self.medication.name} - {self.quantity} units"
 
     def save(self, *args, **kwargs):
+        # Always calculate total price
         self.total_price = self.quantity * self.unit_price
 
         if not self.pk:  # If this is a new item (not an update)
@@ -143,6 +181,15 @@ class PurchaseItem(models.Model):
                 inventory.save()
 
         super().save(*args, **kwargs)
+
+        # Update purchase total amount after saving the item
+        self.purchase.update_total_amount()
+
+    def delete(self, *args, **kwargs):
+        purchase = self.purchase
+        super().delete(*args, **kwargs)
+        # Update purchase total amount after deleting the item
+        purchase.update_total_amount()
 
     def _add_to_bulk_store(self):
         """Add procured medication to bulk store"""

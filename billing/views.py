@@ -715,6 +715,8 @@ def process_medication_payment(request, prescription_id):
                 pharmacy_invoice.amount_paid += amount
                 if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
                     pharmacy_invoice.status = 'paid'
+                    # Mark that this is a manual payment processed by billing staff
+                    pharmacy_invoice._manual_payment_processed = True
                     prescription.payment_status = 'paid'
                     prescription.save(update_fields=['payment_status'])
                 else:

@@ -63,7 +63,7 @@ class Consultation(models.Model):
     )
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='consultations')
-    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor_consultations')
+    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='doctor_consultations')
     appointment = models.OneToOneField(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultation')
     consulting_room = models.ForeignKey(ConsultingRoom, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultations')
     waiting_list_entry = models.OneToOneField(WaitingList, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultation')
@@ -78,7 +78,8 @@ class Consultation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Consultation for {self.patient.get_full_name()} by Dr. {self.doctor.get_full_name()} on {self.consultation_date.strftime('%Y-%m-%d')}"
+        doctor_name = f"Dr. {self.doctor.get_full_name()}" if self.doctor else "No Doctor Assigned"
+        return f"Consultation for {self.patient.get_full_name()} by {doctor_name} on {self.consultation_date.strftime('%Y-%m-%d')}"
 
     class Meta:
         ordering = ['-consultation_date']

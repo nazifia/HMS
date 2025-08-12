@@ -944,12 +944,8 @@ def quick_procurement(request, supplier_id):
                 purchase_item.total_price = purchase_item.quantity * purchase_item.unit_price
                 purchase_item.save()
 
-            # Update purchase total
-            total = PurchaseItem.objects.filter(purchase=pending_purchase).aggregate(
-                total=Sum(F('quantity') * F('unit_price'))
-            )['total'] or 0
-            pending_purchase.total_amount = total
-            pending_purchase.save()
+            # Update purchase total using the new method
+            pending_purchase.update_total_amount()
 
             messages.success(request, f"Added {quantity} units of {medication.name} to purchase order.")
 
@@ -1011,11 +1007,8 @@ def create_procurement_request(request, medication_id):
                 purchase_item.total_price = purchase_item.quantity * purchase_item.unit_price
                 purchase_item.save()
 
-            # Update purchase total
-            total = PurchaseItem.objects.filter(purchase=pending_purchase).aggregate(
-                total=Sum(F('quantity') * F('unit_price'))
-            )['total'] or 0
-            pending_purchase.total_amount = total
+            # Update purchase total using the new method
+            pending_purchase.update_total_amount()
 
             # Add notes if provided
             if notes:
@@ -1212,6 +1205,149 @@ def procurement_analytics(request):
     return render(request, 'pharmacy/procurement_analytics.html', context)
 
 @login_required
+@permission_required('pharmacy.view_dispensinglog', raise_exception=True)
+def comprehensive_revenue_analysis(request):
+    """Comprehensive revenue analysis across all hospital modules"""
+    from django.db.models import Sum, Count, Avg, F, Q
+    from django.db.models.functions import TruncMonth, TruncWeek, TruncDay
+    from datetime import datetime, timedelta
+    from decimal import Decimal
+
+    # Get date range from request
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    if not start_date or not end_date:
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=30)
+    else:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    # 1. PHARMACY REVENUE
+    pharmacy_revenue = DispensingLog.objects.filter(
+        dispensed_date__date__range=[start_date, end_date]
+    ).aggregate(
+        total_revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price')),
+        total_prescriptions=Count('prescription_item__prescription', distinct=True),
+        total_medications_dispensed=Sum('dispensed_quantity')
+    )
+
+    # 2. LABORATORY REVENUE
+    try:
+        from laboratory.models import TestRequest, LaboratoryPayment
+        lab_revenue = LaboratoryPayment.objects.filter(
+            payment_date__range=[start_date, end_date]
+        ).aggregate(
+            total_revenue=Sum('amount'),
+            total_tests=Count('invoice__test_request', distinct=True)
+        )
+    except ImportError:
+        lab_revenue = {'total_revenue': 0, 'total_tests': 0}
+
+    # 3. CONSULTATION REVENUE
+    try:
+        from consultations.models import Consultation
+        from billing.models import Invoice
+        consultation_revenue = Invoice.objects.filter(
+            created_at__date__range=[start_date, end_date],
+            source_app='consultations',
+            status='paid'
+        ).aggregate(
+            total_revenue=Sum('total_amount'),
+            total_consultations=Count('id')
+        )
+    except ImportError:
+        consultation_revenue = {'total_revenue': 0, 'total_consultations': 0}
+
+    # 4. THEATRE/SURGERY REVENUE
+    try:
+        from theatre.models import TheatrePayment
+        theatre_revenue = TheatrePayment.objects.filter(
+            payment_date__range=[start_date, end_date]
+        ).aggregate(
+            total_revenue=Sum('amount'),
+            total_surgeries=Count('invoice__surgery', distinct=True)
+        )
+    except ImportError:
+        theatre_revenue = {'total_revenue': 0, 'total_surgeries': 0}
+
+    # 5. BILLING REVENUE (General)
+    try:
+        from billing.models import Payment
+        general_revenue = Payment.objects.filter(
+            payment_date__range=[start_date, end_date]
+        ).aggregate(
+            total_revenue=Sum('amount'),
+            total_payments=Count('id')
+        )
+    except ImportError:
+        general_revenue = {'total_revenue': 0, 'total_payments': 0}
+
+    # Calculate totals
+    total_revenue = (
+        (pharmacy_revenue['total_revenue'] or 0) +
+        (lab_revenue['total_revenue'] or 0) +
+        (consultation_revenue['total_revenue'] or 0) +
+        (theatre_revenue['total_revenue'] or 0) +
+        (general_revenue['total_revenue'] or 0)
+    )
+
+    # Monthly trends for all modules
+    monthly_trends = []
+    for i in range(6):  # Last 6 months
+        month_start = (timezone.now().date().replace(day=1) - timedelta(days=i*30)).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+        # Pharmacy revenue for this month
+        month_pharmacy = DispensingLog.objects.filter(
+            dispensed_date__date__range=[month_start, month_end]
+        ).aggregate(revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price')))['revenue'] or 0
+
+        # Lab revenue for this month
+        try:
+            month_lab = LaboratoryPayment.objects.filter(
+                payment_date__range=[month_start, month_end]
+            ).aggregate(revenue=Sum('amount'))['revenue'] or 0
+        except:
+            month_lab = 0
+
+        # Consultation revenue for this month
+        try:
+            month_consultation = Invoice.objects.filter(
+                created_at__date__range=[month_start, month_end],
+                source_app='consultations',
+                status='paid'
+            ).aggregate(revenue=Sum('total_amount'))['revenue'] or 0
+        except:
+            month_consultation = 0
+
+        monthly_trends.append({
+            'month': month_start.strftime('%B %Y'),
+            'pharmacy': month_pharmacy,
+            'laboratory': month_lab,
+            'consultations': month_consultation,
+            'total': month_pharmacy + month_lab + month_consultation
+        })
+
+    monthly_trends.reverse()  # Show oldest to newest
+
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'pharmacy_revenue': pharmacy_revenue,
+        'lab_revenue': lab_revenue,
+        'consultation_revenue': consultation_revenue,
+        'theatre_revenue': theatre_revenue,
+        'general_revenue': general_revenue,
+        'total_revenue': total_revenue,
+        'monthly_trends': monthly_trends,
+        'title': 'Comprehensive Revenue Analysis'
+    }
+
+    return render(request, 'pharmacy/comprehensive_revenue_analysis.html', context)
+
+@login_required
 @permission_required('pharmacy.view_prescription', raise_exception=True)
 def revenue_analysis(request):
     """Comprehensive revenue analysis for pharmacy operations"""
@@ -1225,35 +1361,35 @@ def revenue_analysis(request):
 
     # Revenue from Prescription Sales
     prescription_revenue = DispensingLog.objects.filter(
-        dispensed_at__date__range=[start_date, end_date]
+        dispensed_date__date__range=[start_date, end_date]
     ).aggregate(
-        total_revenue=Sum(F('quantity_dispensed') * F('medication__price')),
-        total_prescriptions=Count('prescription', distinct=True),
-        total_medications_dispensed=Sum('quantity_dispensed')
+        total_revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price')),
+        total_prescriptions=Count('prescription_item__prescription', distinct=True),
+        total_medications_dispensed=Sum('dispensed_quantity')
     )
 
     # Monthly Revenue Trends
     monthly_revenue = DispensingLog.objects.filter(
-        dispensed_at__date__range=[start_date, end_date]
+        dispensed_date__date__range=[start_date, end_date]
     ).annotate(
-        month=TruncMonth('dispensed_at')
+        month=TruncMonth('dispensed_date')
     ).values('month').annotate(
-        revenue=Sum(F('quantity_dispensed') * F('medication__price')),
-        prescriptions=Count('prescription', distinct=True),
-        medications_sold=Sum('quantity_dispensed')
+        revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price')),
+        prescriptions=Count('prescription_item__prescription', distinct=True),
+        medications_sold=Sum('dispensed_quantity')
     ).order_by('month')
 
     # Medication Revenue Analysis
     medication_revenue = DispensingLog.objects.filter(
-        dispensed_at__date__range=[start_date, end_date]
+        dispensed_date__date__range=[start_date, end_date]
     ).values(
-        'medication__name', 'medication__id'
+        'prescription_item__medication__name', 'prescription_item__medication__id'
     ).annotate(
-        total_revenue=Sum(F('quantity_dispensed') * F('medication__price')),
-        total_quantity=Sum('quantity_dispensed'),
-        avg_price=Avg('medication__price'),
+        total_revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price')),
+        total_quantity=Sum('dispensed_quantity'),
+        avg_price=Avg('prescription_item__medication__price'),
         profit_margin=Case(
-            When(medication__price__gt=0, then=(F('medication__price') - Avg('medication__purchaseitem__unit_price')) / F('medication__price') * 100),
+            When(prescription_item__medication__price__gt=0, then=(F('prescription_item__medication__price') - Avg('prescription_item__medication__purchaseitem__unit_price')) / F('prescription_item__medication__price') * 100),
             default=Value(0),
             output_field=models.DecimalField()
         )
@@ -1277,26 +1413,26 @@ def revenue_analysis(request):
 
     # Category Revenue Performance
     category_revenue = DispensingLog.objects.filter(
-        dispensed_at__date__range=[start_date, end_date]
+        dispensed_date__date__range=[start_date, end_date]
     ).values(
-        'medication__category__name'
+        'prescription_item__medication__category__name'
     ).annotate(
-        total_revenue=Sum(F('quantity_dispensed') * F('medication__price')),
-        total_quantity=Sum('quantity_dispensed'),
-        avg_price=Avg('medication__price')
+        total_revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price')),
+        total_quantity=Sum('dispensed_quantity'),
+        avg_price=Avg('prescription_item__medication__price')
     ).order_by('-total_revenue')
 
     # Patient Revenue Analysis
     patient_revenue = DispensingLog.objects.filter(
-        dispensed_at__date__range=[start_date, end_date]
+        dispensed_date__date__range=[start_date, end_date]
     ).values(
-        'prescription__patient__first_name',
-        'prescription__patient__last_name',
-        'prescription__patient__id'
+        'prescription_item__prescription__patient__first_name',
+        'prescription_item__prescription__patient__last_name',
+        'prescription_item__prescription__patient__id'
     ).annotate(
-        total_spent=Sum(F('quantity_dispensed') * F('medication__price')),
-        total_prescriptions=Count('prescription', distinct=True),
-        total_medications=Sum('quantity_dispensed')
+        total_spent=Sum(F('dispensed_quantity') * F('prescription_item__medication__price')),
+        total_prescriptions=Count('prescription_item__prescription', distinct=True),
+        total_medications=Sum('dispensed_quantity')
     ).order_by('-total_spent')[:20]  # Top 20 patients
 
     # Revenue Performance Metrics
@@ -1310,11 +1446,11 @@ def revenue_analysis(request):
 
     # Weekly Revenue Trends
     weekly_revenue = DispensingLog.objects.filter(
-        dispensed_at__date__range=[start_date, end_date]
+        dispensed_date__date__range=[start_date, end_date]
     ).annotate(
-        week=TruncWeek('dispensed_at')
+        week=TruncWeek('dispensed_date')
     ).values('week').annotate(
-        revenue=Sum(F('quantity_dispensed') * F('medication__price'))
+        revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price'))
     ).order_by('week')
 
     context = {
@@ -1454,9 +1590,9 @@ def expense_analysis(request):
 
     # Get revenue for ratio calculation
     total_revenue = DispensingLog.objects.filter(
-        dispensed_at__date__range=[start_date, end_date]
+        dispensed_date__date__range=[start_date, end_date]
     ).aggregate(
-        revenue=Sum(F('quantity_dispensed') * F('medication__price'))
+        revenue=Sum(F('dispensed_quantity') * F('prescription_item__medication__price'))
     )['revenue'] or 0
 
     if total_revenue > 0:
@@ -1496,9 +1632,9 @@ def automated_reorder_suggestions(request):
     for item in low_stock_items:
         # Calculate suggested order quantity based on consumption rate
         last_30_days_consumption = DispensingLog.objects.filter(
-            medication=item.medication,
-            dispensed_at__gte=timezone.now() - timedelta(days=30)
-        ).aggregate(total=Sum('quantity_dispensed'))['total'] or 0
+            prescription_item__medication=item.medication,
+            dispensed_date__gte=timezone.now() - timedelta(days=30)
+        ).aggregate(total=Sum('dispensed_quantity'))['total'] or 0
 
         # Calculate monthly consumption rate
         monthly_consumption = last_30_days_consumption
@@ -1525,9 +1661,9 @@ def automated_reorder_suggestions(request):
     fast_moving_items = MedicationInventory.objects.annotate(
         consumption_rate=Subquery(
             DispensingLog.objects.filter(
-                medication=OuterRef('medication'),
+                prescription_item__medication=OuterRef('medication'),
                 dispensed_date__gte=last_30_days
-            ).values('medication').annotate(
+            ).values('prescription_item__medication').annotate(
                 total=Sum('dispensed_quantity')
             ).values('total')[:1]
         )
@@ -1603,12 +1739,12 @@ def get_best_supplier_for_medication(medication):
     best_score = 0
 
     for supplier_id, data in supplier_scores.items():
-        avg_price = sum(data['prices']) / len(data['prices'])
-        reliability_score = data['on_time_deliveries'] / data['total_deliveries'] if data['total_deliveries'] > 0 else 0
+        avg_price = float(sum(data['prices']) / len(data['prices']))
+        reliability_score = float(data['on_time_deliveries'] / data['total_deliveries']) if data['total_deliveries'] > 0 else 0.0
 
         # Score based on price (lower is better) and reliability (higher is better)
         # Normalize price score (assuming lower prices are better)
-        price_score = 1 / avg_price if avg_price > 0 else 0
+        price_score = 1.0 / avg_price if avg_price > 0 else 0.0
 
         # Combined score (weighted: 60% reliability, 40% price)
         combined_score = (reliability_score * 0.6) + (price_score * 0.4)
@@ -1662,6 +1798,57 @@ def bulk_store_dashboard(request):
         'medication', 'to_active_store__dispensary', 'requested_by'
     ).order_by('requested_at')
 
+    # Get available dispensaries
+    from .models import Dispensary, ActiveStore
+    dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
+
+    # Create default dispensaries if none exist
+    if not dispensaries.exists():
+        default_dispensaries = [
+            {
+                'name': 'Main Pharmacy',
+                'location': 'Ground Floor, Main Building',
+                'description': 'Primary pharmacy dispensary for outpatient services'
+            },
+            {
+                'name': 'Emergency Pharmacy',
+                'location': 'Emergency Department',
+                'description': 'Emergency pharmacy for urgent medication needs'
+            },
+            {
+                'name': 'Inpatient Pharmacy',
+                'location': 'Second Floor, Ward Block',
+                'description': 'Pharmacy serving inpatient wards and units'
+            },
+            {
+                'name': 'Pediatric Pharmacy',
+                'location': 'Pediatric Wing',
+                'description': 'Specialized pharmacy for pediatric medications'
+            }
+        ]
+
+        for dispensary_data in default_dispensaries:
+            Dispensary.objects.create(**dispensary_data)
+
+        # Refresh the queryset
+        dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
+
+    # Ensure each dispensary has an active store
+    for dispensary in dispensaries:
+        ActiveStore.objects.get_or_create(
+            dispensary=dispensary,
+            defaults={
+                'name': f"{dispensary.name} Active Store",
+                'location': dispensary.location or f"{dispensary.name} Location",
+                'description': f"Active storage area for {dispensary.name}",
+                'capacity': 1000,
+                'temperature_controlled': False,
+                'humidity_controlled': False,
+                'security_level': 'medium',
+                'is_active': True
+            }
+        )
+
     # Calculate statistics
     total_medications = bulk_inventory.count()
     total_stock_value = bulk_inventory.aggregate(
@@ -1678,6 +1865,7 @@ def bulk_store_dashboard(request):
         'bulk_inventory': bulk_inventory,
         'recent_transfers': recent_transfers,
         'pending_transfers': pending_transfers,
+        'dispensaries': dispensaries,
         'total_medications': total_medications,
         'total_stock_value': total_stock_value,
         'low_stock_count': low_stock_items.count(),
@@ -1816,6 +2004,14 @@ def add_purchase(request):
         if form.is_valid():
             purchase = form.save(commit=False)
             purchase.created_by = request.user
+
+            # Auto-generate invoice number
+            import uuid
+            purchase.invoice_number = f"INV-{uuid.uuid4().hex[:8].upper()}"
+
+            # Set initial total amount to 0 (will be calculated when items are added)
+            purchase.total_amount = 0
+
             purchase.save()
             messages.success(request, "Purchase added successfully!")
             return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
@@ -1834,9 +2030,29 @@ def add_purchase(request):
 def purchase_detail(request, purchase_id):
     purchase = get_object_or_404(Purchase.objects.select_related('supplier', 'created_by', 'dispensary'), id=purchase_id)
     purchase_items = purchase.items.all().select_related('medication')
+
+    # Handle adding new items
+    if request.method == 'POST' and 'add_item' in request.POST:
+        item_form = PurchaseItemForm(request.POST)
+        if item_form.is_valid():
+            purchase_item = item_form.save(commit=False)
+            purchase_item.purchase = purchase
+            purchase_item.save()
+
+            # Update purchase total amount using the new method
+            purchase.update_total_amount()
+
+            messages.success(request, f"Added {purchase_item.quantity} units of {purchase_item.medication.name} to purchase.")
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        else:
+            messages.error(request, "Error adding item. Please correct the form errors.")
+    else:
+        item_form = PurchaseItemForm()
+
     context = {
         'purchase': purchase,
         'purchase_items': purchase_items,
+        'item_form': item_form,
         'title': f'Purchase Detail - #{purchase.invoice_number}'
     }
     return render(request, 'pharmacy/purchase_detail.html', context)
@@ -1882,14 +2098,21 @@ def submit_purchase_for_approval(request, purchase_id):
 def approve_purchase(request, purchase_id):
     purchase = get_object_or_404(Purchase, id=purchase_id)
     if request.method == 'POST':
-        if purchase.approval_status == 'pending':
+        if purchase.can_be_approved():
             purchase.approval_status = 'approved'
             purchase.approval_notes = request.POST.get('approval_notes', '')
             purchase.approval_updated_at = timezone.now()
             purchase.save()
-            messages.success(request, "Purchase approved successfully!")
+            messages.success(request, f"Purchase #{purchase.invoice_number} approved successfully! Total amount: ₦{purchase.total_amount}")
         else:
-            messages.warning(request, "Purchase is not in 'pending' status and cannot be approved.")
+            if purchase.approval_status != 'pending':
+                messages.warning(request, "Purchase is not in 'pending' status and cannot be approved.")
+            elif not purchase.items.exists():
+                messages.error(request, "Cannot approve purchase with no items.")
+            elif purchase.total_amount <= 0:
+                messages.error(request, "Cannot approve purchase with zero or negative total amount.")
+            else:
+                messages.error(request, "Purchase cannot be approved at this time.")
         return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
     context = {
         'purchase': purchase,
@@ -3049,6 +3272,8 @@ def prescription_payment(request, prescription_id):
                         invoice.status = 'paid'
                         invoice.payment_date = payment.payment_date
                         invoice.payment_method = payment.payment_method
+                        # Mark that this is a manual payment processed by billing staff
+                        invoice._manual_payment_processed = True
                     else:
                         invoice.status = 'partially_paid'
                     invoice.save()
@@ -3167,6 +3392,8 @@ def billing_office_medication_payment(request, prescription_id):
                         invoice.status = 'paid'
                         invoice.payment_date = payment.payment_date
                         invoice.payment_method = payment.payment_method
+                        # Mark that this is a manual payment processed by billing staff
+                        invoice._manual_payment_processed = True
                         prescription.payment_status = 'paid'
                         prescription.save(update_fields=['payment_status'])
                     else:
@@ -3291,7 +3518,7 @@ def pharmacy_create_prescription(request, patient_id=None):
 
                         # Calculate pricing based on NHIA status
                         pricing_breakdown = prescription.get_pricing_breakdown()
-                        final_amount = pricing_breakdown['patient_pays']
+                        final_amount = pricing_breakdown['patient_portion']
 
                         invoice = Invoice.objects.create(
                             patient=prescription.patient,

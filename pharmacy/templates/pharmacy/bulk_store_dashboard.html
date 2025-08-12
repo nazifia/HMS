@@ -245,6 +245,59 @@
         </div>
     </div>
 
+    <!-- Available Dispensaries -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-store"></i> Available Dispensaries
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for dispensary in dispensaries %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-left-primary h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">
+                                        <i class="fas fa-store-alt"></i> {{ dispensary.name }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="fas fa-map-marker-alt"></i> {{ dispensary.location|default:"No location specified" }}
+                                        </small>
+                                    </p>
+                                    {% if dispensary.description %}
+                                    <p class="card-text">{{ dispensary.description|truncatewords:15 }}</p>
+                                    {% endif %}
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge badge-{% if dispensary.is_active %}success{% else %}secondary{% endif %}">
+                                            {% if dispensary.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                        {% if dispensary.manager %}
+                                        <small class="text-muted">
+                                            <i class="fas fa-user"></i> {{ dispensary.manager.get_full_name }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> No dispensaries found.
+                                <a href="{% url 'pharmacy:dispensary_list' %}" class="alert-link">Create a dispensary</a> to start managing inventory.
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Recent Transfers -->
     <div class="row">
         <div class="col-12">
