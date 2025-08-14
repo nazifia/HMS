@@ -110,7 +110,7 @@
                                     <td>{{ patient.get_gender_display }}</td>
                                     <td>{{ patient.get_age }}</td>
                                     <td>{{ patient.phone_number }}</td>
-                                    <td>{{ patient.registration_date|date:"d M Y" }}</td>
+                                    <td>{{ patient.registration_date|date:"d M Y g:i A" }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <a href="{% url 'patients:detail' patient.id %}" class="btn btn-info" data-bs-toggle="tooltip" title="View Details">

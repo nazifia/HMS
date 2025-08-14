@@ -462,15 +462,32 @@ class WalletAdjustmentForm(forms.Form):
 class WalletTransactionSearchForm(forms.Form):
     TRANSACTION_TYPE_CHOICES = [
         ('', 'All Transaction Types'),
+        ('', '--- Basic Transactions ---'),
         ('credit', 'Credit'),
         ('debit', 'Debit'),
         ('deposit', 'Deposit'),
         ('withdrawal', 'Withdrawal'),
         ('payment', 'Payment'),
         ('refund', 'Refund'),
+        ('', '--- Transfers ---'),
         ('transfer_in', 'Transfer In'),
         ('transfer_out', 'Transfer Out'),
+        ('', '--- Hospital Services ---'),
+        ('admission_fee', 'Admission Fee'),
+        ('daily_admission_charge', 'Daily Admission Charge'),
+        ('', '--- Medical Services ---'),
+        ('lab_test_payment', 'Lab Test Payment'),
+        ('pharmacy_payment', 'Pharmacy Payment'),
+        ('consultation_fee', 'Consultation Fee'),
+        ('procedure_fee', 'Procedure Fee'),
+        ('', '--- Other ---'),
         ('adjustment', 'Adjustment'),
+        ('insurance_claim', 'Insurance Claim'),
+        ('discount_applied', 'Discount Applied'),
+        ('penalty_fee', 'Penalty Fee'),
+        ('reversal', 'Transaction Reversal'),
+        ('bonus', 'Bonus Credit'),
+        ('cashback', 'Cashback'),
     ]
 
     STATUS_CHOICES = [

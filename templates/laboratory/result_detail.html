@@ -42,7 +42,7 @@
                             <div class="col-md-4 text-muted">Sample Collection:</div>
                             <div class="col-md-8">
                                 {% if result.sample_collection_date %}
-                                    {{ result.sample_collection_date|date:"F d, Y H:i" }}
+                                    {{ result.sample_collection_date|date:"F d, Y" }}
                                 {% else %}
                                     Not recorded
                                 {% endif %}

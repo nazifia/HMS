@@ -318,7 +318,8 @@ def wallet_dashboard(request, patient_id):
     # Get recent transactions
     recent_transactions = wallet.get_transaction_history(limit=10)
 
-    # Get wallet statistics
+    # Get comprehensive wallet statistics
+    wallet_stats = wallet.get_transaction_statistics()
     total_credits = wallet.get_total_credits()
     total_debits = wallet.get_total_debits()
 
@@ -327,14 +328,26 @@ def wallet_dashboard(request, patient_id):
     from datetime import datetime, timedelta
 
     thirty_days_ago = datetime.now() - timedelta(days=30)
+
+    # Enhanced monthly statistics
+    credit_types = [
+        'credit', 'deposit', 'refund', 'transfer_in', 'adjustment',
+        'insurance_claim', 'bonus', 'cashback', 'reversal'
+    ]
+    debit_types = [
+        'debit', 'withdrawal', 'payment', 'transfer_out', 'admission_fee',
+        'daily_admission_charge', 'lab_test_payment', 'pharmacy_payment',
+        'consultation_fee', 'procedure_fee', 'penalty_fee', 'discount_applied'
+    ]
+
     monthly_credits = wallet.transactions.filter(
         created_at__gte=thirty_days_ago,
-        transaction_type__in=['credit', 'deposit', 'refund']
+        transaction_type__in=credit_types
     ).aggregate(total=Sum('amount'))['total'] or 0
 
     monthly_debits = wallet.transactions.filter(
         created_at__gte=thirty_days_ago,
-        transaction_type__in=['debit', 'payment', 'withdrawal']
+        transaction_type__in=debit_types
     ).aggregate(total=Sum('amount'))['total'] or 0
 
     # Get recent admissions for the patient
@@ -348,7 +361,8 @@ def wallet_dashboard(request, patient_id):
         'total_debits': total_debits,
         'monthly_credits': monthly_credits,
         'monthly_debits': monthly_debits,
-        'recent_admissions': recent_admissions, # Add recent admissions to context
+        'wallet_stats': wallet_stats,
+        'recent_admissions': recent_admissions,
         'title': f'Wallet Dashboard - {patient.get_full_name()}'
     }
     return render(request, 'patients/wallet_dashboard.html', context)

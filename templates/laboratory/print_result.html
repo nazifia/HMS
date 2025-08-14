@@ -116,7 +116,7 @@
     <div class="info-row"><span class="info-label">Cat.:</span><span class="info-value">{{ result.test.category.name }}</span></div>
     <div class="info-row"><span class="info-label">Sample:</span><span class="info-value">{{ result.test.sample_type }}</span></div>
     <div class="info-row"><span class="info-label">Req. Date:</span><span class="info-value">{{ result.test_request.request_date|date:"d/M/Y" }}</span></div>
-    <div class="info-row"><span class="info-label">Coll. Date:</span><span class="info-value">{% if result.sample_collection_date %}{{ result.sample_collection_date|date:"d/M/Y H:i" }}{% else %}N/A{% endif %}</span></div>
+    <div class="info-row"><span class="info-label">Coll. Date:</span><span class="info-value">{% if result.sample_collection_date %}{{ result.sample_collection_date|date:"d/M/Y" }}{% else %}N/A{% endif %}</span></div>
     <div class="info-row"><span class="info-label">Result Date:</span><span class="info-value">{{ result.result_date|date:"d/M/Y" }}</span></div>
     <div style="margin: 6px 0 0 0;"><strong>Results:</strong></div>
     {% if parameters %}

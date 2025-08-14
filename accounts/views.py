@@ -57,9 +57,10 @@ def is_admin(user):
 
 
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.urls import reverse
+from django.http import JsonResponse
 from .forms import CustomLoginForm
 
 def custom_login_view(request):
@@ -70,21 +71,52 @@ def custom_login_view(request):
     # Redirect if already logged in
     if request.user.is_authenticated:
         return redirect('dashboard:dashboard')
-    
+
+    # Handle auto logout scenarios
+    auto_logout = request.GET.get('auto_logout')
+    logout_reason = request.GET.get('reason', 'unknown')
+
+    if auto_logout:
+        if logout_reason == 'inactivity':
+            messages.warning(
+                request,
+                'Your session has expired due to inactivity. Please log in again to continue.'
+            )
+        elif logout_reason == 'security':
+            messages.error(
+                request,
+                'You have been logged out for security reasons. Please log in again.'
+            )
+        elif logout_reason == 'concurrent':
+            messages.info(
+                request,
+                'You have been logged out because your account was accessed from another location.'
+            )
+        else:
+            messages.info(
+                request,
+                'Your session has ended. Please log in again to continue.'
+            )
+
     if request.method == 'POST':
         form = CustomLoginForm(request=request, data=request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']  # This will be phone number
             password = form.cleaned_data['password']
-            
+
             # Authenticate user (will use PhoneNumberBackend)
             user = authenticate(request, username=username, password=password)
-            
+
             if user is not None:
                 if user.is_active:
                     login(request, user)
-                    messages.success(request, f'Welcome back, {user.get_full_name()}!')
-                    
+
+                    # Success message based on context
+                    if auto_logout:
+                        messages.success(request, f'Welcome back, {user.get_full_name()}! You have been successfully logged in again.')
+                    else:
+                        messages.success(request, f'Welcome back, {user.get_full_name()}!')
+
                     # Redirect to next page or dashboard
                     next_page = request.GET.get('next', 'dashboard:dashboard')
                     return redirect(next_page)
@@ -95,13 +127,53 @@ def custom_login_view(request):
     else:
         form = CustomLoginForm()
 
+    # Prepare context with auto logout information
     context = {
         'form': form,
         'title': 'Login',
         'page_title': 'HMS - Login',
+        'auto_logout': auto_logout,
+        'logout_reason': logout_reason,
+        'show_session_expired_alert': auto_logout == '1' and logout_reason == 'inactivity',
     }
     return render(request, 'accounts/login.html', context)
 
+
+def custom_logout_view(request):
+    """
+    Custom logout view that handles auto logout scenarios and AJAX requests
+    """
+    # Get logout reason from request
+    logout_reason = request.GET.get('reason', 'manual')
+    auto_logout = request.GET.get('auto_logout', '0')
+
+    # Log the logout event
+    if request.user.is_authenticated:
+        username = request.user.username
+        user_id = request.user.id
+
+        # You could log this to audit logs here
+        print(f"User {username} (ID: {user_id}) logged out. Reason: {logout_reason}")
+
+    # Perform logout
+    logout(request)
+
+    # Handle AJAX requests (from auto logout)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'message': 'Logged out successfully',
+            'redirect_url': f'/accounts/login/?auto_logout=1&reason={logout_reason}'
+        })
+
+    # Handle regular requests
+    if auto_logout == '1':
+        # Redirect to login with auto logout parameters
+        return redirect(f'/accounts/login/?auto_logout=1&reason={logout_reason}')
+    else:
+        # Regular logout - redirect to login with success message
+        messages.success(request, 'You have been successfully logged out.')
+        return redirect('accounts:login')
 
 
 def dashboard_view(request):

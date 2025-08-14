@@ -1,0 +1,382 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title|default:"Lab Result Entry" }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Lab Result Entry" }}</h1>
+        <div>
+            <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Test Request
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Test Request Information -->
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Test Request Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Request ID:</strong><br>
+                            LAB-{{ test_request.id|stringformat:"03d" }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Patient:</strong><br>
+                            {{ test_request.patient.get_full_name }}<br>
+                            <small class="text-muted">ID: {{ test_request.patient.patient_id }}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Requesting Doctor:</strong><br>
+                            {{ test_request.doctor.get_full_name }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Request Date:</strong><br>
+                            {{ test_request.request_date|date:"M d, Y" }}
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <strong>Tests Requested:</strong><br>
+                            {% for test in test_request.tests.all %}
+                                <span class="badge bg-info me-1">{{ test.name }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Priority:</strong>
+                            <span class="badge bg-{% if test_request.priority == 'emergency' %}danger{% elif test_request.priority == 'urgent' %}warning{% else %}success{% endif %}">
+                                {{ test_request.get_priority_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Entry Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-vial"></i> Test Result Entry
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="result-form">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Test Selection -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.test.id_for_label }}" class="form-label">Test <span class="text-danger">*</span></label>
+                                {{ form.test|add_class:"form-select" }}
+                                <div class="form-text">Select the test for which you're entering results</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.result_date.id_for_label }}" class="form-label">Result Date <span class="text-danger">*</span></label>
+                                {{ form.result_date|add_class:"form-control" }}
+                            </div>
+                        </div>
+
+                        <!-- Sample Collection Information -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.sample_collection_date.id_for_label }}" class="form-label">Sample Collection Date & Time</label>
+                                {{ form.sample_collection_date|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.sample_collected_by.id_for_label }}" class="form-label">Sample Collected By</label>
+                                {{ form.sample_collected_by|add_class:"form-select" }}
+                            </div>
+                        </div>
+
+                        <!-- Result File Upload -->
+                        <div class="mb-3">
+                            <label for="{{ form.result_file.id_for_label }}" class="form-label">Result File</label>
+                            {{ form.result_file|add_class:"form-control" }}
+                            <div class="form-text">Upload result document, image, or report (PDF, JPG, PNG)</div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Clinical Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            <div class="form-text">Additional observations, comments, or clinical interpretations</div>
+                        </div>
+
+                        <!-- Test Parameters Section -->
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-list"></i> Test Parameters
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="parameters-container">
+                                    <!-- Parameters will be loaded dynamically based on selected test -->
+                                    <div class="text-center text-muted">
+                                        <i class="fas fa-info-circle"></i>
+                                        Select a test to load its parameters
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm mt-2" id="add-parameter">
+                                    <i class="fas fa-plus"></i> Add Custom Parameter
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <div>
+                                <button type="submit" name="save_draft" class="btn btn-outline-primary me-2">
+                                    <i class="fas fa-save"></i> Save Draft
+                                </button>
+                                <button type="submit" name="submit_result" class="btn btn-primary">
+                                    <i class="fas fa-check"></i> Submit Result
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Information Panel -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-flask"></i> Test Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="test-info">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Select a test to view information
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reference Ranges -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-chart-line"></i> Reference Ranges
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="reference-ranges">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Select a test to view reference ranges
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Results -->
+            {% if previous_results %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-history"></i> Previous Results
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for result in previous_results %}
+                    <div class="mb-2">
+                        <strong>{{ result.test.name }}</strong><br>
+                        <small class="text-muted">{{ result.result_date|date:"M d, Y" }}</small>
+                        {% if result.parameters.exists %}
+                            <div class="mt-1">
+                                {% for param in result.parameters.all %}
+                                    <small class="badge bg-light text-dark">
+                                        {{ param.parameter.name }}: {{ param.value }}
+                                    </small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if not forloop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testSelect = document.getElementById('id_test');
+    const parametersContainer = document.getElementById('parameters-container');
+    const testInfoContainer = document.getElementById('test-info');
+    const referenceRangesContainer = document.getElementById('reference-ranges');
+    
+    // Load test parameters when test is selected
+    testSelect.addEventListener('change', function() {
+        const testId = this.value;
+        if (testId) {
+            loadTestParameters(testId);
+            loadTestInfo(testId);
+        } else {
+            parametersContainer.innerHTML = '<div class="text-center text-muted"><i class="fas fa-info-circle"></i> Select a test to load its parameters</div>';
+            testInfoContainer.innerHTML = '<div class="text-center text-muted"><i class="fas fa-info-circle"></i> Select a test to view information</div>';
+            referenceRangesContainer.innerHTML = '<div class="text-center text-muted"><i class="fas fa-info-circle"></i> Select a test to view reference ranges</div>';
+        }
+    });
+    
+    function loadTestParameters(testId) {
+        fetch(`/laboratory/tests/${testId}/parameters/`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '';
+                if (data.parameters && data.parameters.length > 0) {
+                    data.parameters.forEach((param, index) => {
+                        html += `
+                            <div class="row mb-2 parameter-row">
+                                <div class="col-md-4">
+                                    <label class="form-label">${param.name}</label>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" name="parameter_${param.id}_value" class="form-control" placeholder="Enter value">
+                                </div>
+                                <div class="col-md-4">
+                                    <select name="parameter_${param.id}_status" class="form-select">
+                                        <option value="normal">Normal</option>
+                                        <option value="abnormal">Abnormal</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html = '<div class="text-center text-muted"><i class="fas fa-info-circle"></i> No parameters defined for this test</div>';
+                }
+                parametersContainer.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading parameters:', error);
+                parametersContainer.innerHTML = '<div class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading parameters</div>';
+            });
+    }
+    
+    function loadTestInfo(testId) {
+        fetch(`/laboratory/tests/${testId}/info/`)
+            .then(response => response.json())
+            .then(data => {
+                const test = data.test;
+                let html = `
+                    <div class="mb-2">
+                        <strong>Test Name:</strong><br>
+                        ${test.name}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Category:</strong><br>
+                        ${test.category}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Sample Type:</strong><br>
+                        ${test.sample_type}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Normal Range:</strong><br>
+                        ${test.normal_range || 'Not specified'}
+                    </div>
+                `;
+                
+                if (test.preparation_instructions) {
+                    html += `
+                        <div class="mb-2">
+                            <strong>Preparation:</strong><br>
+                            <small class="text-muted">${test.preparation_instructions}</small>
+                        </div>
+                    `;
+                }
+                
+                testInfoContainer.innerHTML = html;
+                
+                // Update reference ranges
+                if (test.normal_range) {
+                    referenceRangesContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>Normal Range:</strong><br>
+                            ${test.normal_range}
+                        </div>
+                    `;
+                } else {
+                    referenceRangesContainer.innerHTML = '<div class="text-center text-muted"><i class="fas fa-info-circle"></i> No reference ranges available</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading test info:', error);
+                testInfoContainer.innerHTML = '<div class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading test information</div>';
+            });
+    }
+    
+    // Add custom parameter functionality
+    document.getElementById('add-parameter').addEventListener('click', function() {
+        const parameterCount = document.querySelectorAll('.parameter-row').length;
+        const html = `
+            <div class="row mb-2 parameter-row custom-parameter">
+                <div class="col-md-4">
+                    <input type="text" name="custom_parameter_${parameterCount}_name" class="form-control" placeholder="Parameter name">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" name="custom_parameter_${parameterCount}_value" class="form-control" placeholder="Enter value">
+                </div>
+                <div class="col-md-3">
+                    <select name="custom_parameter_${parameterCount}_status" class="form-select">
+                        <option value="normal">Normal</option>
+                        <option value="abnormal">Abnormal</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-parameter">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        parametersContainer.insertAdjacentHTML('beforeend', html);
+    });
+    
+    // Remove custom parameter
+    parametersContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-parameter') || e.target.parentElement.classList.contains('remove-parameter')) {
+            const row = e.target.closest('.parameter-row');
+            row.remove();
+        }
+    });
+});
+</script>
+{% endblock %}

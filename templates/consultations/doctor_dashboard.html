@@ -257,7 +257,7 @@
                                 <tbody>
                                     {% for consultation in recent_consultations %}
                                     <tr>
-                                        <td>{{ consultation.consultation_date|date:"F d, Y" }}</td>
+                                        <td>{{ consultation.consultation_date|date:"F d, Y g:i A" }}</td>
                                         <td>{{ consultation.patient.get_full_name }}</td>
                                         <td>{{ consultation.diagnosis|truncatechars:30 }}</td>
                                         <td>

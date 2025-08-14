@@ -152,7 +152,7 @@
                                     <td>{{ transfer.quantity }}</td>
                                     <td>{{ transfer.to_active_store.dispensary.name }}</td>
                                     <td>{{ transfer.requested_by.get_full_name }}</td>
-                                    <td>{{ transfer.requested_at|date:"M d, Y H:i" }}</td>
+                                    <td>{{ transfer.requested_at|date:"M d, Y g:i A" }}</td>
                                     <td>
                                         <a href="{% url 'pharmacy:approve_medication_transfer' transfer.id %}" 
                                            class="btn btn-sm btn-success">
@@ -330,7 +330,7 @@
                                             {{ transfer.get_status_display }}
                                         </span>
                                     </td>
-                                    <td>{{ transfer.requested_at|date:"M d, Y" }}</td>
+                                    <td>{{ transfer.requested_at|date:"M d, Y g:i A" }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -344,40 +344,123 @@
 
 <!-- Transfer Request Modal -->
 <div class="modal fade" id="transferModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Request Medication Transfer</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exchange-alt me-2"></i>Request Medication Transfer
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="{% url 'pharmacy:request_medication_transfer' %}">
                 <div class="modal-body">
                     {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="medication" class="form-label">Medication</label>
-                        <select class="form-control" id="medication" name="medication" required>
-                            <option value="">Select Medication</option>
-                            {% for item in bulk_inventory %}
-                                <option value="{{ item.medication.id }}">
-                                    {{ item.medication.name }} ({{ item.stock_quantity }} available)
-                                </option>
-                            {% endfor %}
-                        </select>
+
+                    <!-- Dispensary Information Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-store me-2"></i>Available Dispensaries
+                            </h6>
+                            <div class="row">
+                                {% for dispensary in dispensaries %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card border-left-primary h-100" style="border-left: 4px solid #4e73df;">
+                                        <div class="card-body p-3">
+                                            <h6 class="card-title text-primary mb-1">
+                                                <i class="fas fa-store-alt me-1"></i>{{ dispensary.name }}
+                                            </h6>
+                                            {% if dispensary.location %}
+                                            <p class="card-text small text-muted mb-1">
+                                                <i class="fas fa-map-marker-alt me-1"></i>{{ dispensary.location }}
+                                            </p>
+                                            {% endif %}
+                                            {% if dispensary.manager %}
+                                            <p class="card-text small text-muted mb-1">
+                                                <i class="fas fa-user me-1"></i>Manager: {{ dispensary.manager.get_full_name }}
+                                            </p>
+                                            {% endif %}
+                                            <span class="badge badge-{% if dispensary.is_active %}success{% else %}secondary{% endif %} small">
+                                                {% if dispensary.is_active %}Active{% else %}Inactive{% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        No dispensaries available. Please create dispensaries first.
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Transfer Form Section -->
+                    <h6 class="text-primary border-bottom pb-2 mb-3">
+                        <i class="fas fa-clipboard-list me-2"></i>Transfer Details
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medication" class="form-label">
+                                    <i class="fas fa-pills me-1"></i>Medication <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-control" id="medication" name="medication" required>
+                                    <option value="">Select Medication</option>
+                                    {% for item in bulk_inventory %}
+                                        <option value="{{ item.medication.id }}" data-available="{{ item.stock_quantity }}">
+                                            {{ item.medication.name }} - {{ item.medication.strength }}
+                                            ({{ item.stock_quantity }} available)
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Select the medication to transfer from bulk store</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantity" class="form-label">
+                                    <i class="fas fa-sort-numeric-up me-1"></i>Quantity <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                                <div class="form-text" id="quantity-help">Enter the quantity to transfer</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label for="active_store" class="form-label">Destination Dispensary</label>
+                        <label for="active_store" class="form-label">
+                            <i class="fas fa-store me-1"></i>Destination Dispensary <span class="text-danger">*</span>
+                        </label>
                         <select class="form-control" id="active_store" name="active_store" required>
                             <option value="">Select Dispensary</option>
-                            <!-- This would be populated with active stores -->
+                            {% for dispensary in dispensaries %}
+                                <option value="{{ dispensary.active_store.id }}"
+                                        data-dispensary-name="{{ dispensary.name }}"
+                                        data-location="{{ dispensary.location|default:'' }}"
+                                        data-manager="{{ dispensary.manager.get_full_name|default:'' }}">
+                                    {{ dispensary.name }}
+                                    {% if dispensary.location %} - {{ dispensary.location }}{% endif %}
+                                    {% if dispensary.manager %} (Manager: {{ dispensary.manager.get_full_name }}){% endif %}
+                                </option>
+                            {% empty %}
+                                <option value="" disabled>No dispensaries available</option>
+                            {% endfor %}
                         </select>
+                        <div class="form-text">Select the dispensary where you want to transfer the medication</div>
                     </div>
+
                     <div class="mb-3">
-                        <label for="quantity" class="form-label">Quantity</label>
-                        <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Transfer Notes
+                        </label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"
+                                  placeholder="Enter any additional notes about this transfer request..."></textarea>
+                        <div class="form-text">Optional: Add any special instructions or reasons for the transfer</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -396,6 +479,62 @@ $(document).ready(function() {
     $('#inventoryTable').DataTable({
         pageLength: 25,
         order: [[0, 'asc']]
+    });
+
+    // Enhanced transfer modal functionality
+    $('#medication').on('change', function() {
+        var selectedOption = $(this).find('option:selected');
+        var availableQuantity = selectedOption.data('available');
+
+        if (availableQuantity) {
+            $('#quantity').attr('max', availableQuantity);
+            $('#quantity-help').text('Enter quantity to transfer (Max: ' + availableQuantity + ' available)');
+        } else {
+            $('#quantity').removeAttr('max');
+            $('#quantity-help').text('Enter the quantity to transfer');
+        }
+    });
+
+    // Validate quantity against available stock
+    $('#quantity').on('input', function() {
+        var quantity = parseInt($(this).val());
+        var maxQuantity = parseInt($(this).attr('max'));
+
+        if (maxQuantity && quantity > maxQuantity) {
+            $(this).addClass('is-invalid');
+            $('#quantity-help').text('Quantity cannot exceed available stock (' + maxQuantity + ')').addClass('text-danger');
+        } else {
+            $(this).removeClass('is-invalid');
+            $('#quantity-help').text('Enter quantity to transfer (Max: ' + maxQuantity + ' available)').removeClass('text-danger');
+        }
+    });
+
+    // Show dispensary details when selected
+    $('#active_store').on('change', function() {
+        var selectedOption = $(this).find('option:selected');
+        var dispensaryName = selectedOption.data('dispensary-name');
+        var location = selectedOption.data('location');
+        var manager = selectedOption.data('manager');
+
+        if (dispensaryName) {
+            var details = 'Transferring to: ' + dispensaryName;
+            if (location) details += ' (' + location + ')';
+            if (manager) details += ' - Manager: ' + manager;
+
+            // Show details below the select
+            $('#dispensary-details').remove();
+            $(this).after('<div id="dispensary-details" class="form-text text-info mt-1"><i class="fas fa-info-circle me-1"></i>' + details + '</div>');
+        } else {
+            $('#dispensary-details').remove();
+        }
+    });
+
+    // Reset form when modal is closed
+    $('#transferModal').on('hidden.bs.modal', function() {
+        $(this).find('form')[0].reset();
+        $('#quantity').removeClass('is-invalid');
+        $('#quantity-help').text('Enter the quantity to transfer').removeClass('text-danger');
+        $('#dispensary-details').remove();
     });
 });
 </script>

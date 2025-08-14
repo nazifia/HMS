@@ -28,7 +28,7 @@
                     <div class="col-md-4 text-center">
                         <h3>{{ selected_date|date:"F d, Y" }}</h3>
                         {% if selected_date == today %}
-                            <span class="badge bg-info">Today</span>
+                            <span class="badge bg-info">Today - {{ now|time:"h:i A" }}</span>
                         {% endif %}
                     </div>
                     <div class="col-md-4 text-end">

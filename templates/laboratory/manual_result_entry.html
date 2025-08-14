@@ -1,0 +1,549 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Manual Lab Result Entry - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-vial"></i> Manual Lab Result Entry
+        </h1>
+        <div>
+            <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Request
+            </a>
+            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#helpModal">
+                <i class="fas fa-question-circle"></i> Help
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Test Request Information -->
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-info-circle"></i> Test Request Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <strong>Request ID:</strong><br>
+                            <span class="badge bg-primary">LAB-{{ test_request.id|stringformat:"03d" }}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Patient:</strong><br>
+                            {{ test_request.patient.get_full_name }}<br>
+                            <small class="text-muted">ID: {{ test_request.patient.patient_id }}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Requesting Doctor:</strong><br>
+                            {{ test_request.doctor.get_full_name }}
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Request Date:</strong><br>
+                            {{ test_request.request_date|date:"M d, Y" }}
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Priority:</strong><br>
+                            <span class="badge bg-{% if test_request.priority == 'emergency' %}danger{% elif test_request.priority == 'urgent' %}warning{% else %}success{% endif %}">
+                                {{ test_request.get_priority_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <strong>Tests Requested:</strong><br>
+                            {% for test in test_request.tests.all %}
+                                <span class="badge bg-info me-1 mb-1">{{ test.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Result Entry Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-edit"></i> Manual Result Entry
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="manual-result-form">
+                        {% csrf_token %}
+                        
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <!-- Test Selection -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="test_select" class="form-label">Select Test <span class="text-danger">*</span></label>
+                                <select id="test_select" name="test" class="form-select" required>
+                                    <option value="">Choose a test...</option>
+                                    {% for test in test_request.tests.all %}
+                                        <option value="{{ test.id }}" data-category="{{ test.category.name }}" data-sample="{{ test.sample_type }}" data-range="{{ test.normal_range }}">
+                                            {{ test.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="result_date" class="form-label">Result Date <span class="text-danger">*</span></label>
+                                <input type="date" id="result_date" name="result_date" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <!-- Sample Information -->
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-flask"></i> Sample Information
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="sample_collection_date" class="form-label">Sample Collection Date & Time</label>
+                                        <input type="datetime-local" id="sample_collection_date" name="sample_collection_date" class="form-control">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="sample_collected_by" class="form-label">Sample Collected By</label>
+                                        <select id="sample_collected_by" name="sample_collected_by" class="form-select">
+                                            <option value="">Select collector...</option>
+                                            {% for user in lab_staff %}
+                                                <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Manual Parameters Entry -->
+                        <div class="card border-warning mb-3">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-list-alt"></i> Manual Parameter Entry
+                                    <button type="button" class="btn btn-sm btn-outline-dark float-end" id="add-parameter-btn">
+                                        <i class="fas fa-plus"></i> Add Parameter
+                                    </button>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="parameters-container">
+                                    <div class="text-center text-muted py-3" id="no-parameters-msg">
+                                        <i class="fas fa-info-circle"></i>
+                                        Select a test or click "Add Parameter" to start entering results
+                                    </div>
+                                </div>
+                                
+                                <!-- Parameter Template (Hidden) -->
+                                <div id="parameter-template" class="row mb-3 parameter-row" style="display: none;">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Parameter Name</label>
+                                        <input type="text" class="form-control parameter-name" placeholder="e.g., Hemoglobin">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Value</label>
+                                        <input type="text" class="form-control parameter-value" placeholder="Enter value">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Unit</label>
+                                        <input type="text" class="form-control parameter-unit" placeholder="g/dL">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Reference Range</label>
+                                        <input type="text" class="form-control parameter-range" placeholder="12-16">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select parameter-status">
+                                            <option value="normal">Normal</option>
+                                            <option value="abnormal">Abnormal</option>
+                                            <option value="critical">Critical</option>
+                                            <option value="pending">Pending</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-parameter">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Free Text Results -->
+                        <div class="card border-secondary mb-3">
+                            <div class="card-header bg-secondary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-align-left"></i> Free Text Results & Interpretation
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="result_text" class="form-label">Result Description</label>
+                                    <textarea id="result_text" name="result_text" class="form-control" rows="4" placeholder="Enter detailed result description, observations, or narrative results..."></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="interpretation" class="form-label">Clinical Interpretation</label>
+                                    <textarea id="interpretation" name="interpretation" class="form-control" rows="3" placeholder="Clinical significance, recommendations, or interpretation of results..."></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="technician_notes" class="form-label">Technician Notes</label>
+                                    <textarea id="technician_notes" name="technician_notes" class="form-control" rows="2" placeholder="Technical notes, sample quality, methodology notes..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- File Attachments -->
+                        <div class="card border-primary mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-paperclip"></i> File Attachments
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="result_file" class="form-label">Result Document</label>
+                                        <input type="file" id="result_file" name="result_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                        <div class="form-text">Upload result report, image, or document</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="additional_files" class="form-label">Additional Files</label>
+                                        <input type="file" id="additional_files" name="additional_files" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                        <div class="form-text">Upload additional supporting documents</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quality Control -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="performed_by" class="form-label">Performed By <span class="text-danger">*</span></label>
+                                <select id="performed_by" name="performed_by" class="form-select" required>
+                                    <option value="">Select technician...</option>
+                                    {% for user in lab_staff %}
+                                        <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="result_status" class="form-label">Result Status</label>
+                                <select id="result_status" name="result_status" class="form-select">
+                                    <option value="draft">Draft</option>
+                                    <option value="preliminary">Preliminary</option>
+                                    <option value="final">Final</option>
+                                    <option value="amended">Amended</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <div>
+                                <button type="submit" name="action" value="save_draft" class="btn btn-outline-primary me-2">
+                                    <i class="fas fa-save"></i> Save Draft
+                                </button>
+                                <button type="submit" name="action" value="submit_result" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Submit Result
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Information Panel -->
+        <div class="col-lg-4">
+            <!-- Test Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-flask"></i> Test Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="test-info">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Select a test to view information
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Templates -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-clipboard-list"></i> Quick Templates
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="applyTemplate('normal')">
+                            <i class="fas fa-check-circle"></i> Normal Results
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm" onclick="applyTemplate('abnormal')">
+                            <i class="fas fa-exclamation-triangle"></i> Abnormal Results
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="applyTemplate('critical')">
+                            <i class="fas fa-exclamation-circle"></i> Critical Results
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="applyTemplate('pending')">
+                            <i class="fas fa-clock"></i> Pending Results
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Parameters -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-list"></i> Common Parameters
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-outline-success btn-sm mb-1" onclick="addCommonParameter('Hemoglobin', 'g/dL', '12-16')">Hemoglobin</button>
+                            <button type="button" class="btn btn-outline-success btn-sm mb-1" onclick="addCommonParameter('WBC Count', '/μL', '4000-11000')">WBC</button>
+                            <button type="button" class="btn btn-outline-success btn-sm mb-1" onclick="addCommonParameter('Platelet Count', '/μL', '150000-450000')">Platelets</button>
+                            <button type="button" class="btn btn-outline-success btn-sm mb-1" onclick="addCommonParameter('Glucose', 'mg/dL', '70-100')">Glucose</button>
+                            <button type="button" class="btn btn-outline-success btn-sm mb-1" onclick="addCommonParameter('Creatinine', 'mg/dL', '0.6-1.2')">Creatinine</button>
+                            <button type="button" class="btn btn-outline-success btn-sm mb-1" onclick="addCommonParameter('ALT', 'U/L', '7-56')">ALT</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Results -->
+            {% if previous_results %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-history"></i> Previous Results
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for result in previous_results %}
+                    <div class="mb-2">
+                        <strong>{{ result.test.name }}</strong><br>
+                        <small class="text-muted">{{ result.result_date|date:"M d, Y" }}</small>
+                        {% if result.parameters.exists %}
+                            <div class="mt-1">
+                                {% for param in result.parameters.all %}
+                                    <small class="badge bg-light text-dark">
+                                        {{ param.parameter.name }}: {{ param.value }}
+                                    </small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if not forloop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manual Result Entry Help</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>How to Enter Manual Results:</h6>
+                <ol>
+                    <li><strong>Select Test:</strong> Choose the test from the dropdown</li>
+                    <li><strong>Add Parameters:</strong> Click "Add Parameter" to add individual test parameters</li>
+                    <li><strong>Enter Values:</strong> Input the measured values and their units</li>
+                    <li><strong>Set Status:</strong> Mark each parameter as Normal, Abnormal, or Critical</li>
+                    <li><strong>Add Interpretation:</strong> Provide clinical interpretation in the text areas</li>
+                    <li><strong>Attach Files:</strong> Upload result documents or images</li>
+                    <li><strong>Submit:</strong> Save as draft or submit final result</li>
+                </ol>
+                
+                <h6 class="mt-3">Quick Tips:</h6>
+                <ul>
+                    <li>Use the "Common Parameters" buttons for frequently used tests</li>
+                    <li>Apply templates for standard result types</li>
+                    <li>Reference ranges are automatically populated for known parameters</li>
+                    <li>You can add custom parameters not in the system</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default date to today
+    document.getElementById('result_date').valueAsDate = new Date();
+    
+    let parameterCounter = 0;
+    
+    // Add parameter functionality
+    document.getElementById('add-parameter-btn').addEventListener('click', function() {
+        addParameter();
+    });
+    
+    // Test selection change
+    document.getElementById('test_select').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            updateTestInfo(selectedOption);
+            loadTestParameters(selectedOption.value);
+        } else {
+            clearTestInfo();
+        }
+    });
+    
+    function addParameter(name = '', value = '', unit = '', range = '', status = 'normal') {
+        const container = document.getElementById('parameters-container');
+        const template = document.getElementById('parameter-template');
+        const newParameter = template.cloneNode(true);
+        
+        newParameter.id = 'parameter-' + parameterCounter;
+        newParameter.style.display = 'flex';
+        
+        // Set values
+        newParameter.querySelector('.parameter-name').value = name;
+        newParameter.querySelector('.parameter-name').name = 'parameter_name_' + parameterCounter;
+        newParameter.querySelector('.parameter-value').value = value;
+        newParameter.querySelector('.parameter-value').name = 'parameter_value_' + parameterCounter;
+        newParameter.querySelector('.parameter-unit').value = unit;
+        newParameter.querySelector('.parameter-unit').name = 'parameter_unit_' + parameterCounter;
+        newParameter.querySelector('.parameter-range').value = range;
+        newParameter.querySelector('.parameter-range').name = 'parameter_range_' + parameterCounter;
+        newParameter.querySelector('.parameter-status').value = status;
+        newParameter.querySelector('.parameter-status').name = 'parameter_status_' + parameterCounter;
+        
+        // Add remove functionality
+        newParameter.querySelector('.remove-parameter').addEventListener('click', function() {
+            newParameter.remove();
+            checkParametersEmpty();
+        });
+        
+        container.appendChild(newParameter);
+        document.getElementById('no-parameters-msg').style.display = 'none';
+        parameterCounter++;
+    }
+    
+    function checkParametersEmpty() {
+        const parameters = document.querySelectorAll('.parameter-row:not(#parameter-template)');
+        if (parameters.length === 0) {
+            document.getElementById('no-parameters-msg').style.display = 'block';
+        }
+    }
+    
+    function updateTestInfo(option) {
+        const testInfo = document.getElementById('test-info');
+        testInfo.innerHTML = `
+            <div class="mb-2">
+                <strong>Test Name:</strong><br>
+                ${option.text}
+            </div>
+            <div class="mb-2">
+                <strong>Category:</strong><br>
+                ${option.dataset.category}
+            </div>
+            <div class="mb-2">
+                <strong>Sample Type:</strong><br>
+                ${option.dataset.sample}
+            </div>
+            <div class="mb-2">
+                <strong>Normal Range:</strong><br>
+                ${option.dataset.range || 'Not specified'}
+            </div>
+        `;
+    }
+    
+    function clearTestInfo() {
+        document.getElementById('test-info').innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-info-circle"></i>
+                Select a test to view information
+            </div>
+        `;
+    }
+    
+    function loadTestParameters(testId) {
+        // This would typically load predefined parameters for the test
+        // For now, we'll clear existing parameters
+        const parameters = document.querySelectorAll('.parameter-row:not(#parameter-template)');
+        parameters.forEach(param => param.remove());
+        checkParametersEmpty();
+    }
+    
+    // Global functions for templates and common parameters
+    window.applyTemplate = function(type) {
+        const templates = {
+            normal: {
+                result_text: 'All parameters within normal limits. No abnormalities detected.',
+                interpretation: 'Normal study. No further action required.',
+                status: 'normal'
+            },
+            abnormal: {
+                result_text: 'Abnormal findings detected. See individual parameters for details.',
+                interpretation: 'Abnormal results requiring clinical correlation and possible follow-up.',
+                status: 'abnormal'
+            },
+            critical: {
+                result_text: 'Critical values detected requiring immediate attention.',
+                interpretation: 'CRITICAL RESULTS - Immediate clinical intervention may be required.',
+                status: 'critical'
+            },
+            pending: {
+                result_text: 'Results pending additional testing or verification.',
+                interpretation: 'Pending completion of analysis.',
+                status: 'pending'
+            }
+        };
+        
+        if (templates[type]) {
+            document.getElementById('result_text').value = templates[type].result_text;
+            document.getElementById('interpretation').value = templates[type].interpretation;
+            
+            // Update all parameter statuses
+            const statusSelects = document.querySelectorAll('.parameter-status');
+            statusSelects.forEach(select => {
+                select.value = templates[type].status;
+            });
+        }
+    };
+    
+    window.addCommonParameter = function(name, unit, range) {
+        addParameter(name, '', unit, range, 'normal');
+    };
+});
+</script>
+{% endblock %}

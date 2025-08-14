@@ -188,7 +188,7 @@
                     <tbody>
                         {% for transaction in transactions %}
                         <tr>
-                            <td>{{ transaction.date|date:"M d, Y H:i" }}</td>
+                            <td>{{ transaction.date|date:"M d, Y g:i A" }}</td>
                             <td>
                                 <span class="badge badge-{% if transaction.source == 'wallet' %}primary{% elif transaction.source == 'billing' %}success{% elif transaction.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
                                     {{ transaction.type }}

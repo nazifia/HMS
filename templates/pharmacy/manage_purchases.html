@@ -39,7 +39,7 @@
                             {% for purchase in purchases %}
                                 <tr>
                                     <td>{{ purchase.id }}</td>
-                                    <td>{{ purchase.purchase_date|date:"M d, Y" }}</td>
+                                    <td>{{ purchase.created_at|date:"M d, Y g:i A" }}</td>
                                     <td>{{ purchase.invoice_number }}</td>
                                     <td>{{ purchase.supplier.name }}</td>
                                     <td>{{ purchase.items.count }}</td>

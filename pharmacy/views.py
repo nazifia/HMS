@@ -16,6 +16,46 @@ from django.db import transaction
 
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
+    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory, ActiveStore
+)
+from .forms import (
+    MedicationCategoryForm, MedicationForm, SupplierForm, PurchaseForm,
+    PurchaseItemForm, PrescriptionForm, PrescriptionItemForm, DispenseItemForm, BaseDispenseItemFormSet,
+    MedicationSearchForm, PrescriptionSearchForm, DispensedItemsSearchForm, DispensaryForm, MedicationInventoryForm,
+    PrescriptionPaymentForm
+)
+
+# Active Store Detail View
+@login_required
+def active_store_detail(request, dispensary_id):
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id)
+    active_store = getattr(dispensary, 'active_store', None)
+    if not active_store:
+        messages.error(request, 'Active Store not found for this dispensary.')
+        return redirect('pharmacy:dispensary_list')
+    context = {
+        'active_store': active_store,
+        'title': f"Active Store - {active_store.name}"
+    }
+    return render(request, 'pharmacy/active_store_detail.html', context)
+
+import logging
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib import messages
+from django.db.models import Sum, F, Avg, Count
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from datetime import timedelta, datetime
+import csv
+from decimal import Decimal
+from django.db import transaction
+
+from .models import (
+    MedicationCategory, Medication, Supplier, Purchase,
     PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory
 )
 from .forms import (
@@ -2031,21 +2071,171 @@ def purchase_detail(request, purchase_id):
     purchase = get_object_or_404(Purchase.objects.select_related('supplier', 'created_by', 'dispensary'), id=purchase_id)
     purchase_items = purchase.items.all().select_related('medication')
 
-    # Handle adding new items
-    if request.method == 'POST' and 'add_item' in request.POST:
+    # Get approval history
+    approvals = purchase.approvals.all().select_related('approver').order_by('-created_at')
+
+    # Get payment history if exists
+    payments = []
+    try:
+        from billing.models import Payment
+        payments = Payment.objects.filter(
+            invoice__purchase=purchase
+        ).select_related('received_by').order_by('-payment_date')
+    except:
+        pass
+
+    # Handle different POST actions
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add_item':
+            # Check if purchase is in draft status
+            if purchase.approval_status != 'draft':
+                messages.error(request, "Items can only be added to draft purchases.")
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+            item_form = PurchaseItemForm(request.POST)
+            if item_form.is_valid():
+                try:
+                    purchase_item = item_form.save(commit=False)
+                    purchase_item.purchase = purchase
+                    purchase_item.save()
+
+                    # Update purchase total amount using the new method
+                    purchase.update_total_amount()
+
+                    messages.success(request, f"Added {purchase_item.quantity} units of {purchase_item.medication.name} to purchase.")
+                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                except Exception as e:
+                    messages.error(request, f"Error saving item: {str(e)}")
+            else:
+                # Show specific form errors
+                error_messages = []
+                for field, errors in item_form.errors.items():
+                    for error in errors:
+                        error_messages.append(f"{field}: {error}")
+                messages.error(request, f"Form validation errors: {'; '.join(error_messages)}")
+
+        elif action == 'submit_for_approval':
+            if purchase.approval_status == 'draft' and purchase.items.exists():
+                try:
+                    purchase.approval_status = 'pending'
+                    purchase.approval_updated_at = timezone.now()
+                    # Store submission comments in approval_notes for now
+                    submission_comments = request.POST.get('approval_comments', '')
+                    if submission_comments:
+                        purchase.approval_notes = f"Submission comments: {submission_comments}"
+                    purchase.save()
+
+                    messages.success(request, "Purchase submitted for approval successfully!")
+                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                except Exception as e:
+                    messages.error(request, f"Error submitting for approval: {str(e)}")
+            else:
+                if purchase.approval_status != 'draft':
+                    messages.error(request, f"Only draft purchases can be submitted for approval. Current status: {purchase.approval_status}")
+                elif not purchase.items.exists():
+                    messages.error(request, "Cannot submit empty purchase for approval. Please add items first.")
+                else:
+                    messages.error(request, "Purchase cannot be submitted for approval.")
+
+        elif action == 'approve_purchase':
+            if purchase.can_be_approved() and request.user.has_perm('pharmacy.approve_purchase'):
+                purchase.approval_status = 'approved'
+                purchase.current_approver = request.user
+                purchase.approval_notes = request.POST.get('approval_notes', '')
+                purchase.approval_updated_at = timezone.now()
+                purchase.save()
+
+                # Update approval record
+                approval = purchase.approvals.filter(status='pending').first()
+                if approval:
+                    approval.status = 'approved'
+                    approval.comments = request.POST.get('approval_notes', '')
+                    approval.save()
+
+                messages.success(request, "Purchase approved successfully!")
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            else:
+                messages.error(request, "You don't have permission to approve this purchase.")
+
+        elif action == 'reject_purchase':
+            if purchase.approval_status == 'pending' and request.user.has_perm('pharmacy.approve_purchase'):
+                purchase.approval_status = 'rejected'
+                purchase.current_approver = request.user
+                purchase.approval_notes = request.POST.get('rejection_notes', '')
+                purchase.approval_updated_at = timezone.now()
+                purchase.save()
+
+                # Update approval record
+                approval = purchase.approvals.filter(status='pending').first()
+                if approval:
+                    approval.status = 'rejected'
+                    approval.comments = request.POST.get('rejection_notes', '')
+                    approval.save()
+
+                messages.warning(request, "Purchase rejected.")
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            else:
+                messages.error(request, "You don't have permission to reject this purchase.")
+
+        elif action == 'process_payment':
+            if purchase.can_be_paid() and request.user.has_perm('pharmacy.pay_purchase'):
+                try:
+                    payment_amount = request.POST.get('payment_amount')
+                    payment_method = request.POST.get('payment_method', 'cash')
+
+                    if not payment_amount:
+                        payment_amount = purchase.total_amount
+                    else:
+                        payment_amount = float(payment_amount)
+
+                    # Update purchase payment status
+                    if payment_amount >= purchase.total_amount:
+                        purchase.payment_status = 'paid'
+
+                        # Automatically move all purchased medications to bulk store when fully paid
+                        for item in purchase.items.all():
+                            try:
+                                item._add_to_bulk_store()
+                            except Exception as e:
+                                messages.warning(request, f"Warning: Could not add {item.medication.name} to bulk store: {str(e)}")
+
+                        messages.info(request, "All purchased medications have been automatically moved to bulk store.")
+                    else:
+                        purchase.payment_status = 'partial'
+
+                    purchase.save()
+
+                    # Create payment record (assuming Payment model exists)
+                    from django.apps import apps
+                    try:
+                        Payment = apps.get_model('billing', 'Payment')
+                        Payment.objects.create(
+                            purchase=purchase,
+                            amount=payment_amount,
+                            payment_method=payment_method,
+                            processed_by=request.user,
+                            reference=request.POST.get('payment_reference', ''),
+                            notes=request.POST.get('payment_notes', '')
+                        )
+                    except LookupError:
+                        # Payment model doesn't exist, just update purchase status
+                        pass
+
+                    messages.success(request, f"Payment of ${payment_amount} processed successfully!")
+                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+                except (ValueError, TypeError) as e:
+                    messages.error(request, f"Invalid payment amount: {str(e)}")
+                except Exception as e:
+                    messages.error(request, f"Error processing payment: {str(e)}")
+            else:
+                messages.error(request, "You don't have permission to process payments for this purchase.")
+
+    # Initialize forms
+    if request.method == 'POST' and request.POST.get('action') == 'add_item':
         item_form = PurchaseItemForm(request.POST)
-        if item_form.is_valid():
-            purchase_item = item_form.save(commit=False)
-            purchase_item.purchase = purchase
-            purchase_item.save()
-
-            # Update purchase total amount using the new method
-            purchase.update_total_amount()
-
-            messages.success(request, f"Added {purchase_item.quantity} units of {purchase_item.medication.name} to purchase.")
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
-        else:
-            messages.error(request, "Error adding item. Please correct the form errors.")
     else:
         item_form = PurchaseItemForm()
 
@@ -2053,9 +2243,113 @@ def purchase_detail(request, purchase_id):
         'purchase': purchase,
         'purchase_items': purchase_items,
         'item_form': item_form,
+        'approvals': approvals,
+        'payments': payments,
+        'can_approve': request.user.has_perm('pharmacy.approve_purchase'),
+        'can_pay': request.user.has_perm('pharmacy.pay_purchase'),
         'title': f'Purchase Detail - #{purchase.invoice_number}'
     }
     return render(request, 'pharmacy/purchase_detail.html', context)
+
+@login_required
+@permission_required('pharmacy.change_purchase', raise_exception=True)
+def process_purchase_payment(request, purchase_id):
+    """Process payment for an approved purchase"""
+    purchase = get_object_or_404(Purchase, id=purchase_id)
+
+    if not purchase.can_be_paid():
+        messages.error(request, "This purchase cannot be paid at this time.")
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                payment_amount = Decimal(request.POST.get('payment_amount', '0'))
+                payment_method = request.POST.get('payment_method', 'bank_transfer')
+                payment_reference = request.POST.get('payment_reference', '')
+                payment_notes = request.POST.get('payment_notes', '')
+
+                if payment_amount <= 0:
+                    messages.error(request, "Payment amount must be greater than zero.")
+                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+                # Create or get invoice for the purchase
+                try:
+                    from billing.models import Invoice, InvoiceItem, Payment
+                    from core.models import Service
+
+                    # Get or create procurement service
+                    service, created = Service.objects.get_or_create(
+                        name="Procurement Payment",
+                        defaults={
+                            'description': 'Payment for procurement/purchase orders',
+                            'price': 0,
+                            'tax_percentage': 0
+                        }
+                    )
+
+                    # Create invoice if it doesn't exist
+                    invoice, created = Invoice.objects.get_or_create(
+                        purchase=purchase,
+                        defaults={
+                            'patient': None,  # Procurement invoices don't have patients
+                            'status': 'pending',
+                            'total_amount': purchase.total_amount,
+                            'subtotal': purchase.total_amount,
+                            'tax_amount': 0,
+                            'created_by': request.user,
+                            'source_app': 'pharmacy_procurement'
+                        }
+                    )
+
+                    if created:
+                        # Create invoice item
+                        InvoiceItem.objects.create(
+                            invoice=invoice,
+                            service=service,
+                            description=f"Procurement Payment - Purchase #{purchase.invoice_number}",
+                            quantity=1,
+                            unit_price=purchase.total_amount,
+                            tax_amount=0,
+                            total_amount=purchase.total_amount,
+                        )
+
+                    # Create payment record
+                    payment = Payment.objects.create(
+                        invoice=invoice,
+                        amount=payment_amount,
+                        payment_method=payment_method,
+                        transaction_id=payment_reference,
+                        notes=payment_notes,
+                        received_by=request.user,
+                        payment_date=timezone.now().date()
+                    )
+
+                    # Update invoice payment status
+                    invoice.amount_paid += payment_amount
+                    if invoice.amount_paid >= invoice.total_amount:
+                        invoice.status = 'paid'
+                        purchase.payment_status = 'paid'
+                    else:
+                        invoice.status = 'partially_paid'
+                        purchase.payment_status = 'partial'
+
+                    invoice.save()
+                    purchase.save()
+
+                    messages.success(request, f"Payment of ₦{payment_amount:,.2f} recorded successfully!")
+                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+                except Exception as e:
+                    messages.error(request, f"Error processing payment: {str(e)}")
+                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+        except Exception as e:
+            messages.error(request, f"Error processing payment: {str(e)}")
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+    # If GET request, redirect back to purchase detail
+    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
 
 @login_required
 @permission_required('pharmacy.delete_purchaseitem', raise_exception=True)

@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title|default:"Payment Processing" }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Payment Processing" }}</h1>
+        <div>
+            {% if back_url %}
+                <a href="{{ back_url }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Payment Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-credit-card"></i> Payment Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if service_info %}
+                    <!-- Service Information -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle"></i> Service Information
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Service:</strong> {{ service_info.name }}<br>
+                                <strong>Patient:</strong> {{ service_info.patient_name }}<br>
+                                <strong>Date:</strong> {{ service_info.date }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Total Amount:</strong> <span class="text-primary">₦{{ service_info.total_amount|floatformat:2 }}</span><br>
+                                <strong>Amount Paid:</strong> <span class="text-success">₦{{ service_info.amount_paid|floatformat:2 }}</span><br>
+                                <strong>Balance:</strong> <span class="text-danger">₦{{ service_info.balance|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" id="payment-form">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.amount.id_for_label }}" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                                {{ form.amount|add_class:"form-control" }}
+                                {% if form.amount.help_text %}
+                                    <div class="form-text">{{ form.amount.help_text }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.payment_date.id_for_label }}" class="form-label">Payment Date <span class="text-danger">*</span></label>
+                                {{ form.payment_date|add_class:"form-control" }}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.payment_method.id_for_label }}" class="form-label">Payment Method <span class="text-danger">*</span></label>
+                                {{ form.payment_method|add_class:"form-select" }}
+                            </div>
+                            {% if form.payment_source %}
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.payment_source.id_for_label }}" class="form-label">Payment Source <span class="text-danger">*</span></label>
+                                {{ form.payment_source|add_class:"form-select" }}
+                                <div class="form-text">Choose where the payment is being processed</div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.reference_number %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.reference_number.id_for_label }}" class="form-label">Reference Number</label>
+                                {{ form.reference_number|add_class:"form-control" }}
+                                <div class="form-text">Transaction reference (for card/online payments)</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if form.notes %}
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between mt-4">
+                            {% if back_url %}
+                                <a href="{{ back_url }}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-credit-card"></i> Process Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Summary -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-calculator"></i> Payment Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if invoice %}
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Invoice #:</strong></div>
+                        <div class="col-6">{{ invoice.invoice_number }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Total Amount:</strong></div>
+                        <div class="col-6">₦{{ invoice.total_amount|floatformat:2 }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Amount Paid:</strong></div>
+                        <div class="col-6 text-success">₦{{ invoice.amount_paid|floatformat:2 }}</div>
+                    </div>
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Balance Due:</strong></div>
+                        <div class="col-6 text-danger">₦{{ remaining_balance|floatformat:2 }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if patient_wallet %}
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Wallet Balance:</strong></div>
+                        <div class="col-6 {% if patient_wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ₦{{ patient_wallet.balance|floatformat:2 }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if pricing_breakdown %}
+                    <hr>
+                    <h6 class="text-primary">Pricing Breakdown</h6>
+                    {% if pricing_breakdown.is_nhia_patient %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-shield-alt"></i> NHIA Patient - 90% Discount Applied
+                        </div>
+                    {% endif %}
+                    <div class="row mb-2">
+                        <div class="col-8">Original Amount:</div>
+                        <div class="col-4">₦{{ pricing_breakdown.original_amount|floatformat:2 }}</div>
+                    </div>
+                    {% if pricing_breakdown.discount_amount %}
+                    <div class="row mb-2">
+                        <div class="col-8">Discount:</div>
+                        <div class="col-4 text-success">-₦{{ pricing_breakdown.discount_amount|floatformat:2 }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="row mb-2">
+                        <div class="col-8"><strong>Final Amount:</strong></div>
+                        <div class="col-4"><strong>₦{{ pricing_breakdown.final_amount|floatformat:2 }}</strong></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Payments -->
+            {% if payments %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Payments
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for payment in payments %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <small class="text-muted">{{ payment.payment_date }}</small><br>
+                            <span class="badge bg-success">{{ payment.get_payment_method_display }}</span>
+                        </div>
+                        <div class="text-end">
+                            <strong>₦{{ payment.amount|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                    {% if not forloop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentSourceField = document.getElementById('id_payment_source');
+    const amountField = document.getElementById('id_amount');
+    const walletBalance = {{ patient_wallet.balance|default:0 }};
+    
+    if (paymentSourceField) {
+        paymentSourceField.addEventListener('change', function() {
+            if (this.value === 'patient_wallet') {
+                const currentAmount = parseFloat(amountField.value) || 0;
+                if (currentAmount > walletBalance) {
+                    alert('Warning: Payment amount exceeds wallet balance. This will result in a negative wallet balance.');
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

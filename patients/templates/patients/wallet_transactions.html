@@ -132,14 +132,20 @@
                         <tr>
                             <td>{{ transaction.created_at|date:"Y-m-d H:i:s" }}</td>
                             <td>
-                                {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
-                                    <span class="badge bg-success">{{ transaction.get_transaction_type_display }}</span>
-                                {% else %}
-                                    <span class="badge bg-danger">{{ transaction.get_transaction_type_display }}</span>
-                                {% endif %}
+                                <div class="d-flex align-items-center">
+                                    <i class="{{ transaction.get_icon_class }} me-2"></i>
+                                    <div>
+                                        {% if transaction.is_credit_transaction %}
+                                            <span class="badge bg-success">{{ transaction.get_transaction_type_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ transaction.get_transaction_type_display }}</span>
+                                        {% endif %}
+                                        <div class="small text-muted">{{ transaction.get_transaction_category }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td>
-                                {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
+                                {% if transaction.is_credit_transaction %}
                                     <span class="text-success font-weight-bold">+₦{{ transaction.amount|floatformat:2 }}</span>
                                 {% else %}
                                     <span class="text-danger font-weight-bold">-₦{{ transaction.amount|floatformat:2 }}</span>

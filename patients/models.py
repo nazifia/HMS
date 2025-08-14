@@ -263,6 +263,69 @@ class PatientWallet(models.Model):
             transaction_type__in=['debit', 'payment', 'withdrawal']
         ).aggregate(total=models.Sum('amount'))['total'] or 0
 
+    def get_transaction_statistics(self):
+        """Get comprehensive transaction statistics"""
+        from django.db.models import Sum, Count
+
+        # Credit transactions
+        credit_types = [
+            'credit', 'deposit', 'refund', 'transfer_in', 'adjustment',
+            'insurance_claim', 'bonus', 'cashback', 'reversal'
+        ]
+
+        # Debit transactions
+        debit_types = [
+            'debit', 'withdrawal', 'payment', 'transfer_out', 'admission_fee',
+            'daily_admission_charge', 'lab_test_payment', 'pharmacy_payment',
+            'consultation_fee', 'procedure_fee', 'penalty_fee', 'discount_applied'
+        ]
+
+        stats = {}
+
+        # Overall statistics
+        stats['total_credits'] = self.transactions.filter(
+            transaction_type__in=credit_types
+        ).aggregate(total=Sum('amount'), count=Count('id'))
+
+        stats['total_debits'] = self.transactions.filter(
+            transaction_type__in=debit_types
+        ).aggregate(total=Sum('amount'), count=Count('id'))
+
+        # Category-wise statistics
+        stats['by_category'] = {}
+
+        # Medical Services
+        medical_types = ['consultation_fee', 'procedure_fee', 'lab_test_payment', 'pharmacy_payment']
+        stats['by_category']['medical_services'] = self.transactions.filter(
+            transaction_type__in=medical_types
+        ).aggregate(total=Sum('amount'), count=Count('id'))
+
+        # Hospital Services
+        hospital_types = ['admission_fee', 'daily_admission_charge']
+        stats['by_category']['hospital_services'] = self.transactions.filter(
+            transaction_type__in=hospital_types
+        ).aggregate(total=Sum('amount'), count=Count('id'))
+
+        # Transfers
+        transfer_types = ['transfer_in', 'transfer_out']
+        stats['by_category']['transfers'] = self.transactions.filter(
+            transaction_type__in=transfer_types
+        ).aggregate(total=Sum('amount'), count=Count('id'))
+
+        # Deposits & Withdrawals
+        deposit_types = ['deposit', 'withdrawal']
+        stats['by_category']['deposits_withdrawals'] = self.transactions.filter(
+            transaction_type__in=deposit_types
+        ).aggregate(total=Sum('amount'), count=Count('id'))
+
+        # Refunds & Adjustments
+        adjustment_types = ['refund', 'adjustment', 'reversal']
+        stats['by_category']['adjustments'] = self.transactions.filter(
+            transaction_type__in=adjustment_types
+        ).aggregate(total=Sum('amount'), count=Count('id'))
+
+        return stats
+
     def transfer_to(self, recipient_wallet, amount, description="Transfer", user=None):
         """Transfer funds to another wallet atomically"""
         if amount <= 0:
@@ -353,6 +416,16 @@ class WalletTransaction(models.Model):
         ('adjustment', 'Adjustment'),
         ('admission_fee', 'Admission Fee'),
         ('daily_admission_charge', 'Daily Admission Charge'),
+        ('lab_test_payment', 'Lab Test Payment'),
+        ('pharmacy_payment', 'Pharmacy Payment'),
+        ('consultation_fee', 'Consultation Fee'),
+        ('procedure_fee', 'Procedure Fee'),
+        ('insurance_claim', 'Insurance Claim'),
+        ('discount_applied', 'Discount Applied'),
+        ('penalty_fee', 'Penalty Fee'),
+        ('reversal', 'Transaction Reversal'),
+        ('bonus', 'Bonus Credit'),
+        ('cashback', 'Cashback'),
     )
 
     STATUS_CHOICES = (
@@ -395,6 +468,72 @@ class WalletTransaction(models.Model):
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         unique_id = str(uuid.uuid4())[:8].upper()
         return f"TXN{timestamp}{unique_id}"
+
+    def is_credit_transaction(self):
+        """Check if this transaction increases the wallet balance"""
+        credit_types = [
+            'credit', 'deposit', 'refund', 'transfer_in', 'adjustment',
+            'insurance_claim', 'bonus', 'cashback', 'reversal'
+        ]
+        return self.transaction_type in credit_types
+
+    def is_debit_transaction(self):
+        """Check if this transaction decreases the wallet balance"""
+        return not self.is_credit_transaction()
+
+    def get_transaction_category(self):
+        """Get the category of transaction for better organization"""
+        categories = {
+            'credit': 'Manual Credit',
+            'debit': 'Manual Debit',
+            'deposit': 'Deposit',
+            'withdrawal': 'Withdrawal',
+            'payment': 'General Payment',
+            'refund': 'Refund',
+            'transfer_in': 'Transfer Received',
+            'transfer_out': 'Transfer Sent',
+            'adjustment': 'Balance Adjustment',
+            'admission_fee': 'Hospital Services',
+            'daily_admission_charge': 'Hospital Services',
+            'lab_test_payment': 'Laboratory Services',
+            'pharmacy_payment': 'Pharmacy Services',
+            'consultation_fee': 'Medical Services',
+            'procedure_fee': 'Medical Services',
+            'insurance_claim': 'Insurance',
+            'discount_applied': 'Discounts',
+            'penalty_fee': 'Penalties',
+            'reversal': 'Reversals',
+            'bonus': 'Bonuses',
+            'cashback': 'Cashback',
+        }
+        return categories.get(self.transaction_type, 'Other')
+
+    def get_icon_class(self):
+        """Get appropriate icon class for transaction type"""
+        icons = {
+            'credit': 'fas fa-plus-circle text-success',
+            'debit': 'fas fa-minus-circle text-danger',
+            'deposit': 'fas fa-piggy-bank text-success',
+            'withdrawal': 'fas fa-money-bill-wave text-warning',
+            'payment': 'fas fa-credit-card text-danger',
+            'refund': 'fas fa-undo text-success',
+            'transfer_in': 'fas fa-arrow-down text-success',
+            'transfer_out': 'fas fa-arrow-up text-danger',
+            'adjustment': 'fas fa-balance-scale text-info',
+            'admission_fee': 'fas fa-hospital text-danger',
+            'daily_admission_charge': 'fas fa-bed text-danger',
+            'lab_test_payment': 'fas fa-flask text-danger',
+            'pharmacy_payment': 'fas fa-pills text-danger',
+            'consultation_fee': 'fas fa-user-md text-danger',
+            'procedure_fee': 'fas fa-procedures text-danger',
+            'insurance_claim': 'fas fa-shield-alt text-success',
+            'discount_applied': 'fas fa-percentage text-success',
+            'penalty_fee': 'fas fa-exclamation-triangle text-danger',
+            'reversal': 'fas fa-undo-alt text-info',
+            'bonus': 'fas fa-gift text-success',
+            'cashback': 'fas fa-coins text-success',
+        }
+        return icons.get(self.transaction_type, 'fas fa-exchange-alt text-secondary')
 
     def __str__(self):
         return f"{self.transaction_type.title()} - ₦{self.amount} - {self.wallet.patient.get_full_name()}"

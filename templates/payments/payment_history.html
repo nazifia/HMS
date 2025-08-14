@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title|default:"Payment History" }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Payment History" }}</h1>
+        <div>
+            {% if back_url %}
+                <a href="{{ back_url }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            {% endif %}
+            {% if payment_url %}
+                <a href="{{ payment_url }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Payment
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Service Information -->
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Service Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if service_info %}
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Service:</strong><br>
+                            {{ service_info.name }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Patient:</strong><br>
+                            {{ service_info.patient_name }}<br>
+                            <small class="text-muted">ID: {{ service_info.patient_id }}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Date:</strong><br>
+                            {{ service_info.date }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Status:</strong><br>
+                            {% if service_info.status %}
+                                <span class="badge bg-{{ service_info.status_color|default:'secondary' }}">
+                                    {{ service_info.status }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Summary Cards -->
+        <div class="col-md-3 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Amount
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ₦{{ invoice.total_amount|default:0|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Amount Paid
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ₦{{ invoice.amount_paid|default:0|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Balance Due
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ₦{{ invoice.get_balance|default:0|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Payment Status
+                            </div>
+                            <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                {% if invoice.is_paid %}
+                                    <span class="badge bg-success">Paid</span>
+                                {% elif invoice.amount_paid > 0 %}
+                                    <span class="badge bg-warning">Partial</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Unpaid</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-info-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-history"></i> Payment Transactions
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if payments %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Received By</th>
+                                <th>Notes</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                            <tr>
+                                <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <span class="text-success font-weight-bold">
+                                        ₦{{ payment.amount|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ payment.get_payment_method_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if payment.reference_number %}
+                                        <small class="text-muted">{{ payment.reference_number }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if payment.received_by %}
+                                        {{ payment.received_by.get_full_name|default:payment.received_by.username }}
+                                    {% elif payment.created_by %}
+                                        {{ payment.created_by.get_full_name|default:payment.created_by.username }}
+                                    {% else %}
+                                        <span class="text-muted">System</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if payment.notes %}
+                                        <span title="{{ payment.notes }}">
+                                            {{ payment.notes|truncatechars:30 }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">Completed</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-credit-card fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-500">No Payments Found</h5>
+                    <p class="text-gray-400">No payment transactions have been recorded for this service yet.</p>
+                    {% if payment_url %}
+                        <a href="{{ payment_url }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add First Payment
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Invoice Details -->
+    {% if invoice %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-file-invoice"></i> Invoice Details
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="row mb-2">
+                        <div class="col-4"><strong>Invoice #:</strong></div>
+                        <div class="col-8">{{ invoice.invoice_number }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-4"><strong>Invoice Date:</strong></div>
+                        <div class="col-8">{{ invoice.invoice_date|date:"M d, Y" }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-4"><strong>Due Date:</strong></div>
+                        <div class="col-8">{{ invoice.due_date|date:"M d, Y" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="row mb-2">
+                        <div class="col-4"><strong>Subtotal:</strong></div>
+                        <div class="col-8">₦{{ invoice.subtotal|floatformat:2 }}</div>
+                    </div>
+                    {% if invoice.tax_amount %}
+                    <div class="row mb-2">
+                        <div class="col-4"><strong>Tax:</strong></div>
+                        <div class="col-8">₦{{ invoice.tax_amount|floatformat:2 }}</div>
+                    </div>
+                    {% endif %}
+                    {% if invoice.discount_amount %}
+                    <div class="row mb-2">
+                        <div class="col-4"><strong>Discount:</strong></div>
+                        <div class="col-8 text-success">-₦{{ invoice.discount_amount|floatformat:2 }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% if invoice.notes %}
+            <hr>
+            <div class="row">
+                <div class="col-12">
+                    <strong>Notes:</strong><br>
+                    {{ invoice.notes }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

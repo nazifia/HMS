@@ -49,6 +49,7 @@ urlpatterns = [
     path('purchases/add/', views.add_purchase, name='add_purchase'),
     path('purchases/create/', views.add_purchase, name='create_purchase'),
     path('purchases/<int:purchase_id>/', views.purchase_detail, name='purchase_detail'),
+    path('purchases/<int:purchase_id>/payment/', views.process_purchase_payment, name='process_purchase_payment'),
     path('purchases/items/<int:item_id>/delete/', views.delete_purchase_item, name='delete_purchase_item'),
 
     # Purchase Approval Workflow
@@ -108,6 +109,8 @@ urlpatterns = [
     path('dispensaries/<int:dispensary_id>/inventory/add/', views.add_dispensary_inventory_item, name='add_dispensary_inventory_item'),
     path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/edit/', views.edit_dispensary_inventory_item, name='edit_dispensary_inventory_item'),
     path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/delete/', views.delete_dispensary_inventory_item, name='delete_dispensary_inventory_item'),
+    # Active Store Detail
+    path('dispensaries/<int:dispensary_id>/active-store/', views.active_store_detail, name='active_store_detail'),
 
     # Medication Inventory Management
     path('inventory/stock/add/', views.add_medication_stock, name='add_medication_stock'),

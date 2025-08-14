@@ -4,6 +4,23 @@
 
 {% block title %}Invoice #{{ invoice.invoice_number }} - Hospital Management System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .border-left-success {
+        border-left: 4px solid #28a745 !important;
+    }
+    .border-left-warning {
+        border-left: 4px solid #ffc107 !important;
+    }
+    .border-left-danger {
+        border-left: 4px solid #dc3545 !important;
+    }
+    .border-left-info {
+        border-left: 4px solid #17a2b8 !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-md-12 mb-4">
@@ -11,6 +28,11 @@
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Invoice #{{ invoice.invoice_number }}</h4>
                 <div>
+                    {% if invoice.status != 'paid' and invoice.status != 'cancelled' %}
+                        <a href="{% url 'billing:payment' invoice.id %}" class="btn btn-success me-2">
+                            <i class="fas fa-credit-card me-1"></i> Process Payment
+                        </a>
+                    {% endif %}
                     <a href="{% url 'billing:print' invoice.id %}" class="btn btn-light me-2" target="_blank">
                         <i class="fas fa-print me-1"></i> Print
                     </a>
@@ -24,7 +46,7 @@
                     <div class="col-md-6">
                         <h5>Invoice Information</h5>
                         <p><strong>Invoice Number:</strong> {{ invoice.invoice_number }}</p>
-                        <p><strong>Date:</strong> {{ invoice.created_at|date:"F d, Y" }}</p>
+                        <p><strong>Date:</strong> {{ invoice.created_at|date:"F d, Y g:i A" }}</p>
                         <p><strong>Due Date:</strong> {{ invoice.due_date|date:"F d, Y" }}</p>
                         <p><strong>Status:</strong> {{ invoice.status|payment_status_badge }}</p>
                         <p><strong>Created By:</strong> {{ invoice.created_by.get_full_name }}</p>
@@ -35,6 +57,67 @@
                         <p><strong>Patient ID:</strong> {{ invoice.patient.patient_id }}</p>
                         <p><strong>Phone:</strong> {{ invoice.patient.phone_number }}</p>
                         <p><strong>Email:</strong> {{ invoice.patient.email }}</p>
+                    </div>
+                </div>
+
+                <!-- Payment Status Section -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-left-{% if invoice.status == 'paid' %}success{% elif invoice.status == 'pending' %}warning{% elif invoice.status == 'overdue' %}danger{% else %}info{% endif %}">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-credit-card me-2"></i>Payment Status
+                                </h5>
+                                {% if invoice.status != 'paid' and invoice.status != 'cancelled' %}
+                                    <a href="{% url 'billing:payment' invoice.id %}" class="btn btn-success">
+                                        <i class="fas fa-money-bill me-1"></i> Make Payment
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h6 class="text-muted">Total Amount</h6>
+                                            <h4 class="text-primary">₦{{ invoice.total_amount|floatformat:2 }}</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h6 class="text-muted">Amount Paid</h6>
+                                            <h4 class="text-success">₦{{ invoice.amount_paid|floatformat:2 }}</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h6 class="text-muted">Balance Due</h6>
+                                            <h4 class="{% if invoice.get_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                                ₦{{ invoice.get_balance|floatformat:2 }}
+                                            </h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h6 class="text-muted">Status</h6>
+                                            <h4>{{ invoice.status|payment_status_badge }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if invoice.get_balance > 0 and invoice.status != 'cancelled' %}
+                                <div class="row mt-3">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>Payment Required:</strong> This invoice has an outstanding balance of ₦{{ invoice.get_balance|floatformat:2 }}.
+                                            {% if invoice.due_date %}
+                                                Due date: {{ invoice.due_date|date:"F d, Y" }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -135,7 +218,7 @@
                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">Payments</h5>
                                 {% if invoice.status != 'paid' and invoice.status != 'cancelled' and remaining_amount > 0 %}
-                                    <a href="{% url 'billing:record_payment' invoice.id %}" class="btn btn-success btn-sm">
+                                    <a href="{% url 'billing:payment' invoice.id %}" class="btn btn-success btn-sm">
                                         <i class="fas fa-money-bill me-1"></i> Record Payment
                                     </a>
                                 {% endif %}

@@ -1,0 +1,364 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title|default:"Radiology Result Entry" }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Radiology Result Entry" }}</h1>
+        <div>
+            <a href="{% url 'radiology:order_detail' radiology_order.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Order
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Order Information -->
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Radiology Order Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Order ID:</strong><br>
+                            RAD-{{ radiology_order.id|stringformat:"03d" }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Patient:</strong><br>
+                            {{ radiology_order.patient.get_full_name }}<br>
+                            <small class="text-muted">ID: {{ radiology_order.patient.patient_id }}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Referring Doctor:</strong><br>
+                            {{ radiology_order.referring_doctor.get_full_name }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Order Date:</strong><br>
+                            {{ radiology_order.created_at|date:"M d, Y" }}
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <strong>Test/Procedure:</strong><br>
+                            <span class="badge bg-info">{{ radiology_order.test.name }}</span><br>
+                            <small class="text-muted">{{ radiology_order.test.category.name }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Priority:</strong>
+                            <span class="badge bg-{% if radiology_order.priority == 'emergency' %}danger{% elif radiology_order.priority == 'urgent' %}warning{% else %}success{% endif %}">
+                                {{ radiology_order.get_priority_display }}
+                            </span>
+                        </div>
+                    </div>
+                    {% if radiology_order.clinical_information %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <strong>Clinical Information:</strong><br>
+                            <div class="alert alert-light">{{ radiology_order.clinical_information }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Entry Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-x-ray"></i> Radiology Result Entry
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="result-form">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Study Information -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.study_date.id_for_label }}" class="form-label">Study Date <span class="text-danger">*</span></label>
+                                {{ form.study_date|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.study_time.id_for_label }}" class="form-label">Study Time</label>
+                                {{ form.study_time|add_class:"form-control" }}
+                            </div>
+                        </div>
+
+                        <!-- Technologist Information -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.performed_by.id_for_label }}" class="form-label">Performed By <span class="text-danger">*</span></label>
+                                {{ form.performed_by|add_class:"form-select" }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.radiologist.id_for_label }}" class="form-label">Reporting Radiologist</label>
+                                {{ form.radiologist|add_class:"form-select" }}
+                            </div>
+                        </div>
+
+                        <!-- Technical Parameters -->
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-cogs"></i> Technical Parameters
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.technique.id_for_label }}" class="form-label">Technique</label>
+                                        {{ form.technique|add_class:"form-control" }}
+                                        <div class="form-text">e.g., kVp, mAs, slice thickness</div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.contrast_used.id_for_label }}" class="form-label">Contrast Used</label>
+                                        {{ form.contrast_used|add_class:"form-select" }}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.contrast_amount.id_for_label }}" class="form-label">Contrast Amount (ml)</label>
+                                        {{ form.contrast_amount|add_class:"form-control" }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clinical Findings -->
+                        <div class="card border-success mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-search"></i> Clinical Findings
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="{{ form.findings.id_for_label }}" class="form-label">Findings <span class="text-danger">*</span></label>
+                                    {{ form.findings|add_class:"form-control" }}
+                                    <div class="form-text">Detailed description of radiological findings</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.impression.id_for_label }}" class="form-label">Impression/Conclusion <span class="text-danger">*</span></label>
+                                    {{ form.impression|add_class:"form-control" }}
+                                    <div class="form-text">Clinical interpretation and diagnosis</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.recommendations.id_for_label }}" class="form-label">Recommendations</label>
+                                    {{ form.recommendations|add_class:"form-control" }}
+                                    <div class="form-text">Follow-up recommendations or additional studies</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image Upload -->
+                        <div class="card border-warning mb-3">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-images"></i> Images & Documents
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="{{ form.images.id_for_label }}" class="form-label">Study Images</label>
+                                    {{ form.images|add_class:"form-control" }}
+                                    <div class="form-text">Upload DICOM files, images, or scanned films (multiple files allowed)</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.report_file.id_for_label }}" class="form-label">Report Document</label>
+                                    {{ form.report_file|add_class:"form-control" }}
+                                    <div class="form-text">Upload final report document (PDF preferred)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quality Assurance -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.image_quality.id_for_label }}" class="form-label">Image Quality</label>
+                                {{ form.image_quality|add_class:"form-select" }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.study_status.id_for_label }}" class="form-label">Study Status</label>
+                                {{ form.study_status|add_class:"form-select" }}
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Additional Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                            <div class="form-text">Technical notes, patient cooperation, limitations, etc.</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'radiology:order_detail' radiology_order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <div>
+                                <button type="submit" name="save_draft" class="btn btn-outline-primary me-2">
+                                    <i class="fas fa-save"></i> Save Draft
+                                </button>
+                                <button type="submit" name="submit_result" class="btn btn-primary">
+                                    <i class="fas fa-check"></i> Submit Result
+                                </button>
+                                <button type="submit" name="submit_and_verify" class="btn btn-success">
+                                    <i class="fas fa-check-double"></i> Submit & Verify
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Study Information Panel -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-x-ray"></i> Study Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Procedure:</strong><br>
+                        {{ radiology_order.test.name }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Category:</strong><br>
+                        {{ radiology_order.test.category.name }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Duration:</strong><br>
+                        {{ radiology_order.test.duration_minutes }} minutes
+                    </div>
+                    {% if radiology_order.test.preparation_instructions %}
+                    <div class="mb-2">
+                        <strong>Preparation:</strong><br>
+                        <small class="text-muted">{{ radiology_order.test.preparation_instructions }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Previous Studies -->
+            {% if previous_studies %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-history"></i> Previous Studies
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for study in previous_studies %}
+                    <div class="mb-2">
+                        <strong>{{ study.test.name }}</strong><br>
+                        <small class="text-muted">{{ study.study_date|date:"M d, Y" }}</small>
+                        {% if study.impression %}
+                            <div class="mt-1">
+                                <small class="text-dark">{{ study.impression|truncatechars:100 }}</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if not forloop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Templates -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-clipboard-list"></i> Quick Templates
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="insertTemplate('normal')">
+                            Normal Study
+                        </button>
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="insertTemplate('limited')">
+                            Limited Study
+                        </button>
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="insertTemplate('followup')">
+                            Follow-up Required
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-resize textareas
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(textarea => {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    });
+});
+
+function insertTemplate(type) {
+    const findingsField = document.getElementById('id_findings');
+    const impressionField = document.getElementById('id_impression');
+    
+    const templates = {
+        normal: {
+            findings: 'No acute abnormalities identified. Normal anatomical structures visualized.',
+            impression: 'Normal study. No acute pathology.'
+        },
+        limited: {
+            findings: 'Study limited by [specify limitation - patient motion, technical factors, etc.].',
+            impression: 'Limited study. Clinical correlation recommended.'
+        },
+        followup: {
+            findings: '[Describe findings requiring follow-up]',
+            impression: '[Specify diagnosis/findings]. Recommend follow-up imaging in [timeframe].'
+        }
+    };
+    
+    if (templates[type]) {
+        findingsField.value = templates[type].findings;
+        impressionField.value = templates[type].impression;
+        
+        // Trigger resize
+        findingsField.style.height = 'auto';
+        findingsField.style.height = findingsField.scrollHeight + 'px';
+        impressionField.style.height = 'auto';
+        impressionField.style.height = impressionField.scrollHeight + 'px';
+    }
+}
+</script>
+{% endblock %}

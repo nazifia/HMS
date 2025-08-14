@@ -72,7 +72,13 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Created By:</div>
-                            <div class="col-md-8">{{ test_request.created_by.get_full_name|default:test_request.created_by.username }}</div>
+                            <div class="col-md-8">
+                                {% if test_request.created_by %}
+                                    {{ test_request.created_by.get_full_name|default:test_request.created_by.username|default:"Unknown" }}
+                                {% else %}
+                                    <span class="text-muted">Unknown</span>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Notes:</div>
@@ -175,7 +181,7 @@
                                                 <td>{{ result.result_date|date:"M d, Y" }}</td>
                                                 <td>
                                                     {% if result.sample_collection_date %}
-                                                        {{ result.sample_collection_date|date:"M d, Y H:i" }}
+                                                        {{ result.sample_collection_date|date:"M d, Y" }}
                                                         <div class="small text-muted">({{ result.sample_collection_date|timesince }} ago)</div>
                                                     {% else %}
                                                         <span class="text-muted">Not yet collected</span>

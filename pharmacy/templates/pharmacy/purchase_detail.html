@@ -63,8 +63,10 @@
         </div>
     </div>
 
-    <div class="card-footer">
+    <div class="card-footer d-flex gap-2">
         <a href="{% url 'pharmacy:manage_purchases' %}" class="btn btn-secondary">Back to Purchases</a>
+        <a href="{% url 'pharmacy:submit_purchase_for_approval' purchase.id %}" class="btn btn-warning">Submit for Approval</a>
+        <a href="{% url 'pharmacy:process_purchase_payment' purchase.id %}" class="btn btn-success">Process Payment</a>
     </div>
 </div>
 {% endblock %}

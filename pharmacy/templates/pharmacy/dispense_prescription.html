@@ -505,28 +505,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Enable items without stock information (for debugging)
-    function enableItemsWithoutStock() {
-        console.log('Enabling items without stock information');
-        const stockCells = document.querySelectorAll('[data-stock-cell]');
 
-        stockCells.forEach((cell) => {
-            const row = cell.closest('tr');
-            const checkbox = row.querySelector('.item-checkbox');
-            const quantityInput = row.querySelector('.quantity-input');
-
-            // Show as unknown stock but enable controls
-            cell.className = 'stock-status stock-loading';
-            cell.innerHTML = '<i class="fas fa-question-circle"></i> Stock unknown - proceed with caution';
-
-            // Enable controls
-            checkbox.disabled = false;
-            quantityInput.disabled = false;
-        });
-
-        enableGlobalControls();
-        updateDispenseButton();
-    }
     
     // Handle select all
     selectAllCheckbox.addEventListener('change', function() {

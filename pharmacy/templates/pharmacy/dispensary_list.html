@@ -45,6 +45,7 @@
                                 <a href="{% url 'pharmacy:edit_dispensary' dispensary.id %}" class="btn btn-info btn-sm">Edit</a>
                                 <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" class="btn btn-danger btn-sm">Delete</a>
                                 <a href="{% url 'pharmacy:dispensary_inventory' dispensary.id %}" class="btn btn-primary btn-sm">Inventory</a>
+                                <a href="{% url 'pharmacy:active_store_detail' dispensary.id %}" class="btn btn-success btn-sm">Active Store</a>
                             </td>
                         </tr>
                         {% endfor %}

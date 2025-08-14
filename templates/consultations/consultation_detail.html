@@ -45,7 +45,7 @@
     <div class="row mb-3">
         <div class="col-md-6">
             <h5>Patient: {{ consultation.patient.get_full_name }}</h5>
-            <p><strong>Date:</strong> {{ consultation.consultation_date|date:'M d, Y' }}</p>
+            <p><strong>Date:</strong> {{ consultation.consultation_date|date:'M d, Y g:i A' }}</p>
             <p><strong>Doctor:</strong> {{ consultation.doctor.get_full_name }}</p>
         </div>
         <div class="col-md-6 text-end">
@@ -68,7 +68,7 @@
                 <div class="card mb-2">
                     <div class="card-body">
                         <p>{{ note.content }}</p>
-                        <small class="text-muted">By {{ note.created_by.get_full_name }} on {{ note.created_at|date:'M d, Y H:i' }}</small>
+                        <small class="text-muted">By {{ note.created_by.get_full_name }} on {{ note.created_at|date:'M d, Y g:i A' }}</small>
                     </div>
                 </div>
             {% empty %}
@@ -109,7 +109,7 @@
                         <tbody>
                             {% for log in audit_logs|slice:":10" %}
                                 <tr>
-                                    <td>{{ log.timestamp|date:'M d, Y H:i' }}</td>
+                                    <td>{{ log.timestamp|date:'M d, Y g:i A' }}</td>
                                     <td>{{ log.user.get_full_name|default:log.user.username }}</td>
                                     <td>{{ log.action_type|capfirst }}</td>
                                     <td>{{ log.description }}</td>
@@ -131,7 +131,7 @@
                     {% for n in user_notifications %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ n.message }}
-                            <span class="badge bg-secondary">{{ n.created_at|date:'M d, Y H:i' }}</span>
+                            <span class="badge bg-secondary">{{ n.created_at|date:'M d, Y g:i A' }}</span>
                         </li>
                     {% endfor %}
                 </ul>

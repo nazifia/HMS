@@ -5,9 +5,53 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
+        <!-- Session Expired Alert -->
+        {% if show_session_expired_alert %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-clock fa-2x me-3 text-warning"></i>
+                <div>
+                    <h6 class="alert-heading mb-1">Session Expired</h6>
+                    <p class="mb-0">Your session has expired due to inactivity. Please log in again to continue using the system.</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <!-- Auto Logout Information -->
+        {% if auto_logout and logout_reason %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-info-circle fa-2x me-3 text-info"></i>
+                <div>
+                    <h6 class="alert-heading mb-1">Automatic Logout</h6>
+                    <p class="mb-0">
+                        {% if logout_reason == 'inactivity' %}
+                            You were automatically logged out due to inactivity for security purposes.
+                        {% elif logout_reason == 'security' %}
+                            You were logged out for security reasons.
+                        {% elif logout_reason == 'concurrent' %}
+                            You were logged out because your account was accessed from another location.
+                        {% else %}
+                            Your session has ended automatically.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
         <div class="card auth-form">
             <div class="card-body">
-                <h2 class="card-title text-center mb-4">Login</h2>
+                <h2 class="card-title text-center mb-4">
+                    {% if auto_logout %}
+                        <i class="fas fa-sign-in-alt me-2"></i>Login Again
+                    {% else %}
+                        Login
+                    {% endif %}
+                </h2>
 
                 <form method="post">
                     {% csrf_token %}

@@ -130,6 +130,43 @@
                 font-size: 1.1rem;
             }
         }
+
+        /* Auto Logout Modal Styles */
+        #logoutWarningModal .modal-content {
+            border: 2px solid #ffc107;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+        }
+
+        #logoutWarningModal #countdownTimer {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        #logoutModal .modal-content {
+            border: none;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .modal-backdrop.show {
+            opacity: 0.7;
+        }
+
+        /* Session Status Indicator */
+        #sessionStatus {
+            cursor: default;
+            font-size: 0.9rem;
+        }
+
+        #sessionIndicator {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
     </style>
     <script>
         // Sidebar toggle for mobile - handled by sidebar.js
@@ -157,6 +194,13 @@
                     <!-- Topbar Navbar -->
                     <ul class="navbar-nav ms-auto">
                         {% if user.is_authenticated %}
+                            <!-- Session Status Indicator -->
+                            <li class="nav-item">
+                                <span class="nav-link" id="sessionStatus">
+                                    <i class="fas fa-circle text-success me-1" id="sessionIndicator"></i>
+                                    <span class="d-none d-sm-inline" id="sessionText">Active</span>
+                                </span>
+                            </li>
                             <li class="nav-item dropdown no-arrow">
                                 <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                     data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -546,6 +590,278 @@
             $(document).on('click', '.modal button', function(e) {
                 e.stopPropagation();
             });
+        });
+    </script>
+
+    <!-- Auto Logout for Inactive Users -->
+    <script>
+        $(document).ready(function() {
+            // Auto logout configuration
+            const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+            const WARNING_TIME = 1 * 60 * 1000; // Show warning 1 minute before logout
+
+            let inactivityTimer;
+            let warningTimer;
+            let warningShown = false;
+
+            // Events that reset the inactivity timer
+            const resetEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+
+            // Function to update session status indicator
+            function updateSessionStatus(status) {
+                const indicator = $('#sessionIndicator');
+                const text = $('#sessionText');
+
+                switch(status) {
+                    case 'active':
+                        indicator.removeClass('text-warning text-danger').addClass('text-success');
+                        text.text('Active');
+                        break;
+                    case 'warning':
+                        indicator.removeClass('text-success text-danger').addClass('text-warning');
+                        text.text('Warning');
+                        break;
+                    case 'expired':
+                        indicator.removeClass('text-success text-warning').addClass('text-danger');
+                        text.text('Expired');
+                        break;
+                }
+            }
+
+            // Function to show logout warning
+            function showLogoutWarning() {
+                if (warningShown) return;
+                warningShown = true;
+                updateSessionStatus('warning');
+
+                // Create warning modal
+                const warningModal = `
+                    <div class="modal fade" id="logoutWarningModal" tabindex="-1" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Session Timeout Warning
+                                    </h5>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                                        <h6>Your session will expire in:</h6>
+                                        <h3 class="text-danger" id="countdownTimer">01:00</h3>
+                                    </div>
+                                    <p class="text-muted">You will be automatically logged out due to inactivity. Click "Stay Logged In" to continue your session.</p>
+                                </div>
+                                <div class="modal-footer justify-content-center">
+                                    <button type="button" class="btn btn-success" id="stayLoggedInBtn">
+                                        <i class="fas fa-user-check me-1"></i>Stay Logged In
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="logoutNowBtn">
+                                        <i class="fas fa-sign-out-alt me-1"></i>Logout Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Add modal to page if it doesn't exist
+                if (!$('#logoutWarningModal').length) {
+                    $('body').append(warningModal);
+                }
+
+                // Show the modal
+                $('#logoutWarningModal').modal('show');
+
+                // Start countdown
+                let timeLeft = 60; // 60 seconds
+                const countdownInterval = setInterval(function() {
+                    timeLeft--;
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    $('#countdownTimer').text(
+                        String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0')
+                    );
+
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        performLogout();
+                    }
+                }, 1000);
+
+                // Handle stay logged in button
+                $('#stayLoggedInBtn').off('click').on('click', function() {
+                    clearInterval(countdownInterval);
+                    $('#logoutWarningModal').modal('hide');
+                    warningShown = false;
+                    updateSessionStatus('active');
+                    resetInactivityTimer();
+                });
+
+                // Handle logout now button
+                $('#logoutNowBtn').off('click').on('click', function() {
+                    clearInterval(countdownInterval);
+                    performLogout();
+                });
+
+                // Clean up when modal is hidden
+                $('#logoutWarningModal').on('hidden.bs.modal', function() {
+                    if (!warningShown) {
+                        clearInterval(countdownInterval);
+                    }
+                });
+            }
+
+            // Function to perform logout
+            function performLogout() {
+                updateSessionStatus('expired');
+
+                // Clear any existing modals
+                $('#logoutWarningModal').modal('hide');
+
+                // Show logout message
+                const logoutMessage = `
+                    <div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Session Expired
+                                    </h5>
+                                </div>
+                                <div class="modal-body text-center py-4">
+                                    <div class="mb-3">
+                                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                                        <h5>Session Timeout</h5>
+                                        <p class="text-muted">You have been automatically logged out due to inactivity.</p>
+                                        <p class="text-info">You will be redirected to the login page in <span id="redirectCountdown">3</span> seconds...</p>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-primary" onclick="redirectToLogin()">
+                                            <i class="fas fa-sign-in-alt me-2"></i>Go to Login Page Now
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                $('body').append(logoutMessage);
+                $('#logoutModal').modal('show');
+
+                // Start countdown for redirect
+                let redirectTime = 3;
+                const redirectInterval = setInterval(function() {
+                    redirectTime--;
+                    $('#redirectCountdown').text(redirectTime);
+
+                    if (redirectTime <= 0) {
+                        clearInterval(redirectInterval);
+                        redirectToLogin();
+                    }
+                }, 1000);
+            }
+
+            // Function to redirect to login page
+            function redirectToLogin() {
+                // First, try to logout via AJAX to clear server session
+                $.ajax({
+                    url: '/accounts/logout/',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() ||
+                                      $('meta[name=csrf-token]').attr('content') ||
+                                      getCookie('csrftoken')
+                    },
+                    complete: function() {
+                        // Always redirect to login page regardless of AJAX result
+                        window.location.href = '/accounts/login/?auto_logout=1&reason=inactivity';
+                    }
+                });
+            }
+
+            // Function to get CSRF cookie
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // Function to reset inactivity timer
+            function resetInactivityTimer() {
+                // Clear existing timers
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+
+                // Set warning timer (show warning 1 minute before logout)
+                warningTimer = setTimeout(function() {
+                    showLogoutWarning();
+                }, INACTIVITY_TIMEOUT - WARNING_TIME);
+
+                // Set logout timer
+                inactivityTimer = setTimeout(function() {
+                    if (!warningShown) {
+                        performLogout();
+                    }
+                }, INACTIVITY_TIMEOUT);
+            }
+
+            // Bind events to reset timer
+            resetEvents.forEach(function(event) {
+                document.addEventListener(event, function() {
+                    if (!warningShown) {
+                        resetInactivityTimer();
+                    }
+                }, true);
+            });
+
+            // Initialize the timer and session status
+            resetInactivityTimer();
+            updateSessionStatus('active');
+
+            // Handle page visibility change (when user switches tabs)
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible' && !warningShown) {
+                    resetInactivityTimer();
+                }
+            });
+
+            // Make redirectToLogin globally accessible
+            window.redirectToLogin = redirectToLogin;
+
+            // Handle browser/tab close events
+            window.addEventListener('beforeunload', function(e) {
+                if (warningShown) {
+                    // If warning is shown, prevent default browser behavior
+                    e.preventDefault();
+                    e.returnValue = 'Your session is about to expire. Are you sure you want to leave?';
+                    return e.returnValue;
+                }
+            });
+
+            // Handle network connectivity issues
+            window.addEventListener('online', function() {
+                if (!warningShown) {
+                    resetInactivityTimer();
+                }
+            });
+
+            window.addEventListener('offline', function() {
+                // Pause timers when offline
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+            });
+
         });
     </script>
 

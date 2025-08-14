@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Active Store - {{ active_store.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Active Store: {{ active_store.name }}</h1>
+        <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-secondary btn-sm">Back to Dispensaries</a>
+    </div>
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Store Details</h6>
+        </div>
+        <div class="card-body">
+            <ul class="list-group mb-3">
+                <li class="list-group-item"><strong>Name:</strong> {{ active_store.name }}</li>
+                <li class="list-group-item"><strong>Location:</strong> {{ active_store.location|default:"N/A" }}</li>
+                <li class="list-group-item"><strong>Description:</strong> {{ active_store.description|default:"N/A" }}</li>
+                <li class="list-group-item"><strong>Capacity:</strong> {{ active_store.capacity }}</li>
+                <li class="list-group-item"><strong>Security Level:</strong> {{ active_store.security_level|title }}</li>
+                <li class="list-group-item"><strong>Temperature Controlled:</strong> {{ active_store.temperature_controlled|yesno:"Yes,No" }}</li>
+                <li class="list-group-item"><strong>Humidity Controlled:</strong> {{ active_store.humidity_controlled|yesno:"Yes,No" }}</li>
+                <li class="list-group-item"><strong>Status:</strong> {% if active_store.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</li>
+            </ul>
+            <h5 class="mt-4">Current Stock</h5>
+            {% if active_store.medication_stocks.exists %}
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Medication</th>
+                            <th>Batch Number</th>
+                            <th>Expiry Date</th>
+                            <th>Stock Quantity</th>
+                            <th>Unit Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stock in active_store.medication_stocks.all %}
+                        <tr>
+                            <td>{{ stock.medication.name }}</td>
+                            <td>{{ stock.batch_number|default:"N/A" }}</td>
+                            <td>{{ stock.expiry_date|date:"Y-m-d"|default:"N/A" }}</td>
+                            <td>{{ stock.stock_quantity }}</td>
+                            <td>{{ stock.unit_cost }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No medications in stock.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

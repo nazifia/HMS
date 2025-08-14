@@ -155,6 +155,113 @@
     </div>
 </div>
 
+<!-- Transaction Categories -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Transaction Categories</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Medical Services</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                            ₦{{ wallet_stats.by_category.medical_services.total|default:0|floatformat:2 }}
+                                        </div>
+                                        <div class="small text-muted">{{ wallet_stats.by_category.medical_services.count|default:0 }} transactions</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-user-md fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Hospital Services</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                            ₦{{ wallet_stats.by_category.hospital_services.total|default:0|floatformat:2 }}
+                                        </div>
+                                        <div class="small text-muted">{{ wallet_stats.by_category.hospital_services.count|default:0 }} transactions</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-hospital fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Transfers</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                            ₦{{ wallet_stats.by_category.transfers.total|default:0|floatformat:2 }}
+                                        </div>
+                                        <div class="small text-muted">{{ wallet_stats.by_category.transfers.count|default:0 }} transactions</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="card border-left-secondary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Deposits & Withdrawals</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                            ₦{{ wallet_stats.by_category.deposits_withdrawals.total|default:0|floatformat:2 }}
+                                        </div>
+                                        <div class="small text-muted">{{ wallet_stats.by_category.deposits_withdrawals.count|default:0 }} transactions</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-piggy-bank fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-left-dark shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">Adjustments & Refunds</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                            ₦{{ wallet_stats.by_category.adjustments.total|default:0|floatformat:2 }}
+                                        </div>
+                                        <div class="small text-muted">{{ wallet_stats.by_category.adjustments.count|default:0 }} transactions</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-undo fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Recent Transactions -->
 <div class="row">
     <div class="col-12">
@@ -185,14 +292,20 @@
                                 <tr>
                                     <td>{{ transaction.created_at|date:"Y-m-d H:i:s" }}</td>
                                     <td>
-                                        {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
-                                            <span class="badge bg-success">{{ transaction.get_transaction_type_display }}</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">{{ transaction.get_transaction_type_display }}</span>
-                                        {% endif %}
+                                        <div class="d-flex align-items-center">
+                                            <i class="{{ transaction.get_icon_class }} me-2"></i>
+                                            <div>
+                                                {% if transaction.is_credit_transaction %}
+                                                    <span class="badge bg-success">{{ transaction.get_transaction_type_display }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">{{ transaction.get_transaction_type_display }}</span>
+                                                {% endif %}
+                                                <div class="small text-muted">{{ transaction.get_transaction_category }}</div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
-                                        {% if transaction.transaction_type in 'credit,deposit,refund,transfer_in' %}
+                                        {% if transaction.is_credit_transaction %}
                                             <span class="text-success">+₦{{ transaction.amount|floatformat:2 }}</span>
                                         {% else %}
                                             <span class="text-danger">-₦{{ transaction.amount|floatformat:2 }}</span>

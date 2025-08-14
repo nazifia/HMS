@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Flexible Payment Processing - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-credit-card"></i> Flexible Payment Processing
+        </h1>
+        <div>
+            {% if back_url %}
+                <a href="{{ back_url }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Payment Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-money-bill-wave"></i> Payment Options
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if service_info %}
+                    <!-- Service Information -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle"></i> Service Information
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Service:</strong> {{ service_info.name }}<br>
+                                <strong>Patient:</strong> {{ service_info.patient_name }}<br>
+                                <strong>Date:</strong> {{ service_info.date }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Total Amount:</strong> <span class="text-primary h5">₦{{ service_info.total_amount|floatformat:2 }}</span><br>
+                                <strong>Amount Paid:</strong> <span class="text-success">₦{{ service_info.amount_paid|floatformat:2 }}</span><br>
+                                <strong>Balance Due:</strong> <span class="text-danger h5">₦{{ service_info.balance|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" id="flexible-payment-form">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Wallet Warning -->
+                        {% if form.get_warnings %}
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-triangle"></i> Payment Warning</h6>
+                                {% for warning in form.get_warnings %}
+                                    <p class="mb-0">{{ warning }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Total Amount -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.total_amount.id_for_label }}" class="form-label h5">Total Amount Due</label>
+                                {{ form.total_amount|add_class:"form-control form-control-lg text-center" }}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.payment_method.id_for_label }}" class="form-label h5">Payment Method</label>
+                                {{ form.payment_method|add_class:"form-select form-select-lg" }}
+                            </div>
+                        </div>
+
+                        <!-- Payment Priority -->
+                        <div class="row mb-3" id="priority-section" style="display: none;">
+                            <div class="col-md-6">
+                                <label for="{{ form.payment_priority.id_for_label }}" class="form-label">Payment Priority</label>
+                                {{ form.payment_priority|add_class:"form-select" }}
+                                <div class="form-text">Choose how to prioritize payment methods</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    {{ form.allow_negative_wallet|add_class:"form-check-input" }}
+                                    <label class="form-check-label" for="{{ form.allow_negative_wallet.id_for_label }}">
+                                        Allow negative wallet balance
+                                    </label>
+                                    <div class="form-text">Permit wallet payments even if balance becomes negative</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Breakdown -->
+                        <div class="card border-success mb-3" id="payment-breakdown">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-calculator"></i> Payment Breakdown
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- Wallet Payment -->
+                                    <div class="col-md-6 mb-3" id="wallet-section">
+                                        <label for="{{ form.wallet_amount.id_for_label }}" class="form-label">
+                                            <i class="fas fa-wallet"></i> Wallet Payment
+                                        </label>
+                                        {{ form.wallet_amount|add_class:"form-control" }}
+                                        <div class="form-text">
+                                            Current wallet balance: 
+                                            <span class="{% if patient_wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                ₦{{ patient_wallet.balance|floatformat:2 }}
+                                            </span>
+                                        </div>
+                                        <div id="wallet-warning" class="text-warning small" style="display: none;">
+                                            <i class="fas fa-exclamation-triangle"></i> 
+                                            <span id="wallet-warning-text"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Cash/Card Payment -->
+                                    <div class="col-md-6 mb-3" id="cash-section">
+                                        <label for="{{ form.cash_amount.id_for_label }}" class="form-label">
+                                            <i class="fas fa-money-bill"></i> Cash/Card Payment
+                                        </label>
+                                        {{ form.cash_amount|add_class:"form-control" }}
+                                        <div class="form-text">Amount to be paid in cash or by card</div>
+                                    </div>
+                                </div>
+
+                                <!-- Reference Number -->
+                                <div class="row" id="reference-section">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.cash_reference.id_for_label }}" class="form-label">Transaction Reference</label>
+                                        {{ form.cash_reference|add_class:"form-control" }}
+                                        <div class="form-text">Receipt number, POS reference, or transaction ID</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Notes -->
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Payment Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
+                        </div>
+
+                        <!-- Quick Payment Buttons -->
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-bolt"></i> Quick Payment Options
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-outline-success w-100 mb-2" onclick="setPaymentMethod('wallet', true)">
+                                            <i class="fas fa-wallet"></i><br>
+                                            <small>Wallet Only</small>
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="setPaymentMethod('cash', false)">
+                                            <i class="fas fa-money-bill"></i><br>
+                                            <small>Cash Only</small>
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-outline-info w-100 mb-2" onclick="setPaymentMethod('card', false)">
+                                            <i class="fas fa-credit-card"></i><br>
+                                            <small>Card Only</small>
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-outline-warning w-100 mb-2" onclick="setPaymentMethod('mixed', false)">
+                                            <i class="fas fa-exchange-alt"></i><br>
+                                            <small>Mixed Payment</small>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            {% if back_url %}
+                                <a href="{{ back_url }}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check"></i> Process Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Summary -->
+        <div class="col-lg-4">
+            <!-- Current Wallet Status -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-wallet"></i> Wallet Status
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Current Balance:</strong></div>
+                        <div class="col-6 {% if patient_wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ₦{{ patient_wallet.balance|floatformat:2 }}
+                        </div>
+                    </div>
+                    <div class="row mb-3" id="new-balance-row" style="display: none;">
+                        <div class="col-6"><strong>After Payment:</strong></div>
+                        <div class="col-6" id="new-balance-amount"></div>
+                    </div>
+                    <div class="row mb-3" id="deficit-row" style="display: none;">
+                        <div class="col-6"><strong>Deficit Amount:</strong></div>
+                        <div class="col-6 text-danger" id="deficit-amount"></div>
+                    </div>
+                    
+                    {% if patient_wallet.balance < 0 %}
+                    <div class="alert alert-warning">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            Wallet currently has a negative balance. Consider adding funds.
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Payment Summary -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-calculator"></i> Payment Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-6"><strong>Total Due:</strong></div>
+                        <div class="col-6">₦{{ invoice.get_balance|floatformat:2 }}</div>
+                    </div>
+                    <div class="row mb-2" id="summary-wallet-row">
+                        <div class="col-6">Wallet Payment:</div>
+                        <div class="col-6 text-success" id="summary-wallet-amount">₦0.00</div>
+                    </div>
+                    <div class="row mb-2" id="summary-cash-row">
+                        <div class="col-6">Cash/Card Payment:</div>
+                        <div class="col-6 text-primary" id="summary-cash-amount">₦0.00</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Total Payment:</strong></div>
+                        <div class="col-6"><strong id="summary-total">₦0.00</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Methods Info -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-info-circle"></i> Payment Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-success">✅ Wallet Payments</h6>
+                        <small class="text-muted">
+                            • Instant processing<br>
+                            • Negative balance allowed<br>
+                            • Automatic transaction record
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-primary">💳 Cash/Card Payments</h6>
+                        <small class="text-muted">
+                            • Immediate settlement<br>
+                            • Receipt required for cards<br>
+                            • Manual verification
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-warning">🔄 Mixed Payments</h6>
+                        <small class="text-muted">
+                            • Combine wallet + cash/card<br>
+                            • Flexible amount allocation<br>
+                            • Multiple transaction records
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentMethodSelect = document.getElementById('id_payment_method');
+    const walletAmountInput = document.getElementById('id_wallet_amount');
+    const cashAmountInput = document.getElementById('id_cash_amount');
+    const totalAmountInput = document.getElementById('id_total_amount');
+    const allowNegativeCheckbox = document.getElementById('id_allow_negative_wallet');
+    
+    const walletBalance = {{ patient_wallet.balance|default:0 }};
+    const totalAmount = parseFloat(totalAmountInput.value) || 0;
+    
+    // Update payment breakdown when method changes
+    paymentMethodSelect.addEventListener('change', function() {
+        updatePaymentBreakdown();
+    });
+    
+    // Update summary when amounts change
+    walletAmountInput.addEventListener('input', updateSummary);
+    cashAmountInput.addEventListener('input', updateSummary);
+    
+    function updatePaymentBreakdown() {
+        const method = paymentMethodSelect.value;
+        const prioritySection = document.getElementById('priority-section');
+        const walletSection = document.getElementById('wallet-section');
+        const cashSection = document.getElementById('cash-section');
+        
+        // Show/hide sections based on payment method
+        if (method === 'mixed') {
+            prioritySection.style.display = 'block';
+            walletSection.style.display = 'block';
+            cashSection.style.display = 'block';
+        } else if (method === 'wallet') {
+            prioritySection.style.display = 'none';
+            walletSection.style.display = 'block';
+            cashSection.style.display = 'none';
+            walletAmountInput.value = totalAmount.toFixed(2);
+            cashAmountInput.value = '0.00';
+        } else {
+            prioritySection.style.display = 'none';
+            walletSection.style.display = 'none';
+            cashSection.style.display = 'block';
+            walletAmountInput.value = '0.00';
+            cashAmountInput.value = totalAmount.toFixed(2);
+        }
+        
+        updateSummary();
+    }
+    
+    function updateSummary() {
+        const walletAmount = parseFloat(walletAmountInput.value) || 0;
+        const cashAmount = parseFloat(cashAmountInput.value) || 0;
+        const totalPayment = walletAmount + cashAmount;
+        
+        // Update summary display
+        document.getElementById('summary-wallet-amount').textContent = `₦${walletAmount.toFixed(2)}`;
+        document.getElementById('summary-cash-amount').textContent = `₦${cashAmount.toFixed(2)}`;
+        document.getElementById('summary-total').textContent = `₦${totalPayment.toFixed(2)}`;
+        
+        // Update wallet warning
+        if (walletAmount > 0) {
+            const newBalance = walletBalance - walletAmount;
+            if (newBalance < 0) {
+                showWalletWarning(newBalance, Math.abs(newBalance));
+            } else {
+                hideWalletWarning();
+            }
+        } else {
+            hideWalletWarning();
+        }
+    }
+    
+    function showWalletWarning(newBalance, deficit) {
+        const warningDiv = document.getElementById('wallet-warning');
+        const warningText = document.getElementById('wallet-warning-text');
+        const newBalanceRow = document.getElementById('new-balance-row');
+        const newBalanceAmount = document.getElementById('new-balance-amount');
+        const deficitRow = document.getElementById('deficit-row');
+        const deficitAmount = document.getElementById('deficit-amount');
+        
+        warningText.textContent = `Wallet will have negative balance: ₦${newBalance.toFixed(2)}`;
+        warningDiv.style.display = 'block';
+        
+        newBalanceAmount.textContent = `₦${newBalance.toFixed(2)}`;
+        newBalanceAmount.className = 'col-6 text-danger';
+        newBalanceRow.style.display = 'flex';
+        
+        deficitAmount.textContent = `₦${deficit.toFixed(2)}`;
+        deficitRow.style.display = 'flex';
+    }
+    
+    function hideWalletWarning() {
+        document.getElementById('wallet-warning').style.display = 'none';
+        document.getElementById('new-balance-row').style.display = 'none';
+        document.getElementById('deficit-row').style.display = 'none';
+    }
+    
+    // Global function for quick payment buttons
+    window.setPaymentMethod = function(method, allowNegative) {
+        paymentMethodSelect.value = method;
+        if (allowNegativeCheckbox) {
+            allowNegativeCheckbox.checked = allowNegative;
+        }
+        updatePaymentBreakdown();
+    };
+    
+    // Initialize
+    updatePaymentBreakdown();
+});
+</script>
+{% endblock %}
