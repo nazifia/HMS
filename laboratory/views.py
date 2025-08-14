@@ -1057,6 +1057,36 @@ def add_result_parameter(request, result_id):
     else:
         return render(request, 'laboratory/add_parameter.html', context)
 
+
+@login_required
+def get_test_parameters(request, test_id):
+    """
+    AJAX endpoint to get predefined parameters for a test
+    """
+    test = get_object_or_404(Test, id=test_id)
+    parameters = test.parameters.all().order_by('order')
+
+    parameter_data = []
+    for param in parameters:
+        parameter_data.append({
+            'id': param.id,
+            'name': param.name,
+            'unit': param.unit or '',
+            'normal_range': param.normal_range or '',
+            'order': param.order
+        })
+
+    return JsonResponse({
+        'parameters': parameter_data,
+        'test_info': {
+            'name': test.name,
+            'category': test.category.name if test.category else '',
+            'sample_type': test.sample_type or '',
+            'normal_range': test.normal_range or '',
+            'preparation_instructions': test.preparation_instructions or ''
+        }
+    })
+
 @login_required
 def print_result(request, result_id):
     """View for printing a test result"""

@@ -243,7 +243,7 @@
 
 <!-- Add Parameter Modal -->
 <div class="modal fade" id="addParameterModal" tabindex="-1" aria-labelledby="addParameterModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addParameterModalLabel">Add New Parameter</h5>
@@ -252,24 +252,71 @@
             <form id="addParameterForm">
                 <div class="modal-body">
                     {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="parameter_name" class="form-label">Parameter Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="parameter_name" name="parameter_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="parameter_value" class="form-label">Value <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="parameter_value" name="parameter_value" required>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="parameter_unit" class="form-label">Unit</label>
-                            <input type="text" class="form-control" id="parameter_unit" name="parameter_unit" placeholder="e.g., mg/dL, mmol/L">
+
+                    <!-- Parameter Selection Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="parameterTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="predefined-tab" data-bs-toggle="tab" data-bs-target="#predefined" type="button" role="tab">
+                                <i class="fas fa-list"></i> Select Existing Parameter
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom" type="button" role="tab">
+                                <i class="fas fa-plus"></i> Add Custom Parameter
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="parameterTabContent">
+                        <!-- Predefined Parameters Tab -->
+                        <div class="tab-pane fade show active" id="predefined" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="predefined_parameter" class="form-label">Select Parameter <span class="text-danger">*</span></label>
+                                <select class="form-select" id="predefined_parameter" name="predefined_parameter">
+                                    <option value="">Loading parameters...</option>
+                                </select>
+                                <div class="form-text">Choose from predefined parameters for this test</div>
+                            </div>
+
+                            <!-- Parameter Info Display -->
+                            <div id="parameter_info" class="alert alert-info d-none">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Unit:</strong> <span id="info_unit">-</span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Normal Range:</strong> <span id="info_range">-</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="parameter_range" class="form-label">Normal Range</label>
-                            <input type="text" class="form-control" id="parameter_range" name="parameter_range" placeholder="e.g., 70-100">
+
+                        <!-- Custom Parameter Tab -->
+                        <div class="tab-pane fade" id="custom" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="custom_parameter_name" class="form-label">Parameter Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="custom_parameter_name" name="custom_parameter_name" placeholder="Enter parameter name">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="custom_parameter_unit" class="form-label">Unit</label>
+                                    <input type="text" class="form-control" id="custom_parameter_unit" name="custom_parameter_unit" placeholder="e.g., mg/dL, mmol/L">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="custom_parameter_range" class="form-label">Normal Range</label>
+                                    <input type="text" class="form-control" id="custom_parameter_range" name="custom_parameter_range" placeholder="e.g., 70-100">
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Common Fields -->
+                    <hr>
+                    <div class="mb-3">
+                        <label for="parameter_value" class="form-label">Result Value <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="parameter_value" name="parameter_value" required placeholder="Enter the test result value">
+                    </div>
+
                     <div class="mb-3">
                         <label for="is_normal" class="form-label">Status</label>
                         <select class="form-select" id="is_normal" name="is_normal">
@@ -277,14 +324,17 @@
                             <option value="false">Abnormal</option>
                         </select>
                     </div>
+
                     <div class="mb-3">
                         <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Additional notes or observations"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Parameter</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Parameter
+                    </button>
                 </div>
             </form>
         </div>
@@ -301,16 +351,97 @@
             width: '100%'
         });
 
-        // Handle add parameter form submission
+        // Variables for modal handling
         const addParameterForm = document.getElementById('addParameterForm');
         const addParameterModal = new bootstrap.Modal(document.getElementById('addParameterModal'));
+        const predefinedSelect = document.getElementById('predefined_parameter');
+        const parameterInfo = document.getElementById('parameter_info');
 
+        // Load predefined parameters when modal is shown
+        document.getElementById('addParameterModal').addEventListener('show.bs.modal', function() {
+            loadPredefinedParameters();
+        });
+
+        // Function to load predefined parameters
+        function loadPredefinedParameters() {
+            const testId = {{ result.test.id }};
+
+            fetch(`/laboratory/api/tests/${testId}/parameters/`)
+                .then(response => response.json())
+                .then(data => {
+                    predefinedSelect.innerHTML = '<option value="">Select a parameter...</option>';
+
+                    if (data.parameters && data.parameters.length > 0) {
+                        data.parameters.forEach(param => {
+                            const option = document.createElement('option');
+                            option.value = JSON.stringify(param);
+                            option.textContent = param.name;
+                            predefinedSelect.appendChild(option);
+                        });
+                    } else {
+                        predefinedSelect.innerHTML = '<option value="">No predefined parameters available</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading parameters:', error);
+                    predefinedSelect.innerHTML = '<option value="">Error loading parameters</option>';
+                });
+        }
+
+        // Handle predefined parameter selection
+        predefinedSelect.addEventListener('change', function() {
+            if (this.value) {
+                const param = JSON.parse(this.value);
+
+                // Show parameter info
+                document.getElementById('info_unit').textContent = param.unit || 'Not specified';
+                document.getElementById('info_range').textContent = param.normal_range || 'Not specified';
+                parameterInfo.classList.remove('d-none');
+
+                // Focus on value input
+                document.getElementById('parameter_value').focus();
+            } else {
+                parameterInfo.classList.add('d-none');
+            }
+        });
+
+        // Handle form submission
         addParameterForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const formData = new FormData(addParameterForm);
+            const activeTab = document.querySelector('#parameterTabs .nav-link.active').id;
+            const formData = new FormData();
+
+            // Add CSRF token
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            // Determine parameter source and collect data
+            if (activeTab === 'predefined-tab' && predefinedSelect.value) {
+                const param = JSON.parse(predefinedSelect.value);
+                formData.append('parameter_name', param.name);
+                formData.append('parameter_unit', param.unit || '');
+                formData.append('parameter_range', param.normal_range || '');
+            } else if (activeTab === 'custom-tab') {
+                const customName = document.getElementById('custom_parameter_name').value;
+                if (!customName.trim()) {
+                    alert('Please enter a parameter name for custom parameter.');
+                    return;
+                }
+                formData.append('parameter_name', customName);
+                formData.append('parameter_unit', document.getElementById('custom_parameter_unit').value);
+                formData.append('parameter_range', document.getElementById('custom_parameter_range').value);
+            } else {
+                alert('Please select a parameter or switch to custom parameter tab.');
+                return;
+            }
+
+            // Add common fields
+            formData.append('parameter_value', document.getElementById('parameter_value').value);
+            formData.append('is_normal', document.getElementById('is_normal').value);
+            formData.append('notes', document.getElementById('notes').value);
+
             const submitBtn = addParameterForm.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
+            const originalHTML = submitBtn.innerHTML;
 
             // Show loading state
             submitBtn.disabled = true;
@@ -320,8 +451,7 @@
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             })
             .then(response => response.json())
@@ -338,14 +468,13 @@
 
                     // Close modal and reset form
                     addParameterModal.hide();
-                    addParameterForm.reset();
+                    resetModalForm();
 
                     // Reload the page to show the new parameter
                     setTimeout(() => {
                         window.location.reload();
                     }, 1500);
                 } else {
-                    // Show error message
                     alert('Error: ' + data.message);
                 }
             })
@@ -356,8 +485,21 @@
             .finally(() => {
                 // Reset button state
                 submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
+                submitBtn.innerHTML = originalHTML;
             });
+        });
+
+        // Function to reset modal form
+        function resetModalForm() {
+            addParameterForm.reset();
+            parameterInfo.classList.add('d-none');
+            // Reset to first tab
+            document.getElementById('predefined-tab').click();
+        }
+
+        // Reset form when modal is hidden
+        document.getElementById('addParameterModal').addEventListener('hidden.bs.modal', function() {
+            resetModalForm();
         });
     });
 </script>
