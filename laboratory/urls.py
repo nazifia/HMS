@@ -26,6 +26,7 @@ urlpatterns = [
     # Test Results
     path('results/', views.result_list, name='results'),
     path('requests/<int:request_id>/results/create/', views.create_test_result, name='create_test_result'),
+    path('requests/<int:request_id>/results/manual-entry/', views.manual_test_result_entry, name='manual_test_result_entry'),
     path('results/<int:result_id>/', views.result_detail, name='result_detail'),
     path('results/<int:result_id>/edit/', views.edit_test_result, name='edit_test_result'),
     path('results/<int:result_id>/add-parameter/', views.add_result_parameter, name='add_result_parameter'),

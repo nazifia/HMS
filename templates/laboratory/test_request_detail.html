@@ -15,9 +15,18 @@
                         <a href="{% url 'laboratory:create_test_result' test_request.id %}" class="btn btn-success me-2">
                             <i class="fas fa-vial"></i> Add Test Result
                         </a>
-                    {% elif test_request.status == 'awaiting_payment' and test_request.invoice %}
+                    {% endif %}
+
+                    {% if test_request.status == 'awaiting_payment' and test_request.invoice %}
                         <a href="{% url 'billing:detail' test_request.invoice.id %}" class="btn btn-warning me-2">
                             <i class="fas fa-file-invoice-dollar"></i> View Invoice ({{ test_request.invoice.status|capfirst }})
+                        </a>
+                    {% endif %}
+
+                    <!-- Manual result entry option for authorized users -->
+                    {% if user.is_staff or user.is_superuser %}
+                        <a href="{% url 'laboratory:manual_test_result_entry' test_request.id %}" class="btn btn-outline-success me-2">
+                            <i class="fas fa-flask"></i> Manual Result Entry
                         </a>
                     {% endif %}
                 </div>
@@ -160,7 +169,50 @@
                 <!-- Test Results -->
                 <div class="row mt-4">
                     <div class="col-md-12">
-                        <h5 class="border-bottom pb-2 mb-3">Test Results</h5>
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">Test Results</h5>
+                            <div>
+                                {% if test_request.status != 'cancelled' %}
+                                    <div class="btn-group" role="group">
+                                        {% if user.is_staff or user.is_superuser %}
+                                            <button type="button" class="btn btn-sm btn-success" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                                <i class="fas fa-plus"></i> Add Test Result
+                                            </button>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="{% url 'laboratory:manual_test_result_entry' test_request.id %}">
+                                                        <i class="fas fa-external-link-alt"></i> Full Page Entry
+                                                    </a></li>
+                                                </ul>
+                                            </div>
+                                        {% else %}
+                                            <button type="button" class="btn btn-sm btn-success" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                                <i class="fas fa-plus"></i> Add Test Result
+                                            </button>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="{% url 'laboratory:create_test_result' test_request.id %}">
+                                                        <i class="fas fa-external-link-alt"></i> Full Page Entry
+                                                    </a></li>
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
                         {% if results %}
                             <div class="table-responsive">
                                 <table class="table table-hover">
@@ -199,12 +251,287 @@
                                         {% endfor %}
                                     </tbody>
                         {% else %}
-                            <p>No test results available.</p>
+                            <div class="text-center py-4">
+                                <div class="mb-3">
+                                    <i class="fas fa-vial fa-3x text-muted"></i>
+                                </div>
+                                <h6 class="text-muted">No test results available</h6>
+                                <p class="text-muted mb-3">Test results will appear here once they are entered by laboratory staff.</p>
+                                {% if test_request.status != 'cancelled' %}
+                                    <div class="btn-group" role="group">
+                                        {% if user.is_staff or user.is_superuser %}
+                                            <button type="button" class="btn btn-primary" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                                <i class="fas fa-plus"></i> Add First Test Result
+                                            </button>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="{% url 'laboratory:manual_test_result_entry' test_request.id %}">
+                                                        <i class="fas fa-external-link-alt"></i> Full Page Entry
+                                                    </a></li>
+                                                </ul>
+                                            </div>
+                                        {% else %}
+                                            <button type="button" class="btn btn-primary" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                                <i class="fas fa-plus"></i> Add First Test Result
+                                            </button>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="{% url 'laboratory:create_test_result' test_request.id %}">
+                                                        <i class="fas fa-external-link-alt"></i> Full Page Entry
+                                                    </a></li>
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
                         {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        {% if test_request.status != 'cancelled' %}
+                                            {% if user.is_staff or user.is_superuser %}
+                                                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                                    <i class="fas fa-vial"></i><br>
+                                                    <small>Add Test Result</small>
+                                                </button>
+                                            {% else %}
+                                                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                                    <i class="fas fa-vial"></i><br>
+                                                    <small>Add Test Result</small>
+                                                </button>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-3">
+                                        {% if test_request.invoice %}
+                                            <a href="{% url 'billing:detail' test_request.invoice.id %}" class="btn btn-outline-warning w-100 mb-2">
+                                                <i class="fas fa-file-invoice"></i><br>
+                                                <small>View Invoice</small>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <a href="{% url 'patients:detail' test_request.patient.id %}" class="btn btn-outline-info w-100 mb-2">
+                                            <i class="fas fa-user"></i><br>
+                                            <small>Patient Profile</small>
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        {% if results %}
+                                            <button class="btn btn-outline-success w-100 mb-2" onclick="window.print()">
+                                                <i class="fas fa-print"></i><br>
+                                                <small>Print Results</small>
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-outline-secondary w-100 mb-2" disabled>
+                                                <i class="fas fa-print"></i><br>
+                                                <small>Print Results</small>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Test Result Modal -->
+<div class="modal fade" id="testResultModal" tabindex="-1" aria-labelledby="testResultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testResultModalLabel">
+                    <i class="fas fa-vial"></i> Add Test Result
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="testResultModalBody">
+                <!-- Form content will be loaded here -->
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading form...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to open test result modal
+    window.openTestResultModal = function(url, isManualEntry = false) {
+        const modal = new bootstrap.Modal(document.getElementById('testResultModal'));
+        const modalBody = document.getElementById('testResultModalBody');
+        const modalTitle = document.getElementById('testResultModalLabel');
+
+        // Update modal title based on entry type
+        if (isManualEntry) {
+            modalTitle.innerHTML = '<i class="fas fa-flask"></i> Manual Test Result Entry';
+        } else {
+            modalTitle.innerHTML = '<i class="fas fa-vial"></i> Add Test Result';
+        }
+
+        // Show loading spinner
+        modalBody.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading form...</p>
+            </div>
+        `;
+
+        modal.show();
+
+        // Load form content via AJAX
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                // Extract form content from the response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const formContent = doc.querySelector('.card-body form');
+                const alertContent = doc.querySelector('.alert');
+
+                if (formContent) {
+                    let modalContent = '';
+
+                    // Add alert if present
+                    if (alertContent) {
+                        modalContent += alertContent.outerHTML;
+                    }
+
+                    // Add form
+                    modalContent += formContent.outerHTML;
+
+                    modalBody.innerHTML = modalContent;
+
+                    // Initialize select2 for the modal form
+                    $(modalBody).find('.select2').select2({
+                        theme: 'bootstrap-5',
+                        width: '100%',
+                        dropdownParent: $('#testResultModal')
+                    });
+
+                    // Handle form submission
+                    const form = modalBody.querySelector('form');
+                    if (form) {
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            submitTestResultForm(form, url);
+                        });
+                    }
+                } else {
+                    modalBody.innerHTML = '<div class="alert alert-danger">Error loading form. Please try again.</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading form:', error);
+                modalBody.innerHTML = '<div class="alert alert-danger">Error loading form. Please try again.</div>';
+            });
+    };
+
+    // Function to submit test result form via AJAX
+    function submitTestResultForm(form, url) {
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        // Show loading state
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal and reload page
+                bootstrap.Modal.getInstance(document.getElementById('testResultModal')).hide();
+
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    <i class="fas fa-check-circle"></i> ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+
+                // Reload page to show updated results
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                // Show form with errors
+                const modalBody = document.getElementById('testResultModalBody');
+                modalBody.innerHTML = data.form_html;
+
+                // Reinitialize select2
+                $(modalBody).find('.select2').select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    dropdownParent: $('#testResultModal')
+                });
+
+                // Reattach form submission handler
+                const newForm = modalBody.querySelector('form');
+                if (newForm) {
+                    newForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        submitTestResultForm(newForm, url);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting form:', error);
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger';
+            errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error submitting form. Please try again.';
+            form.insertBefore(errorDiv, form.firstChild);
+        });
+    }
+});
+</script>
 {% endblock %}

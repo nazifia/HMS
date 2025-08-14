@@ -4,6 +4,24 @@
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
 
 {% block content %}
+{% if is_manual_entry %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-user-shield fa-2x me-3"></i>
+            <div>
+                <strong>Manual Entry Mode</strong>
+                <div class="small">You are entering test results as authorized laboratory staff for:</div>
+                <div class="fw-bold">{{ test_request.patient.get_full_name }} - Request #{{ test_request.id }}</div>
+                {% if test_request.status == 'awaiting_payment' %}
+                    <div class="small text-warning mt-1">
+                        <i class="fas fa-exclamation-triangle"></i> Payment is pending, but manual entry is authorized
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+{% endif %}
 <div class="row">
     <div class="col-md-12 mb-4">
         <div class="card">

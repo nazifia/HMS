@@ -9,6 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.conf import settings
+from django.urls import reverse
 from django.db import transaction # Ensure transaction is imported
 from billing.models import Invoice, InvoiceItem, Service, ServiceCategory # Added ServiceCategory
 from datetime import timedelta # For due date calculation
@@ -799,11 +800,16 @@ def create_test_result(request, request_id):
     """View for creating a new test result"""
     test_request = get_object_or_404(TestRequest, id=request_id)
 
-    # Check if payment is confirmed before allowing result creation
+    # Check payment status - redirect staff to manual entry for better experience
     if test_request.status == 'awaiting_payment':
-        messages.error(request, "Cannot add results. Payment is pending for this test request.")
-        return redirect('laboratory:test_request_detail', request_id=test_request.id)
-    if test_request.status == 'pending': # Should ideally be awaiting_payment or payment_confirmed
+        if request.user.is_staff or request.user.is_superuser:
+            # Redirect staff to manual entry view for better experience
+            messages.info(request, "Redirecting to manual entry mode for authorized staff.")
+            return redirect('laboratory:manual_test_result_entry', request_id=test_request.id)
+        else:
+            messages.error(request, "Cannot add results. Payment is pending for this test request.")
+            return redirect('laboratory:test_request_detail', request_id=test_request.id)
+    elif test_request.status == 'pending': # Should ideally be awaiting_payment or payment_confirmed
         messages.warning(request, "This test request has not been processed for payment yet.")
         # Allow to proceed but with a warning, or redirect based on stricter workflow
 
@@ -877,8 +883,31 @@ def create_test_result(request, request_id):
                         f"Your lab result for {test_result.test.name} is now available."
                     )
 
+            # Handle AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Test result for {test_result.test.name} has been created successfully.',
+                    'redirect_url': reverse('laboratory:edit_test_result', args=[test_result.id])
+                })
+
             messages.success(request, f'Test result for {test_result.test.name} has been created successfully.')
             return redirect('laboratory:edit_test_result', result_id=test_result.id)
+        else:
+            # Handle AJAX form errors
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                # Render form with errors
+                context = {
+                    'form': form,
+                    'test_request': test_request,
+                    'title': 'Create New Test Result',
+                    'is_manual_entry': False
+                }
+                form_html = render_to_string('laboratory/test_result_form_modal.html', context, request=request)
+                return JsonResponse({
+                    'success': False,
+                    'form_html': form_html
+                })
     else:
         initial_data = {
             'result_date': timezone.now().date(),
@@ -1086,6 +1115,98 @@ def get_test_parameters(request, test_id):
             'preparation_instructions': test.preparation_instructions or ''
         }
     })
+
+
+@login_required
+def manual_test_result_entry(request, request_id):
+    """
+    Manual test result entry for laboratory staff - bypasses payment restrictions
+    """
+    # Check if user is authorized for manual entry
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "You are not authorized to perform manual result entry.")
+        return redirect('laboratory:test_request_detail', request_id=request_id)
+
+    test_request = get_object_or_404(TestRequest, id=request_id)
+
+    # Allow manual entry regardless of payment status for authorized users
+    if test_request.status == 'cancelled':
+        messages.error(request, "Cannot add results to a cancelled test request.")
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
+
+    # Get tests that don't have results yet
+    tests_with_results = TestResult.objects.filter(test_request=test_request).values_list('test_id', flat=True)
+    available_tests = test_request.tests.exclude(id__in=tests_with_results)
+
+    if not available_tests.exists():
+        messages.info(request, 'All tests in this request already have results.')
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
+
+    if request.method == 'POST':
+        form = TestResultForm(request.POST, request.FILES)
+        if form.is_valid():
+            test_result = form.save(commit=False)
+            test_result.test_request = test_request
+            test_result.save()
+
+            # Create empty result parameters for each parameter in the test
+            for parameter in test_result.test.parameters.all():
+                TestResultParameter.objects.create(
+                    test_result=test_result,
+                    parameter=parameter,
+                    value='',
+                    is_normal=True
+                )
+
+            # Update test request status if it's still pending payment
+            if test_request.status in ['pending', 'awaiting_payment']:
+                test_request.status = 'processing'
+                test_request.save()
+
+            # Handle AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Test result for {test_result.test.name} has been created successfully via manual entry.',
+                    'redirect_url': reverse('laboratory:edit_test_result', args=[test_result.id])
+                })
+
+            messages.success(request, f'Test result for {test_result.test.name} has been created successfully via manual entry.')
+            return redirect('laboratory:edit_test_result', result_id=test_result.id)
+        else:
+            # Handle AJAX form errors
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                # Render form with errors
+                context = {
+                    'form': form,
+                    'test_request': test_request,
+                    'title': 'Manual Test Result Entry',
+                    'is_manual_entry': True
+                }
+                form_html = render_to_string('laboratory/test_result_form_modal.html', context, request=request)
+                return JsonResponse({
+                    'success': False,
+                    'form_html': form_html
+                })
+    else:
+        initial_data = {
+            'result_date': timezone.now().date(),
+            'sample_collection_date': timezone.now(),
+            'performed_by': request.user,
+        }
+        form = TestResultForm(initial=initial_data)
+        form.fields['test'].queryset = available_tests
+
+    # Payment status will be shown in the template alert, no need for duplicate message here
+
+    context = {
+        'form': form,
+        'test_request': test_request,
+        'title': 'Manual Test Result Entry',
+        'is_manual_entry': True
+    }
+
+    return render(request, 'laboratory/test_result_form.html', context)
 
 @login_required
 def print_result(request, result_id):
