@@ -170,8 +170,11 @@
                     
                     <!-- Test Parameters -->
                     <div class="card mt-4">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Test Parameters</h5>
+                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addParameterModal">
+                                <i class="fas fa-plus"></i> Add Parameter
+                            </button>
                         </div>
                         <div class="card-body">
                             {{ parameter_formset.management_form }}
@@ -237,6 +240,56 @@
         </div>
     </div>
 </div>
+
+<!-- Add Parameter Modal -->
+<div class="modal fade" id="addParameterModal" tabindex="-1" aria-labelledby="addParameterModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addParameterModalLabel">Add New Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addParameterForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="parameter_name" class="form-label">Parameter Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="parameter_name" name="parameter_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parameter_value" class="form-label">Value <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="parameter_value" name="parameter_value" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="parameter_unit" class="form-label">Unit</label>
+                            <input type="text" class="form-control" id="parameter_unit" name="parameter_unit" placeholder="e.g., mg/dL, mmol/L">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="parameter_range" class="form-label">Normal Range</label>
+                            <input type="text" class="form-control" id="parameter_range" name="parameter_range" placeholder="e.g., 70-100">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="is_normal" class="form-label">Status</label>
+                        <select class="form-select" id="is_normal" name="is_normal">
+                            <option value="true">Normal</option>
+                            <option value="false">Abnormal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Parameter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -246,6 +299,65 @@
         $('.select2').select2({
             theme: 'bootstrap-5',
             width: '100%'
+        });
+
+        // Handle add parameter form submission
+        const addParameterForm = document.getElementById('addParameterForm');
+        const addParameterModal = new bootstrap.Modal(document.getElementById('addParameterModal'));
+
+        addParameterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(addParameterForm);
+            const submitBtn = addParameterForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+            fetch('{% url "laboratory:add_result_parameter" result.id %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.card-body').insertBefore(alertDiv, document.querySelector('.card-body').firstChild);
+
+                    // Close modal and reset form
+                    addParameterModal.hide();
+                    addParameterForm.reset();
+
+                    // Reload the page to show the new parameter
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    // Show error message
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while adding the parameter.');
+            })
+            .finally(() => {
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            });
         });
     });
 </script>

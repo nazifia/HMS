@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.http import require_http_methods
 from django.db import models
 from django.db.models import Q, Sum, Count
 from django.core.paginator import Paginator
@@ -971,6 +972,90 @@ def edit_test_result(request, result_id):
     }
 
     return render(request, 'laboratory/edit_test_result.html', context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def add_result_parameter(request, result_id):
+    """View for manually adding a new parameter to an existing test result"""
+    result = get_object_or_404(TestResult, id=result_id)
+
+    if request.method == 'POST':
+        # Handle AJAX request for adding parameter
+        parameter_name = request.POST.get('parameter_name')
+        parameter_value = request.POST.get('parameter_value')
+        parameter_unit = request.POST.get('parameter_unit', '')
+        parameter_range = request.POST.get('parameter_range', '')
+        is_normal = request.POST.get('is_normal') == 'true'
+        notes = request.POST.get('notes', '')
+
+        if parameter_name and parameter_value:
+            try:
+                with transaction.atomic():
+                    # Create or get the test parameter
+                    test_parameter, created = TestParameter.objects.get_or_create(
+                        test=result.test,
+                        name=parameter_name,
+                        defaults={
+                            'unit': parameter_unit,
+                            'normal_range': parameter_range,
+                            'order': TestParameter.objects.filter(test=result.test).count() + 1
+                        }
+                    )
+
+                    # Create the test result parameter
+                    result_parameter = TestResultParameter.objects.create(
+                        test_result=result,
+                        parameter=test_parameter,
+                        value=parameter_value,
+                        is_normal=is_normal,
+                        notes=notes
+                    )
+
+                    messages.success(request, f'Parameter "{parameter_name}" added successfully.')
+
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Parameter "{parameter_name}" added successfully.',
+                            'parameter_id': result_parameter.id
+                        })
+                    else:
+                        return redirect('laboratory:edit_test_result', result_id=result.id)
+
+            except Exception as e:
+                error_message = f'Error adding parameter: {str(e)}'
+                messages.error(request, error_message)
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_message
+                    })
+                else:
+                    return redirect('laboratory:edit_test_result', result_id=result.id)
+        else:
+            error_message = 'Parameter name and value are required.'
+            messages.error(request, error_message)
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                })
+            else:
+                return redirect('laboratory:edit_test_result', result_id=result.id)
+
+    # GET request - show the add parameter form
+    context = {
+        'result': result,
+        'title': f'Add Parameter to {result.test.name}'
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'laboratory/add_parameter_modal.html', context)
+    else:
+        return render(request, 'laboratory/add_parameter.html', context)
 
 @login_required
 def print_result(request, result_id):
