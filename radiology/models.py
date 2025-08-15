@@ -80,7 +80,43 @@ class RadiologyOrder(models.Model):
         ordering = ['-order_date']
 
 class RadiologyResult(models.Model):
-    """Model for radiology test results"""
+    """Enhanced model for radiology test results"""
+    
+    # Status choices for result workflow
+    RESULT_STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('verified', 'Verified'),
+        ('finalized', 'Finalized'),
+    )
+    
+    # Contrast choices
+    CONTRAST_CHOICES = (
+        ('none', 'No Contrast'),
+        ('oral', 'Oral Contrast'),
+        ('iv', 'IV Contrast'),
+        ('both', 'Oral + IV Contrast'),
+        ('other', 'Other'),
+    )
+    
+    # Image quality choices
+    IMAGE_QUALITY_CHOICES = (
+        ('excellent', 'Excellent'),
+        ('good', 'Good'),
+        ('adequate', 'Adequate'),
+        ('poor', 'Poor'),
+        ('non_diagnostic', 'Non-diagnostic'),
+    )
+    
+    # Study status choices
+    STUDY_STATUS_CHOICES = (
+        ('complete', 'Complete'),
+        ('incomplete', 'Incomplete'),
+        ('limited', 'Limited'),
+        ('cancelled', 'Cancelled'),
+    )
+    
+    # Basic fields (existing)
     order = models.OneToOneField(RadiologyOrder, on_delete=models.CASCADE, related_name='result')
     performed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='performed_radiology')
     result_date = models.DateTimeField(default=timezone.now)
@@ -91,7 +127,37 @@ class RadiologyResult(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='radiology_result_invoice')
-
+    
+    # Enhanced fields
+    study_date = models.DateField(default=timezone.now)
+    study_time = models.TimeField(default=timezone.now)
+    radiologist = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='reported_radiology'
+    )
+    technique = models.CharField(max_length=200, blank=True, null=True)
+    contrast_used = models.CharField(max_length=20, choices=CONTRAST_CHOICES, default='none')
+    contrast_amount = models.DecimalField(max_digits=5, decimal_places=1, blank=True, null=True)
+    recommendations = models.TextField(blank=True, null=True)
+    images = models.FileField(upload_to='radiology_studies/', blank=True, null=True)
+    report_file = models.FileField(upload_to='radiology_reports/', blank=True, null=True)
+    image_quality = models.CharField(max_length=20, choices=IMAGE_QUALITY_CHOICES, default='good')
+    study_status = models.CharField(max_length=20, choices=STUDY_STATUS_CHOICES, default='complete')
+    notes = models.TextField(blank=True, null=True)
+    result_status = models.CharField(max_length=20, choices=RESULT_STATUS_CHOICES, default='draft')
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='verified_radiology'
+    )
+    verified_date = models.DateTimeField(blank=True, null=True)
+    verification_notes = models.TextField(blank=True, null=True)
+    
     def __str__(self):
         return f"Result for {self.order}"
 

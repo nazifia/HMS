@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title|default:"Verify Radiology Result" }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Verify Radiology Result" }}</h1>
+        <div>
+            <a href="{% url 'radiology:order_detail' result.order.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Order
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-file-medical"></i> Result Verification
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Result Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <strong>Patient:</strong><br>
+                                {{ result.order.patient.get_full_name }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Test:</strong><br>
+                                {{ result.order.test.name }}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <strong>Study Date:</strong><br>
+                                {{ result.study_date }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Performed By:</strong><br>
+                                {{ result.performed_by.get_full_name }}
+                            </div>
+                        </div>
+                        
+                        <!-- Findings and Impression -->
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-search"></i> Clinical Findings
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <strong>Findings:</strong>
+                                    <div class="alert alert-light">{{ result.findings }}</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <strong>Impression:</strong>
+                                    <div class="alert alert-light">{{ result.impression }}</div>
+                                </div>
+                                
+                                {% if result.recommendations %}
+                                <div class="mb-3">
+                                    <strong>Recommendations:</strong>
+                                    <div class="alert alert-light">{{ result.recommendations }}</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Verification Form -->
+                        <div class="card border-success mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-check-circle"></i> Verification Information
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="{{ form.verified_by.id_for_label }}" class="form-label">Verified By <span class="text-danger">*</span></label>
+                                    {{ form.verified_by|add_class:"form-select" }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.verification_notes.id_for_label }}" class="form-label">Verification Notes</label>
+                                    {{ form.verification_notes|add_class:"form-control" }}
+                                    <div class="form-text">Add any notes, corrections, or comments about this verification</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'radiology:order_detail' result.order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check-double"></i> Verify Result
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Study Information Panel -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Study Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Procedure:</strong><br>
+                        {{ result.order.test.name }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Category:</strong><br>
+                        {{ result.order.test.category.name }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Priority:</strong><br>
+                        <span class="badge bg-{% if result.order.priority == 'emergency' %}danger{% elif result.order.priority == 'urgent' %}warning{% else %}success{% endif %}">
+                            {{ result.order.get_priority_display }}
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Technique:</strong><br>
+                        {{ result.technique|default:"Not specified" }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Contrast:</strong><br>
+                        {{ result.get_contrast_used_display }}
+                        {% if result.contrast_amount %}({{ result.contrast_amount }} ml){% endif %}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Image Quality:</strong><br>
+                        <span class="badge bg-{% if result.image_quality == 'excellent' %}success{% elif result.image_quality == 'good' %}info{% elif result.image_quality == 'adequate' %}warning{% else %}danger{% endif %}">
+                            {{ result.get_image_quality_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if result.images or result.report_file %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-images"></i> Attachments
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if result.images %}
+                    <div class="mb-2">
+                        <strong>Study Images:</strong><br>
+                        <a href="{{ result.images.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-download"></i> Download Images
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if result.report_file %}
+                    <div class="mt-2">
+                        <strong>Report Document:</strong><br>
+                        <a href="{{ result.report_file.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-file-pdf"></i> View Report
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

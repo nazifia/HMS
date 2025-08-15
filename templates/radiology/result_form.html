@@ -15,24 +15,36 @@
                     <label for="performed_by" class="form-label">Performed By</label>
                     <input type="text" class="form-control" id="performed_by" value="{{ result.performed_by.get_full_name|default:request.user.get_full_name }}" readonly>
                 </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.study_date.id_for_label }}" class="form-label">Study Date</label>
+                        {{ form.study_date }}
+                        {{ form.study_date.errors }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.study_time.id_for_label }}" class="form-label">Study Time</label>
+                        {{ form.study_time }}
+                        {{ form.study_time.errors }}
+                    </div>
+                </div>
                 <div class="mb-3">
-                    <label for="findings" class="form-label">Findings</label>
+                    <label for="{{ form.findings.id_for_label }}" class="form-label">Findings</label>
                     {{ form.findings|add_class:"form-control" }}
                     {{ form.findings.errors }}
                 </div>
                 <div class="mb-3">
-                    <label for="impression" class="form-label">Impression</label>
+                    <label for="{{ form.impression.id_for_label }}" class="form-label">Impression</label>
                     {{ form.impression|add_class:"form-control" }}
                     {{ form.impression.errors }}
                 </div>
                 <div class="mb-3">
-                    <label for="image_file" class="form-label">Image (optional)</label>
+                    <label for="{{ form.image_file.id_for_label }}" class="form-label">Image (optional)</label>
                     {{ form.image_file|add_class:"form-control" }}
                     {{ form.image_file.errors }}
                 </div>
                 <div class="form-check mb-3">
                     {{ form.is_abnormal|add_class:"form-check-input" }}
-                    <label class="form-check-label" for="is_abnormal">Abnormal</label>
+                    <label class="form-check-label" for="{{ form.is_abnormal.id_for_label }}">Abnormal</label>
                 </div>
                 <div class="d-flex justify-content-between">
                     <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-secondary">Cancel</a>

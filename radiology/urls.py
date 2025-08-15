@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import payment_views
+from . import enhanced_views
 
 app_name = 'radiology'
 
@@ -15,6 +16,11 @@ urlpatterns = [
     path('<int:order_id>/complete/', views.mark_completed, name='mark_completed'),
     path('<int:order_id>/cancel/', views.cancel_order, name='cancel_order'),
     path('<int:order_id>/result/', views.add_result, name='add_result'),
+    path('<int:order_id>/result/enhanced/', enhanced_views.enhanced_add_result, name='enhanced_add_result'),
+    path('<int:order_id>/result/quick/', enhanced_views.quick_result_entry, name='quick_result_entry'),
+    path('result/<int:result_id>/verify/', enhanced_views.verify_result, name='verify_result'),
+    path('result/<int:result_id>/finalize/', enhanced_views.finalize_result, name='finalize_result'),
+    path('results/search/', enhanced_views.result_search, name='result_search'),
     path('sales-report/', views.radiology_sales_report, name='sales_report'),
     path('reports/statistics/', views.radiology_statistics_report, name='radiology_statistics_report'),
     path('patient/<int:patient_id>/results/', views.patient_radiology_results, name='patient_results'),

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title|default:"Radiology Results Search" }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Radiology Results Search" }}</h1>
+    </div>
+
+    <div class="row">
+        <!-- Search Form -->
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-search"></i> Search Filters
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ form.search.id_for_label }}" class="form-label">Search</label>
+                            {{ form.search|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.test.id_for_label }}" class="form-label">Test</label>
+                            {{ form.test|add_class:"form-select" }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                            {{ form.category|add_class:"form-select" }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.date_from.id_for_label }}" class="form-label">Date From</label>
+                            {{ form.date_from|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.date_to.id_for_label }}" class="form-label">Date To</label>
+                            {{ form.date_to|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
+                            {{ form.status|add_class:"form-select" }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.radiologist.id_for_label }}" class="form-label">Radiologist</label>
+                            {{ form.radiologist|add_class:"form-select" }}
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <a href="{% url 'radiology:result_search' %}" class="btn btn-secondary">
+                                <i class="fas fa-undo"></i> Reset
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Table -->
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-list"></i> Search Results
+                    </h6>
+                    <span class="badge bg-primary">{{ results|length }} result{{ results|length|pluralize }}</span>
+                </div>
+                <div class="card-body">
+                    {% if results %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Test</th>
+                                        <th>Study Date</th>
+                                        <th>Performed By</th>
+                                        <th>Radiologist</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for result in results %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ result.order.patient.get_full_name }}</strong><br>
+                                            <small class="text-muted">ID: {{ result.order.patient.patient_id }}</small>
+                                        </td>
+                                        <td>
+                                            {{ result.order.test.name }}<br>
+                                            <small class="text-muted">{{ result.order.test.category.name }}</small>
+                                        </td>
+                                        <td>{{ result.study_date }}</td>
+                                        <td>{{ result.performed_by.get_full_name }}</td>
+                                        <td>{{ result.radiologist.get_full_name|default:"Not assigned" }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if result.result_status == 'draft' %}secondary{% elif result.result_status == 'submitted' %}primary{% elif result.result_status == 'verified' %}success{% elif result.result_status == 'finalized' %}dark{% endif %}">
+                                                {{ result.get_result_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'radiology:order_detail' result.order.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-medical fa-4x text-gray-300 mb-3"></i>
+                            <p class="lead">No results found matching your criteria.</p>
+                            <p class="text-muted">Try adjusting your search filters.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

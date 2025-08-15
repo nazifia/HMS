@@ -145,6 +145,13 @@ def add_result(request, order_id):
             result_obj = form.save(commit=False)
             result_obj.order = order
             result_obj.performed_by = request.user
+            # Set default values for new fields
+            if not result_obj.result_status:
+                result_obj.result_status = 'submitted'
+            if not result_obj.study_date:
+                result_obj.study_date = timezone.now().date()
+            if not result_obj.study_time:
+                result_obj.study_time = timezone.now().time()
             result_obj.save()
             messages.success(request, 'Result saved successfully.')
             return redirect('radiology:order_detail', order_id=order.id)

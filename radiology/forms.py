@@ -35,8 +35,20 @@ class RadiologyResultForm(forms.ModelForm):
     """Form for adding radiology test results"""
     class Meta:
         model = RadiologyResult
-        fields = ['findings', 'impression', 'image_file', 'is_abnormal']
+        fields = ['findings', 'impression', 'image_file', 'is_abnormal', 
+                  'study_date', 'study_time', 'result_status']
         widgets = {
             'findings': forms.Textarea(attrs={'rows': 4}),
             'impression': forms.Textarea(attrs={'rows': 4}),
+            'study_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'study_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set initial values for new fields if creating a new instance
+        if not self.instance.pk:
+            from django.utils import timezone
+            self.fields['study_date'].initial = timezone.now().date()
+            self.fields['study_time'].initial = timezone.now().time()
+            self.fields['result_status'].initial = 'submitted'

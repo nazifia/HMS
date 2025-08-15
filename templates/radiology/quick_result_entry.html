@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ title|default:"Quick Result Entry" }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Quick Result Entry" }}</h1>
+        <div>
+            <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Order
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt"></i> Quick Radiology Result Entry
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Order Information -->
+                        <div class="card border-info mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Patient:</strong><br>
+                                        {{ order.patient.get_full_name }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Test:</strong><br>
+                                        {{ order.test.name }}
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <strong>Order Date:</strong><br>
+                                        {{ order.order_date|date:"M d, Y H:i" }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Priority:</strong><br>
+                                        <span class="badge bg-{% if order.priority == 'emergency' %}danger{% elif order.priority == 'urgent' %}warning{% else %}success{% endif %}">
+                                            {{ order.get_priority_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Entry Form -->
+                        <div class="mb-3">
+                            <label for="{{ form.findings.id_for_label }}" class="form-label">Findings <span class="text-danger">*</span></label>
+                            {{ form.findings|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.impression.id_for_label }}" class="form-label">Impression <span class="text-danger">*</span></label>
+                            {{ form.impression|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">Status <span class="text-danger">*</span></label>
+                            {{ form.status|add_class:"form-select" }}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Result
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

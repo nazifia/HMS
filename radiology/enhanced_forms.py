@@ -90,8 +90,7 @@ class EnhancedRadiologyResultForm(forms.ModelForm):
             }),
             'images': forms.FileInput(attrs={
                 'class': 'form-control',
-                'accept': '.dcm,.jpg,.jpeg,.png,.pdf',
-                'multiple': True
+                'accept': '.dcm,.jpg,.jpeg,.png,.pdf'
             }),
             'report_file': forms.FileInput(attrs={
                 'class': 'form-control',
