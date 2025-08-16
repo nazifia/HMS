@@ -89,6 +89,17 @@ INSTALLED_APPS = [
     'theatre.apps.TheatreConfig',
     'nhia',
     'retainership',
+    'desk_office',
+    'dental',
+    'ophthalmic',
+    'ent',
+    'oncology',
+    'scbu',
+    'anc',
+    'labor',
+    'icu',
+    'family_planning',
+    'gynae_emergency',
 
 ]
 

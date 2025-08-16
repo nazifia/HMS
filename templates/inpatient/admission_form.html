@@ -143,6 +143,24 @@
                         </div>
                     </div>
                     
+                    <!-- Authorization Code Field (only for NHIA patients) -->
+                    <div class="row mb-3" id="authorization-code-section" style="display: none;">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="{{ form.authorization_code.id_for_label }}" class="form-label">Authorization Code</label>
+                                {{ form.authorization_code|add_class:"form-select select2" }}
+                                {% if form.authorization_code.errors %}
+                                    <div class="text-danger">
+                                        {{ form.authorization_code.errors }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Select an authorization code if this admission is covered by NHIA.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
                     {% if form.instance.pk %}
                         <div class="row mb-3">
                             <div class="col-md-12">
@@ -189,6 +207,42 @@
         $('.select2').select2({
             theme: 'bootstrap-5',
             width: '100%'
+        });
+        
+        // Function to check if selected patient is NHIA and show/hide authorization code field
+        function checkPatientType() {
+            var patientId = $('#id_patient').val();
+            if (patientId) {
+                // Make an AJAX request to check if patient is NHIA
+                $.ajax({
+                    url: '{% url "patients:check_patient_nhia" %}',
+                    data: {
+                        'patient_id': patientId,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    type: 'POST',
+                    success: function(data) {
+                        if (data.is_nhia) {
+                            $('#authorization-code-section').show();
+                        } else {
+                            $('#authorization-code-section').hide();
+                        }
+                    },
+                    error: function() {
+                        $('#authorization-code-section').hide();
+                    }
+                });
+            } else {
+                $('#authorization-code-section').hide();
+            }
+        }
+        
+        // Check patient type on page load
+        checkPatientType();
+        
+        // Check patient type when patient selection changes
+        $('#id_patient').on('change', function() {
+            checkPatientType();
         });
     });
 </script>

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        
+                <div class="form-group">
+                    <label for="{{ form.gravida.id_for_label }}">Gravida</label>
+                    {{ form.gravida|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.para.id_for_label }}">Para</label>
+                    {{ form.para|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.abortions.id_for_label }}">Abortions</label>
+                    {{ form.abortions|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.lmp.id_for_label }}">Last Menstrual Period</label>
+                    {{ form.lmp|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.edd.id_for_label }}">Expected Date of Delivery</label>
+                    {{ form.edd|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.fundal_height.id_for_label }}">Fundal Height (cm)</label>
+                    {{ form.fundal_height|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.fetal_heartbeat.id_for_label }}">Fetal Heartbeat</label>
+                    {{ form.fetal_heartbeat|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.fetal_position.id_for_label }}">Fetal Position</label>
+                    {{ form.fetal_position|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.blood_pressure.id_for_label }}">Blood Pressure</label>
+                    {{ form.blood_pressure|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.urine_protein.id_for_label }}">Urine Protein</label>
+                    {{ form.urine_protein|add_class:"form-control" }}
+                </div>
+                
+<div class="form-group">
+                            <label for="{{ form.patient.id_for_label }}">Patient *</label>
+                            {{ form.patient|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.doctor.id_for_label }}">Doctor</label>
+                            {{ form.doctor|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
+                            {{ form.visit_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
+                    {{ form.chief_complaint|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
+                    {{ form.history_of_present_illness|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
+                    {{ form.diagnosis|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
+                    {{ form.treatment_plan|add_class:"form-control" }}
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
+                            {{ form.follow_up_required|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
+                            {{ form.follow_up_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.notes.id_for_label }}">Notes</label>
+                    {{ form.notes|add_class:"form-control" }}
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Record
+                </button>
+                <a href="{% url 'anc:anc_records_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

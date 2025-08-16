@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Icu Record Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Icu Record Details</h1>
+        <div>
+            <a href="{% url 'icu:edit_icu_record' record.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit Record
+            </a>
+            <a href="{% url 'icu:icu_records_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Information -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ record.patient.get_full_name }}</p>
+                    <p><strong>Patient ID:</strong> {{ record.patient.patient_id }}</p>
+                    <p><strong>Age:</strong> {{ record.patient.age }} years</p>
+                    <p><strong>Gender:</strong> {{ record.patient.get_gender_display }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Visit Date:</strong> {{ record.visit_date|date:"M d, Y H:i" }}</p>
+                    <p><strong>Doctor:</strong> {{ record.doctor.get_full_name|default:"Not specified" }}</p>
+                    <p><strong>Follow-up Required:</strong> 
+                        {% if record.follow_up_required %}
+                            <span class="badge badge-warning">Yes</span>
+                            {% if record.follow_up_date %}
+                                <br><strong>Follow-up Date:</strong> {{ record.follow_up_date|date:"M d, Y" }}
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-secondary">No</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Specific Fields -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Icu Specific Fields</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>GCS Score:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.gcs_score|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Respiratory Rate:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.respiratory_rate|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Oxygen Saturation (%):</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.oxygen_saturation|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Blood Pressure Systolic:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.blood_pressure_systolic|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Blood Pressure Diastolic:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.blood_pressure_diastolic|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Heart Rate:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.heart_rate|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Body Temperature (°C):</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.body_temperature|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Mechanical Ventilation:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.mechanical_ventilation|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Vasopressor Use:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.vasopressor_use|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Dialysis Required:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.dialysis_required|default:"Not recorded" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- Chief Complaint -->
+    {% if record.chief_complaint %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Chief Complaint</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.chief_complaint|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- History of Present Illness -->
+    {% if record.history_of_present_illness %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">History of Present Illness</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.history_of_present_illness|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Diagnosis -->
+    {% if record.diagnosis %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Diagnosis</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.diagnosis|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Treatment Plan -->
+    {% if record.treatment_plan %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Treatment Plan</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.treatment_plan|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Notes -->
+    {% if record.notes %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Notes</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.notes|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

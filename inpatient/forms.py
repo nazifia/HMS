@@ -49,6 +49,14 @@ class BedForm(forms.ModelForm):
         return cleaned_data
 
 class AdmissionForm(forms.ModelForm):
+    # Authorization code field
+    authorization_code = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Authorization Code (Optional)"
+    )
+    
     class Meta:
         model = Admission
         fields = ['patient', 'admission_date', 'bed', 'diagnosis', 'attending_doctor',
@@ -83,6 +91,24 @@ class AdmissionForm(forms.ModelForm):
         # Set initial admission date to now
         if not self.instance.pk and not self.initial.get('admission_date'):
             self.initial['admission_date'] = timezone.now().strftime('%Y-%m-%dT%H:%M')
+            
+        # Set authorization code queryset based on patient
+        patient_id = self.initial.get('patient') or self.data.get('patient')
+        if patient_id:
+            try:
+                patient_instance = Patient.objects.get(id=patient_id)
+                if patient_instance.patient_type == 'nhia':
+                    from nhia.models import AuthorizationCode
+                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                        patient=patient_instance,
+                        status='active'
+                    ).order_by('-generated_at')
+                else:
+                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+            except Patient.DoesNotExist:
+                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+        else:
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
 
 class DischargeForm(forms.ModelForm):
     class Meta:

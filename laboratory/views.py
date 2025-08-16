@@ -613,11 +613,31 @@ def create_test_request(request):
         priority = request.POST.get('priority', 'normal')
         request_date_str = request.POST.get('request_date')
         notes = request.POST.get('notes', '')
+        # Get authorization code if provided
+        authorization_code_id = request.POST.get('authorization_code')
 
         try:
             patient = Patient.objects.get(id=patient_id)
             doctor = CustomUser.objects.get(id=doctor_id)
             selected_tests = Test.objects.filter(id__in=tests_ids)
+            
+            # Get authorization code if provided
+            authorization_code = None
+            if authorization_code_id:
+                try:
+                    from nhia.models import AuthorizationCode
+                    authorization_code = AuthorizationCode.objects.get(id=authorization_code_id)
+                    # Verify the authorization code is valid
+                    if not authorization_code.is_valid():
+                        messages.error(request, "The provided authorization code is not valid.")
+                        return redirect(request.META.get('HTTP_REFERER', 'patients:list'))
+                    # Verify the authorization code is for this patient
+                    if authorization_code.patient != patient:
+                        messages.error(request, "The provided authorization code is not for this patient.")
+                        return redirect(request.META.get('HTTP_REFERER', 'patients:list'))
+                except AuthorizationCode.DoesNotExist:
+                    messages.error(request, "The provided authorization code does not exist.")
+                    return redirect(request.META.get('HTTP_REFERER', 'patients:list'))
 
             if not selected_tests.exists():
                 messages.error(request, "Please select at least one test.")
@@ -639,7 +659,8 @@ def create_test_request(request):
                     status='awaiting_payment', # New initial status
                     priority=priority,
                     notes=notes,
-                    created_by=request.user
+                    created_by=request.user,
+                    authorization_code=authorization_code  # Set authorization code if provided
                 )
                 test_request.tests.set(selected_tests)
 
@@ -649,23 +670,37 @@ def create_test_request(request):
                 total_amount = subtotal + tax_amount
                 due_date = request_date + timedelta(days=7) # Example: due in 7 days
 
+                # If authorization code is provided, mark as paid
+                invoice_status = 'paid' if authorization_code else 'pending'
+                payment_method = 'insurance' if authorization_code else None
+                payment_date = timezone.now().date() if authorization_code else None
+
                 invoice = Invoice.objects.create(
                     patient=patient,
                     invoice_date=request_date,
                     due_date=due_date,
-                    status='pending', # Or 'draft' if it needs review before sending to patient
+                    status=invoice_status, # Mark as paid if authorization code is used
                     test_request=test_request, # Link to the TestRequest
                     subtotal=subtotal,
                     tax_amount=tax_amount,
                     total_amount=total_amount,
-                    created_by=request.user
+                    amount_paid=total_amount if authorization_code else Decimal('0.00'),
+                    payment_method=payment_method,
+                    payment_date=payment_date,
+                    created_by=request.user,
+                    source_app='laboratory'
                 )
 
                 # The OneToOneField from TestRequest to Invoice is named 'invoice'
                 # The related_name from Invoice back to TestRequest is 'lab_test_request'
                 # So, test_request.invoice = invoice is correct if TestRequest.invoice is the OneToOneField
                 test_request.invoice = invoice 
+                test_request.status = 'payment_confirmed' if authorization_code else 'awaiting_payment'
                 test_request.save()
+                
+                # If authorization code was used, mark it as used
+                if authorization_code:
+                    authorization_code.mark_as_used(f"Lab Test Request #{test_request.id}")
 
                 # 3. Create InvoiceItems for each test
                 for test_item in selected_tests:
@@ -699,7 +734,7 @@ def create_test_request(request):
                 invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount # Assuming discount is handled elsewhere or is 0
                 invoice.save()
 
-                messages.success(request, f'Test request for {patient.get_full_name()} created. Invoice #{invoice.invoice_number} generated and is pending payment.')
+                messages.success(request, f'Test request for {patient.get_full_name()} created. Invoice #{invoice.invoice_number} generated and is {"paid via authorization code" if authorization_code else "pending payment"}.')
                 return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
         except Patient.DoesNotExist:

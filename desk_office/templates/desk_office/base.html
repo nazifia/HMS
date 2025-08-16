@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if title %}{{ title }} - {% endif %}Desk Office{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                           href="{% url 'desk_office:dashboard' %}">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'visitor' in request.resolver_match.url_name %}active{% endif %}" 
+                           href="{% url 'desk_office:visitor_list' %}">
+                            <i class="fas fa-user-friends"></i> Visitors
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'mail' in request.resolver_match.url_name %}active{% endif %}" 
+                           href="{% url 'desk_office:mail_list' %}">
+                            <i class="fas fa-envelope"></i> Mail & Courier
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'meeting' in request.resolver_match.url_name or 'room' in request.resolver_match.url_name %}active{% endif %}" 
+                           href="{% url 'desk_office:meeting_room_list' %}">
+                            <i class="fas fa-calendar-alt"></i> Meeting Rooms
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'supply' in request.resolver_match.url_name %}active{% endif %}" 
+                           href="{% url 'desk_office:supply_list' %}">
+                            <i class="fas fa-boxes"></i> Office Supplies
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">{% if title %}{{ title }}{% else %}Desk Office Management{% endif %}</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    {% block toolbar_buttons %}{% endblock %}
+                </div>
+            </div>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            {% block desk_office_content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% endblock %}

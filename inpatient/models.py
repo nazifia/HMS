@@ -96,6 +96,9 @@ class Admission(models.Model):
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     bed_history = models.ManyToManyField(Bed, through='BedTransfer', related_name='admission_history', through_fields=('admission', 'to_bed'))
     ward_history = models.ManyToManyField(Ward, through='WardTransfer', related_name='admission_history', through_fields=('admission', 'to_ward'))
+    
+    # Authorization code for NHIA patients
+    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='admissions')
 
     def __str__(self):
         return f"{self.patient.get_full_name()} - {self.admission_date.strftime('%Y-%m-%d')}"

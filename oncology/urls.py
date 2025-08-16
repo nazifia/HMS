@@ -1,0 +1,12 @@
+from django.urls import path
+from . import views
+
+app_name = 'oncology'
+
+urlpatterns = [
+    path('', views.oncology_records_list, name='oncology_records_list'),
+    path('create/', views.create_oncology_record, name='create_oncology_record'),
+    path('<int:record_id>/', views.oncology_record_detail, name='oncology_record_detail'),
+    path('<int:record_id>/edit/', views.edit_oncology_record, name='edit_oncology_record'),
+    path('<int:record_id>/delete/', views.delete_oncology_record, name='delete_oncology_record'),
+]

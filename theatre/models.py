@@ -89,6 +89,9 @@ class Surgery(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Authorization code for NHIA patients
+    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='surgeries')
+    
     def __str__(self):
         return f"Surgery for {self.patient} - {self.surgery_type} ({self.get_status_display()})"
     

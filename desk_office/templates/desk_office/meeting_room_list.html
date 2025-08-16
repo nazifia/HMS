@@ -1,0 +1,58 @@
+{% extends 'desk_office/base.html' %}
+
+{% block title %}Meeting Rooms{% endblock %}
+
+{% block toolbar_buttons %}
+<a href="{% url 'desk_office:create_meeting_room' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-plus"></i> Add Meeting Room
+</a>
+{% endblock %}
+
+{% block desk_office_content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Capacity</th>
+                        <th>Location</th>
+                        <th>Features</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in rooms %}
+                    <tr>
+                        <td>{{ room.name }}</td>
+                        <td>{{ room.capacity }} people</td>
+                        <td>{{ room.location }}</td>
+                        <td>
+                            {% if room.has_projector %}<span class="badge bg-info">Projector</span>{% endif %}
+                            {% if room.has_whiteboard %}<span class="badge bg-info">Whiteboard</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if room.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'desk_office:edit_meeting_room' room.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <a href="{% url 'desk_office:create_room_booking' %}?room_id={{ room.id }}" class="btn btn-sm btn-outline-success">Book</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No meeting rooms found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

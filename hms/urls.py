@@ -46,6 +46,17 @@ urlpatterns = [
     path('theatre/', include(('theatre.urls', 'theatre'), namespace='theatre')),
     path('nhia/', include('nhia.urls')),
     path('retainership/', include('retainership.urls')),
+    path('desk-office/', include('desk_office.urls')),
+    path('dental/', include('dental.urls')),
+    path('ophthalmic/', include('ophthalmic.urls')),
+    path('ent/', include('ent.urls')),
+    path('oncology/', include('oncology.urls')),
+    path('scbu/', include('scbu.urls')),
+    path('anc/', include('anc.urls')),
+    path('labor/', include('labor.urls')),
+    path('icu/', include('icu.urls')),
+    path('family-planning/', include('family_planning.urls')),
+    path('gynae-emergency/', include('gynae_emergency.urls')),
 ]
 
 # Serve media files in development

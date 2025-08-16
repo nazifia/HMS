@@ -15,6 +15,18 @@ from inpatient.models import Admission, Bed, Ward
 from accounts.models import CustomUserProfile # Assuming UserProfile holds role and department for staff
 from accounts.models import CustomUser
 
+# Import models for new modules
+from ophthalmic.models import OphthalmicRecord
+from ent.models import EntRecord
+from oncology.models import OncologyRecord
+from scbu.models import ScbuRecord
+from anc.models import AncRecord
+from labor.models import LaborRecord
+from icu.models import IcuRecord
+from family_planning.models import Family_planningRecord
+from gynae_emergency.models import Gynae_emergencyRecord
+
+
 @login_required
 def dashboard(request):
     """Main dashboard view"""
@@ -25,6 +37,17 @@ def dashboard(request):
     total_appointments = Appointment.objects.count()
     total_prescriptions = Prescription.objects.count()
     total_tests = TestRequest.objects.count()
+    
+    # Get counts for new modules
+    total_ophthalmic_records = OphthalmicRecord.objects.count()
+    total_ent_records = ENTRecord.objects.count()
+    total_oncology_records = OncologyRecord.objects.count()
+    total_scbu_records = SCBURecord.objects.count()
+    total_anc_records = ANCRecord.objects.count()
+    total_labor_records = LaborRecord.objects.count()
+    total_icu_records = ICURecord.objects.count()
+    total_family_planning_records = FamilyPlanningRecord.objects.count()
+    total_gynae_emergency_records = GynaeEmergencyRecord.objects.count()
 
     # Get today's appointments
     today_appointments = Appointment.objects.filter(
@@ -75,11 +98,40 @@ def dashboard(request):
         'cancelled': Appointment.objects.filter(status='cancelled').count(),
     }
 
+    # Get counts for new modules (for system overview)
+    ophthalmic_records_count = OphthalmicRecord.objects.count()
+    ent_records_count = ENTRecord.objects.count()
+    oncology_records_count = OncologyRecord.objects.count()
+    scbu_records_count = SCBURecord.objects.count()
+    anc_records_count = ANCRecord.objects.count()
+    labor_records_count = LaborRecord.objects.count()
+    icu_records_count = ICURecord.objects.count()
+    family_planning_records_count = FamilyPlanningRecord.objects.count()
+    gynae_emergency_records_count = GynaeEmergencyRecord.objects.count()
+
     context = {
         'total_patients': total_patients,
         'total_appointments': total_appointments,
         'total_prescriptions': total_prescriptions,
         'total_tests': total_tests,
+        'total_ophthalmic_records': total_ophthalmic_records,
+        'total_ent_records': total_ent_records,
+        'total_oncology_records': total_oncology_records,
+        'total_scbu_records': total_scbu_records,
+        'total_anc_records': total_anc_records,
+        'total_labor_records': total_labor_records,
+        'total_icu_records': total_icu_records,
+        'total_family_planning_records': total_family_planning_records,
+        'total_gynae_emergency_records': total_gynae_emergency_records,
+        'ophthalmic_records_count': ophthalmic_records_count,
+        'ent_records_count': ent_records_count,
+        'oncology_records_count': oncology_records_count,
+        'scbu_records_count': scbu_records_count,
+        'anc_records_count': anc_records_count,
+        'labor_records_count': labor_records_count,
+        'icu_records_count': icu_records_count,
+        'family_planning_records_count': family_planning_records_count,
+        'gynae_emergency_records_count': gynae_emergency_records_count,
         'today_appointments': today_appointments,
         'pending_prescriptions': pending_prescriptions,
         'pending_tests': pending_tests,
@@ -92,6 +144,7 @@ def dashboard(request):
     }
 
     return render(request, 'dashboard/dashboard_modern.html', context)
+
 
 @login_required
 def system_overview(request):
@@ -165,5 +218,22 @@ def system_overview(request):
     context['available_beds'] = Bed.objects.filter(is_occupied=False, is_active=True).count()
     context['total_admissions'] = Admission.objects.count()
     context['current_admissions'] = Admission.objects.filter(discharge_date__isnull=True).count()
+
+    # New Modules
+    context['ophthalmic_records_count'] = OphthalmicRecord.objects.count()
+    context['ent_records_count'] = EntRecord.objects.count()
+    context['oncology_records_count'] = OncologyRecord.objects.count()
+    context['scbu_records_count'] = ScbuRecord.objects.count()
+    context['anc_records_count'] = AncRecord.objects.count()
+    context['labor_records_count'] = LaborRecord.objects.count()
+    context['icu_records_count'] = IcuRecord.objects.count()
+    context['family_planning_records_count'] = Family_planningRecord.objects.count()
+    context['gynae_emergency_records_count'] = Gynae_emergencyRecord.objects.count()
+    
+    # Authorization code statistics
+    from nhia.models import AuthorizationCode
+    context['active_authorization_codes'] = AuthorizationCode.objects.filter(status='active').count()
+    context['used_authorization_codes'] = AuthorizationCode.objects.filter(status='used').count()
+    context['expired_authorization_codes'] = AuthorizationCode.objects.filter(status='expired').count()
 
     return render(request, 'dashboard/system_overview.html', context)

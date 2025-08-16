@@ -65,6 +65,14 @@ class TestRequestForm(forms.ModelForm):
     request_date = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+    
+    # Authorization code field
+    authorization_code = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Authorization Code (Optional)"
+    )
 
     class Meta:
         model = TestRequest
@@ -77,6 +85,36 @@ class TestRequestForm(forms.ModelForm):
             'priority': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        preselected_patient = kwargs.pop('preselected_patient', None)
+        super().__init__(*args, **kwargs)
+
+        # Handle patient preselection
+        patient_id = None
+        patient_instance = None
+
+        if preselected_patient:
+            patient_instance = preselected_patient
+            patient_id = preselected_patient.id
+        elif request:
+            patient_id = request.GET.get('patient')
+
+        if not patient_id and not patient_instance:
+            patient_instance = self.initial.get('patient')
+            if patient_instance:
+                patient_id = patient_instance.id
+        
+        # Set authorization code queryset based on patient
+        if patient_instance and patient_instance.patient_type == 'nhia':
+            from nhia.models import AuthorizationCode
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                patient=patient_instance,
+                status='active'
+            ).order_by('-generated_at')
+        else:
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
 
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)

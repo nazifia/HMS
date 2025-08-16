@@ -151,6 +151,22 @@
             </div>
         </div>
 
+        <!-- Authorization Codes -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Authorization Codes Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Active Authorization Codes: {{ active_authorization_codes }}</p>
+                    <p>Used Authorization Codes: {{ used_authorization_codes }}</p>
+                    <p>Expired Authorization Codes: {{ expired_authorization_codes }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
         <!-- Inpatient App -->
         <div class="col-xl-6 col-lg-6">
             <div class="card shadow mb-4">
@@ -161,6 +177,26 @@
                     <p>Wards: {{ total_wards }}</p>
                     <p>Beds: {{ total_beds }} (Occupied: {{ occupied_beds }}, Available: {{ available_beds }})</p>
                     <p>Total Admissions: {{ total_admissions }} (Current: {{ current_admissions }})</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Modules -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">New Medical Modules Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>Ophthalmic Records: {{ ophthalmic_records_count }}</p>
+                    <p>ENT Records: {{ ent_records_count }}</p>
+                    <p>Oncology Records: {{ oncology_records_count }}</p>
+                    <p>SCBU Records: {{ scbu_records_count }}</p>
+                    <p>ANC Records: {{ anc_records_count }}</p>
+                    <p>Labor Records: {{ labor_records_count }}</p>
+                    <p>ICU Records: {{ icu_records_count }}</p>
+                    <p>Family Planning Records: {{ family_planning_records_count }}</p>
+                    <p>Gynae Emergency Records: {{ gynae_emergency_records_count }}</p>
                 </div>
             </div>
         </div>

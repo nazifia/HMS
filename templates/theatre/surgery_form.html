@@ -99,6 +99,24 @@ Create Surgery
                     </div>
                 </div>
                 {{ form.pre_surgery_notes|as_crispy_field }}
+                
+                <!-- Authorization Code Field (only for NHIA patients) -->
+                <div class="form-group" id="authorization-code-section" style="display: none;">
+                    <label for="id_authorization_code">Authorization Code</label>
+                    {{ form.authorization_code|as_crispy_field }}
+                    <small class="form-text text-muted">
+                        Select an authorization code if this surgery is covered by NHIA.
+                    </small>
+                </div>
+                
+                <!-- Authorization Code Field (only for NHIA patients) -->
+                <div class="form-group" id="authorization-code-section" style="display: none;">
+                    <label for="id_authorization_code">Authorization Code</label>
+                    {{ form.authorization_code|as_crispy_field }}
+                    <small class="form-text text-muted">
+                        Select an authorization code if this surgery is covered by NHIA.
+                    </small>
+                </div>
 
                 <hr>
 
@@ -278,6 +296,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
         selectedPatientInfo.style.display = 'block';
         searchResults.style.display = 'none';
+        
+        // Check if patient is NHIA and show authorization code field
+        checkPatientNHIAStatus(patientId);
+    }
+    
+    // Function to check if patient is NHIA
+    function checkPatientNHIAStatus(patientId) {
+        if (patientId) {
+            fetch('/patients/check-patient-nhia/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: 'patient_id=' + patientId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.is_nhia) {
+                    document.getElementById('authorization-code-section').style.display = 'block';
+                } else {
+                    document.getElementById('authorization-code-section').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking patient NHIA status:', error);
+                document.getElementById('authorization-code-section').style.display = 'none';
+            });
+        } else {
+            document.getElementById('authorization-code-section').style.display = 'none';
+        }
     }
     
     // Team Formset

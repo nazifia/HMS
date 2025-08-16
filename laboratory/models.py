@@ -72,6 +72,9 @@ class TestRequest(models.Model):
 
     # Link to an invoice - can be null if not yet billed or if billing is handled differently
     invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='lab_test_request')
+    
+    # Authorization code for NHIA patients
+    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='lab_test_requests')
 
     def __str__(self):
         return f"Test Request for {self.patient.get_full_name()} - {self.request_date}"

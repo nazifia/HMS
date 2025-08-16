@@ -142,6 +142,132 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- Ophthalmic - Available to doctors and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-eye fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Ophthalmic</h5>
+                <p class="card-text">Manage eye care services and patient records.</p>
+                <a href="{% url 'ophthalmic:ophthalmic_records_list' %}" class="btn btn-primary">View Ophthalmic</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ENT - Available to doctors and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-head-side-cough fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">ENT</h5>
+                <p class="card-text">Manage ear, nose, and throat care services.</p>
+                <a href="{% url 'ent:ent_records_list' %}" class="btn btn-primary">View ENT</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Oncology - Available to doctors and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-dna fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Oncology</h5>
+                <p class="card-text">Manage cancer care services and patient records.</p>
+                <a href="{% url 'oncology:oncology_records_list' %}" class="btn btn-primary">View Oncology</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- SCBU - Available to doctors, nurses and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-baby fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">SCBU</h5>
+                <p class="card-text">Manage special care baby unit services.</p>
+                <a href="{% url 'scbu:scbu_records_list' %}" class="btn btn-primary">View SCBU</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ANC - Available to doctors, nurses and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-female fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">ANC</h5>
+                <p class="card-text">Manage antenatal care services.</p>
+                <a href="{% url 'anc:anc_records_list' %}" class="btn btn-primary">View ANC</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Labor - Available to doctors, nurses and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-baby-carriage fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Labor</h5>
+                <p class="card-text">Manage labor and delivery services.</p>
+                <a href="{% url 'labor:labor_records_list' %}" class="btn btn-primary">View Labor</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ICU - Available to doctors, nurses and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-heartbeat fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">ICU</h5>
+                <p class="card-text">Manage intensive care unit services.</p>
+                <a href="{% url 'icu:icu_records_list' %}" class="btn btn-primary">View ICU</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Family Planning - Available to doctors, nurses and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Family Planning</h5>
+                <p class="card-text">Manage family planning services.</p>
+                <a href="{% url 'family_planning:family_planning_records_list' %}" class="btn btn-primary">View Family Planning</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Gynae Emergency - Available to doctors, nurses and admins -->
+    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-ambulance fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Gynae Emergency</h5>
+                <p class="card-text">Manage gynecological emergency services.</p>
+                <a href="{% url 'gynae_emergency:gynae_emergency_records_list' %}" class="btn btn-primary">View Gynae Emergency</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% else %}
 <div class="row mt-4">
@@ -170,6 +296,15 @@
                     <li class="list-group-item">Inpatient Ward Management</li>
                     <li class="list-group-item">Staff Management & Scheduling</li>
                     <li class="list-group-item">Reporting & Analytics</li>
+                    <li class="list-group-item">Ophthalmic Services</li>
+                    <li class="list-group-item">ENT Services</li>
+                    <li class="list-group-item">Oncology Services</li>
+                    <li class="list-group-item">Special Care Baby Unit (SCBU)</li>
+                    <li class="list-group-item">Antenatal Care (ANC)</li>
+                    <li class="list-group-item">Labor & Delivery</li>
+                    <li class="list-group-item">Intensive Care Unit (ICU)</li>
+                    <li class="list-group-item">Family Planning</li>
+                    <li class="list-group-item">Gynecological Emergency</li>
                 </ul>
             </div>
         </div>

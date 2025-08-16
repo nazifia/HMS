@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}NHIA Desk Office{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">NHIA Desk Office Dashboard</h1>
+        <a href="{% url 'nhia:generate_authorization_code' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Generate Authorization Code
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row">
+        <!-- Total NHIA Patients -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total NHIA Patients</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_nhia_patients }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Authorization Codes -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Active Authorization Codes</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_authorization_codes }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Used Authorization Codes -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Used Authorization Codes</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ used_authorization_codes }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-double fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Recent Activity</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">Live</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-history fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Authorization Codes -->
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Authorization Codes</h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_codes %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Patient</th>
+                                    <th>Service Type</th>
+                                    <th>Amount</th>
+                                    <th>Expiry Date</th>
+                                    <th>Status</th>
+                                    <th>Generated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for code in recent_codes %}
+                                <tr>
+                                    <td>{{ code.code }}</td>
+                                    <td>{{ code.patient.get_full_name }}</td>
+                                    <td>{{ code.get_service_type_display }}</td>
+                                    <td>₦{{ code.amount }}</td>
+                                    <td>{{ code.expiry_date }}</td>
+                                    <td>
+                                        {% if code.status == 'active' %}
+                                            <span class="badge bg-success">{{ code.get_status_display }}</span>
+                                        {% elif code.status == 'used' %}
+                                            <span class="badge bg-info">{{ code.get_status_display }}</span>
+                                        {% elif code.status == 'expired' %}
+                                            <span class="badge bg-warning">{{ code.get_status_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ code.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ code.generated_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'nhia:authorization_code_detail' code.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No authorization codes generated yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

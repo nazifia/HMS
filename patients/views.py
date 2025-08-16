@@ -1048,6 +1048,22 @@ def pwa_offline_queue_demo(request):
     except Exception:
         data = {}
     # Simulate processing
+    
+@csrf_exempt
+@require_POST
+def check_patient_nhia(request):
+    """Check if a patient is an NHIA patient"""
+    patient_id = request.POST.get('patient_id')
+    is_nhia = False
+    
+    if patient_id:
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            is_nhia = patient.patient_type == 'nhia'
+        except Patient.DoesNotExist:
+            pass
+    
+    return JsonResponse({'is_nhia': is_nhia})
     response = {
         'received': True,
         'data': data,

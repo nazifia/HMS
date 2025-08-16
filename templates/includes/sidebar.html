@@ -335,6 +335,22 @@
             Administration
         </div>
 
+        <!-- Nav Item - Desk Office -->
+        <li class="nav-item {% if '/desk-office/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'desk_office:generate_authorization_code' %}">
+                <i class="fas fa-fw fa-desktop text-white"></i>
+                <span class="text-white">Desk Office</span>
+            </a>
+        </li>
+
+        <!-- Nav Item - Notifications -->
+        <li class="nav-item {% if '/notifications/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'core:notifications_list' %}">
+                <i class="fas fa-fw fa-bell text-white"></i>
+                <span class="text-white">Notifications</span>
+            </a>
+        </li>
+
         <!-- Nav Item - Billing (Available to accountants, receptionists, and admins) -->
         {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
         <li class="nav-item {% if '/billing/' in request.path %}active{% endif %}">

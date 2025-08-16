@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Oncology Record Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Oncology Record Details</h1>
+        <div>
+            <a href="{% url 'oncology:edit_oncology_record' record.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit Record
+            </a>
+            <a href="{% url 'oncology:oncology_records_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Information -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ record.patient.get_full_name }}</p>
+                    <p><strong>Patient ID:</strong> {{ record.patient.patient_id }}</p>
+                    <p><strong>Age:</strong> {{ record.patient.age }} years</p>
+                    <p><strong>Gender:</strong> {{ record.patient.get_gender_display }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Visit Date:</strong> {{ record.visit_date|date:"M d, Y H:i" }}</p>
+                    <p><strong>Doctor:</strong> {{ record.doctor.get_full_name|default:"Not specified" }}</p>
+                    <p><strong>Follow-up Required:</strong> 
+                        {% if record.follow_up_required %}
+                            <span class="badge badge-warning">Yes</span>
+                            {% if record.follow_up_date %}
+                                <br><strong>Follow-up Date:</strong> {{ record.follow_up_date|date:"M d, Y" }}
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-secondary">No</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Specific Fields -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Oncology Specific Fields</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Cancer Type:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.cancer_type|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Stage:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.stage|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Tumor Size (cm):</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.tumor_size|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Metastasis:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.metastasis|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Treatment Protocol:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.treatment_protocol|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Chemotherapy Cycle:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.chemotherapy_cycle|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Radiation Dose (Gy):</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.radiation_dose|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Surgery Details:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.surgery_details|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Biopsy Results:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.biopsy_results|default:"Not recorded" }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Oncology Marker:</strong></p>
+                </div>
+                <div class="col-md-8">
+                    <p>{{ record.oncology_marker|default:"Not recorded" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- Chief Complaint -->
+    {% if record.chief_complaint %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Chief Complaint</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.chief_complaint|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- History of Present Illness -->
+    {% if record.history_of_present_illness %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">History of Present Illness</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.history_of_present_illness|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Diagnosis -->
+    {% if record.diagnosis %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Diagnosis</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.diagnosis|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Treatment Plan -->
+    {% if record.treatment_plan %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Treatment Plan</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.treatment_plan|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Notes -->
+    {% if record.notes %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Notes</h6>
+        </div>
+        <div class="card-body">
+            <p>{{ record.notes|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

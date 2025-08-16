@@ -490,6 +490,7 @@ def admission_detail(request, pk):
 def create_admission(request):
     """View for creating a new admission"""
     from django.db import transaction
+    from decimal import Decimal
     # Pre-fill patient_id if provided in GET parameters
     patient_id = request.GET.get('patient_id')
     initial_data = {}
@@ -509,6 +510,25 @@ def create_admission(request):
             if not bed.is_active or bed.is_occupied:
                 messages.error(request, f'Selected bed {bed.bed_number} in {bed.ward.name} is not available. Please choose another bed.')
             else:
+                # Get authorization code if provided
+                authorization_code_id = request.POST.get('authorization_code')
+                authorization_code = None
+                if authorization_code_id:
+                    try:
+                        from nhia.models import AuthorizationCode
+                        authorization_code = AuthorizationCode.objects.get(id=authorization_code_id)
+                        # Verify the authorization code is valid
+                        if not authorization_code.is_valid():
+                            messages.error(request, "The provided authorization code is not valid.")
+                            return redirect('inpatient:create_admission')
+                        # Verify the authorization code is for this patient
+                        if authorization_code.patient != form.cleaned_data['patient']:
+                            messages.error(request, "The provided authorization code is not for this patient.")
+                            return redirect('inpatient:create_admission')
+                    except AuthorizationCode.DoesNotExist:
+                        messages.error(request, "The provided authorization code does not exist.")
+                        return redirect('inpatient:create_admission')
+                
                 admission = form.save(commit=False)  # <-- Move this up
                 # Assign attending doctor based on primary determinant (e.g., ward's primary doctor or patient's primary doctor)
                 primary_doctor = None
@@ -519,6 +539,7 @@ def create_admission(request):
                 else:
                     primary_doctor = admission.attending_doctor  # fallback
                 admission.attending_doctor = primary_doctor
+                admission.authorization_code = authorization_code  # Set authorization code if provided
                 try:
                     with transaction.atomic():
                         # admission = form.save(commit=False)  # already done above
@@ -536,10 +557,13 @@ def create_admission(request):
                         try:
                             admission_service = form.cleaned_data['admission_service']
                             logger.info(f'Found admission service: {admission_service.name} with price {admission_service.price}')
-                            wallet = PatientWallet.objects.get(patient=admission.patient)
-                            logger.info(f'Found wallet for patient {wallet.patient.get_full_name()} with balance {wallet.balance}')
-
-                            logger.info('Proceeding with wallet transaction (negative balance allowed).')
+                            
+                            # If authorization code is provided, mark as paid
+                            invoice_status = 'paid' if authorization_code else 'pending'
+                            payment_method = 'insurance' if authorization_code else None
+                            payment_date = timezone.now().date() if authorization_code else None
+                            amount_paid = admission_service.price if authorization_code else Decimal('0.00')
+                            
                             # Create Invoice
                             invoice = Invoice.objects.create(
                                 patient=admission.patient,
@@ -550,8 +574,13 @@ def create_admission(request):
                                 tax_amount=0,
                                 discount_amount=0,
                                 total_amount=admission_service.price,
+                                amount_paid=amount_paid,
+                                payment_method=payment_method,
+                                payment_date=payment_date,
+                                status=invoice_status,
                                 admission=admission, # Link invoice to admission
                                 source_app='inpatient',
+                                created_by=request.user
                             ) 
                             # Create InvoiceItem
                             InvoiceItem.objects.create(
@@ -561,17 +590,29 @@ def create_admission(request):
                                 unit_price=admission_service.price,
                                 total_amount=admission_service.price
                             )
-                            # Deduct from wallet (allowing negative balance)
-                            wallet.debit(
-                                amount=admission_service.price,
-                                description=f'Admission fee for {admission.patient.get_full_name()}',
-                                transaction_type='admission_fee',
-                                user=request.user,
-                                invoice=invoice
-                            )
-                            logger.info(f'Deducted {admission_service.price} from wallet. New balance: {wallet.balance}')
-
-                            messages.success(request, 'Admission created successfully and wallet deducted.')
+                            
+                            # If authorization code is provided, don't deduct from wallet
+                            if not authorization_code:
+                                wallet = PatientWallet.objects.get(patient=admission.patient)
+                                logger.info(f'Found wallet for patient {wallet.patient.get_full_name()} with balance {wallet.balance}')
+                                logger.info('Proceeding with wallet transaction (negative balance allowed).')
+                                # Deduct from wallet (allowing negative balance)
+                                wallet.debit(
+                                    amount=admission_service.price,
+                                    description=f'Admission fee for {admission.patient.get_full_name()}',
+                                    transaction_type='admission_fee',
+                                    user=request.user,
+                                    invoice=invoice
+                                )
+                                logger.info(f'Deducted {admission_service.price} from wallet. New balance: {wallet.balance}')
+                            
+                            # If authorization code was used, mark it as used
+                            if authorization_code:
+                                authorization_code.mark_as_used(f"Admission #{admission.id}")
+                                messages.success(request, f'Admission created successfully. Invoice #{invoice.invoice_number} generated and paid via authorization code.')
+                            else:
+                                messages.success(request, f'Admission created successfully. Invoice #{invoice.invoice_number} generated and wallet deducted.')
+                            
                             return redirect('inpatient:admission_detail', pk=admission.pk)
 
                         except Service.DoesNotExist:

@@ -1,0 +1,33 @@
+{% extends 'desk_office/base.html' %}
+
+{% block title %}Update Mail Status{% endblock %}
+
+{% block desk_office_content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Update Mail Status</h5>
+            </div>
+            <div class="card-body">
+                <p>Updating status for mail item from <strong>{{ mail_item.sender_name }}</strong> to <strong>{{ mail_item.recipient|default:mail_item.recipient_department|default:"N/A" }}</strong>.</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="status" class="form-label">New Status</label>
+                        <select name="status" class="form-select" id="status">
+                            <option value="received" {% if mail_item.status == 'received' %}selected{% endif %}>Received</option>
+                            <option value="in_transit" {% if mail_item.status == 'in_transit' %}selected{% endif %}>In Transit</option>
+                            <option value="delivered" {% if mail_item.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                            <option value="returned" {% if mail_item.status == 'returned' %}selected{% endif %}>Returned</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                    <a href="{% url 'desk_office:mail_detail' mail_item.id %}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -41,6 +41,11 @@ def index(request):
 def order_radiology(request, patient_id=None):
     """View to create a new radiology order"""
     from .models import RadiologyTest  # ensure import
+    from decimal import Decimal
+    from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
+    from django.db import transaction
+    from datetime import timedelta
+    
     selected_patient = None
     initial = {}
     if patient_id:
@@ -51,13 +56,93 @@ def order_radiology(request, patient_id=None):
     if request.method == 'POST':
         form = RadiologyOrderForm(request.POST, request=request)
         if form.is_valid():
-            order = form.save(commit=False)
-            if not order.referring_doctor_id:
-                order.referring_doctor = request.user
-            order.status = 'pending'
-            order.order_date = timezone.now()
-            order.save()
-            messages.success(request, 'Radiology order created successfully')
+            # Get authorization code if provided
+            authorization_code_id = request.POST.get('authorization_code')
+            authorization_code = None
+            if authorization_code_id:
+                try:
+                    from nhia.models import AuthorizationCode
+                    authorization_code = AuthorizationCode.objects.get(id=authorization_code_id)
+                    # Verify the authorization code is valid
+                    if not authorization_code.is_valid():
+                        messages.error(request, "The provided authorization code is not valid.")
+                        return redirect('radiology:order_radiology', patient_id=patient_id) if patient_id else redirect('radiology:order_radiology')
+                    # Verify the authorization code is for this patient
+                    if authorization_code.patient != selected_patient:
+                        messages.error(request, "The provided authorization code is not for this patient.")
+                        return redirect('radiology:order_radiology', patient_id=patient_id) if patient_id else redirect('radiology:order_radiology')
+                except AuthorizationCode.DoesNotExist:
+                    messages.error(request, "The provided authorization code does not exist.")
+                    return redirect('radiology:order_radiology', patient_id=patient_id) if patient_id else redirect('radiology:order_radiology')
+            
+            with transaction.atomic():
+                order = form.save(commit=False)
+                if not order.referring_doctor_id:
+                    order.referring_doctor = request.user
+                order.status = 'pending'
+                order.order_date = timezone.now()
+                order.authorization_code = authorization_code  # Set authorization code if provided
+                order.save()
+                
+                # Create an invoice for this radiology order
+                subtotal = Decimal(order.test.price)
+                tax_amount = Decimal('0.00')
+                total_amount = subtotal + tax_amount
+                due_date = order.order_date.date() + timedelta(days=7) # Example: due in 7 days
+
+                # If authorization code is provided, mark as paid
+                invoice_status = 'paid' if authorization_code else 'pending'
+                payment_method = 'insurance' if authorization_code else None
+                payment_date = timezone.now().date() if authorization_code else None
+
+                invoice = Invoice.objects.create(
+                    patient=order.patient,
+                    invoice_date=order.order_date.date(),
+                    due_date=due_date,
+                    status=invoice_status, # Mark as paid if authorization code is used
+                    radiology_order=order, # Link to the RadiologyOrder
+                    subtotal=subtotal,
+                    tax_amount=tax_amount,
+                    total_amount=total_amount,
+                    amount_paid=total_amount if authorization_code else Decimal('0.00'),
+                    payment_method=payment_method,
+                    payment_date=payment_date,
+                    created_by=request.user,
+                    source_app='radiology'
+                )
+                
+                # Update order with invoice
+                order.invoice = invoice
+                order.status = 'payment_confirmed' if authorization_code else 'pending'
+                order.save()
+                
+                # Create InvoiceItem for the radiology test
+                radiology_service_category, _ = ServiceCategory.objects.get_or_create(name="Radiology Services")
+                service, _ = Service.objects.get_or_create(
+                    name=f"Radiology Test: {order.test.name}", 
+                    category=radiology_service_category,
+                    defaults={'price': order.test.price, 'description': order.test.description or f"Radiology test: {order.test.name}"}
+                )
+                if service.price != order.test.price: # Update service price if it differs from test price
+                    service.price = order.test.price
+                    service.save()
+
+                InvoiceItem.objects.create(
+                    invoice=invoice,
+                    service=service, 
+                    description=f"Radiology Test: {order.test.name}",
+                    quantity=1,
+                    unit_price=Decimal(order.test.price),
+                    tax_percentage=service.tax_percentage, # Use tax from service if defined
+                    tax_amount=(Decimal(order.test.price) * service.tax_percentage) / Decimal('100'),
+                    total_amount=Decimal(order.test.price) + ((Decimal(order.test.price) * service.tax_percentage) / Decimal('100'))
+                )
+                
+                # If authorization code was used, mark it as used
+                if authorization_code:
+                    authorization_code.mark_as_used(f"Radiology Order #{order.id}")
+            
+            messages.success(request, f'Radiology order created successfully. Invoice #{invoice.invoice_number} generated and is {"paid via authorization code" if authorization_code else "pending payment"}.')
             return redirect('radiology:order_detail', order_id=order.id)
     else:
         form = RadiologyOrderForm(initial=initial, request=request)

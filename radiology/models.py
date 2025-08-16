@@ -72,6 +72,9 @@ class RadiologyOrder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='radiology_order')
+    
+    # Authorization code for NHIA patients
+    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='radiology_orders')
 
     def __str__(self):
         return f"{self.test.name} for {self.patient.get_full_name()} ({self.order_date.strftime('%Y-%m-%d')})"

@@ -223,13 +223,92 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form, team_formset, equipment_formset)
 
     def form_valid(self, form, team_formset, equipment_formset):
+        from decimal import Decimal
+        from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
+        from datetime import timedelta
+        
+        # Get authorization code if provided
+        authorization_code_id = self.request.POST.get('authorization_code')
+        authorization_code = None
+        if authorization_code_id:
+            try:
+                from nhia.models import AuthorizationCode
+                authorization_code = AuthorizationCode.objects.get(id=authorization_code_id)
+                # Verify the authorization code is valid
+                if not authorization_code.is_valid():
+                    messages.error(self.request, "The provided authorization code is not valid.")
+                    return self.form_invalid(form, team_formset, equipment_formset)
+                # Verify the authorization code is for this patient
+                if authorization_code.patient != form.cleaned_data['patient']:
+                    messages.error(self.request, "The provided authorization code is not for this patient.")
+                    return self.form_invalid(form, team_formset, equipment_formset)
+            except AuthorizationCode.DoesNotExist:
+                messages.error(self.request, "The provided authorization code does not exist.")
+                return self.form_invalid(form, team_formset, equipment_formset)
+        
         with transaction.atomic():
             self.object = form.save()
             team_formset.instance = self.object
             team_formset.save()
             equipment_formset.instance = self.object
             equipment_formset.save()
-        messages.success(self.request, 'Surgery created successfully.')
+            
+            # Create an invoice for this surgery
+            subtotal = Decimal('0.00')  # For now, we'll set this to 0 as surgeries might have complex pricing
+            tax_amount = Decimal('0.00')
+            total_amount = subtotal + tax_amount
+            due_date = self.object.scheduled_date.date() + timedelta(days=7) # Example: due in 7 days
+
+            # If authorization code is provided, mark as paid
+            invoice_status = 'paid' if authorization_code else 'pending'
+            payment_method = 'insurance' if authorization_code else None
+            payment_date = timezone.now().date() if authorization_code else None
+
+            invoice = Invoice.objects.create(
+                patient=self.object.patient,
+                invoice_date=self.object.scheduled_date.date(),
+                due_date=due_date,
+                status=invoice_status, # Mark as paid if authorization code is used
+                subtotal=subtotal,
+                tax_amount=tax_amount,
+                total_amount=total_amount,
+                amount_paid=total_amount if authorization_code else Decimal('0.00'),
+                payment_method=payment_method,
+                payment_date=payment_date,
+                created_by=self.request.user,
+                source_app='theatre'
+            )
+            
+            # Update surgery with invoice and authorization code
+            self.object.invoice = invoice
+            self.object.authorization_code = authorization_code
+            self.object.status = 'scheduled' if authorization_code else 'pending'
+            self.object.save()
+            
+            # Create a generic InvoiceItem for the surgery
+            theatre_service_category, _ = ServiceCategory.objects.get_or_create(name="Theatre Services")
+            service, _ = Service.objects.get_or_create(
+                name=f"Theatre Procedure: {self.object.surgery_type.name}", 
+                category=theatre_service_category,
+                defaults={'price': Decimal('0.00'), 'description': f"Theatre procedure: {self.object.surgery_type.name}"}
+            )
+
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                service=service, 
+                description=f"Theatre Procedure: {self.object.surgery_type.name}",
+                quantity=1,
+                unit_price=Decimal('0.00'),
+                tax_percentage=service.tax_percentage,
+                tax_amount=Decimal('0.00'),
+                total_amount=Decimal('0.00')
+            )
+            
+            # If authorization code was used, mark it as used
+            if authorization_code:
+                authorization_code.mark_as_used(f"Surgery #{self.object.id}")
+            
+        messages.success(self.request, f'Surgery created successfully. Invoice #{invoice.invoice_number} generated and is {"paid via authorization code" if authorization_code else "pending payment"}.')
         return redirect(self.get_success_url())
 
     def form_invalid(self, form, team_formset, equipment_formset):

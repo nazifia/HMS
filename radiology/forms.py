@@ -4,22 +4,45 @@ from patients.models import Patient
 
 class RadiologyOrderForm(forms.ModelForm):
     """Form for creating and updating radiology orders"""
+    
+    # Authorization code field
+    authorization_code = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        empty_label="Select Authorization Code (Optional)"
+    )
+    
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         patient_id = None
+        patient_instance = None
         if request:
             patient_id = request.GET.get('patient')
         if not patient_id:
             patient_id = self.initial.get('patient')
         if patient_id:
             self.fields['patient'].initial = patient_id
-            # Keep patient field visible but pre-selected for user convenience
+            try:
+                patient_instance = Patient.objects.get(id=patient_id)
+            except Patient.DoesNotExist:
+                patient_instance = None
         # Always set queryset for dropdowns
         self.fields['patient'].queryset = Patient.objects.all()
         self.fields['test'].queryset = RadiologyTest.objects.filter(is_active=True)
         # Make referring_doctor not required in the form (set in view)
         self.fields['referring_doctor'].required = False
+        
+        # Set authorization code queryset based on patient
+        if patient_instance and patient_instance.patient_type == 'nhia':
+            from nhia.models import AuthorizationCode
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                patient=patient_instance,
+                status='active'
+            ).order_by('-generated_at')
+        else:
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
 
     class Meta:
         model = RadiologyOrder

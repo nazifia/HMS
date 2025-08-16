@@ -1,0 +1,24 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Verify Authorization Code</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="code">Authorization Code</label>
+            <input type="text" class="form-control" id="code" name="code">
+        </div>
+        <button type="submit" class="btn btn-primary">Verify</button>
+    </form>
+    {% if authorization_code %}
+        <hr>
+        <h3>Code Details</h3>
+        <p>Patient: {{ authorization_code.patient }}</p>
+        <p>Service: {{ authorization_code.service }}</p>
+        <p>Department: {{ authorization_code.department }}</p>
+        <p>Status: {{ authorization_code.status }}</p>
+    {% endif %}
+</div>
+{% endblock %}

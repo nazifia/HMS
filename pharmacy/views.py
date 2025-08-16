@@ -323,8 +323,24 @@ def dispensed_item_detail(request, log_id):
         ),
         id=log_id
     )
+    
+    # Get related dispensing logs for the same prescription item
+    related_logs = DispensingLog.objects.filter(
+        prescription_item=log_entry.prescription_item
+    ).exclude(
+        id=log_entry.id
+    ).select_related(
+        'dispensed_by__profile',
+        'dispensary'
+    ).order_by('-dispensed_date')
+    
+    # Get the prescription for context
+    prescription = log_entry.prescription_item.prescription
+    
     context = {
         'log_entry': log_entry,
+        'related_logs': related_logs,
+        'prescription': prescription,
         'title': 'Dispensed Item Detail'
     }
     return render(request, 'pharmacy/dispensed_item_detail.html', context)
@@ -391,8 +407,9 @@ def dispensed_items_export(request):
 
 @login_required
 def medication_autocomplete(request):
-    if 'term' in request.GET:
-        query = request.GET.get('term')
+    # Support both 'term' and 'query' parameters for compatibility
+    query = request.GET.get('term') or request.GET.get('query')
+    if query:
         medications = Medication.objects.filter(name__icontains=query)[:10]
         results = [med.name for med in medications]
         return JsonResponse(results, safe=False)

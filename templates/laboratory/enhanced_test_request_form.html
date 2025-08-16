@@ -118,6 +118,20 @@
                             {% endif %}
                         </div>
                         
+                        <!-- Authorization Code Field (only for NHIA patients) -->
+                        {% if patient and patient.patient_type == 'nhia' %}
+                        <div class="mb-3">
+                            <label for="{{ form.authorization_code.id_for_label }}" class="form-label">Authorization Code</label>
+                            {{ form.authorization_code|add_class:"form-control select2" }}
+                            {% if form.authorization_code.errors %}
+                                <div class="text-danger">{{ form.authorization_code.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Select an authorization code if this request is covered by NHIA.
+                            </small>
+                        </div>
+                        {% endif %}
+                        
                         <!-- Hidden field for selected tests -->
                         <input type="hidden" name="tests" id="selected-tests" value="">
                         

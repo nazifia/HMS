@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Generate Authorization Code{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Generate Authorization Code</h1>
+        <a href="{% url 'nhia:authorization_code_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Generate Authorization Code Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Authorization Code Details</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <!-- Patient Search -->
+                        <div class="mb-3">
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">{{ form.patient_search.label }}</label>
+                            {{ form.patient_search }}
+                            {% if form.patient_search.help_text %}
+                            <div class="form-text">{{ form.patient_search.help_text }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Patient Selection -->
+                        <div class="mb-3">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">{{ form.patient.label }}</label>
+                            {{ form.patient }}
+                            {% if form.patient.errors %}
+                            <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Service Type -->
+                        <div class="mb-3">
+                            <label for="{{ form.service_type.id_for_label }}" class="form-label">{{ form.service_type.label }}</label>
+                            {{ form.service_type }}
+                            {% if form.service_type.errors %}
+                            <div class="text-danger">{{ form.service_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Amount -->
+                        <div class="mb-3">
+                            <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
+                            {{ form.amount }}
+                            {% if form.amount.errors %}
+                            <div class="text-danger">{{ form.amount.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Expiry Date -->
+                        <div class="mb-3">
+                            <label for="{{ form.expiry_date.id_for_label }}" class="form-label">{{ form.expiry_date.label }}</label>
+                            {{ form.expiry_date }}
+                            {% if form.expiry_date.errors %}
+                            <div class="text-danger">{{ form.expiry_date.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Generate Authorization Code</button>
+                        <a href="{% url 'nhia:authorization_code_list' %}" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Help Section -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Instructions</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>How to generate an authorization code:</strong></p>
+                    <ol>
+                        <li>Search for the NHIA patient by name or ID</li>
+                        <li>Select the patient from the dropdown</li>
+                        <li>Choose the service type the code is for</li>
+                        <li>Enter the amount to be covered by the authorization</li>
+                        <li>Set an appropriate expiry date</li>
+                        <li>Add any relevant notes</li>
+                        <li>Click "Generate Authorization Code"</li>
+                    </ol>
+                    <p class="text-muted">
+                        <i class="fas fa-info-circle"></i> Authorization codes are automatically generated with a unique identifier.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for patient search -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const patientSearch = document.getElementById('{{ form.patient_search.id_for_label }}');
+    const patientSelect = document.getElementById('{{ form.patient.id_for_label }}');
+    
+    patientSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const options = patientSelect.options;
+        
+        for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            const text = option.text.toLowerCase();
+            if (text.includes(searchTerm)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

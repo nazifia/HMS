@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Dental Records</h2>
+    <ul>
+        {% for record in records %}
+            <li>{{ record }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

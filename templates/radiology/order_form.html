@@ -72,6 +72,15 @@
                             <label for="id_notes" class="form-label">Additional Notes</label>
                             {{ form.notes|add_class:"form-control" }}
                         </div>
+                        
+                        <!-- Authorization Code Field (only for NHIA patients) -->
+                        <div class="mb-3" id="authorization-code-section" style="display: none;">
+                            <label for="id_authorization_code" class="form-label">Authorization Code</label>
+                            {{ form.authorization_code|add_class:"form-select select2" }}
+                            <div class="form-text">
+                                Select an authorization code if this order is covered by NHIA.
+                            </div>
+                        </div>
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <button type="button" class="btn btn-secondary me-md-2" onclick="window.location.href='{% url 'radiology:index' %}'">
                                 <i class="fas fa-times me-1"></i> Cancel
@@ -94,6 +103,42 @@
         $('.select2').select2({
             theme: 'bootstrap-5',
             width: '100%'
+        });
+        
+        // Function to check if selected patient is NHIA and show/hide authorization code field
+        function checkPatientType() {
+            var patientId = $('#id_patient').val();
+            if (patientId) {
+                // Make an AJAX request to check if patient is NHIA
+                $.ajax({
+                    url: '{% url "patients:check_patient_nhia" %}',
+                    data: {
+                        'patient_id': patientId,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    type: 'POST',
+                    success: function(data) {
+                        if (data.is_nhia) {
+                            $('#authorization-code-section').show();
+                        } else {
+                            $('#authorization-code-section').hide();
+                        }
+                    },
+                    error: function() {
+                        $('#authorization-code-section').hide();
+                    }
+                });
+            } else {
+                $('#authorization-code-section').hide();
+            }
+        }
+        
+        // Check patient type on page load
+        checkPatientType();
+        
+        // Check patient type when patient selection changes
+        $('#id_patient').on('change', function() {
+            checkPatientType();
         });
     });
 </script>

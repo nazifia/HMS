@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        
+                <div class="form-group">
+                    <label for="{{ form.method_used.id_for_label }}">Method Used</label>
+                    {{ form.method_used|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.start_date.id_for_label }}">Start Date</label>
+                    {{ form.start_date|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.end_date.id_for_label }}">End Date</label>
+                    {{ form.end_date|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.side_effects.id_for_label }}">Side Effects</label>
+                    {{ form.side_effects|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.compliance.id_for_label }}">Compliance</label>
+                    {{ form.compliance|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.refill_date.id_for_label }}">Refill Date</label>
+                    {{ form.refill_date|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.partner_involvement.id_for_label }}">Partner Involvement</label>
+                    {{ form.partner_involvement|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.education_provided.id_for_label }}">Education Provided</label>
+                    {{ form.education_provided|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.follow_up_date.id_for_label }}">Follow Up Date</label>
+                    {{ form.follow_up_date|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.discontinuation_reason.id_for_label }}">Discontinuation Reason</label>
+                    {{ form.discontinuation_reason|add_class:"form-control" }}
+                </div>
+                
+<div class="form-group">
+                            <label for="{{ form.patient.id_for_label }}">Patient *</label>
+                            {{ form.patient|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.doctor.id_for_label }}">Doctor</label>
+                            {{ form.doctor|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
+                            {{ form.visit_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
+                    {{ form.chief_complaint|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
+                    {{ form.history_of_present_illness|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
+                    {{ form.diagnosis|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
+                    {{ form.treatment_plan|add_class:"form-control" }}
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
+                            {{ form.follow_up_required|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
+                            {{ form.follow_up_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.notes.id_for_label }}">Notes</label>
+                    {{ form.notes|add_class:"form-control" }}
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Record
+                </button>
+                <a href="{% url 'family_planning:family_planning_records_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        
+                <div class="form-group">
+                    <label for="{{ form.gestational_age.id_for_label }}">Gestational Age (weeks)</label>
+                    {{ form.gestational_age|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.birth_weight.id_for_label }}">Birth Weight (kg)</label>
+                    {{ form.birth_weight|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.apgar_score_1min.id_for_label }}">APGAR Score 1min</label>
+                    {{ form.apgar_score_1min|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.apgar_score_5min.id_for_label }}">APGAR Score 5min</label>
+                    {{ form.apgar_score_5min|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.respiratory_support.id_for_label }}">Respiratory Support</label>
+                    {{ form.respiratory_support|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.ventilation_type.id_for_label }}">Ventilation Type</label>
+                    {{ form.ventilation_type|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.feeding_method.id_for_label }}">Feeding Method</label>
+                    {{ form.feeding_method|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.infection_status.id_for_label }}">Infection Status</label>
+                    {{ form.infection_status|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.antibiotic_name.id_for_label }}">Antibiotic Name</label>
+                    {{ form.antibiotic_name|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.discharge_weight.id_for_label }}">Discharge Weight (kg)</label>
+                    {{ form.discharge_weight|add_class:"form-control" }}
+                </div>
+                
+<div class="form-group">
+                            <label for="{{ form.patient.id_for_label }}">Patient *</label>
+                            {{ form.patient|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.doctor.id_for_label }}">Doctor</label>
+                            {{ form.doctor|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
+                            {{ form.visit_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
+                    {{ form.chief_complaint|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
+                    {{ form.history_of_present_illness|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
+                    {{ form.diagnosis|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
+                    {{ form.treatment_plan|add_class:"form-control" }}
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
+                            {{ form.follow_up_required|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
+                            {{ form.follow_up_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.notes.id_for_label }}">Notes</label>
+                    {{ form.notes|add_class:"form-control" }}
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Record
+                </button>
+                <a href="{% url 'scbu:scbu_records_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

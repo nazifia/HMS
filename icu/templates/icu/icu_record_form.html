@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        
+                <div class="form-group">
+                    <label for="{{ form.gcs_score.id_for_label }}">GCS Score</label>
+                    {{ form.gcs_score|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.respiratory_rate.id_for_label }}">Respiratory Rate</label>
+                    {{ form.respiratory_rate|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.oxygen_saturation.id_for_label }}">Oxygen Saturation (%)</label>
+                    {{ form.oxygen_saturation|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.blood_pressure_systolic.id_for_label }}">Blood Pressure Systolic</label>
+                    {{ form.blood_pressure_systolic|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.blood_pressure_diastolic.id_for_label }}">Blood Pressure Diastolic</label>
+                    {{ form.blood_pressure_diastolic|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.heart_rate.id_for_label }}">Heart Rate</label>
+                    {{ form.heart_rate|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.body_temperature.id_for_label }}">Body Temperature (°C)</label>
+                    {{ form.body_temperature|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.mechanical_ventilation.id_for_label }}">Mechanical Ventilation</label>
+                    {{ form.mechanical_ventilation|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.vasopressor_use.id_for_label }}">Vasopressor Use</label>
+                    {{ form.vasopressor_use|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.dialysis_required.id_for_label }}">Dialysis Required</label>
+                    {{ form.dialysis_required|add_class:"form-control" }}
+                </div>
+                
+<div class="form-group">
+                            <label for="{{ form.patient.id_for_label }}">Patient *</label>
+                            {{ form.patient|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.doctor.id_for_label }}">Doctor</label>
+                            {{ form.doctor|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
+                            {{ form.visit_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
+                    {{ form.chief_complaint|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
+                    {{ form.history_of_present_illness|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
+                    {{ form.diagnosis|add_class:"form-control" }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
+                    {{ form.treatment_plan|add_class:"form-control" }}
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
+                            {{ form.follow_up_required|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
+                            {{ form.follow_up_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.notes.id_for_label }}">Notes</label>
+                    {{ form.notes|add_class:"form-control" }}
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Record
+                </button>
+                <a href="{% url 'icu:icu_records_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -20,6 +20,7 @@ urlpatterns = [
     path('offline/', views.offline_fallback, name='offline_fallback'),
     path('pwa-demo/', views.pwa_demo, name='pwa_demo'),
     path('demo-push/', views.demo_push_notification, name='demo_push_notification'),
+    path('check-patient-nhia/', views.check_patient_nhia, name='check_patient_nhia'),
     # Wallet URLs
     path('<int:patient_id>/wallet/', views.wallet_dashboard, name='wallet_dashboard'),
     path('<int:patient_id>/wallet/add-funds/', views.add_funds_to_wallet, name='add_funds_to_wallet'),

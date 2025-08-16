@@ -1,0 +1,73 @@
+{% extends 'desk_office/base.html' %}
+
+{% block title %}Mail Item Details{% endblock %}
+
+{% block desk_office_content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Mail Item Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Sender Name:</th>
+                        <td>{{ mail_item.sender_name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Sender Address:</th>
+                        <td>{{ mail_item.sender_address }}</td>
+                    </tr>
+                    <tr>
+                        <th>Recipient:</th>
+                        <td>{{ mail_item.recipient|default:mail_item.recipient_department|default:"N/A" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Mail Type:</th>
+                        <td>{{ mail_item.get_mail_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Tracking Number:</th>
+                        <td>{{ mail_item.tracking_number|default:"N/A" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Status:</th>
+                        <td>
+                            {% if mail_item.status == 'received' %}
+                                <span class="badge bg-primary">{{ mail_item.get_status_display }}</span>
+                            {% elif mail_item.status == 'in_transit' %}
+                                <span class="badge bg-warning">{{ mail_item.get_status_display }}</span>
+                            {% elif mail_item.status == 'delivered' %}
+                                <span class="badge bg-success">{{ mail_item.get_status_display }}</span>
+                            {% elif mail_item.status == 'returned' %}
+                                <span class="badge bg-danger">{{ mail_item.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Received Date:</th>
+                        <td>{{ mail_item.received_date|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Delivered Date:</th>
+                        <td>{{ mail_item.delivered_date|date:"M d, Y H:i"|default:"Not delivered" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Notes:</th>
+                        <td>{{ mail_item.notes|default:"N/A" }}</td>
+                    </tr>
+                </table>
+                
+                <div class="mt-3">
+                    {% if mail_item.status != 'delivered' %}
+                        <a href="{% url 'desk_office:update_mail_status' mail_item.id %}" class="btn btn-warning">Update Status</a>
+                    {% endif %}
+                    <a href="{% url 'desk_office:edit_mail_item' mail_item.id %}" class="btn btn-primary">Edit</a>
+                    <a href="{% url 'desk_office:mail_list' %}" class="btn btn-secondary">Back to List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

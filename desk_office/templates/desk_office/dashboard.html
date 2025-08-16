@@ -1,0 +1,67 @@
+{% extends 'desk_office/base.html' %}
+
+{% block title %}Desk Office Dashboard{% endblock %}
+
+{% block desk_office_content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Visitors Today</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ visitors_today }}</h5>
+                <p class="card-text">Total visitors checked in today</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-header">Pending Mail</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ pending_mail }}</h5>
+                <p class="card-text">Mail items awaiting delivery</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header">Upcoming Meetings</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ upcoming_meetings }}</h5>
+                <p class="card-text">Confirmed meetings scheduled</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger mb-3">
+            <div class="card-header">Low Stock Supplies</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ low_stock_supplies }}</h5>
+                <p class="card-text">Office supplies needing reorder</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Visitors</h5>
+            </div>
+            <div class="card-body">
+                <p>Recent visitor list would appear here</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Upcoming Meetings</h5>
+            </div>
+            <div class="card-body">
+                <p>Upcoming meeting list would appear here</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
