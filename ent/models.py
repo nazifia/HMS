@@ -22,7 +22,9 @@ class EntRecord(models.Model):
     neck_examination = models.TextField(blank=True, null=True, help_text='Neck examination')
     audio_test_right = models.TextField(blank=True, null=True, help_text='Audio test results - Right')
     audio_test_left = models.TextField(blank=True, null=True, help_text='Audio test results - Left')
-
+    
+    chief_complaint = models.TextField(blank=True, null=True, help_text='Chief complaint from patient')
+    history_of_present_illness = models.TextField(blank=True, null=True, help_text='History of present illness')
     
     diagnosis = models.TextField(blank=True, null=True)
     treatment_plan = models.TextField(blank=True, null=True)

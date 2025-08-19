@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Prescription from Test Results - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Create Prescription from Test Results</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> {{ test_request.patient.get_full_name }}</p>
+                        <p><strong>Patient ID:</strong> {{ test_request.patient.patient_id }}</p>
+                        <p><strong>Age:</strong> {{ test_request.patient.age }} years</p>
+                        <p><strong>Gender:</strong> {{ test_request.patient.get_gender_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Test Request Information</h5>
+                        <p><strong>Request ID:</strong> {{ test_request.id }}</p>
+                        <p><strong>Request Date:</strong> {{ test_request.request_date|date:"F d, Y" }}</p>
+                        <p><strong>Doctor:</strong> Dr. {{ test_request.doctor.get_full_name }}</p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="diagnosis" class="form-label">Diagnosis</label>
+                                <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5>Test Results Summary</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Test</th>
+                                            <th>Result</th>
+                                            <th>Normal Range</th>
+                                            <th>Unit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for result in test_request.results.all %}
+                                            {% for parameter in result.parameters.all %}
+                                                <tr>
+                                                    <td>{{ result.test.name }} - {{ parameter.parameter.name }}</td>
+                                                    <td>{{ parameter.value }}</td>
+                                                    <td>{{ parameter.parameter.normal_range|default:"N/A" }}</td>
+                                                    <td>{{ parameter.parameter.unit|default:"N/A" }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-prescription"></i> Create Prescription
+                            </button>
+                            <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Test Request
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

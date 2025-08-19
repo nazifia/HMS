@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pharmacy Sales Statistics{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Pharmacy Sales Statistics</h4>
+                <button class="btn btn-light" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print Report
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Filter Form -->
+                <form method="GET" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dispensary" class="form-label">Dispensary</label>
+                            <select class="form-select" id="dispensary" name="dispensary">
+                                <option value="">All Dispensaries</option>
+                                {% for dispensary in dispensaries %}
+                                    <option value="{{ dispensary.id }}" {% if selected_dispensary == dispensary.id|stringformat:"s" %}selected{% endif %}>{{ dispensary.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="patient_type" class="form-label">Patient Type</label>
+                            <select class="form-select" id="patient_type" name="patient_type">
+                                <option value="">All Patients</option>
+                                <option value="nhia" {% if selected_patient_type == 'nhia' %}selected{% endif %}>NHIA</option>
+                                <option value="non_nhia" {% if selected_patient_type == 'non_nhia' %}selected{% endif %}>Non-NHIA</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                            <a href="{% url 'pharmacy:pharmacy_sales_report' %}" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i> Reset
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Overall Statistics -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Sales</h5>
+                                <h3>₦{{ overall_stats.total_sales|floatformat:2|default:"0.00" }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Items</h5>
+                                <h3>{{ overall_stats.total_items|default:"0" }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Transactions</h5>
+                                <h3>{{ overall_stats.total_transactions|default:"0" }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-dark">
+                            <div class="card-body">
+                                <h5 class="card-title">Avg. Transaction</h5>
+                                <h3>₦{{ overall_stats.avg_transaction_value|floatformat:2|default:"0.00" }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales by Patient Type -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="mb-0">NHIA Sales</h5>
+                            </div>
+                            <div class="card-body">
+                                <h4>₦{{ nhia_stats.total_sales|floatformat:2|default:"0.00" }}</h4>
+                                <p>{{ nhia_stats.total_transactions|default:"0" }} transactions ({{ nhia_percentage|floatformat:1 }}%)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="mb-0">Non-NHIA Sales</h5>
+                            </div>
+                            <div class="card-body">
+                                <h4>₦{{ non_nhia_stats.total_sales|floatformat:2|default:"0.00" }}</h4>
+                                <p>{{ non_nhia_stats.total_transactions|default:"0" }} transactions ({{ non_nhia_percentage|floatformat:1 }}%)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales by Dispensary -->
+                {% if dispensary_stats %}
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Sales by Dispensary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Dispensary</th>
+                                        <th>Total Sales</th>
+                                        <th>Items Sold</th>
+                                        <th>Transactions</th>
+                                        <th>Avg. Transaction</th>
+                                        <th>Unique Patients</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in dispensary_stats %}
+                                    <tr>
+                                        <td>{{ stat.dispensary__name }}</td>
+                                        <td>₦{{ stat.total_sales|floatformat:2 }}</td>
+                                        <td>{{ stat.total_items }}</td>
+                                        <td>{{ stat.total_transactions }}</td>
+                                        <td>₦{{ stat.avg_transaction_value|floatformat:2 }}</td>
+                                        <td>{{ stat.unique_patients }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Top Medications -->
+                {% if top_medications %}
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Top Medications by Sales</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Total Sales</th>
+                                        <th>Quantity Sold</th>
+                                        <th>Transactions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for med in top_medications %}
+                                    <tr>
+                                        <td>{{ med.prescription_item__medication__name }}</td>
+                                        <td>₦{{ med.total_sales|floatformat:2 }}</td>
+                                        <td>{{ med.total_quantity }}</td>
+                                        <td>{{ med.total_transactions }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Top Staff -->
+                {% if top_staff %}
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Top Performing Staff</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Staff Member</th>
+                                        <th>Total Sales</th>
+                                        <th>Items Dispensed</th>
+                                        <th>Transactions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for staff in top_staff %}
+                                    <tr>
+                                        <td>{{ staff.dispensed_by__first_name }} {{ staff.dispensed_by__last_name }}</td>
+                                        <td>₦{{ staff.total_sales|floatformat:2 }}</td>
+                                        <td>{{ staff.total_items }}</td>
+                                        <td>{{ staff.total_transactions }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any additional JavaScript functionality here if needed
+});
+</script>
+{% endblock %}

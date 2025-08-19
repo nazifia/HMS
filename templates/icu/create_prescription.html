@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Prescription for {{ record.patient.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Create Prescription for {{ record.patient.get_full_name }}</h4>
+                <small>ICU Record #{{ record.id }} - {{ record.visit_date|date:"M d, Y" }}</small>
+            </div>
+            <div class="card-body">
+                <form method="post" id="prescriptionForm">
+                    {% csrf_token %}
+                    
+                    <!-- Patient Info -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Patient</label>
+                            <input type="text" class="form-control" value="{{ record.patient.get_full_name }}" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Patient ID</label>
+                            <input type="text" class="form-control" value="{{ record.patient.patient_id }}" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Age/Gender</label>
+                            <input type="text" class="form-control" value="{{ record.patient.get_age }}/{{ record.patient.get_gender_display }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <!-- Prescription Details -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Prescription Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ prescription_form.diagnosis.id_for_label }}" class="form-label">Diagnosis *</label>
+                                        {{ prescription_form.diagnosis }}
+                                        {% if prescription_form.diagnosis.errors %}
+                                            <div class="text-danger">{{ prescription_form.diagnosis.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ prescription_form.prescription_type.id_for_label }}" class="form-label">Prescription Type *</label>
+                                        {{ prescription_form.prescription_type }}
+                                        {% if prescription_form.prescription_type.errors %}
+                                            <div class="text-danger">{{ prescription_form.prescription_type.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ prescription_form.notes.id_for_label }}" class="form-label">Notes</label>
+                                {{ prescription_form.notes }}
+                                {% if prescription_form.notes.errors %}
+                                    <div class="text-danger">{{ prescription_form.notes.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Medications -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Medications</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="addMedication">
+                                <i class="fas fa-plus"></i> Add Medication
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            {{ formset.management_form }}
+                            
+                            <div id="medicationContainer">
+                                {% for form in formset %}
+                                    <div class="medication-form mb-4 p-3 border rounded">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">Medication #{{ forloop.counter }}</h6>
+                                            {% if formset.can_delete and forloop.counter > 1 %}
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-medication">
+                                                    <i class="fas fa-times"></i> Remove
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        {{ form.id }}
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="{{ form.medication.id_for_label }}" class="form-label">Medication *</label>
+                                                    {{ form.medication }}
+                                                    {% if form.medication.errors %}
+                                                        <div class="text-danger">{{ form.medication.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="mb-3">
+                                                    <label for="{{ form.quantity.id_for_label }}" class="form-label">Quantity *</label>
+                                                    {{ form.quantity }}
+                                                    {% if form.quantity.errors %}
+                                                        <div class="text-danger">{{ form.quantity.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="mb-3">
+                                                    <label for="{{ form.dosage.id_for_label }}" class="form-label">Dosage *</label>
+                                                    {{ form.dosage }}
+                                                    {% if form.dosage.errors %}
+                                                        <div class="text-danger">{{ form.dosage.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="{{ form.frequency.id_for_label }}" class="form-label">Frequency *</label>
+                                                    {{ form.frequency }}
+                                                    {% if form.frequency.errors %}
+                                                        <div class="text-danger">{{ form.frequency.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="{{ form.duration.id_for_label }}" class="form-label">Duration *</label>
+                                                    {{ form.duration }}
+                                                    {% if form.duration.errors %}
+                                                        <div class="text-danger">{{ form.duration.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label for="{{ form.instructions.id_for_label }}" class="form-label">Instructions</label>
+                                                    {{ form.instructions }}
+                                                    {% if form.instructions.errors %}
+                                                        <div class="text-danger">{{ form.instructions.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'icu:icu_record_detail' record.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Record
+                        </a>
+                        <div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-prescription"></i> Create Prescription
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add medication button
+    document.getElementById('addMedication').addEventListener('click', function() {
+        const formset = document.getElementById('medicationContainer');
+        const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+        const formNum = parseInt(totalForms.value);
+        
+        // Clone the first form as a template
+        const template = document.querySelector('.medication-form').cloneNode(true);
+        
+        // Clear values and update IDs/Names
+        const inputs = template.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            // Update name and id attributes
+            if (input.name) {
+                input.name = input.name.replace(/form-\d+-/, `form-${formNum}-`);
+            }
+            if (input.id) {
+                input.id = input.id.replace(/form-\d+-/, `form-${formNum}-`);
+            }
+            
+            // Clear values except for selects
+            if (input.type !== 'select-one') {
+                input.value = '';
+            }
+        });
+        
+        // Update labels
+        const labels = template.querySelectorAll('label');
+        labels.forEach(label => {
+            if (label.htmlFor) {
+                label.htmlFor = label.htmlFor.replace(/form-\d+-/, `form-${formNum}-`);
+            }
+        });
+        
+        // Update heading
+        const heading = template.querySelector('h6');
+        if (heading) {
+            heading.textContent = `Medication #${formNum + 1}`;
+        }
+        
+        // Add remove button if needed
+        if (formNum > 0) {
+            let removeBtn = template.querySelector('.remove-medication');
+            if (!removeBtn) {
+                const header = template.querySelector('.d-flex');
+                removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'btn btn-sm btn-outline-danger remove-medication';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i> Remove';
+                header.appendChild(removeBtn);
+            }
+        }
+        
+        formset.appendChild(template);
+        totalForms.value = formNum + 1;
+        
+        // Add event listener to new remove button
+        const newRemoveBtn = template.querySelector('.remove-medication');
+        if (newRemoveBtn) {
+            newRemoveBtn.addEventListener('click', function() {
+                template.remove();
+                updateFormIndexes();
+            });
+        }
+    });
+    
+    // Remove medication buttons
+    document.querySelectorAll('.remove-medication').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.medication-form').remove();
+            updateFormIndexes();
+        });
+    });
+    
+    // Update form indexes function
+    function updateFormIndexes() {
+        const forms = document.querySelectorAll('.medication-form');
+        const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+        totalForms.value = forms.length;
+        
+        forms.forEach((form, index) => {
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.name) {
+                    input.name = input.name.replace(/form-\d+-/, `form-${index}-`);
+                }
+                if (input.id) {
+                    input.id = input.id.replace(/form-\d+-/, `form-${index}-`);
+                }
+            });
+            
+            const labels = form.querySelectorAll('label');
+            labels.forEach(label => {
+                if (label.htmlFor) {
+                    label.htmlFor = label.htmlFor.replace(/form-\d+-/, `form-${index}-`);
+                }
+            });
+            
+            const heading = form.querySelector('h6');
+            if (heading) {
+                heading.textContent = `Medication #${index + 1}`;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

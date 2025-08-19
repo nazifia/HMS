@@ -1,5 +1,7 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
+from .api import urls as api_urls
+
 app_name = 'pharmacy'
 
 urlpatterns = [
@@ -82,6 +84,7 @@ urlpatterns = [
 
     # API Endpoints
     path('api/medications/', views.medication_api, name='medication_api'),
+    path('api/', include(api_urls)),
 
     # Reports
     path('reports/expiring-medications/', views.expiring_medications_report, name='expiring_medications_report'),

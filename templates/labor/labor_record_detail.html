@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Labor Record Details - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Labor Record Details</h4>
+                <div>
+                    <a href="{% url 'labor:edit_labor_record' record.id %}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'labor:labor_records_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> 
+                            <a href="{% url 'patients:detail' record.patient.id %}">
+                                {{ record.patient.get_full_name }}
+                            </a>
+                        </p>
+                        <p><strong>Patient ID:</strong> {{ record.patient.id }}</p>
+                        
+                        <h5 class="mt-4">Doctor Information</h5>
+                        {% if record.doctor %}
+                            <p><strong>Name:</strong> Dr. {{ record.doctor.get_full_name }}</p>
+                        {% else %}
+                            <p><strong>Name:</strong> Not assigned</p>
+                        {% endif %}
+                        
+                        <h5 class="mt-4">Visit Information</h5>
+                        <p><strong>Visit Date:</strong> {{ record.visit_date|date:"M d, Y H:i" }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Diagnosis & Treatment</h5>
+                        <p><strong>Diagnosis:</strong> {{ record.diagnosis|default:"Not provided" }}</p>
+                        <p><strong>Treatment Plan:</strong> {{ record.treatment_plan|default:"Not provided" }}</p>
+                        
+                        <h5 class="mt-4">Follow-up</h5>
+                        <p>
+                            <strong>Follow-up Required:</strong> 
+                            {% if record.follow_up_required %}
+                                <span class="badge bg-warning">Yes</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </p>
+                        {% if record.follow_up_required and record.follow_up_date %}
+                            <p><strong>Follow-up Date:</strong> {{ record.follow_up_date|date:"M d, Y" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Labor Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Onset Time:</strong> {{ record.onset_time|date:"M d, Y H:i"|default:"Not specified" }}</p>
+                                <p><strong>Presentation:</strong> {{ record.presentation|default:"Not specified" }}</p>
+                                <p><strong>Fetal Heart Rate:</strong> {{ record.fetal_heart_rate|default:"Not monitored" }} bpm</p>
+                                <p><strong>Cervical Dilation:</strong> {{ record.cervical_dilation|default:"Not measured" }} cm</p>
+                                <p><strong>Effacement:</strong> {{ record.effacement|default:"Not measured" }}%</p>
+                                <p><strong>Rupture of Membranes:</strong> 
+                                    {% if record.rupture_of_membranes %}
+                                        <span class="badge bg-success">Yes</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">No</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if record.rupture_of_membranes %}
+                                    <p><strong>Rupture Time:</strong> {{ record.rupture_time|date:"M d, Y H:i"|default:"Not specified" }}</p>
+                                {% endif %}
+                                <p><strong>Mode of Delivery:</strong> {{ record.mode_of_delivery|default:"Not specified" }}</p>
+                                {% if record.duration_first_stage %}
+                                    <p><strong>Duration of First Stage:</strong> {{ record.duration_first_stage }}</p>
+                                {% endif %}
+                                {% if record.placenta_delivery_time %}
+                                    <p><strong>Placenta Delivery Time:</strong> {{ record.placenta_delivery_time|date:"M d, Y H:i"|default:"Not specified" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Additional Information</h5>
+                        <p><strong>Notes:</strong> {{ record.notes|default:"No notes" }}</p>
+                        {% if record.authorization_code %}
+                            <p><strong>Authorization Code:</strong> {{ record.authorization_code }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <p><strong>Created At:</strong> {{ record.created_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Last Updated:</strong> {{ record.updated_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

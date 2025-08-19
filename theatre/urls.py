@@ -58,6 +58,9 @@ urlpatterns = [
     # Dashboard
     path('', views.TheatreDashboardView.as_view(), name='dashboard'),
     
+    # Prescription functionality
+    path('surgeries/<int:surgery_id>/create-prescription/', views.create_prescription_for_theatre, name='create_prescription_for_theatre'),
+    
     # Payment management
     path('surgeries/<int:surgery_id>/payment/', payment_views.theatre_payment, name='theatre_payment'),
     path('surgeries/<int:surgery_id>/payment-history/', payment_views.theatre_payment_history, name='theatre_payment_history'),

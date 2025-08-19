@@ -1,314 +1,84 @@
 {% extends 'base.html' %}
 
-{% block title %}Home - Hospital Management System{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12 mb-4">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <h2 class="card-title">Welcome to Hospital Management System</h2>
-                <p class="card-text">A comprehensive solution for healthcare management.</p>
-                {% if not user.is_authenticated %}
-                    <a href="{% url 'accounts:login' %}" class="btn btn-light">Login</a>
-                {% endif %}
+<div class="container">
+    <div class="row">
+        <div class="col-12 text-center">
+            <h1 class="display-4">Hospital Management System</h1>
+            <p class="lead">Comprehensive healthcare management solution</p>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-injured fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Patient Management</h5>
+                    <p class="card-text">Manage patient records, appointments, and medical history.</p>
+                    <a href="{% url 'patients:list' %}" class="btn btn-primary">View Patients</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-prescription fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Prescription Management</h5>
+                    <p class="card-text">Create and manage prescriptions across all medical modules.</p>
+                    <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-success">View Prescriptions</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-flask fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">Laboratory</h5>
+                    <p class="card-text">Manage lab tests, results, and reports.</p>
+                    <a href="{% url 'laboratory:test_requests' %}" class="btn btn-info">View Lab Requests</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-pills fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Pharmacy</h5>
+                    <p class="card-text">Manage medications, inventory, and dispensing.</p>
+                    <a href="{% url 'pharmacy:inventory' %}" class="btn btn-warning">View Inventory</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-invoice-dollar fa-3x text-danger mb-3"></i>
+                    <h5 class="card-title">Billing</h5>
+                    <p class="card-text">Manage invoices, payments, and financial records.</p>
+                    <a href="{% url 'billing:list' %}" class="btn btn-danger">View Invoices</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-bar fa-3x text-secondary mb-3"></i>
+                    <h5 class="card-title">Reports</h5>
+                    <p class="card-text">Generate comprehensive reports and analytics.</p>
+                    <a href="{% url 'reporting:dashboard' %}" class="btn btn-secondary">View Reports</a>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-{% if user.is_authenticated %}
-<div class="row">
-    <!-- Dashboard - Available to all authenticated users -->
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-tachometer-alt fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Dashboard</h5>
-                <p class="card-text">View hospital statistics, analytics, and key performance indicators.</p>
-                <a href="{% url 'dashboard:dashboard' %}" class="btn btn-primary">View Dashboard</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Patients - Available to doctors, nurses, receptionists, health record officers, and application admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse,receptionist,health_record_officer' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-user-injured fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Patients</h5>
-                <p class="card-text">Manage patient records, medical history, and personal information.</p>
-                <a href="{% url 'patients:list' %}" class="btn btn-primary">View Patients</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Appointments - Available to doctors, receptionists, health record officers, and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,receptionist,health_record_officer' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-calendar-check fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Appointments</h5>
-                <p class="card-text">Schedule and manage patient appointments with doctors.</p>
-                <a href="{% url 'appointments:list' %}" class="btn btn-primary">View Appointments</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Pharmacy - Available to pharmacists, doctors, and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,pharmacist,doctor' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-pills fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Pharmacy</h5>
-                <p class="card-text">Manage medication inventory and patient prescriptions.</p>
-                <a href="{% url 'pharmacy:inventory' %}" class="btn btn-primary">View Pharmacy</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Laboratory - Available to lab technicians, doctors, and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,lab_technician,doctor' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-flask fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Laboratory</h5>
-                <p class="card-text">Manage lab tests, results, and patient diagnostics.</p>
-                <a href="{% url 'laboratory:tests' %}" class="btn btn-primary">View Laboratory</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Billing - Available to accountants, receptionists, and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,accountant,receptionist' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-file-invoice-dollar fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Billing</h5>
-                <p class="card-text">Manage patient invoices, payments, and financial records.</p>
-                <a href="{% url 'billing:list' %}" class="btn btn-primary">View Billing</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Inpatient - Available to nurses, doctors, and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,nurse,doctor' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-procedures fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Inpatient</h5>
-                <p class="card-text">Manage wards, beds, and admitted patients.</p>
-                <a href="{% url 'inpatient:wards' %}" class="btn btn-primary">View Inpatient</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- HR - Available to application admins only (not Django admin) -->
-    {% if user.is_superuser or user.profile.role == 'admin' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-user-md fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">HR</h5>
-                <p class="card-text">Manage hospital staff, departments, and schedules.</p>
-                <a href="{% url 'hr:staff' %}" class="btn btn-primary">View HR</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Reports - Available to admins only -->
-    {% if user.is_superuser or user.profile.role == 'admin' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-chart-bar fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Reports</h5>
-                <p class="card-text">Generate and view hospital analytics and reports.</p>
-                <a href="{% url 'reporting:dashboard' %}" class="btn btn-primary">View Reports</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Ophthalmic - Available to doctors and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-eye fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Ophthalmic</h5>
-                <p class="card-text">Manage eye care services and patient records.</p>
-                <a href="{% url 'ophthalmic:ophthalmic_records_list' %}" class="btn btn-primary">View Ophthalmic</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- ENT - Available to doctors and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-head-side-cough fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">ENT</h5>
-                <p class="card-text">Manage ear, nose, and throat care services.</p>
-                <a href="{% url 'ent:ent_records_list' %}" class="btn btn-primary">View ENT</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Oncology - Available to doctors and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-dna fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Oncology</h5>
-                <p class="card-text">Manage cancer care services and patient records.</p>
-                <a href="{% url 'oncology:oncology_records_list' %}" class="btn btn-primary">View Oncology</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- SCBU - Available to doctors, nurses and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-baby fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">SCBU</h5>
-                <p class="card-text">Manage special care baby unit services.</p>
-                <a href="{% url 'scbu:scbu_records_list' %}" class="btn btn-primary">View SCBU</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- ANC - Available to doctors, nurses and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-female fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">ANC</h5>
-                <p class="card-text">Manage antenatal care services.</p>
-                <a href="{% url 'anc:anc_records_list' %}" class="btn btn-primary">View ANC</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Labor - Available to doctors, nurses and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-baby-carriage fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Labor</h5>
-                <p class="card-text">Manage labor and delivery services.</p>
-                <a href="{% url 'labor:labor_records_list' %}" class="btn btn-primary">View Labor</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- ICU - Available to doctors, nurses and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-heartbeat fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">ICU</h5>
-                <p class="card-text">Manage intensive care unit services.</p>
-                <a href="{% url 'icu:icu_records_list' %}" class="btn btn-primary">View ICU</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Family Planning - Available to doctors, nurses and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-users fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Family Planning</h5>
-                <p class="card-text">Manage family planning services.</p>
-                <a href="{% url 'family_planning:family_planning_records_list' %}" class="btn btn-primary">View Family Planning</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Gynae Emergency - Available to doctors, nurses and admins -->
-    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-ambulance fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Gynae Emergency</h5>
-                <p class="card-text">Manage gynecological emergency services.</p>
-                <a href="{% url 'gynae_emergency:gynae_emergency_records_list' %}" class="btn btn-primary">View Gynae Emergency</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
-{% else %}
-<div class="row mt-4">
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h3 class="card-title">About HMS</h3>
-                <p class="card-text">
-                    Our Hospital Management System (HMS) is designed to streamline healthcare operations,
-                    improve patient care, and enhance administrative efficiency. With a comprehensive suite
-                    of modules, HMS provides a complete solution for modern healthcare facilities.
-                </p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h3 class="card-title">Key Features</h3>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item">Patient Registration & Medical Records</li>
-                    <li class="list-group-item">Appointment Scheduling</li>
-                    <li class="list-group-item">Pharmacy & Inventory Management</li>
-                    <li class="list-group-item">Laboratory Test Management</li>
-                    <li class="list-group-item">Billing & Insurance Processing</li>
-                    <li class="list-group-item">Inpatient Ward Management</li>
-                    <li class="list-group-item">Staff Management & Scheduling</li>
-                    <li class="list-group-item">Reporting & Analytics</li>
-                    <li class="list-group-item">Ophthalmic Services</li>
-                    <li class="list-group-item">ENT Services</li>
-                    <li class="list-group-item">Oncology Services</li>
-                    <li class="list-group-item">Special Care Baby Unit (SCBU)</li>
-                    <li class="list-group-item">Antenatal Care (ANC)</li>
-                    <li class="list-group-item">Labor & Delivery</li>
-                    <li class="list-group-item">Intensive Care Unit (ICU)</li>
-                    <li class="list-group-item">Family Planning</li>
-                    <li class="list-group-item">Gynecological Emergency</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

@@ -9,4 +9,6 @@ urlpatterns = [
     path('<int:record_id>/', views.gynae_emergency_record_detail, name='gynae_emergency_record_detail'),
     path('<int:record_id>/edit/', views.edit_gynae_emergency_record, name='edit_gynae_emergency_record'),
     path('<int:record_id>/delete/', views.delete_gynae_emergency_record, name='delete_gynae_emergency_record'),
+    path('search-patients/', views.search_gynae_emergency_patients, name='search_gynae_emergency_patients'),
+    path('<int:record_id>/create-prescription/', views.create_prescription_for_gynae_emergency, name='create_prescription_for_gynae_emergency'),
 ]

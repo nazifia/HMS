@@ -9,41 +9,37 @@ class OphthalmicRecord(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     visit_date = models.DateTimeField(default=timezone.now)
     
-    # Visual Acuity
-    visual_acuity_right = models.CharField(max_length=50, blank=True, null=True)
-    visual_acuity_left = models.CharField(max_length=50, blank=True, null=True)
-    
-    # Refraction
-    refraction_right_sphere = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    refraction_right_cylinder = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    refraction_right_axis = models.IntegerField(blank=True, null=True)
-    
-    refraction_left_sphere = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    refraction_left_cylinder = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    refraction_left_axis = models.IntegerField(blank=True, null=True)
-    
-    # Intraocular Pressure
-    iop_right = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Intraocular Pressure (mmHg)")
-    iop_left = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Intraocular Pressure (mmHg)")
-    
-    # Clinical Findings
-    clinical_findings = models.TextField(blank=True, null=True)
-    
-    # Diagnosis
+    # Add specific fields for ophthalmic module here
+    # Specific fields
+    visual_acuity_right = models.CharField(max_length=50, blank=True, null=True, help_text='Visual acuity - Right eye')
+    visual_acuity_left = models.CharField(max_length=50, blank=True, null=True, help_text='Visual acuity - Left eye')
+    intraocular_pressure_right = models.CharField(max_length=50, blank=True, null=True, help_text='Intraocular pressure - Right eye')
+    intraocular_pressure_left = models.CharField(max_length=50, blank=True, null=True, help_text='Intraocular pressure - Left eye')
+    pupil_reaction_right = models.TextField(blank=True, null=True, help_text='Pupil reaction - Right eye')
+    pupil_reaction_left = models.TextField(blank=True, null=True, help_text='Pupil reaction - Left eye')
+    eyelid_exam_right = models.TextField(blank=True, null=True, help_text='Eyelid examination - Right eye')
+    eyelid_exam_left = models.TextField(blank=True, null=True, help_text='Eyelid examination - Left eye')
+    conjunctiva_exam_right = models.TextField(blank=True, null=True, help_text='Conjunctiva examination - Right eye')
+    conjunctiva_exam_left = models.TextField(blank=True, null=True, help_text='Conjunctiva examination - Left eye')
+    cornea_exam_right = models.TextField(blank=True, null=True, help_text='Cornea examination - Right eye')
+    cornea_exam_left = models.TextField(blank=True, null=True, help_text='Cornea examination - Left eye')
+    anterior_chamber_right = models.TextField(blank=True, null=True, help_text='Anterior chamber - Right eye')
+    anterior_chamber_left = models.TextField(blank=True, null=True, help_text='Anterior chamber - Left eye')
+    lens_exam_right = models.TextField(blank=True, null=True, help_text='Lens examination - Right eye')
+    lens_exam_left = models.TextField(blank=True, null=True, help_text='Lens examination - Left eye')
+    fundus_exam_right = models.TextField(blank=True, null=True, help_text='Fundus examination - Right eye')
+    fundus_exam_left = models.TextField(blank=True, null=True, help_text='Fundus examination - Left eye')
     diagnosis = models.TextField(blank=True, null=True)
-    
-    # Treatment Plan
     treatment_plan = models.TextField(blank=True, null=True)
     
-    # Follow-up
     follow_up_required = models.BooleanField(default=False)
     follow_up_date = models.DateField(blank=True, null=True)
     
     # Authorization Code
     authorization_code = models.CharField(max_length=50, blank=True, null=True, help_text="Authorization code from desk office")
     
-    # Additional Notes
     notes = models.TextField(blank=True, null=True)
+
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

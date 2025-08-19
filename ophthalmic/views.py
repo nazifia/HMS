@@ -3,29 +3,46 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
-from django.utils import timezone
-from decimal import Decimal
+from django.http import JsonResponse
+from django.db import transaction
 from .models import OphthalmicRecord
-from .forms import OphthalmicRecordForm
+from .forms import OphthalmicRecordForm, OphthalmicRecordSearchForm
 from patients.models import Patient
-from doctors.models import Doctor
-from billing.models import Invoice, Service, Payment
-from nhia.models import AuthorizationCode
-
+from core.patient_search_utils import search_patients_by_query, format_patient_search_results
+from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
+from pharmacy.models import Prescription, PrescriptionItem
 
 @login_required
 def ophthalmic_records_list(request):
     """View to list all ophthalmic records with search and pagination"""
     records = OphthalmicRecord.objects.select_related('patient', 'doctor').all()
     
-    # Search functionality
-    search_query = request.GET.get('search')
-    if search_query:
-        records = records.filter(
-            Q(patient__first_name__icontains=search_query) |
-            Q(patient__last_name__icontains=search_query) |
-            Q(diagnosis__icontains=search_query)
-        )
+    search_form = OphthalmicRecordSearchForm(request.GET)
+    search_query = None
+    
+    if search_form.is_valid():
+        search_query = search_form.cleaned_data.get('search')
+        date_from = search_form.cleaned_data.get('date_from')
+        date_to = search_form.cleaned_data.get('date_to')
+        
+        if search_query:
+            records = records.filter(
+                Q(patient__first_name__icontains=search_query) |
+                Q(patient__last_name__icontains=search_query) |
+                Q(patient__patient_id__icontains=search_query) |
+                Q(patient__phone_number__icontains=search_query) |
+                Q(diagnosis__icontains=search_query)
+            )
+            
+        if date_from:
+            records = records.filter(visit_date__gte=date_from)
+            
+        if date_to:
+            records = records.filter(visit_date__lte=date_to)
+    
+    # Get counts for stats
+    total_records = records.count()
+    follow_up_count = records.filter(follow_up_required=True).count()
     
     # Pagination
     paginator = Paginator(records, 10)  # Show 10 records per page
@@ -34,10 +51,12 @@ def ophthalmic_records_list(request):
     
     context = {
         'page_obj': page_obj,
+        'search_form': search_form,
         'search_query': search_query,
+        'total_records': total_records,
+        'follow_up_count': follow_up_count,
     }
     return render(request, 'ophthalmic/ophthalmic_records_list.html', context)
-
 
 @login_required
 def create_ophthalmic_record(request):
@@ -45,39 +64,8 @@ def create_ophthalmic_record(request):
     if request.method == 'POST':
         form = OphthalmicRecordForm(request.POST)
         if form.is_valid():
-            # Handle authorization code if provided
-            authorization_code = None
-            authorization_code_input = form.cleaned_data.get('authorization_code')
-            
-            if authorization_code_input:
-                try:
-                    # Try to get the authorization code
-                    authorization_code = AuthorizationCode.objects.get(code=authorization_code_input)
-                    
-                    # Check if the authorization code is valid
-                    if not authorization_code.is_valid():
-                        messages.error(request, 'The provided authorization code is not valid or has expired.')
-                        return render(request, 'ophthalmic/ophthalmic_record_form.html', {'form': form, 'title': 'Create Ophthalmic Record'})
-                    
-                    # Check if the authorization code is for the correct service
-                    if authorization_code.service_type not in ['opthalmic', 'general']:
-                        messages.error(request, 'The provided authorization code is not valid for ophthalmic services.')
-                        return render(request, 'ophthalmic/ophthalmic_record_form.html', {'form': form, 'title': 'Create Ophthalmic Record'})
-                        
-                except AuthorizationCode.DoesNotExist:
-                    messages.error(request, 'The provided authorization code does not exist.')
-                    return render(request, 'ophthalmic/ophthalmic_record_form.html', {'form': form, 'title': 'Create Ophthalmic Record'})
-            
-            # Save the record
             record = form.save()
-            
-            # Mark authorization code as used if provided
-            if authorization_code:
-                authorization_code.mark_as_used(f"Ophthalmic Record #{record.id}")
-                messages.success(request, f'Ophthalmic record created successfully. Authorization code {authorization_code.code} has been marked as used.')
-            else:
-                messages.success(request, 'Ophthalmic record created successfully.')
-            
+            messages.success(request, 'Ophthalmic record created successfully.')
             return redirect('ophthalmic:ophthalmic_record_detail', record_id=record.id)
     else:
         form = OphthalmicRecordForm()
@@ -88,7 +76,6 @@ def create_ophthalmic_record(request):
     }
     return render(request, 'ophthalmic/ophthalmic_record_form.html', context)
 
-
 @login_required
 def ophthalmic_record_detail(request, record_id):
     """View to display details of a specific ophthalmic record"""
@@ -97,16 +84,10 @@ def ophthalmic_record_detail(request, record_id):
         id=record_id
     )
     
-    medications = record.medications.all()
-    tests = record.tests.all()
-    
     context = {
         'record': record,
-        'medications': medications,
-        'tests': tests,
     }
     return render(request, 'ophthalmic/ophthalmic_record_detail.html', context)
-
 
 @login_required
 def edit_ophthalmic_record(request, record_id):
@@ -116,39 +97,8 @@ def edit_ophthalmic_record(request, record_id):
     if request.method == 'POST':
         form = OphthalmicRecordForm(request.POST, instance=record)
         if form.is_valid():
-            # Handle authorization code if provided
-            authorization_code = None
-            authorization_code_input = form.cleaned_data.get('authorization_code')
-            
-            if authorization_code_input and authorization_code_input != record.authorization_code:
-                try:
-                    # Try to get the authorization code
-                    authorization_code = AuthorizationCode.objects.get(code=authorization_code_input)
-                    
-                    # Check if the authorization code is valid
-                    if not authorization_code.is_valid():
-                        messages.error(request, 'The provided authorization code is not valid or has expired.')
-                        return render(request, 'ophthalmic/ophthalmic_record_form.html', {'form': form, 'record': record, 'title': 'Edit Ophthalmic Record'})
-                    
-                    # Check if the authorization code is for the correct service
-                    if authorization_code.service_type not in ['opthalmic', 'general']:
-                        messages.error(request, 'The provided authorization code is not valid for ophthalmic services.')
-                        return render(request, 'ophthalmic/ophthalmic_record_form.html', {'form': form, 'record': record, 'title': 'Edit Ophthalmic Record'})
-                        
-                except AuthorizationCode.DoesNotExist:
-                    messages.error(request, 'The provided authorization code does not exist.')
-                    return render(request, 'ophthalmic/ophthalmic_record_form.html', {'form': form, 'record': record, 'title': 'Edit Ophthalmic Record'})
-            
-            # Save the record
             form.save()
-            
-            # Mark authorization code as used if provided and different from existing
-            if authorization_code and authorization_code_input != record.authorization_code:
-                authorization_code.mark_as_used(f"Ophthalmic Record #{record.id} (updated)")
-                messages.success(request, f'Ophthalmic record updated successfully. Authorization code {authorization_code.code} has been marked as used.')
-            else:
-                messages.success(request, 'Ophthalmic record updated successfully.')
-            
+            messages.success(request, 'Ophthalmic record updated successfully.')
             return redirect('ophthalmic:ophthalmic_record_detail', record_id=record.id)
     else:
         form = OphthalmicRecordForm(instance=record)
@@ -160,10 +110,9 @@ def edit_ophthalmic_record(request, record_id):
     }
     return render(request, 'ophthalmic/ophthalmic_record_form.html', context)
 
-
 @login_required
 def delete_ophthalmic_record(request, record_id):
-    """View to delete an ophthalmic record"""
+    """View to delete a ophthalmic record"""
     record = get_object_or_404(OphthalmicRecord, id=record_id)
     
     if request.method == 'POST':
@@ -176,128 +125,80 @@ def delete_ophthalmic_record(request, record_id):
     }
     return render(request, 'ophthalmic/ophthalmic_record_confirm_delete.html', context)
 
+@login_required
+def search_ophthalmic_patients(request):
+    """AJAX view for searching patients in Ophthalmic module"""
+    search_term = request.GET.get('term', '')
+    
+    if len(search_term) < 2:
+        return JsonResponse([], safe=False)
+    
+    patients = search_patients_by_query(search_term)
+    results = format_patient_search_results(patients)
+    
+    return JsonResponse(results, safe=False)
+
 
 @login_required
-def add_medication(request, record_id):
-    """View to add a medication to an ophthalmic record"""
+def create_prescription_for_ophthalmic(request, record_id):
+    """Create a prescription for an ophthalmic patient"""
     record = get_object_or_404(OphthalmicRecord, id=record_id)
     
     if request.method == 'POST':
-        form = OphthalmicMedicationForm(request.POST)
-        if form.is_valid():
-            medication = form.save(commit=False)
-            medication.record = record
-            medication.save()
-            messages.success(request, 'Medication added successfully.')
-            return redirect('ophthalmic:ophthalmic_record_detail', record_id=record.id)
+        prescription_form = MedicalModulePrescriptionForm(request.POST)
+        formset = PrescriptionItemFormSet(request.POST)
+        
+        if prescription_form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    # Create the prescription
+                    diagnosis = prescription_form.cleaned_data['diagnosis']
+                    notes = prescription_form.cleaned_data['notes']
+                    prescription_type = prescription_form.cleaned_data['prescription_type']
+                    
+                    prescription = Prescription.objects.create(
+                        patient=record.patient,
+                        doctor=request.user,
+                        diagnosis=diagnosis,
+                        notes=notes,
+                        prescription_type=prescription_type
+                    )
+                    
+                    # Add prescription items
+                    for form in formset.cleaned_data:
+                        if form and not form.get('DELETE', False):
+                            medication = form['medication']
+                            dosage = form['dosage']
+                            frequency = form['frequency']
+                            duration = form['duration']
+                            quantity = form['quantity']
+                            instructions = form.get('instructions', '')
+                            
+                            PrescriptionItem.objects.create(
+                                prescription=prescription,
+                                medication=medication,
+                                dosage=dosage,
+                                frequency=frequency,
+                                duration=duration,
+                                quantity=quantity,
+                                instructions=instructions
+                            )
+                    
+                    messages.success(request, 'Prescription created successfully!')
+                    return redirect('ophthalmic:ophthalmic_record_detail', record_id=record.id)
+                    
+            except Exception as e:
+                messages.error(request, f'Error creating prescription: {str(e)}')
+        else:
+            messages.error(request, 'Please correct the form errors.')
     else:
-        form = OphthalmicMedicationForm()
+        prescription_form = MedicalModulePrescriptionForm()
+        formset = PrescriptionItemFormSet()
     
     context = {
-        'form': form,
         'record': record,
-        'title': 'Add Medication'
+        'prescription_form': prescription_form,
+        'formset': formset,
+        'title': 'Create Prescription'
     }
-    return render(request, 'ophthalmic/ophthalmic_medication_form.html', context)
-
-
-@login_required
-def edit_medication(request, medication_id):
-    """View to edit an existing medication"""
-    medication = get_object_or_404(OphthalmicMedication, id=medication_id)
-    
-    if request.method == 'POST':
-        form = OphthalmicMedicationForm(request.POST, instance=medication)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Medication updated successfully.')
-            return redirect('ophthalmic:ophthalmic_record_detail', record_id=medication.record.id)
-    else:
-        form = OphthalmicMedicationForm(instance=medication)
-    
-    context = {
-        'form': form,
-        'medication': medication,
-        'title': 'Edit Medication'
-    }
-    return render(request, 'ophthalmic/ophthalmic_medication_form.html', context)
-
-
-@login_required
-def delete_medication(request, medication_id):
-    """View to delete a medication"""
-    medication = get_object_or_404(OphthalmicMedication, id=medication_id)
-    record_id = medication.record.id
-    
-    if request.method == 'POST':
-        medication.delete()
-        messages.success(request, 'Medication deleted successfully.')
-        return redirect('ophthalmic:ophthalmic_record_detail', record_id=record_id)
-    
-    context = {
-        'medication': medication
-    }
-    return render(request, 'ophthalmic/ophthalmic_medication_confirm_delete.html', context)
-
-
-@login_required
-def add_test(request, record_id):
-    """View to add a test to an ophthalmic record"""
-    record = get_object_or_404(OphthalmicRecord, id=record_id)
-    
-    if request.method == 'POST':
-        form = OphthalmicTestForm(request.POST)
-        if form.is_valid():
-            test = form.save(commit=False)
-            test.record = record
-            test.save()
-            messages.success(request, 'Test added successfully.')
-            return redirect('ophthalmic:ophthalmic_record_detail', record_id=record.id)
-    else:
-        form = OphthalmicTestForm()
-    
-    context = {
-        'form': form,
-        'record': record,
-        'title': 'Add Test'
-    }
-    return render(request, 'ophthalmic/ophthalmic_test_form.html', context)
-
-
-@login_required
-def edit_test(request, test_id):
-    """View to edit an existing test"""
-    test = get_object_or_404(OphthalmicTest, id=test_id)
-    
-    if request.method == 'POST':
-        form = OphthalmicTestForm(request.POST, instance=test)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Test updated successfully.')
-            return redirect('ophthalmic:ophthalmic_record_detail', record_id=test.record.id)
-    else:
-        form = OphthalmicTestForm(instance=test)
-    
-    context = {
-        'form': form,
-        'test': test,
-        'title': 'Edit Test'
-    }
-    return render(request, 'ophthalmic/ophthalmic_test_form.html', context)
-
-
-@login_required
-def delete_test(request, test_id):
-    """View to delete a test"""
-    test = get_object_or_404(OphthalmicTest, id=test_id)
-    record_id = test.record.id
-    
-    if request.method == 'POST':
-        test.delete()
-        messages.success(request, 'Test deleted successfully.')
-        return redirect('ophthalmic:ophthalmic_record_detail', record_id=record_id)
-    
-    context = {
-        'test': test
-    }
-    return render(request, 'ophthalmic/ophthalmic_test_confirm_delete.html', context)
+    return render(request, 'ophthalmic/create_prescription.html', context)

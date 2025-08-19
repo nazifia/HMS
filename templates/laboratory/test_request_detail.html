@@ -301,6 +301,53 @@
                     </div>
                 </div>
 
+                <!-- Related Prescriptions -->
+                {% if test_request.patient.prescriptions.exists %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Related Prescriptions</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Prescription ID</th>
+                                        <th>Date</th>
+                                        <th>Doctor</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for prescription in test_request.patient.prescriptions.all|slice:":5" %}
+                                    <tr>
+                                        <td>{{ prescription.id }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>Dr. {{ prescription.doctor.get_full_name }}</td>
+                                        <td>
+                                            {% if prescription.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif prescription.status == 'approved' %}
+                                                <span class="badge bg-info">Approved</span>
+                                            {% elif prescription.status == 'dispensed' %}
+                                                <span class="badge bg-success">Dispensed</span>
+                                            {% elif prescription.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Quick Actions -->
                 <div class="row mt-4">
                     <div class="col-md-12">
@@ -353,6 +400,15 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                {% if results and test_request.status == 'completed' %}
+                                <div class="row mt-3">
+                                    <div class="col-md-12">
+                                        <a href="{% url 'laboratory:create_prescription_from_test' test_request.id %}" class="btn btn-success">
+                                            <i class="fas fa-prescription"></i> Create Prescription from Results
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

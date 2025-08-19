@@ -1,9 +1,21 @@
 from django import forms
-from .models import RadiologyCategory, RadiologyTest, RadiologyOrder, RadiologyResult
 from patients.models import Patient
+from .models import RadiologyCategory, RadiologyTest, RadiologyOrder, RadiologyResult
+from core.patient_search_forms import PatientSearchForm
 
 class RadiologyOrderForm(forms.ModelForm):
-    """Form for creating and updating radiology orders"""
+    """Form for creating and updating radiology orders with patient search"""
+    
+    # Add patient search field
+    patient_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control patient-search',
+            'placeholder': 'Search patient by name, ID, or phone...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search for a patient by name, ID, or phone number'
+    )
     
     # Authorization code field
     authorization_code = forms.ModelChoiceField(
@@ -28,8 +40,9 @@ class RadiologyOrderForm(forms.ModelForm):
                 patient_instance = Patient.objects.get(id=patient_id)
             except Patient.DoesNotExist:
                 patient_instance = None
-        # Always set queryset for dropdowns
-        self.fields['patient'].queryset = Patient.objects.all()
+                
+        # Order patients by name for better UX
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
         self.fields['test'].queryset = RadiologyTest.objects.filter(is_active=True)
         # Make referring_doctor not required in the form (set in view)
         self.fields['referring_doctor'].required = False
@@ -43,12 +56,21 @@ class RadiologyOrderForm(forms.ModelForm):
             ).order_by('-generated_at')
         else:
             self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+            
+        # If editing an existing record, populate the search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            patient = self.instance.patient
+            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
 
     class Meta:
         model = RadiologyOrder
         fields = ['patient', 'test', 'referring_doctor', 'priority', 
                   'scheduled_date', 'clinical_information', 'notes']
         widgets = {
+            'patient': forms.Select(attrs={'class': 'form-select select2 patient-select'}),
+            'test': forms.Select(attrs={'class': 'form-select select2'}),
+            'referring_doctor': forms.Select(attrs={'class': 'form-select select2'}),
+            'priority': forms.Select(attrs={'class': 'form-select'}),
             'scheduled_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'clinical_information': forms.Textarea(attrs={'rows': 3}),
             'notes': forms.Textarea(attrs={'rows': 2}),
@@ -63,8 +85,11 @@ class RadiologyResultForm(forms.ModelForm):
         widgets = {
             'findings': forms.Textarea(attrs={'rows': 4}),
             'impression': forms.Textarea(attrs={'rows': 4}),
+            'image_file': forms.FileInput(attrs={'class': 'form-control'}),
+            'is_abnormal': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'study_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'study_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'result_status': forms.Select(attrs={'class': 'form-select'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -75,3 +100,8 @@ class RadiologyResultForm(forms.ModelForm):
             self.fields['study_date'].initial = timezone.now().date()
             self.fields['study_time'].initial = timezone.now().time()
             self.fields['result_status'].initial = 'submitted'
+
+
+class RadiologyPatientSearchForm(PatientSearchForm):
+    """Patient search form specifically for radiology module"""
+    pass

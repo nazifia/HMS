@@ -302,6 +302,30 @@
             </a>
         </li>
 
+        <!-- New Medical Modules -->
+        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+        <li class="nav-item {% if '/ent/' in request.path or '/ophthalmic/' in request.path or '/oncology/' in request.path or '/scbu/' in request.path or '/anc/' in request.path or '/labor/' in request.path or '/icu/' in request.path or '/family_planning/' in request.path or '/gynae_emergency/' in request.path %}active{% endif %}">
+            <a class="nav-link {% if not '/ent/' in request.path and not '/ophthalmic/' in request.path and not '/oncology/' in request.path and not '/scbu/' in request.path and not '/anc/' in request.path and not '/labor/' in request.path and not '/icu/' in request.path and not '/family_planning/' in request.path and not '/gynae_emergency/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseMedicalModules" aria-expanded="{% if '/ent/' in request.path or '/ophthalmic/' in request.path or '/oncology/' in request.path or '/scbu/' in request.path or '/anc/' in request.path or '/labor/' in request.path or '/icu/' in request.path or '/family_planning/' in request.path or '/gynae_emergency/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseMedicalModules">
+                <i class="fas fa-fw fa-stethoscope text-white"></i>
+                <span class="text-white">Medical Modules</span>
+            </a>
+            <div id="collapseMedicalModules" class="collapse {% if '/ent/' in request.path or '/ophthalmic/' in request.path or '/oncology/' in request.path or '/scbu/' in request.path or '/anc/' in request.path or '/labor/' in request.path or '/icu/' in request.path or '/family_planning/' in request.path or '/gynae_emergency/' in request.path %}show{% endif %}" aria-labelledby="headingMedicalModules" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Specialized Modules:</h6>
+                    <a class="collapse-item {% if '/ent/' in request.path %}active{% endif %}" href="{% url 'ent:ent_records_list' %}">ENT</a>
+                    <a class="collapse-item {% if '/ophthalmic/' in request.path %}active{% endif %}" href="{% url 'ophthalmic:ophthalmic_records_list' %}">Ophthalmic</a>
+                    <a class="collapse-item {% if '/oncology/' in request.path %}active{% endif %}" href="{% url 'oncology:oncology_records_list' %}">Oncology</a>
+                    <a class="collapse-item {% if '/scbu/' in request.path %}active{% endif %}" href="{% url 'scbu:scbu_records_list' %}">SCBU</a>
+                    <a class="collapse-item {% if '/anc/' in request.path %}active{% endif %}" href="{% url 'anc:anc_records_list' %}">ANC</a>
+                    <a class="collapse-item {% if '/labor/' in request.path %}active{% endif %}" href="{% url 'labor:labor_records_list' %}">Labor</a>
+                    <a class="collapse-item {% if '/icu/' in request.path %}active{% endif %}" href="{% url 'icu:icu_records_list' %}">ICU</a>
+                    <a class="collapse-item {% if '/family_planning/' in request.path %}active{% endif %}" href="{% url 'family_planning:family_planning_records_list' %}">Family Planning</a>
+                    <a class="collapse-item {% if '/gynae_emergency/' in request.path %}active{% endif %}" href="{% url 'gynae_emergency:gynae_emergency_records_list' %}">Gynae Emergency</a>
+                </div>
+            </div>
+        </li>
+        {% endif %}
+
         <!-- Include Theatre Module Sidebar -->
         {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,theatre_staff' %}
         <li class="nav-item {% if '/theatre/' in request.path %}active{% endif %}">

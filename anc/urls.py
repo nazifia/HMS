@@ -9,4 +9,6 @@ urlpatterns = [
     path('<int:record_id>/', views.anc_record_detail, name='anc_record_detail'),
     path('<int:record_id>/edit/', views.edit_anc_record, name='edit_anc_record'),
     path('<int:record_id>/delete/', views.delete_anc_record, name='delete_anc_record'),
+    path('search-patients/', views.search_anc_patients, name='search_anc_patients'),
+    path('<int:record_id>/create-prescription/', views.create_prescription_for_anc, name='create_prescription_for_anc'),
 ]

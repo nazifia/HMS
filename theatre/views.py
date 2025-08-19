@@ -7,6 +7,9 @@ from django.db import transaction
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Count, Q
+from patients.models import Patient
+from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
+from pharmacy.models import Prescription, PrescriptionItem
 
 from .models import (
     OperationTheatre,
@@ -670,3 +673,67 @@ def theatre_statistics_report(request):
 
 
 # Theatre Dashboard View
+@login_required
+def create_prescription_for_theatre(request, surgery_id):
+    """Create a prescription for a theatre patient"""
+    from .models import Surgery
+    surgery = get_object_or_404(Surgery, id=surgery_id)
+    
+    if request.method == 'POST':
+        prescription_form = MedicalModulePrescriptionForm(request.POST)
+        formset = PrescriptionItemFormSet(request.POST)
+        
+        if prescription_form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    # Create the prescription
+                    diagnosis = prescription_form.cleaned_data['diagnosis']
+                    notes = prescription_form.cleaned_data['notes']
+                    prescription_type = prescription_form.cleaned_data['prescription_type']
+                    
+                    prescription = Prescription.objects.create(
+                        patient=surgery.patient,
+                        doctor=request.user,
+                        diagnosis=diagnosis,
+                        notes=notes,
+                        prescription_type=prescription_type
+                    )
+                    
+                    # Add prescription items
+                    for form in formset.cleaned_data:
+                        if form and not form.get('DELETE', False):
+                            medication = form['medication']
+                            dosage = form['dosage']
+                            frequency = form['frequency']
+                            duration = form['duration']
+                            quantity = form['quantity']
+                            instructions = form.get('instructions', '')
+                            
+                            PrescriptionItem.objects.create(
+                                prescription=prescription,
+                                medication=medication,
+                                dosage=dosage,
+                                frequency=frequency,
+                                duration=duration,
+                                quantity=quantity,
+                                instructions=instructions
+                            )
+                    
+                    messages.success(request, 'Prescription created successfully!')
+                    return redirect('theatre:surgery_detail', pk=surgery.id)
+                    
+            except Exception as e:
+                messages.error(request, f'Error creating prescription: {str(e)}')
+        else:
+            messages.error(request, 'Please correct the form errors.')
+    else:
+        prescription_form = MedicalModulePrescriptionForm()
+        formset = PrescriptionItemFormSet()
+    
+    context = {
+        'surgery': surgery,
+        'prescription_form': prescription_form,
+        'formset': formset,
+        'title': 'Create Prescription'
+    }
+    return render(request, 'theatre/create_prescription.html', context)

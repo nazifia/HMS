@@ -38,7 +38,9 @@ class AuditLog(models.Model):
 
 class InternalNotification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_notifications')
     message = models.TextField()
+    description = models.TextField(blank=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
 

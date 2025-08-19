@@ -188,15 +188,151 @@
                     <h6 class="m-0 font-weight-bold text-primary">New Medical Modules Overview</h6>
                 </div>
                 <div class="card-body">
-                    <p>Ophthalmic Records: {{ ophthalmic_records_count }}</p>
-                    <p>ENT Records: {{ ent_records_count }}</p>
-                    <p>Oncology Records: {{ oncology_records_count }}</p>
-                    <p>SCBU Records: {{ scbu_records_count }}</p>
-                    <p>ANC Records: {{ anc_records_count }}</p>
-                    <p>Labor Records: {{ labor_records_count }}</p>
-                    <p>ICU Records: {{ icu_records_count }}</p>
-                    <p>Family Planning Records: {{ family_planning_records_count }}</p>
-                    <p>Gynae Emergency Records: {{ gynae_emergency_records_count }}</p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-info shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Ophthalmic</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ophthalmic_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-eye fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-primary shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">ENT</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ent_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-head-side-cough fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-success shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Oncology</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ oncology_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-dna fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">SCBU</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ scbu_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-baby fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-info shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">ANC</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ anc_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-female fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-primary shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Labor</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ labor_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-baby-carriage fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-success shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">ICU</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ icu_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Family Planning</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ family_planning_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-info shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Gynae Emergency</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ gynae_emergency_records_count }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-ambulance fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

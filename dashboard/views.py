@@ -40,14 +40,17 @@ def dashboard(request):
     
     # Get counts for new modules
     total_ophthalmic_records = OphthalmicRecord.objects.count()
-    total_ent_records = ENTRecord.objects.count()
+    total_ent_records = EntRecord.objects.count()
     total_oncology_records = OncologyRecord.objects.count()
-    total_scbu_records = SCBURecord.objects.count()
-    total_anc_records = ANCRecord.objects.count()
+    total_scbu_records = ScbuRecord.objects.count()
+    total_anc_records = AncRecord.objects.count()
     total_labor_records = LaborRecord.objects.count()
-    total_icu_records = ICURecord.objects.count()
-    total_family_planning_records = FamilyPlanningRecord.objects.count()
-    total_gynae_emergency_records = GynaeEmergencyRecord.objects.count()
+    total_icu_records = IcuRecord.objects.count()
+    total_family_planning_records = Family_planningRecord.objects.count()
+    total_gynae_emergency_records = Gynae_emergencyRecord.objects.count()
+    
+    # Get follow-up counts for new modules
+    ent_follow_up_count = EntRecord.objects.filter(follow_up_required=True).count()
 
     # Get today's appointments
     today_appointments = Appointment.objects.filter(
@@ -100,14 +103,14 @@ def dashboard(request):
 
     # Get counts for new modules (for system overview)
     ophthalmic_records_count = OphthalmicRecord.objects.count()
-    ent_records_count = ENTRecord.objects.count()
+    ent_records_count = EntRecord.objects.count()
     oncology_records_count = OncologyRecord.objects.count()
-    scbu_records_count = SCBURecord.objects.count()
-    anc_records_count = ANCRecord.objects.count()
+    scbu_records_count = ScbuRecord.objects.count()
+    anc_records_count = AncRecord.objects.count()
     labor_records_count = LaborRecord.objects.count()
-    icu_records_count = ICURecord.objects.count()
-    family_planning_records_count = FamilyPlanningRecord.objects.count()
-    gynae_emergency_records_count = GynaeEmergencyRecord.objects.count()
+    icu_records_count = IcuRecord.objects.count()
+    family_planning_records_count = Family_planningRecord.objects.count()
+    gynae_emergency_records_count = Gynae_emergencyRecord.objects.count()
 
     context = {
         'total_patients': total_patients,
@@ -141,6 +144,7 @@ def dashboard(request):
         'this_week_revenue': this_week_revenue,
         'this_month_revenue': this_month_revenue,
         'appointment_stats': appointment_stats,
+        'ent_follow_up_count': ent_follow_up_count,  # Add this line
     }
 
     return render(request, 'dashboard/dashboard_modern.html', context)

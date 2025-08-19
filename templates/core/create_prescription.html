@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ title }}</h4>
+                <a href="{% url 'patients:detail' patient.id %}" class="btn btn-light">
+                    <i class="fas fa-arrow-left"></i> Back to Patient
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                        <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                        <p><strong>Age:</strong> {{ patient.age }} years</p>
+                        <p><strong>Gender:</strong> {{ patient.get_gender_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Prescription Information</h5>
+                        <p><strong>Module:</strong> {{ module_name }}</p>
+                        <p><strong>Date:</strong> {{ now|date:"F d, Y" }}</p>
+                        <p><strong>Doctor:</strong> Dr. {{ user.get_full_name }}</p>
+                    </div>
+                </div>
+
+                <form method="POST" id="prescriptionForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="medicationsData" name="medications_data" value="[]">
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="diagnosis" class="form-label">Diagnosis *</label>
+                                <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5>Medications</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped" id="medicationsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Medication</th>
+                                            <th>Dosage</th>
+                                            <th>Frequency</th>
+                                            <th>Duration</th>
+                                            <th>Quantity</th>
+                                            <th>Instructions</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="medicationsTableBody">
+                                        <!-- Medications will be added here dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-success" id="addMedicationBtn">
+                                <i class="fas fa-plus"></i> Add Medication
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-prescription"></i> Create Prescription
+                            </button>
+                            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Medication Selection Modal -->
+<div class="modal fade" id="medicationModal" tabindex="-1" aria-labelledby="medicationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="medicationModalLabel">Select Medication</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="medicationSearch" class="form-label">Search Medications</label>
+                    <input type="text" class="form-control" id="medicationSearch" placeholder="Type to search medications...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="medicationsListTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Strength</th>
+                                <th>Form</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medicationsListBody">
+                            <!-- Medications will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Global variables
+    let medications = [];
+    let selectedMedicationIndex = -1;
+    
+    // DOM Elements
+    const addMedicationBtn = document.getElementById('addMedicationBtn');
+    const medicationsTableBody = document.getElementById('medicationsTableBody');
+    const medicationsDataInput = document.getElementById('medicationsData');
+    const prescriptionForm = document.getElementById('prescriptionForm');
+    const medicationModal = new bootstrap.Modal(document.getElementById('medicationModal'));
+    const medicationSearch = document.getElementById('medicationSearch');
+    const medicationsListBody = document.getElementById('medicationsListBody');
+    
+    // Add medication button event
+    addMedicationBtn.addEventListener('click', function() {
+        selectedMedicationIndex = -1;
+        medicationSearch.value = '';
+        medicationsListBody.innerHTML = '';
+        medicationModal.show();
+    });
+    
+    // Medication search
+    medicationSearch.addEventListener('input', function() {
+        const searchTerm = this.value.trim();
+        if (searchTerm.length >= 2) {
+            fetch(`/core/api/medications/autocomplete/?term=${encodeURIComponent(searchTerm)}`)
+                .then(response => response.json())
+                .then(data => {
+                    medicationsListBody.innerHTML = '';
+                    data.forEach(med => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${med.name}</td>
+                            <td>${med.strength}</td>
+                            <td>${med.dosage_form}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-primary select-medication" 
+                                        data-id="${med.id}" 
+                                        data-name="${med.name}" 
+                                        data-strength="${med.strength}"
+                                        data-form="${med.dosage_form}">
+                                    Select
+                                </button>
+                            </td>
+                        `;
+                        medicationsListBody.appendChild(row);
+                    });
+                    
+                    // Add event listeners to select buttons
+                    document.querySelectorAll('.select-medication').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const medication = {
+                                id: this.dataset.id,
+                                name: this.dataset.name,
+                                strength: this.dataset.strength,
+                                dosage_form: this.dataset.form,
+                                dosage: '',
+                                frequency: '',
+                                duration: '',
+                                quantity: 1,
+                                instructions: ''
+                            };
+                            
+                            if (selectedMedicationIndex >= 0) {
+                                // Editing existing medication
+                                medications[selectedMedicationIndex] = medication;
+                            } else {
+                                // Adding new medication
+                                medications.push(medication);
+                            }
+                            
+                            renderMedicationsTable();
+                            medicationModal.hide();
+                        });
+                    });
+                });
+        } else {
+            medicationsListBody.innerHTML = '';
+        }
+    });
+    
+    // Render medications table
+    function renderMedicationsTable() {
+        medicationsTableBody.innerHTML = '';
+        
+        medications.forEach((med, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${med.name} (${med.strength})</td>
+                <td><input type="text" class="form-control form-control-sm dosage-input" data-index="${index}" value="${med.dosage}"></td>
+                <td><input type="text" class="form-control form-control-sm frequency-input" data-index="${index}" value="${med.frequency}"></td>
+                <td><input type="text" class="form-control form-control-sm duration-input" data-index="${index}" value="${med.duration}"></td>
+                <td><input type="number" class="form-control form-control-sm quantity-input" data-index="${index}" value="${med.quantity}" min="1"></td>
+                <td><input type="text" class="form-control form-control-sm instructions-input" data-index="${index}" value="${med.instructions}"></td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-warning edit-medication" data-index="${index}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger remove-medication" data-index="${index}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            medicationsTableBody.appendChild(row);
+        });
+        
+        // Add event listeners to input fields
+        document.querySelectorAll('.dosage-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const index = this.dataset.index;
+                medications[index].dosage = this.value;
+            });
+        });
+        
+        document.querySelectorAll('.frequency-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const index = this.dataset.index;
+                medications[index].frequency = this.value;
+            });
+        });
+        
+        document.querySelectorAll('.duration-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const index = this.dataset.index;
+                medications[index].duration = this.value;
+            });
+        });
+        
+        document.querySelectorAll('.quantity-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const index = this.dataset.index;
+                medications[index].quantity = parseInt(this.value) || 1;
+            });
+        });
+        
+        document.querySelectorAll('.instructions-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const index = this.dataset.index;
+                medications[index].instructions = this.value;
+            });
+        });
+        
+        // Add event listeners to action buttons
+        document.querySelectorAll('.edit-medication').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = this.dataset.index;
+                selectedMedicationIndex = index;
+                medicationSearch.value = medications[index].name;
+                // Trigger search
+                const event = new Event('input');
+                medicationSearch.dispatchEvent(event);
+                medicationModal.show();
+            });
+        });
+        
+        document.querySelectorAll('.remove-medication').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = this.dataset.index;
+                medications.splice(index, 1);
+                renderMedicationsTable();
+            });
+        });
+        
+        // Update hidden input with medications data
+        medicationsDataInput.value = JSON.stringify(medications);
+    }
+    
+    // Form submission
+    prescriptionForm.addEventListener('submit', function(e) {
+        if (medications.length === 0) {
+            e.preventDefault();
+            alert('Please add at least one medication to the prescription.');
+            return;
+        }
+        
+        // Update medications data before submission
+        medicationsDataInput.value = JSON.stringify(medications);
+    });
+});
+</script>
+{% endblock %}

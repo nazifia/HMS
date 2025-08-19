@@ -33,8 +33,12 @@ urlpatterns = [
     path('results/<int:result_id>/verify/', views.verify_test_result, name='verify_test_result'),
     path('results/<int:result_id>/print/', views.print_result, name='print_result'),
 
-    # Patient Tests
+    # Prescription Creation
+    path('requests/<int:test_request_id>/create-prescription/', views.create_prescription_from_test, name='create_prescription_from_test'),
+
+    # Patient Tests and Prescriptions
     path('patient/<int:patient_id>/tests/', views.patient_tests, name='patient_tests'),
+    path('patient/<int:patient_id>/prescriptions/', views.patient_prescriptions, name='patient_prescriptions'),
 
     # API Endpoints
     path('api/tests/', views.test_api, name='test_api'),

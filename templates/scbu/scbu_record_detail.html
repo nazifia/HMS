@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}SCBU Record Details - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">SCBU Record Details</h4>
+                <div>
+                    <a href="{% url 'scbu:edit_scbu_record' record.id %}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'scbu:scbu_records_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> 
+                            <a href="{% url 'patients:detail' record.patient.id %}">
+                                {{ record.patient.get_full_name }}
+                            </a>
+                        </p>
+                        <p><strong>Patient ID:</strong> {{ record.patient.id }}</p>
+                        
+                        <h5 class="mt-4">Doctor Information</h5>
+                        {% if record.doctor %}
+                            <p><strong>Name:</strong> Dr. {{ record.doctor.get_full_name }}</p>
+                        {% else %}
+                            <p><strong>Name:</strong> Not assigned</p>
+                        {% endif %}
+                        
+                        <h5 class="mt-4">Visit Information</h5>
+                        <p><strong>Visit Date:</strong> {{ record.visit_date|date:"M d, Y H:i" }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Diagnosis & Treatment</h5>
+                        <p><strong>Diagnosis:</strong> {{ record.diagnosis|default:"Not provided" }}</p>
+                        <p><strong>Treatment Plan:</strong> {{ record.treatment_plan|default:"Not provided" }}</p>
+                        
+                        <h5 class="mt-4">Follow-up</h5>
+                        <p>
+                            <strong>Follow-up Required:</strong> 
+                            {% if record.follow_up_required %}
+                                <span class="badge bg-warning">Yes</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </p>
+                        {% if record.follow_up_required and record.follow_up_date %}
+                            <p><strong>Follow-up Date:</strong> {{ record.follow_up_date|date:"M d, Y" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>SCBU Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Gestational Age:</strong> {{ record.gestational_age|default:"Not specified" }} weeks</p>
+                                <p><strong>Birth Weight:</strong> {{ record.birth_weight|default:"Not specified" }} kg</p>
+                                <p><strong>APGAR Score (1 min):</strong> {{ record.apgar_score_1min|default:"Not assessed" }}</p>
+                                <p><strong>APGAR Score (5 min):</strong> {{ record.apgar_score_5min|default:"Not assessed" }}</p>
+                                <p><strong>Respiratory Support:</strong> 
+                                    {% if record.respiratory_support %}
+                                        <span class="badge bg-danger">Yes</span>
+                                    {% else %}
+                                        <span class="badge bg-success">No</span>
+                                    {% endif %}
+                                </p>
+                                <p><strong>Ventilation Type:</strong> {{ record.ventilation_type|default:"None" }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Feeding Method:</strong> {{ record.feeding_method|default:"Not specified" }}</p>
+                                <p><strong>Infection Status:</strong> 
+                                    {% if record.infection_status %}
+                                        <span class="badge bg-danger">Yes</span>
+                                    {% else %}
+                                        <span class="badge bg-success">No</span>
+                                    {% endif %}
+                                </p>
+                                <p><strong>Antibiotic Name:</strong> {{ record.antibiotic_name|default:"None" }}</p>
+                                <p><strong>Discharge Weight:</strong> {{ record.discharge_weight|default:"Not specified" }} kg</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Additional Information</h5>
+                        <p><strong>Notes:</strong> {{ record.notes|default:"No notes" }}</p>
+                        {% if record.authorization_code %}
+                            <p><strong>Authorization Code:</strong> {{ record.authorization_code }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <p><strong>Created At:</strong> {{ record.created_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Last Updated:</strong> {{ record.updated_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -9,4 +9,6 @@ urlpatterns = [
     path('<int:record_id>/', views.labor_record_detail, name='labor_record_detail'),
     path('<int:record_id>/edit/', views.edit_labor_record, name='edit_labor_record'),
     path('<int:record_id>/delete/', views.delete_labor_record, name='delete_labor_record'),
+    path('search-patients/', views.search_labor_patients, name='search_labor_patients'),
+    path('<int:record_id>/create-prescription/', views.create_prescription_for_labor, name='create_prescription_for_labor'),
 ]

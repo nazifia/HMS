@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Ophthalmic Record Details - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Ophthalmic Record Details</h4>
+                <div>
+                    <a href="{% url 'ophthalmic:edit_ophthalmic_record' record.id %}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'ophthalmic:ophthalmic_records_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> 
+                            <a href="{% url 'patients:detail' record.patient.id %}">
+                                {{ record.patient.get_full_name }}
+                            </a>
+                        </p>
+                        <p><strong>Patient ID:</strong> {{ record.patient.id }}</p>
+                        
+                        <h5 class="mt-4">Doctor Information</h5>
+                        {% if record.doctor %}
+                            <p><strong>Name:</strong> Dr. {{ record.doctor.get_full_name }}</p>
+                        {% else %}
+                            <p><strong>Name:</strong> Not assigned</p>
+                        {% endif %}
+                        
+                        <h5 class="mt-4">Visit Information</h5>
+                        <p><strong>Visit Date:</strong> {{ record.visit_date|date:"M d, Y H:i" }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Diagnosis & Treatment</h5>
+                        <p><strong>Diagnosis:</strong> {{ record.diagnosis|default:"Not provided" }}</p>
+                        <p><strong>Treatment Plan:</strong> {{ record.treatment_plan|default:"Not provided" }}</p>
+                        
+                        <h5 class="mt-4">Follow-up</h5>
+                        <p>
+                            <strong>Follow-up Required:</strong> 
+                            {% if record.follow_up_required %}
+                                <span class="badge bg-warning">Yes</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </p>
+                        {% if record.follow_up_required and record.follow_up_date %}
+                            <p><strong>Follow-up Date:</strong> {{ record.follow_up_date|date:"M d, Y" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Ophthalmic Examination Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Visual Acuity (Right):</strong> {{ record.visual_acuity_right|default:"Not examined" }}</p>
+                                <p><strong>Visual Acuity (Left):</strong> {{ record.visual_acuity_left|default:"Not examined" }}</p>
+                                <p><strong>Intraocular Pressure (Right):</strong> {{ record.intraocular_pressure_right|default:"Not measured" }}</p>
+                                <p><strong>Intraocular Pressure (Left):</strong> {{ record.intraocular_pressure_left|default:"Not measured" }}</p>
+                                <p><strong>Pupil Reaction (Right):</strong> {{ record.pupil_reaction_right|default:"Not examined" }}</p>
+                                <p><strong>Pupil Reaction (Left):</strong> {{ record.pupil_reaction_left|default:"Not examined" }}</p>
+                                <p><strong>Eyelid Exam (Right):</strong> {{ record.eyelid_exam_right|default:"Not examined" }}</p>
+                                <p><strong>Eyelid Exam (Left):</strong> {{ record.eyelid_exam_left|default:"Not examined" }}</p>
+                                <p><strong>Conjunctiva Exam (Right):</strong> {{ record.conjunctiva_exam_right|default:"Not examined" }}</p>
+                                <p><strong>Conjunctiva Exam (Left):</strong> {{ record.conjunctiva_exam_left|default:"Not examined" }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Cornea Exam (Right):</strong> {{ record.cornea_exam_right|default:"Not examined" }}</p>
+                                <p><strong>Cornea Exam (Left):</strong> {{ record.cornea_exam_left|default:"Not examined" }}</p>
+                                <p><strong>Anterior Chamber (Right):</strong> {{ record.anterior_chamber_right|default:"Not examined" }}</p>
+                                <p><strong>Anterior Chamber (Left):</strong> {{ record.anterior_chamber_left|default:"Not examined" }}</p>
+                                <p><strong>Lens Exam (Right):</strong> {{ record.lens_exam_right|default:"Not examined" }}</p>
+                                <p><strong>Lens Exam (Left):</strong> {{ record.lens_exam_left|default:"Not examined" }}</p>
+                                <p><strong>Fundus Exam (Right):</strong> {{ record.fundus_exam_right|default:"Not examined" }}</p>
+                                <p><strong>Fundus Exam (Left):</strong> {{ record.fundus_exam_left|default:"Not examined" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Additional Information</h5>
+                        <p><strong>Notes:</strong> {{ record.notes|default:"No notes" }}</p>
+                        {% if record.authorization_code %}
+                            <p><strong>Authorization Code:</strong> {{ record.authorization_code }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <p><strong>Created At:</strong> {{ record.created_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Last Updated:</strong> {{ record.updated_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

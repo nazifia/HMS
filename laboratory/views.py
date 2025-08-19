@@ -27,6 +27,7 @@ from .forms import (
 )
 from patients.models import Patient
 from accounts.models import CustomUser
+from pharmacy.models import Prescription, PrescriptionItem
 import os
 from core.models import send_notification_email, InternalNotification
 
@@ -1306,6 +1307,69 @@ def verify_test_result(request, result_id):
 
     return render(request, 'laboratory/verify_test_result.html', context)
 
+
+@login_required
+def create_prescription_from_test(request, test_request_id):
+    """Create a prescription based on test results"""
+    test_request = get_object_or_404(TestRequest, id=test_request_id)
+    
+    # Check if user has permission to create prescriptions
+    if not (request.user.is_staff or request.user.is_superuser or 
+            hasattr(request.user, 'profile') and request.user.profile.department == 'laboratory'):
+        messages.error(request, "You don't have permission to create prescriptions.")
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
+    
+    if request.method == 'POST':
+        # Get prescription data from form
+        diagnosis = request.POST.get('diagnosis', '')
+        notes = request.POST.get('notes', '')
+        
+        try:
+            with transaction.atomic():
+                # Create prescription
+                prescription = Prescription.objects.create(
+                    patient=test_request.patient,
+                    doctor=test_request.doctor,  # Doctor who ordered the test
+                    prescription_date=timezone.now().date(),
+                    diagnosis=diagnosis,
+                    notes=notes,
+                    status='pending',
+                    prescription_type='outpatient'
+                )
+                
+                # Create a default prescription item (can be modified later)
+                # This is a placeholder - in a real implementation, you might want to 
+                # extract medication recommendations from test results
+                from pharmacy.models import Medication
+                # Try to get a default medication or create a placeholder
+                try:
+                    medication = Medication.objects.first()
+                    if medication:
+                        PrescriptionItem.objects.create(
+                            prescription=prescription,
+                            medication=medication,
+                            dosage="As prescribed",
+                            frequency="As needed",
+                            duration="7 days",
+                            quantity=1
+                        )
+                except Medication.DoesNotExist:
+                    pass  # No medications available yet
+                
+                messages.success(request, f'Prescription created successfully for {test_request.patient.get_full_name()}.')
+                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                
+        except Exception as e:
+            messages.error(request, f'Error creating prescription: {str(e)}')
+            return redirect('laboratory:test_request_detail', request_id=test_request.id)
+    
+    context = {
+        'test_request': test_request,
+        'title': 'Create Prescription from Test Results'
+    }
+    
+    return render(request, 'laboratory/create_prescription.html', context)
+
 @login_required
 def patient_tests(request, patient_id):
     """View for displaying tests for a specific patient"""
@@ -1318,6 +1382,20 @@ def patient_tests(request, patient_id):
     }
 
     return render(request, 'laboratory/patient_tests.html', context)
+
+
+@login_required
+def patient_prescriptions(request, patient_id):
+    """View for displaying prescriptions for a specific patient"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    prescriptions = Prescription.objects.filter(patient=patient).order_by('-prescription_date')
+    
+    context = {
+        'patient': patient,
+        'prescriptions': prescriptions,
+    }
+    
+    return render(request, 'laboratory/patient_prescriptions.html', context)
 
 @login_required
 def test_api(request):

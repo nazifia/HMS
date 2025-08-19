@@ -8,6 +8,7 @@ from .models import (
 )
 from patients.models import Patient
 from django.forms import inlineformset_factory, BaseInlineFormSet
+from core.patient_search_forms import PatientSearchForm
 
 class TestCategoryForm(forms.ModelForm):
     """Form for creating and editing test categories"""
@@ -42,11 +43,22 @@ class TestParameterForm(forms.ModelForm):
         fields = ['name', 'normal_range', 'unit', 'order']
 
 class TestRequestForm(forms.ModelForm):
-    """Form for creating and editing test requests"""
+    """Form for creating and editing test requests with patient search"""
+
+    # Add patient search field
+    patient_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control patient-search',
+            'placeholder': 'Search patient by name, ID, or phone...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search for a patient by name, ID, or phone number'
+    )
 
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"
     )
 
@@ -105,36 +117,6 @@ class TestRequestForm(forms.ModelForm):
             patient_instance = self.initial.get('patient')
             if patient_instance:
                 patient_id = patient_instance.id
-        
-        # Set authorization code queryset based on patient
-        if patient_instance and patient_instance.patient_type == 'nhia':
-            from nhia.models import AuthorizationCode
-            self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
-                patient=patient_instance,
-                status='active'
-            ).order_by('-generated_at')
-        else:
-            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
-
-    def __init__(self, *args, **kwargs):
-        request = kwargs.pop('request', None)
-        preselected_patient = kwargs.pop('preselected_patient', None)
-        super().__init__(*args, **kwargs)
-
-        # Handle patient preselection
-        patient_id = None
-        patient_instance = None
-
-        if preselected_patient:
-            patient_instance = preselected_patient
-            patient_id = preselected_patient.id
-        elif request:
-            patient_id = request.GET.get('patient')
-
-        if not patient_id and not patient_instance:
-            patient_instance = self.initial.get('patient')
-            if patient_instance:
-                patient_id = patient_instance.id
 
         if patient_id and not patient_instance:
             try:
@@ -166,8 +148,23 @@ class TestRequestForm(forms.ModelForm):
             # Ensure all patients are available for selection when not preselected
             self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
 
+        # Set authorization code queryset based on patient
+        if patient_instance and patient_instance.patient_type == 'nhia':
+            from nhia.models import AuthorizationCode
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                patient=patient_instance,
+                status='active'
+            ).order_by('-generated_at')
+        else:
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+
         # Organize tests by category for better display
         self.fields['tests'].queryset = Test.objects.filter(is_active=True).select_related('category').order_by('category__name', 'name')
+        
+        # If editing an existing record, populate the search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            patient = self.instance.patient
+            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -233,6 +230,7 @@ class TestResultForm(forms.ModelForm):
         ]
         widgets = {
             'test': forms.Select(attrs={'class': 'form-select'}),
+            'result_file': forms.FileInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'rows': 3}),
         }
 
@@ -251,6 +249,7 @@ class TestResultParameterForm(forms.ModelForm):
         fields = ['parameter', 'value', 'is_normal', 'notes']
         widgets = {
             # 'parameter': forms.Select(attrs={'class': 'form-select'}), # Keep for creation, disable for edit
+            'parameter': forms.Select(attrs={'class': 'form-select form-control-sm'}),
             'value': forms.TextInput(attrs={'class': 'form-control form-control-sm'}),
             'is_normal': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'notes': forms.Textarea(attrs={'rows': 1, 'class': 'form-control form-control-sm'}),
@@ -284,34 +283,6 @@ TestResultParameterFormSet = inlineformset_factory(
     extra=0,  # Number of empty forms to display
     can_delete=False  # Set to True if you want to allow deleting parameters from this interface
 )
-
-# class TestSearchForm(forms.Form):
-#     """Form for searching tests"""
-
-#     search = forms.CharField(
-#         required=False,
-#         widget=forms.TextInput(attrs={'placeholder': 'Search by name or category'})
-#     )
-
-#     category = forms.ModelChoiceField(
-#         queryset=TestCategory.objects.all(),
-#         required=False,
-#         empty_label="All Categories"
-#     )
-
-#     sample_type = forms.ChoiceField(
-#         choices=[('', 'All')] + [(t, t) for t in Test.objects.values_list('sample_type', flat=True).distinct()],
-#         required=False
-#     )
-
-#     is_active = forms.ChoiceField(
-#         choices=[
-#             ('', 'All'),
-#             ('active', 'Active'),
-#             ('inactive', 'Inactive')
-#         ],
-#         required=False
-#     )
 
 class TestSearchForm(forms.Form):
     """Form for searching tests"""
@@ -361,18 +332,21 @@ class TestSearchForm(forms.Form):
         )
 
 
-
 class TestRequestSearchForm(forms.Form):
     """Form for searching test requests"""
 
     search = forms.CharField(
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': 'Search by patient name or ID'})
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by patient name or ID',
+            'class': 'form-control'
+        })
     )
 
     status = forms.ChoiceField(
         choices=[('', 'All')] + list(TestRequest.STATUS_CHOICES),
-        required=False
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
 
     priority = forms.ChoiceField(
@@ -382,23 +356,25 @@ class TestRequestSearchForm(forms.Form):
             ('urgent', 'Urgent'),
             ('emergency', 'Emergency')
         ],
-        required=False
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
 
     doctor = forms.ModelChoiceField(
         queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         required=False,
-        empty_label="All Doctors"
+        empty_label="All Doctors",
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
 
     date_from = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date'})
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
     )
 
     date_to = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date'})
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
     )
 
 
@@ -480,3 +456,8 @@ class TestResultSearchForm(forms.Form):
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         label='To Date'
     )
+
+
+class LaboratoryPatientSearchForm(PatientSearchForm):
+    """Patient search form specifically for laboratory module"""
+    pass

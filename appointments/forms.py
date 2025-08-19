@@ -4,13 +4,26 @@ User = get_user_model()
 from django.utils import timezone
 from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave
 from patients.models import Patient
+from core.patient_search_forms import PatientSearchForm
+import datetime
 
 class AppointmentForm(forms.ModelForm):
-    """Form for creating and editing appointments"""
+    """Form for creating and editing appointments with patient search"""
+    
+    # Add patient search field
+    patient_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control patient-search',
+            'placeholder': 'Search patient by name, ID, or phone...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search for a patient by name, ID, or phone number'
+    )
     
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"
     )
     
@@ -56,7 +69,12 @@ class AppointmentForm(forms.ModelForm):
             self.fields['patient'].initial = patient_id
             # Keep patient field visible but pre-selected for user convenience
         # Ensure all patients are available for selection
-        self.fields['patient'].queryset = Patient.objects.all()
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
+        # If editing an existing record, populate the search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            patient = self.instance.patient
+            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
     
     def clean(self):
         cleaned_data = super().clean()
@@ -165,6 +183,7 @@ class DoctorScheduleForm(forms.ModelForm):
             'weekday': forms.Select(attrs={'class': 'form-select'}),
             'start_time': forms.TimeInput(attrs={'type': 'time'}),
             'end_time': forms.TimeInput(attrs={'type': 'time'}),
+            'is_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
     
     def clean(self):
@@ -194,6 +213,7 @@ class DoctorLeaveForm(forms.ModelForm):
         widgets = {
             'doctor': forms.Select(attrs={'class': 'form-select select2'}),
             'reason': forms.Textarea(attrs={'rows': 3}),
+            'is_approved': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
     
     def clean(self):
@@ -210,19 +230,30 @@ class AppointmentSearchForm(forms.Form):
     """Form for searching appointments"""
     
     search = forms.CharField(required=False, label='Search',
-                           widget=forms.TextInput(attrs={'placeholder': 'Patient name or ID'}))
+                           widget=forms.TextInput(attrs={
+                               'placeholder': 'Patient name or ID',
+                               'class': 'form-control'
+                           }))
     doctor = forms.ModelChoiceField(
         queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
         required=False,
-        empty_label="All Doctors"
+        empty_label="All Doctors",
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
     status = forms.ChoiceField(
         choices=[('', 'All')] + list(Appointment.STATUS_CHOICES),
-        required=False
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
     priority = forms.ChoiceField(
         choices=[('', 'All')] + list(Appointment.PRIORITY_CHOICES),
-        required=False
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
-    date_from = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    date_to = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    date_from = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    date_to = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+
+
+class AppointmentsPatientSearchForm(PatientSearchForm):
+    """Patient search form specifically for appointments module"""
+    pass

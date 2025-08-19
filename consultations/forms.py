@@ -6,17 +6,29 @@ from appointments.models import Appointment
 from .models import ConsultingRoom, WaitingList, Consultation, ConsultationNote, Referral, SOAPNote
 from doctors.models import Specialization
 from accounts.models import Department, CustomUser
+from core.patient_search_forms import PatientSearchForm
 
 def get_active_consulting_rooms():
     """Utility to get all active consulting rooms as choices for forms or views."""
     return ConsultingRoom.objects.filter(is_active=True)
 
 class ConsultationForm(forms.ModelForm):
-    """Form for creating and editing consultations"""
+    """Form for creating and editing consultations with patient search"""
+
+    # Add patient search field
+    patient_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control patient-search',
+            'placeholder': 'Search patient by name, ID, or phone...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search for a patient by name, ID, or phone number'
+    )
 
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"
     )
 
@@ -46,6 +58,7 @@ class ConsultationForm(forms.ModelForm):
             'diagnosis': forms.Textarea(attrs={'rows': 3}),
             'consultation_notes': forms.Textarea(attrs={'rows': 3}),
             'status': forms.Select(attrs={'class': 'form-select'}),
+            'vitals': forms.Select(attrs={'class': 'form-select select2'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -58,10 +71,17 @@ class ConsultationForm(forms.ModelForm):
             patient_id = self.initial.get('patient')
         if patient_id:
             self.fields['patient'].initial = patient_id
-            self.fields['patient'].widget = forms.HiddenInput()
+            # Keep patient field visible but pre-selected for user convenience
+            # Only hide if specifically needed
+            # self.fields['patient'].widget = forms.HiddenInput()
 
         # Ensure all patients are available for selection
-        self.fields['patient'].queryset = Patient.objects.all()
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
+        # If editing an existing record, populate the search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            patient = self.instance.patient
+            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
 
 class ConsultationNoteForm(forms.ModelForm):
     """Form for adding consultation notes"""
@@ -74,7 +94,18 @@ class ConsultationNoteForm(forms.ModelForm):
         }
 
 class ReferralForm(forms.ModelForm):
-    """Form for creating patient referrals"""
+    """Form for creating patient referrals with patient search"""
+
+    # Add patient search field
+    patient_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control patient-search',
+            'placeholder': 'Search patient by name, ID, or phone...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search for a patient by name, ID, or phone number'
+    )
 
     referred_to = forms.ModelChoiceField(
         queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
@@ -84,7 +115,7 @@ class ReferralForm(forms.ModelForm):
 
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"
     )
 
@@ -98,9 +129,17 @@ class ReferralForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Order patients by name for better UX
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
         if 'patient' in self.initial:
             self.fields['patient'].widget = forms.HiddenInput()
             self.fields['patient'].initial = self.initial['patient']
+            
+        # If editing an existing record, populate the search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            patient = self.instance.patient
+            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
 
 class VitalsSelectionForm(forms.Form):
     """Form for selecting patient vitals for a consultation"""
@@ -138,14 +177,28 @@ class ConsultingRoomForm(forms.ModelForm):
         fields = ['room_number', 'floor', 'department', 'description', 'is_active', 'specializations']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
+            'room_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'floor': forms.TextInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 class WaitingListForm(forms.ModelForm):
-    """Form for adding patients to the waiting list"""
+    """Form for adding patients to the waiting list with patient search"""
+
+    # Add patient search field
+    patient_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control patient-search',
+            'placeholder': 'Search patient by name, ID, or phone...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search for a patient by name, ID, or phone number'
+    )
 
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"
     )
 
@@ -179,6 +232,9 @@ class WaitingListForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Order patients by name for better UX
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
         # If we have a patient, filter appointments for that patient
         if 'initial' in kwargs and 'patient' in kwargs['initial']:
             patient = kwargs['initial']['patient']
@@ -186,3 +242,13 @@ class WaitingListForm(forms.ModelForm):
                 patient=patient,
                 status__in=['scheduled', 'confirmed']
             ).order_by('-appointment_date')
+            
+        # If editing an existing record, populate the search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            patient = self.instance.patient
+            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
+
+
+class ConsultationsPatientSearchForm(PatientSearchForm):
+    """Patient search form specifically for consultations module"""
+    pass
