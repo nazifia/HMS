@@ -1,9 +1,32 @@
 from django import forms
 from django.contrib.contenttypes.models import ContentType
-from .models import ConsultationOrder
+from .models import ConsultationOrder, ConsultingRoom
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
+from accounts.models import Department
+
+
+class ConsultingRoomForm(forms.ModelForm):
+    """Form for creating and editing consulting rooms"""
+    
+    class Meta:
+        model = ConsultingRoom
+        fields = ['room_number', 'floor', 'department', 'description', 'is_active']
+        widgets = {
+            'room_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'floor': forms.TextInput(attrs={'class': 'form-control'}),
+            'department': forms.Select(attrs={'class': 'form-select select2'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set queryset for department dropdown
+        self.fields['department'].queryset = Department.objects.all().order_by('name')
+        # Set empty label for department
+        self.fields['department'].empty_label = "Select Department (Optional)"
 
 
 class ConsultationOrderForm(forms.ModelForm):

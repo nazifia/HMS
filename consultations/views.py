@@ -8,11 +8,11 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from .models import Consultation, ConsultationNote, Referral, SOAPNote, ConsultationOrder, ConsultingRoom, WaitingList
-from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm
+from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm, ConsultingRoomForm
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Department
 from patients.models import Patient, Vitals
 from appointments.models import Appointment
 from core.audit_utils import log_audit_action
@@ -789,6 +789,9 @@ def create_referral(request, patient_id=None):
 def consulting_room_list(request):
     """View for listing all consulting rooms"""
     consulting_rooms = ConsultingRoom.objects.all().order_by('room_number')
+    
+    # Get all departments for the filter dropdown
+    departments = Department.objects.all().order_by('name')
 
     # Search functionality
     search_query = request.GET.get('search', '')
@@ -820,6 +823,7 @@ def consulting_room_list(request):
         'search_query': search_query,
         'department': department,
         'is_active': is_active,
+        'departments': departments,
     }
 
     return render(request, 'consultations/consulting_room_list.html', context)
