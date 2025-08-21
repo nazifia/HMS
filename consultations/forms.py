@@ -1,254 +1,310 @@
 from django import forms
-from django.contrib.auth import get_user_model
-User = get_user_model()
-from patients.models import Patient, Vitals
-from appointments.models import Appointment
-from .models import ConsultingRoom, WaitingList, Consultation, ConsultationNote, Referral, SOAPNote
-from doctors.models import Specialization
-from accounts.models import Department, CustomUser
-from core.patient_search_forms import PatientSearchForm
+from django.contrib.contenttypes.models import ContentType
+from .models import ConsultationOrder
+from laboratory.models import TestRequest
+from radiology.models import RadiologyOrder
+from pharmacy.models import Prescription
 
-def get_active_consulting_rooms():
-    """Utility to get all active consulting rooms as choices for forms or views."""
-    return ConsultingRoom.objects.filter(is_active=True)
 
-class ConsultationForm(forms.ModelForm):
-    """Form for creating and editing consultations with patient search"""
-
-    # Add patient search field
-    patient_search = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control patient-search',
-            'placeholder': 'Search patient by name, ID, or phone...',
-            'autocomplete': 'off'
-        }),
-        help_text='Search for a patient by name, ID, or phone number'
+class ConsultationOrderForm(forms.ModelForm):
+    """Form for creating orders from consultations"""
+    
+    ORDER_TYPE_CHOICES = (
+        ('', 'Select Order Type'),
+        ('lab_test', 'Laboratory Test'),
+        ('radiology', 'Radiology Order'),
+        ('prescription', 'Prescription'),
     )
-
-    patient = forms.ModelChoiceField(
-        queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
-        empty_label="Select Patient"
-    )
-
-    doctor = forms.ModelChoiceField(
-        queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Doctor (Optional)",
-        required=False
-    )
-
-    consulting_room = forms.ModelChoiceField(
-        queryset=ConsultingRoom.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Consulting Room",
-        required=False
-    )
-
-    class Meta:
-        model = Consultation
-        fields = [
-            'patient', 'doctor', 'consulting_room', 'vitals', 'chief_complaint',
-            'symptoms', 'diagnosis', 'consultation_notes', 'status'
-        ]
-        widgets = {
-            'chief_complaint': forms.Textarea(attrs={'rows': 3}),
-            'symptoms': forms.Textarea(attrs={'rows': 3}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3}),
-            'consultation_notes': forms.Textarea(attrs={'rows': 3}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
-            'vitals': forms.Select(attrs={'class': 'form-select select2'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        request = kwargs.pop('request', None)
-        super().__init__(*args, **kwargs)
-        patient_id = None
-        if request:
-            patient_id = request.GET.get('patient')
-        if not patient_id:
-            patient_id = self.initial.get('patient')
-        if patient_id:
-            self.fields['patient'].initial = patient_id
-            # Keep patient field visible but pre-selected for user convenience
-            # Only hide if specifically needed
-            # self.fields['patient'].widget = forms.HiddenInput()
-
-        # Ensure all patients are available for selection
-        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-        
-        # If editing an existing record, populate the search field
-        if self.instance and self.instance.pk and self.instance.patient:
-            patient = self.instance.patient
-            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
-
-class ConsultationNoteForm(forms.ModelForm):
-    """Form for adding consultation notes"""
-
-    class Meta:
-        model = ConsultationNote
-        fields = ['note']
-        widgets = {
-            'note': forms.Textarea(attrs={'rows': 3}),
-        }
-
-class ReferralForm(forms.ModelForm):
-    """Form for creating patient referrals with patient search"""
-
-    # Add patient search field
-    patient_search = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control patient-search',
-            'placeholder': 'Search patient by name, ID, or phone...',
-            'autocomplete': 'off'
-        }),
-        help_text='Search for a patient by name, ID, or phone number'
-    )
-
-    referred_to = forms.ModelChoiceField(
-        queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Doctor"
-    )
-
-    patient = forms.ModelChoiceField(
-        queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
-        empty_label="Select Patient"
-    )
-
-    class Meta:
-        model = Referral
-        fields = ['patient', 'referred_to', 'reason', 'notes']
-        widgets = {
-            'reason': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Order patients by name for better UX
-        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-        
-        if 'patient' in self.initial:
-            self.fields['patient'].widget = forms.HiddenInput()
-            self.fields['patient'].initial = self.initial['patient']
-            
-        # If editing an existing record, populate the search field
-        if self.instance and self.instance.pk and self.instance.patient:
-            patient = self.instance.patient
-            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
-
-class VitalsSelectionForm(forms.Form):
-    """Form for selecting patient vitals for a consultation"""
-
-    vitals = forms.ModelChoiceField(
-        queryset=Vitals.objects.all(),
+    
+    order_type = forms.ChoiceField(
+        choices=ORDER_TYPE_CHOICES,
         widget=forms.Select(attrs={'class': 'form-select'}),
-        empty_label="Select Vitals",
-        required=False
+        label='Order Type'
     )
-
-    def __init__(self, patient=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if patient:
-            self.fields['vitals'].queryset = Vitals.objects.filter(patient=patient).order_by('-date_time')
-
-class ConsultingRoomForm(forms.ModelForm):
-    """Form for creating and editing consulting rooms"""
-
-    specializations = forms.ModelMultipleChoiceField(
-        queryset=Specialization.objects.all(),
+    
+    # Fields for lab test orders
+    lab_tests = forms.ModelMultipleChoiceField(
+        queryset=None,  # Will be set in __init__
         widget=forms.SelectMultiple(attrs={'class': 'form-select select2'}),
         required=False,
-        help_text='Select all specializations relevant to this consulting room.'
+        label='Laboratory Tests'
     )
-    department = forms.ModelChoiceField(
-        queryset=Department.objects.all(),
+    
+    # Fields for radiology orders
+    radiology_test = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
         widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label='Select Department',
-        required=False
-    )
-
-    class Meta:
-        model = ConsultingRoom
-        fields = ['room_number', 'floor', 'department', 'description', 'is_active', 'specializations']
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'room_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'floor': forms.TextInput(attrs={'class': 'form-control'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-
-class WaitingListForm(forms.ModelForm):
-    """Form for adding patients to the waiting list with patient search"""
-
-    # Add patient search field
-    patient_search = forms.CharField(
         required=False,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control patient-search',
-            'placeholder': 'Search patient by name, ID, or phone...',
-            'autocomplete': 'off'
-        }),
-        help_text='Search for a patient by name, ID, or phone number'
+        label='Radiology Test',
+        empty_label="Select Radiology Test"
     )
-
-    patient = forms.ModelChoiceField(
-        queryset=Patient.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
-        empty_label="Select Patient"
+    
+    # Fields for prescriptions
+    diagnosis = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        required=False,
+        label='Diagnosis'
     )
-
-    doctor = forms.ModelChoiceField(
-        queryset=CustomUser.objects.filter(is_active=True, profile__specialization__isnull=False),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Doctor (Optional)",
-        required=False
+    
+    prescription_notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        required=False,
+        label='Prescription Notes'
     )
-
-    consulting_room = forms.ModelChoiceField(
-        queryset=ConsultingRoom.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Consulting Room"
+    
+    # Common fields
+    priority = forms.ChoiceField(
+        choices=[
+            ('normal', 'Normal'),
+            ('urgent', 'Urgent'),
+            ('emergency', 'Emergency')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial='normal',
+        label='Priority'
     )
-
-    appointment = forms.ModelChoiceField(
-        queryset=Appointment.objects.filter(status__in=['scheduled', 'confirmed']),
-        widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Appointment (Optional)",
-        required=False
+    
+    clinical_notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        required=False,
+        label='Clinical Notes'
     )
-
+    
     class Meta:
-        model = WaitingList
-        fields = ['patient', 'doctor', 'consulting_room', 'appointment', 'priority', 'notes']
-        widgets = {
-            'notes': forms.Textarea(attrs={'rows': 3}),
-            'priority': forms.Select(attrs={'class': 'form-select'}),
-        }
-
+        model = ConsultationOrder
+        fields = ['order_type', 'priority', 'clinical_notes']
+    
     def __init__(self, *args, **kwargs):
+        self.consultation = kwargs.pop('consultation', None)
         super().__init__(*args, **kwargs)
-        # Order patients by name for better UX
-        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
         
-        # If we have a patient, filter appointments for that patient
-        if 'initial' in kwargs and 'patient' in kwargs['initial']:
-            patient = kwargs['initial']['patient']
-            self.fields['appointment'].queryset = Appointment.objects.filter(
-                patient=patient,
-                status__in=['scheduled', 'confirmed']
-            ).order_by('-appointment_date')
+        # Set querysets for dropdowns
+        if self.consultation:
+            # Lab tests
+            from laboratory.models import Test
+            self.fields['lab_tests'].queryset = Test.objects.filter(is_active=True)
             
-        # If editing an existing record, populate the search field
-        if self.instance and self.instance.pk and self.instance.patient:
-            patient = self.instance.patient
-            self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
+            # Radiology tests
+            from radiology.models import RadiologyTest
+            self.fields['radiology_test'].queryset = RadiologyTest.objects.filter(is_active=True)
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        order_type = cleaned_data.get('order_type')
+        
+        # Validate required fields based on order type
+        if order_type == 'lab_test':
+            if not cleaned_data.get('lab_tests'):
+                raise forms.ValidationError("Please select at least one laboratory test.")
+        elif order_type == 'radiology':
+            if not cleaned_data.get('radiology_test'):
+                raise forms.ValidationError("Please select a radiology test.")
+        elif order_type == 'prescription':
+            diagnosis = cleaned_data.get('diagnosis')
+            if not diagnosis:
+                raise forms.ValidationError("Diagnosis is required for prescriptions.")
+        
+        return cleaned_data
 
 
-class ConsultationsPatientSearchForm(PatientSearchForm):
-    """Patient search form specifically for consultations module"""
-    pass
+class QuickLabOrderForm(forms.Form):
+    """Quick form for creating lab test orders"""
+    
+    tests = forms.ModelMultipleChoiceField(
+        queryset=None,  # Will be set in __init__
+        widget=forms.SelectMultiple(attrs={'class': 'form-select select2'}),
+        label='Laboratory Tests'
+    )
+    
+    priority = forms.ChoiceField(
+        choices=[
+            ('normal', 'Normal'),
+            ('urgent', 'Urgent'),
+            ('emergency', 'Emergency')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial='normal'
+    )
+    
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        required=False,
+        label='Notes'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.consultation = kwargs.pop('consultation', None)
+        super().__init__(*args, **kwargs)
+        
+        # Set queryset for tests
+        from laboratory.models import Test
+        self.fields['tests'].queryset = Test.objects.filter(is_active=True).select_related('category')
+    
+    def save(self, commit=True):
+        """Create a lab test request from the form data"""
+        if not self.consultation:
+            raise ValueError("Consultation is required to create a lab test order")
+            
+        from laboratory.models import TestRequest
+            
+        # Create the test request
+        test_request = TestRequest(
+            patient=self.consultation.patient,
+            doctor=self.consultation.doctor,
+            request_date=timezone.now().date(),
+            priority=self.cleaned_data['priority'],
+            notes=self.cleaned_data['notes'],
+            created_by=self.consultation.doctor
+        )
+        
+        if commit:
+            test_request.save()
+            test_request.tests.set(self.cleaned_data['tests'])
+            
+            # Create consultation order link
+            content_type = ContentType.objects.get_for_model(TestRequest)
+            ConsultationOrder.objects.create(
+                consultation=self.consultation,
+                order_type='lab_test',
+                content_type=content_type,
+                object_id=test_request.id,
+                created_by=self.consultation.doctor
+            )
+            
+        return test_request
+
+
+class QuickRadiologyOrderForm(forms.Form):
+    """Quick form for creating radiology orders"""
+    
+    test = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        label='Radiology Test'
+    )
+    
+    priority = forms.ChoiceField(
+        choices=[
+            ('normal', 'Normal'),
+            ('urgent', 'Urgent'),
+            ('emergency', 'Emergency')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial='normal'
+    )
+    
+    clinical_information = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        required=False,
+        label='Clinical Information'
+    )
+    
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        required=False,
+        label='Notes'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.consultation = kwargs.pop('consultation', None)
+        super().__init__(*args, **kwargs)
+        
+        # Set queryset for tests
+        from radiology.models import RadiologyTest
+        self.fields['test'].queryset = RadiologyTest.objects.filter(is_active=True).select_related('category')
+    
+    def save(self, commit=True):
+        """Create a radiology order from the form data"""
+        if not self.consultation:
+            raise ValueError("Consultation is required to create a radiology order")
+            
+        from radiology.models import RadiologyOrder
+            
+        # Create the radiology order
+        radiology_order = RadiologyOrder(
+            patient=self.consultation.patient,
+            test=self.cleaned_data['test'],
+            referring_doctor=self.consultation.doctor,
+            order_date=timezone.now(),
+            priority=self.cleaned_data['priority'],
+            clinical_information=self.cleaned_data['clinical_information'],
+            notes=self.cleaned_data['notes']
+        )
+        
+        if commit:
+            radiology_order.save()
+            
+            # Create consultation order link
+            content_type = ContentType.objects.get_for_model(RadiologyOrder)
+            ConsultationOrder.objects.create(
+                consultation=self.consultation,
+                order_type='radiology',
+                content_type=content_type,
+                object_id=radiology_order.id,
+                created_by=self.consultation.doctor
+            )
+            
+        return radiology_order
+
+
+class QuickPrescriptionForm(forms.Form):
+    """Quick form for creating prescriptions"""
+    
+    diagnosis = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='Diagnosis'
+    )
+    
+    prescription_type = forms.ChoiceField(
+        choices=[
+            ('outpatient', 'Out-Patient (Take-Home)'),
+            ('inpatient', 'In-Patient (MAR/eMAR)')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial='outpatient',
+        label='Prescription Type'
+    )
+    
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        required=False,
+        label='Notes'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.consultation = kwargs.pop('consultation', None)
+        super().__init__(*args, **kwargs)
+    
+    def save(self, commit=True):
+        """Create a prescription from the form data"""
+        if not self.consultation:
+            raise ValueError("Consultation is required to create a prescription")
+            
+        from pharmacy.models import Prescription
+            
+        # Create the prescription
+        prescription = Prescription(
+            patient=self.consultation.patient,
+            doctor=self.consultation.doctor,
+            prescription_date=timezone.now().date(),
+            diagnosis=self.cleaned_data['diagnosis'],
+            prescription_type=self.cleaned_data['prescription_type'],
+            notes=self.cleaned_data['notes']
+        )
+        
+        if commit:
+            prescription.save()
+            
+            # Create consultation order link
+            content_type = ContentType.objects.get_for_model(Prescription)
+            ConsultationOrder.objects.create(
+                consultation=self.consultation,
+                order_type='prescription',
+                content_type=content_type,
+                object_id=prescription.id,
+                created_by=self.consultation.doctor
+            )
+            
+        return prescription

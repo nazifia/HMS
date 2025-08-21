@@ -3,23 +3,42 @@
 {% block title %}Dental Record Details{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">Dental Record Details</h4>
-                <div>
-                    <a href="{% url 'dental:create_prescription_for_dental' record.id %}" class="btn btn-success">
-                        <i class="fas fa-prescription"></i> Create Prescription
-                    </a>
-                    <a href="{% url 'dental:edit_dental_record' record.id %}" class="btn btn-light">
-                        <i class="fas fa-edit"></i> Edit
-                    </a>
-                    <a href="{% url 'dental:dental_records' %}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to List
-                    </a>
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dental Record Details</h1>
+        <div>
+            <a href="{% url 'dental:edit_dental_record' record.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit Record
+            </a>
+            <a href="{% url 'dental:dental_records' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'dental:edit_dental_record' record.id %}" class="btn btn-warning">
+                            <i class="fas fa-edit"></i> Edit Record
+                        </a>
+                        <a href="{% url 'dental:create_prescription_for_dental' record.id %}" class="btn btn-primary">
+                            <i class="fas fa-prescription"></i> Create Prescription
+                        </a>
+                        <a href="{% url 'dental:dental_records' %}" class="btn btn-secondary">
+                            <i class="fas fa-list"></i> All Records
+                        </a>
+                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteRecordModal">
+                            <i class="fas fa-trash"></i> Delete Record
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
@@ -52,6 +71,29 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteRecordModal" tabindex="-1" role="dialog" aria-labelledby="deleteRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteRecordModalLabel">Confirm Delete</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the dental record for <strong>{{ record.patient.get_full_name }}</strong> created on {{ record.created_at|date:"M d, Y" }}? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <a href="{% url 'dental:delete_dental_record' record.id %}" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Yes, Delete
+                </a>
             </div>
         </div>
     </div>

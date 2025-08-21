@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ patient.get_full_name }} - Patient Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Patient Dashboard</h1>
+        <div>
+            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit fa-sm text-white-50"></i> Edit Patient
+            </a>
+            <a href="{% url 'patients:list' %}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Information Card -->
+    <div class="row">
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <!-- Card Header -->
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                </div>
+                <!-- Card Body -->
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if patient.has_profile_image %}
+                            <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                        {% else %}
+                            <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                        {% endif %}
+                        <h4 class="mt-3">{{ patient.get_full_name }}</h4>
+                        <p class="text-muted">Patient ID: {{ patient.patient_id }}</p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Gender</p>
+                            <p class="mb-0">{{ patient.get_gender_display }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Age</p>
+                            <p class="mb-0">{{ age }} years</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Date of Birth</p>
+                            <p class="mb-0">{{ patient.date_of_birth|date:"F d, Y" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Blood Group</p>
+                            <p class="mb-0">{{ patient.blood_group|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Phone Number</p>
+                            <p class="mb-0">{{ patient.phone_number }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Email</p>
+                            <p class="mb-0">{{ patient.email|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Address</p>
+                            <p class="mb-0">{{ patient.address|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Emergency Contact</p>
+                            <p class="mb-0">{{ patient.emergency_contact_name|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Emergency Phone</p>
+                            <p class="mb-0">{{ patient.emergency_contact_phone|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Emergency Relation</p>
+                            <p class="mb-0">{{ patient.emergency_contact_relation|default:"Not specified" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics and Quick Actions -->
+        <div class="col-xl-8 col-lg-7">
+            <!-- Statistics Row -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Appointments
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ total_appointments }} Total ({{ completed_appointments }} Completed)
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Consultations
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ total_consultations }} Total ({{ completed_consultations }} Completed)
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-user-md fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Appointments -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Upcoming Appointments</h6>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Doctor</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in upcoming_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.appointment_date|date:"M d, Y" }}</td>
+                                        <td>{{ appointment.appointment_time|time:"H:i" }}</td>
+                                        <td>{{ appointment.doctor.get_full_name }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if appointment.status == 'scheduled' %}warning{% elif appointment.status == 'confirmed' %}success{% else %}secondary{% endif %}">
+                                                {{ appointment.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No upcoming appointments.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <!-- Recent Consultations -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Consultations</h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_consultations %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Doctor</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for consultation in recent_consultations %}
+                                    <tr>
+                                        <td>{{ consultation.consultation_date|date:"M d, Y" }}</td>
+                                        <td>{{ consultation.doctor.get_full_name }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if consultation.status == 'completed' %}success{% elif consultation.status == 'in_progress' %}warning{% else %}secondary{% endif %}">
+                                                {{ consultation.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent consultations.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Prescriptions -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Prescriptions</h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_prescriptions %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Doctor</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for prescription in recent_prescriptions %}
+                                    <tr>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>{{ prescription.doctor.get_full_name }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if prescription.status == 'dispensed' %}success{% elif prescription.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                                {{ prescription.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent prescriptions.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

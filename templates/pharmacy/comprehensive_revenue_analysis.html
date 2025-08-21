@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">{{ page_title }}</h3>
+        </div>
+        <div class="card-body">
+          <!-- Date Range Filter -->
+          <form method="GET" class="mb-4">
+            <div class="row">
+              <div class="col-md-4">
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+              </div>
+              <div class="col-md-4">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Filter</button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Summary Cards -->
+          <div class="row mb-4">
+            <div class="col-md-4">
+              <div class="card bg-primary text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Total Revenue</h5>
+                  <p class="card-text display-6">₦{{ total_revenue|commas }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="row mb-4">
+            <div class="col-md-12">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title">Daily Revenue Trend</h5>
+                </div>
+                <div class="card-body">
+                  <canvas id="dailyRevenueChart" height="100"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title">Top Medications by Revenue</h5>
+                </div>
+                <div class="card-body">
+                  <canvas id="medicationRevenueChart" height="100"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title">Top Doctors by Revenue</h5>
+                </div>
+                <div class="card-body">
+                  <canvas id="doctorRevenueChart" height="100"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Tables -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title">Medication Revenue Details</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped">
+                      <thead>
+                        <tr>
+                          <th>Medication</th>
+                            <th>Revenue (₦)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for medication, revenue in medication_revenue %}
+                        <tr>
+                          <td>{{ medication }}</td>
+                          <td>{{ revenue|commas }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title">Doctor Revenue Details</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped">
+                      <thead>
+                        <tr>
+                          <th>Doctor</th>
+                          <th>Revenue (₦)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for doctor, revenue in doctor_revenue %}
+                        <tr>
+                          <td>{{ doctor }}</td>
+                          <td>{{ revenue|commas }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/chart.min.js' %}"></script>
+<script>
+  // Daily Revenue Chart
+  const dailyRevenueCtx = document.getElementById('dailyRevenueChart').getContext('2d');
+  const dailyRevenueChart = new Chart(dailyRevenueCtx, {
+    type: 'line',
+    data: {
+      labels: [{% for date, revenue in daily_revenue %}'{{ date|date:"M d" }}',{% endfor %}],
+      datasets: [{
+        label: 'Daily Revenue (₦)',
+        data: [{% for date, revenue in daily_revenue %}{{ revenue }},{% endfor %}],
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // Medication Revenue Chart
+  const medicationRevenueCtx = document.getElementById('medicationRevenueChart').getContext('2d');
+  const medicationRevenueChart = new Chart(medicationRevenueCtx, {
+    type: 'bar',
+    data: {
+      labels: [{% for medication, revenue in medication_revenue|slice:":10" %}'{{ medication }}',{% endfor %}],
+      datasets: [{
+        label: 'Revenue (₦)',
+        data: [{% for medication, revenue in medication_revenue|slice:":10" %}{{ revenue }},{% endfor %}],
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // Doctor Revenue Chart
+  const doctorRevenueCtx = document.getElementById('doctorRevenueChart').getContext('2d');
+  const doctorRevenueChart = new Chart(doctorRevenueCtx, {
+    type: 'bar',
+    data: {
+      labels: [{% for doctor, revenue in doctor_revenue|slice:":10" %}'{{ doctor }}',{% endfor %}],
+      datasets: [{
+        label: 'Revenue (₦)',
+        data: [{% for doctor, revenue in doctor_revenue|slice:":10" %}{{ revenue }},{% endfor %}],
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

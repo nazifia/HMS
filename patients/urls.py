@@ -15,6 +15,7 @@ urlpatterns = [
     path('medical-history/<int:history_id>/delete/', views.delete_medical_history, name='delete_medical_history'),
     path('<int:patient_id>/medical-history/', views.patient_medical_history, name='medical_history'),
     path('<int:patient_id>/vitals/', views.patient_vitals, name='vitals'),
+    path('<int:patient_id>/dashboard/', views.patient_dashboard, name='dashboard'),
     path('pwa-manifest.json', views.pwa_manifest, name='pwa_manifest'),
     path('service-worker.js', views.service_worker, name='service_worker'),
     path('offline/', views.offline_fallback, name='offline_fallback'),

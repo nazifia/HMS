@@ -177,6 +177,27 @@
                                 <i class="fas fa-prescription-bottle"></i> Pharmacy Prescription
                             </a>
                         </div>
+                        <!-- Additional Medical Services -->
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'dental:create_dental_record' %}?patient={{ patient.id }}" class="btn btn-info btn-block">
+                                <i class="fas fa-teeth"></i> Dental Record
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'ent:create_ent_record' %}?patient={{ patient.id }}" class="btn btn-secondary btn-block">
+                                <i class="fas fa-ear-listen"></i> ENT Record
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="#" class="btn btn-warning btn-block" data-bs-toggle="modal" data-bs-target="#physiotherapyModal">
+                                <i class="fas fa-walking"></i> Physiotherapy
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="#" class="btn btn-success btn-block" data-bs-toggle="modal" data-bs-target="#vaccinationModal">
+                                <i class="fas fa-syringe"></i> Vaccination
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1127,4 +1148,174 @@
         }
     });
 </script>
+
+<!-- Physiotherapy Modal -->
+<div class="modal fade" id="physiotherapyModal" tabindex="-1" aria-labelledby="physiotherapyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="physiotherapyModalLabel">Physiotherapy Request for {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="#">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="physio_type" class="form-label">Type of Physiotherapy</label>
+                            <select class="form-select" id="physio_type" name="physio_type" required>
+                                <option value="">Select Type</option>
+                                <option value="musculoskeletal">Musculoskeletal</option>
+                                <option value="neurological">Neurological</option>
+                                <option value="cardiopulmonary">Cardiopulmonary</option>
+                                <option value="pediatric">Pediatric</option>
+                                <option value="sports">Sports Injury</option>
+                                <option value="geriatric">Geriatric</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="condition" class="form-label">Condition/Injury</label>
+                            <input type="text" class="form-control" id="condition" name="condition" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="clinical_information" class="form-label">Clinical Information</label>
+                            <textarea class="form-control" id="clinical_information" name="clinical_information" rows="3" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sessions" class="form-label">Number of Sessions</label>
+                            <input type="number" class="form-control" id="sessions" name="sessions" min="1" max="50" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="frequency" class="form-label">Frequency</label>
+                            <select class="form-select" id="frequency" name="frequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="biweekly">Bi-weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="notes" class="form-label">Additional Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Vaccination Modal -->
+<div class="modal fade" id="vaccinationModal" tabindex="-1" aria-labelledby="vaccinationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="vaccinationModalLabel">Vaccination Record for {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="#">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="vaccine_type" class="form-label">Vaccine Type</label>
+                            <select class="form-select" id="vaccine_type" name="vaccine_type" required>
+                                <option value="">Select Vaccine</option>
+                                <option value="covid19">COVID-19</option>
+                                <option value="flu">Influenza</option>
+                                <option value="hepatitis_b">Hepatitis B</option>
+                                <option value="mmr">MMR (Measles, Mumps, Rubella)</option>
+                                <option value="dtap">DTaP (Diphtheria, Tetanus, Pertussis)</option>
+                                <option value="hpv">HPV (Human Papillomavirus)</option>
+                                <option value="pneumococcal">Pneumococcal</option>
+                                <option value="shingles">Shingles</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="vaccine_name" class="form-label">Vaccine Name</label>
+                            <input type="text" class="form-control" id="vaccine_name" name="vaccine_name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="manufacturer" class="form-label">Manufacturer</label>
+                            <input type="text" class="form-control" id="manufacturer" name="manufacturer">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="lot_number" class="form-label">Lot Number</label>
+                            <input type="text" class="form-control" id="lot_number" name="lot_number">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="expiration_date" class="form-label">Expiration Date</label>
+                            <input type="date" class="form-control" id="expiration_date" name="expiration_date">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="dose_number" class="form-label">Dose Number</label>
+                            <input type="number" class="form-control" id="dose_number" name="dose_number" min="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="vaccination_date" class="form-label">Vaccination Date</label>
+                            <input type="date" class="form-control" id="vaccination_date" name="vaccination_date" value="{{ today|date:'Y-m-d' }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="administered_by" class="form-label">Administered By</label>
+                            <input type="text" class="form-control" id="administered_by" name="administered_by" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="site" class="form-label">Administration Site</label>
+                            <select class="form-select" id="site" name="site">
+                                <option value="left_arm">Left Arm</option>
+                                <option value="right_arm">Right Arm</option>
+                                <option value="left_thigh">Left Thigh</option>
+                                <option value="right_thigh">Right Thigh</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Record Vaccination</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

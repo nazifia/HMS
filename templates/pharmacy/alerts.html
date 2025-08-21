@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}Pharmacy Alerts{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Pharmacy Alerts</h1>
+    </div>
+
+    <!-- Low Stock Items -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Low Stock Items</h6>
+        </div>
+        <div class="card-body">
+            {% if low_stock_items %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Medication</th>
+                                <th>Dispensary</th>
+                                <th>Current Stock</th>
+                                <th>Reorder Level</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in low_stock_items %}
+                            <tr>
+                                <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                                <td>{{ item.active_store.dispensary.name }}</td>
+                                <td>{{ item.stock_quantity }}</td>
+                                <td>{{ item.reorder_level }}</td>
+                                <td>
+                                    <span class="badge bg-danger">Low Stock</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No low stock items.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Expired Items -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Expired Items</h6>
+        </div>
+        <div class="card-body">
+            {% if expired_items %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Medication</th>
+                                <th>Dispensary</th>
+                                <th>Batch Number</th>
+                                <th>Expiry Date</th>
+                                <th>Current Stock</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in expired_items %}
+                            <tr>
+                                <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                                <td>{{ item.active_store.dispensary.name }}</td>
+                                <td>{{ item.batch_number|default:"N/A" }}</td>
+                                <td>{{ item.expiry_date|date:"M d, Y" }}</td>
+                                <td>{{ item.stock_quantity }}</td>
+                                <td>
+                                    <span class="badge bg-danger">Expired</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No expired items.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Near Expiry Items -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Items Expiring Within 30 Days</h6>
+        </div>
+        <div class="card-body">
+            {% if near_expiry_items %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Medication</th>
+                                <th>Dispensary</th>
+                                <th>Batch Number</th>
+                                <th>Expiry Date</th>
+                                <th>Days Until Expiry</th>
+                                <th>Current Stock</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in near_expiry_items %}
+                            <tr>
+                                <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                                <td>{{ item.active_store.dispensary.name }}</td>
+                                <td>{{ item.batch_number|default:"N/A" }}</td>
+                                <td>{{ item.expiry_date|date:"M d, Y" }}</td>
+                                <td>{{ item.days_until_expiry }}</td>
+                                <td>{{ item.stock_quantity }}</td>
+                                <td>
+                                    <span class="badge bg-warning">Expiring Soon</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No items expiring within 30 days.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

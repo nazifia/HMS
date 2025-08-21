@@ -53,6 +53,13 @@ urlpatterns = [
     path('doctor/consultation/<int:consultation_id>/radiology-order/', views.create_radiology_order, name='create_radiology_order'),
     path('doctor/consultation/<int:consultation_id>/referral/', views.create_referral_from_consultation, name='create_referral_from_consultation'),
     
+    # New consultation order views
+    path('doctor/consultation/<int:consultation_id>/orders/', views.consultation_orders, name='consultation_orders'),
+    path('doctor/consultation/<int:consultation_id>/create-order/', views.create_consultation_order, name='create_consultation_order'),
+    path('doctor/consultation/<int:consultation_id>/create-lab-order-ajax/', views.create_lab_order_ajax, name='create_lab_order_ajax'),
+    path('doctor/consultation/<int:consultation_id>/create-radiology-order-ajax/', views.create_radiology_order_ajax, name='create_radiology_order_ajax'),
+    path('doctor/consultation/<int:consultation_id>/create-prescription-ajax/', views.create_prescription_ajax, name='create_prescription_ajax'),
+    
     # Payment management
     path('consultation/<int:consultation_id>/payment/', payment_views.consultation_payment, name='consultation_payment'),
     path('consultation/<int:consultation_id>/payment-history/', payment_views.consultation_payment_history, name='consultation_payment_history'),

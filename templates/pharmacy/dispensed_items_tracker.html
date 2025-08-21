@@ -1,575 +1,129 @@
 {% extends 'base.html' %}
-{% block title %}{{ title }} - Hospital Management System{% endblock %}
 
-{% block extra_css %}
-<style>
-    .search-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-    }
-    
-    .stats-card {
-        border-radius: 15px;
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: none;
-        overflow: hidden;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    }
-    
-    .stats-icon {
-        font-size: 2.5rem;
-        opacity: 0.8;
-    }
-    
-    .dispensing-log-card {
-        border-left: 4px solid #007bff;
-        transition: all 0.2s;
-        border-radius: 8px;
-    }
-    
-    .dispensing-log-card:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    .medication-name {
-        font-weight: 600;
-        color: #2c3e50;
-    }
-    
-    .patient-info {
-        color: #7f8c8d;
-        font-size: 0.9rem;
-    }
-    
-    .quantity-badge {
-        background: linear-gradient(45deg, #28a745, #20c997);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-    
-    .price-badge {
-        background: linear-gradient(45deg, #ffc107, #fd7e14);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-    
-    .autocomplete-suggestions {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #ddd;
-        border-top: none;
-        max-height: 200px;
-        overflow-y: auto;
-        z-index: 1000;
-        border-radius: 0 0 8px 8px;
-    }
-    
-    .autocomplete-suggestion {
-        padding: 10px;
-        cursor: pointer;
-        border-bottom: 1px solid #eee;
-    }
-    
-    .autocomplete-suggestion:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .autocomplete-suggestion:last-child {
-        border-bottom: none;
-    }
-    
-    .top-medications-list {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-    
-    .medication-item {
-        padding: 0.75rem;
-        border-bottom: 1px solid #eee;
-        transition: background-color 0.2s;
-    }
-    
-    .medication-item:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .medication-item:last-child {
-        border-bottom: none;
-    }
-</style>
-{% endblock %}
+{% block title %}Dispensed Items Tracker{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-pills me-2"></i>{{ title }}</h2>
-        <div>
-            <a href="{% url 'pharmacy:dispensed_items_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" 
-               class="btn btn-success me-2">
-                <i class="fas fa-download me-2"></i>Export CSV
-            </a>
-            <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-secondary">
-                <i class="fas fa-prescription-bottle-alt me-2"></i>Back to Prescriptions
-            </a>
-        </div>
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dispensed Items Tracker</h1>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card stats-card bg-primary text-white">
-                <div class="card-body text-center">
-                    <i class="fas fa-calendar-day stats-icon mb-2"></i>
-                    <h4 class="mb-0">{{ stats.total_dispensed_today }}</h4>
-                    <p class="mb-0">Dispensed Today</p>
-                    <small>₦{{ stats.total_value_today|floatformat:2 }}</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card stats-card bg-success text-white">
-                <div class="card-body text-center">
-                    <i class="fas fa-calendar-week stats-icon mb-2"></i>
-                    <h4 class="mb-0">{{ stats.total_dispensed_week }}</h4>
-                    <p class="mb-0">This Week</p>
-                    <small>₦{{ stats.total_value_week|floatformat:2 }}</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card stats-card bg-info text-white">
-                <div class="card-body text-center">
-                    <i class="fas fa-calendar-alt stats-icon mb-2"></i>
-                    <h4 class="mb-0">{{ stats.total_dispensed_month }}</h4>
-                    <p class="mb-0">This Month</p>
-                    <small>₦{{ stats.total_value_month|floatformat:2 }}</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card stats-card bg-warning text-white">
-                <div class="card-body text-center">
-                    <i class="fas fa-chart-line stats-icon mb-2"></i>
-                    <h4 class="mb-0">{{ stats.avg_quantity_per_dispense|floatformat:1 }}</h4>
-                    <p class="mb-0">Avg Quantity</p>
-                    <small>Per Dispense</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Search Form -->
-    <div class="card search-card mb-4">
-        <div class="card-header">
-            <h5><i class="fas fa-search me-2"></i>Search Dispensed Items</h5>
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter Options</h6>
         </div>
         <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-3">
-                    <label for="{{ search_form.medication_name.id_for_label }}" class="form-label">
-                        <i class="fas fa-pills me-1"></i>Medication Name
-                    </label>
-                    <div class="position-relative">
-                        {{ search_form.medication_name }}
-                        <div id="medication-suggestions" class="autocomplete-suggestions" style="display: none;"></div>
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="search" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Medication or patient name">
                     </div>
-                    <small class="form-text text-light">{{ search_form.medication_name.help_text }}</small>
+                    <div class="col-md-3 mb-3">
+                        <label for="date_from" class="form-label">Date From</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="date_to" class="form-label">Date To</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="dispensary" class="form-label">Dispensary</label>
+                        <select class="form-select" id="dispensary" name="dispensary">
+                            <option value="">All Dispensaries</option>
+                            {% for d in dispensaries %}
+                                <option value="{{ d.id }}" {% if d.id|stringformat:"s" == dispensary_id %}selected{% endif %}>{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
-                
-                <div class="col-md-2">
-                    <label for="{{ search_form.date_from.id_for_label }}" class="form-label">
-                        <i class="fas fa-calendar-alt me-1"></i>From Date
-                    </label>
-                    {{ search_form.date_from }}
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="{{ search_form.date_to.id_for_label }}" class="form-label">
-                        <i class="fas fa-calendar-alt me-1"></i>To Date
-                    </label>
-                    {{ search_form.date_to }}
-                </div>
-                
-                <div class="col-md-3">
-                    <label for="{{ search_form.patient_name.id_for_label }}" class="form-label">
-                        <i class="fas fa-user me-1"></i>Patient Name
-                    </label>
-                    {{ search_form.patient_name }}
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="{{ search_form.dispensed_by.id_for_label }}" class="form-label">
-                        <i class="fas fa-user-md me-1"></i>Dispensed By
-                    </label>
-                    {{ search_form.dispensed_by }}
-                </div>
-                
-                <div class="col-md-3">
-                    <label for="{{ search_form.category.id_for_label }}" class="form-label">
-                        <i class="fas fa-tags me-1"></i>Category
-                    </label>
-                    {{ search_form.category }}
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="{{ search_form.min_quantity.id_for_label }}" class="form-label">
-                        <i class="fas fa-sort-numeric-up me-1"></i>Min Qty
-                    </label>
-                    {{ search_form.min_quantity }}
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="{{ search_form.max_quantity.id_for_label }}" class="form-label">
-                        <i class="fas fa-sort-numeric-down me-1"></i>Max Qty
-                    </label>
-                    {{ search_form.max_quantity }}
-                </div>
-                
-                <div class="col-md-3">
-                    <label for="{{ search_form.prescription_type.id_for_label }}" class="form-label">
-                        <i class="fas fa-file-prescription me-1"></i>Prescription Type
-                    </label>
-                    {{ search_form.prescription_type }}
-                </div>
-                
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-light w-100">
-                        <i class="fas fa-search me-1"></i>Search
-                    </button>
-                </div>
-                
-                <div class="col-md-2 d-flex align-items-end">
-                    <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-outline-light w-100">
-                        <i class="fas fa-times me-1"></i>Clear
-                    </a>
-                </div>
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-secondary">Clear Filters</a>
             </form>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Dispensing Logs -->
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-history me-2"></i>Dispensing Records ({{ total_results }} total)</h5>
+    <!-- Dispensed Items Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Dispensed Items</h6>
+            <a href="{% url 'pharmacy:dispensed_items_export' %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-download"></i> Export
+            </a>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Medication</th>
+                                <th>Patient</th>
+                                <th>Quantity</th>
+                                <th>Dispensed By</th>
+                                <th>Dispensary</th>
+                                <th>Date</th>
+                                <th>Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in page_obj %}
+                            <tr>
+                                <td>{{ log.prescription_item.medication.name }} ({{ log.prescription_item.medication.strength }})</td>
+                                <td>{{ log.prescription_item.prescription.patient.get_full_name }}</td>
+                                <td>{{ log.dispensed_quantity }}</td>
+                                <td>{{ log.dispensed_by.get_full_name|default:log.dispensed_by.username }}</td>
+                                <td>{{ log.dispensary.name|default:"N/A" }}</td>
+                                <td>{{ log.dispensed_date|date:"M d, Y H:i" }}</td>
+                                <td>₦{{ log.total_price_for_this_log|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="card-body">
-                    {% for log in page_obj %}
-                    <div class="card dispensing-log-card mb-3">
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col-md-4">
-                                    <div class="medication-name">{{ log.prescription_item.medication.name }}</div>
-                                    {% if log.prescription_item.medication.generic_name %}
-                                        <small class="text-muted">{{ log.prescription_item.medication.generic_name }}</small>
-                                    {% endif %}
-                                    {% if log.prescription_item.medication.category %}
-                                        <br><span class="badge bg-secondary">{{ log.prescription_item.medication.category.name }}</span>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="patient-info">
-                                        <i class="fas fa-user me-1"></i>{{ log.prescription_item.prescription.patient.get_full_name }}
-                                        <br><small>ID: {{ log.prescription_item.prescription.patient.patient_id }}</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2 text-center">
-                                    <span class="quantity-badge">{{ log.dispensed_quantity }}</span>
-                                    <br><small class="text-muted">units</small>
-                                </div>
-                                <div class="col-md-2 text-center">
-                                    <span class="price-badge">₦{{ log.total_price_for_this_log|floatformat:2 }}</span>
-                                    <br><small class="text-muted">total</small>
-                                </div>
-                                <div class="col-md-1 text-end">
-                                    {% if log.prescription_item.prescription.id %}
-                                        <a href="{% url 'pharmacy:prescription_detail' log.prescription_item.prescription.id %}" class="btn btn-sm btn-outline-info" title="View Prescription">
-                                            <i class="fas fa-file-prescription"></i>
-                                        </a>
-                                    {% else %}
-                                        <span class="btn btn-sm btn-outline-secondary disabled" title="No Prescription">
-                                            <i class="fas fa-file-prescription"></i>
-                                        </span>
-                                    {% endif %}
-                                    <a href="{% url 'pharmacy:dispensed_item_detail' log.id %}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="row mt-2">
-                                <div class="col-12">
-                                    <small class="text-muted">
-                                        <i class="fas fa-clock me-1"></i>{{ log.dispensed_date|date:"M d, Y H:i" }}
-                                        <span class="ms-3">
-                                            <i class="fas fa-user-md me-1"></i>{{ log.dispensed_by.get_full_name|default:"Unknown" }}
-                                        </span>
-                                        <span class="ms-3">
-                                            <i class="fas fa-file-prescription me-1"></i>{{ log.prescription_item.prescription.get_prescription_type_display }}
-                                        </span>
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="alert alert-info text-center">
-                        <i class="fas fa-info-circle me-2"></i>
-                        No dispensing records found matching your criteria.
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Pagination -->
-            {% if page_obj.has_other_pages %}
-            <nav aria-label="Dispensing logs pagination" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.medication_name %}&medication_name={{ request.GET.medication_name }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.patient_name %}&patient_name={{ request.GET.patient_name }}{% endif %}{% if request.GET.dispensed_by %}&dispensed_by={{ request.GET.dispensed_by }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.min_quantity %}&min_quantity={{ request.GET.min_quantity }}{% endif %}{% if request.GET.max_quantity %}&max_quantity={{ request.GET.max_quantity }}{% endif %}{% if request.GET.prescription_type %}&prescription_type={{ request.GET.prescription_type }}{% endif %}">
-                                <i class="fas fa-chevron-left"></i> Previous
-                            </a>
-                        </li>
-                    {% endif %}
-
-                    {% for i in page_obj.paginator.page_range %}
-                        {% if page_obj.number == i %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ i }}</span>
-                            </li>
-                        {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ i }}{% if request.GET.medication_name %}&medication_name={{ request.GET.medication_name }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.patient_name %}&patient_name={{ request.GET.patient_name }}{% endif %}{% if request.GET.dispensed_by %}&dispensed_by={{ request.GET.dispensed_by }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.min_quantity %}&min_quantity={{ request.GET.min_quantity }}{% endif %}{% if request.GET.max_quantity %}&max_quantity={{ request.GET.max_quantity }}{% endif %}{% if request.GET.prescription_type %}&prescription_type={{ request.GET.prescription_type }}{% endif %}">{{ i }}</a>
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if dispensary_id %}&dispensary={{ dispensary_id }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
                             </li>
                         {% endif %}
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.medication_name %}&medication_name={{ request.GET.medication_name }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.patient_name %}&patient_name={{ request.GET.patient_name }}{% endif %}{% if request.GET.dispensed_by %}&dispensed_by={{ request.GET.dispensed_by }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.min_quantity %}&min_quantity={{ request.GET.min_quantity }}{% endif %}{% if request.GET.max_quantity %}&max_quantity={{ request.GET.max_quantity }}{% endif %}{% if request.GET.prescription_type %}&prescription_type={{ request.GET.prescription_type }}{% endif %}">
-                                Next <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if dispensary_id %}&dispensary={{ dispensary_id }}{% endif %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if dispensary_id %}&dispensary={{ dispensary_id }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No dispensed items found.
+                </div>
             {% endif %}
-        </div>
-
-        <!-- Analytics Sidebar -->
-        <div class="col-md-4">
-            <!-- Top Medications -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h6><i class="fas fa-chart-bar me-2"></i>Top Medications (This Month)</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="top-medications-list">
-                        {% for med in top_medications %}
-                        <div class="medication-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>{{ med.prescription_item__medication__name }}</strong>
-                                    <br><small class="text-muted">{{ med.dispense_count }} dispensing{{ med.dispense_count|pluralize }}</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-primary">{{ med.total_quantity }}</span>
-                                    <br><small class="text-muted">₦{{ med.total_value|floatformat:2 }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <div class="text-center p-3">
-                            <i class="fas fa-info-circle text-muted"></i>
-                            <p class="text-muted mb-0">No data available</p>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Staff -->
-            <div class="card">
-                <div class="card-header">
-                    <h6><i class="fas fa-user-md me-2"></i>Top Dispensing Staff (This Month)</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="top-medications-list">
-                        {% for staff in top_staff %}
-                        <div class="medication-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>{{ staff.dispensed_by__first_name }} {{ staff.dispensed_by__last_name }}</strong>
-                                    <br><small class="text-muted">{{ staff.total_dispensed }} dispensing{{ staff.total_dispensed|pluralize }}</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-success">{{ staff.total_dispensed }}</span>
-                                    <br><small class="text-muted">₦{{ staff.total_value|floatformat:2 }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <div class="text-center p-3">
-                            <i class="fas fa-info-circle text-muted"></i>
-                            <p class="text-muted mb-0">No data available</p>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Medication name autocomplete
-    const medicationInput = document.getElementById('{{ search_form.medication_name.id_for_label }}');
-    const suggestionsDiv = document.getElementById('medication-suggestions');
-    let currentFocus = -1;
-
-    if (medicationInput) {
-        medicationInput.addEventListener('input', function() {
-            const term = this.value.trim();
-
-            if (term.length < 2) {
-                suggestionsDiv.style.display = 'none';
-                return;
-            }
-
-            // Fetch suggestions
-            fetch(`{% url 'pharmacy:medication_autocomplete' %}?term=${encodeURIComponent(term)}`)
-                .then(response => response.json())
-                .then(data => {
-                    suggestionsDiv.innerHTML = '';
-
-                    if (data.length > 0) {
-                        data.forEach((item, index) => {
-                            const div = document.createElement('div');
-                            div.className = 'autocomplete-suggestion';
-                            div.textContent = item.label;
-                            div.addEventListener('click', function() {
-                                medicationInput.value = item.value;
-                                suggestionsDiv.style.display = 'none';
-                            });
-                            suggestionsDiv.appendChild(div);
-                        });
-                        suggestionsDiv.style.display = 'block';
-                    } else {
-                        suggestionsDiv.style.display = 'none';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching suggestions:', error);
-                    suggestionsDiv.style.display = 'none';
-                });
-        });
-
-        // Handle keyboard navigation
-        medicationInput.addEventListener('keydown', function(e) {
-            const suggestions = suggestionsDiv.querySelectorAll('.autocomplete-suggestion');
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                currentFocus++;
-                if (currentFocus >= suggestions.length) currentFocus = 0;
-                addActive(suggestions);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                currentFocus--;
-                if (currentFocus < 0) currentFocus = suggestions.length - 1;
-                addActive(suggestions);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (currentFocus > -1 && suggestions[currentFocus]) {
-                    suggestions[currentFocus].click();
-                }
-            } else if (e.key === 'Escape') {
-                suggestionsDiv.style.display = 'none';
-                currentFocus = -1;
-            }
-        });
-
-        function addActive(suggestions) {
-            removeActive(suggestions);
-            if (currentFocus >= 0 && currentFocus < suggestions.length) {
-                suggestions[currentFocus].classList.add('active');
-                suggestions[currentFocus].style.backgroundColor = '#e9ecef';
-            }
-        }
-
-        function removeActive(suggestions) {
-            suggestions.forEach(suggestion => {
-                suggestion.classList.remove('active');
-                suggestion.style.backgroundColor = '';
-            });
-        }
-
-        // Hide suggestions when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!medicationInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-                suggestionsDiv.style.display = 'none';
-                currentFocus = -1;
-            }
-        });
-    }
-
-    // Auto-submit form on date change for better UX
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    dateInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            // Optional: Auto-submit form when date changes
-            // this.form.submit();
-        });
-    });
-
-    // Add loading state to search button
-    const searchForm = document.querySelector('form');
-    const searchButton = document.querySelector('button[type="submit"]');
-
-    if (searchForm && searchButton) {
-        searchForm.addEventListener('submit', function() {
-            searchButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Searching...';
-            searchButton.disabled = true;
-        });
-    }
-
-    // Highlight search terms in results
-    const searchTerm = '{{ request.GET.medication_name|escapejs }}';
-    if (searchTerm && searchTerm.length > 0) {
-        const medicationNames = document.querySelectorAll('.medication-name');
-        medicationNames.forEach(element => {
-            const text = element.textContent;
-            const regex = new RegExp(`(${searchTerm})`, 'gi');
-            const highlightedText = text.replace(regex, '<mark>$1</mark>');
-            element.innerHTML = highlightedText;
-        });
-    }
-
-    // Add tooltips to badges
-    const badges = document.querySelectorAll('.quantity-badge, .price-badge');
-    badges.forEach(badge => {
-        badge.setAttribute('title', badge.textContent);
-    });
-});
-</script>
 {% endblock %}

@@ -86,17 +86,7 @@ urlpatterns = [
     path('api/medications/', views.medication_api, name='medication_api'),
     path('api/', include(api_urls)),
 
-    # Reports
-    path('reports/expiring-medications/', views.expiring_medications_report, name='expiring_medications_report'),
-    path('reports/low-stock-medications/', views.low_stock_medications_report, name='low_stock_medications_report'),
-    path('reports/sales-statistics/', views.pharmacy_sales_report, name='pharmacy_sales_report'),
-
-    # Dispensing Report
-    path('dispensing-report/', views.dispensing_report, name='dispensing_report'),
-
-    # Pharmacy Sales Report
-    path('reports/pharmacy-sales/', views.pharmacy_sales_report, name='pharmacy_sales_report'),
-    path('sales-report/', views.pharmacy_sales_report, name='pharmacy_sales_report'),
+    
 
     # Dispensed Items Tracking
     path('dispensed-items/', views.dispensed_items_tracker, name='dispensed_items_tracker'),
@@ -118,6 +108,13 @@ urlpatterns = [
     # Medication Inventory Management
     path('inventory/stock/add/', views.add_medication_stock, name='add_medication_stock'),
     path('inventory/stock/quick-add/', views.quick_add_stock, name='quick_add_stock'),
+
+    # Alerts
+    path('alerts/', views.low_stock_alerts, name='alerts'),
+
+    # Reports
+    path('reports/expiring-medications/', views.expiring_medications_report, name='expiring_medications_report'),
+    path('reports/low-stock/', views.low_stock_medications_report, name='low_stock_medications_report'),
 
     # AJAX Endpoints
     path('api/medication-autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),

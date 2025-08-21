@@ -13,6 +13,9 @@ A comprehensive solution for healthcare management built with Django.
 - **Inpatient Management**: Ward allocation, bed management, and patient monitoring
 - **HR Management**: Staff records, departments, and attendance
 - **Reporting**: Generate various reports and analytics
+- **Patient Dashboard**: Comprehensive patient information display
+- **Inventory Alerts**: Low stock and expiration notifications
+- **Appointment Reminders**: Automated email/SMS reminders for upcoming appointments
 
 ## Technology Stack
 
@@ -20,6 +23,15 @@ A comprehensive solution for healthcare management built with Django.
 - **Frontend**: HTML, CSS, JavaScript, Bootstrap
 - **Database**: SQLite (Development), MySQL (Production)
 - **Deployment**: XAMPP/WAMP (Local), PythonAnywhere (Cloud)
+
+## Management Commands
+
+The system includes several management commands for automation:
+
+- `send_pharmacy_alerts`: Sends low stock and expiration alerts for pharmacy inventory
+- `send_appointment_reminders`: Sends reminders for upcoming appointments
+
+These commands can be scheduled to run automatically using cron jobs or task schedulers.
 
 ## Installation
 

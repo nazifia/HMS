@@ -17,6 +17,30 @@
         </div>
     </div>
 
+    <!-- Quick Action Buttons -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'oncology:edit_oncology_record' record.id %}" class="btn btn-warning">
+                            <i class="fas fa-edit"></i> Edit Record
+                        </a>
+                        <a href="#" class="btn btn-primary">
+                            <i class="fas fa-prescription"></i> Create Prescription
+                        </a>
+                        <a href="{% url 'oncology:oncology_records_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-list"></i> All Records
+                        </a>
+                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteRecordModal">
+                            <i class="fas fa-trash"></i> Delete Record
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Patient Information -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
@@ -195,5 +219,28 @@
         </div>
     </div>
     {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteRecordModal" tabindex="-1" role="dialog" aria-labelledby="deleteRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteRecordModalLabel">Confirm Delete</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the oncology record for <strong>{{ record.patient.get_full_name }}</strong> dated {{ record.visit_date|date:"M d, Y" }}? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <a href="{% url 'oncology:delete_oncology_record' record.id %}" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Yes, Delete
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

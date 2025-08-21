@@ -1,456 +1,106 @@
 {% extends 'base.html' %}
-{% block title %}{{ title }} - Hospital Management System{% endblock %}
 
-{% block extra_css %}
-<style>
-    .detail-card {
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        border: none;
-        overflow: hidden;
-    }
-    
-    .detail-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1.5rem;
-    }
-    
-    .info-card {
-        border-left: 4px solid #007bff;
-        transition: all 0.2s;
-    }
-    
-    .info-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    .progress-circle {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: conic-gradient(#28a745 var(--progress, 0%), #e9ecef 0%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-    }
-    
-    .progress-circle::before {
-        content: '';
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: white;
-        position: absolute;
-    }
-    
-    .progress-text {
-        position: relative;
-        z-index: 1;
-        font-weight: bold;
-        color: #2c3e50;
-    }
-    
-    .timeline-item {
-        border-left: 3px solid #007bff;
-        padding-left: 1rem;
-        margin-bottom: 1rem;
-        position: relative;
-    }
-    
-    .timeline-item::before {
-        content: '';
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #007bff;
-        position: absolute;
-        left: -7.5px;
-        top: 0.5rem;
-    }
-    
-    .audit-log {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
-        border-left: 3px solid #6c757d;
-    }
-    
-    .medication-badge {
-        background: linear-gradient(45deg, #007bff, #0056b3);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
-        font-weight: 600;
-        display: inline-block;
-    }
-    
-    .status-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.875rem;
-    }
-    
-    .medication-info {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
-        border-radius: 10px;
-        padding: 1.5rem;
-    }
-    
-    .patient-info {
-        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-        color: white;
-        border-radius: 10px;
-        padding: 1.5rem;
-    }
-    
-    .prescription-info {
-        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-        color: white;
-        border-radius: 10px;
-        padding: 1.5rem;
-    }
-    
-    .dispensing-info {
-        background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
-        color: white;
-        border-radius: 10px;
-        padding: 1.5rem;
-    }
-    
-    .related-log {
-        border-left: 4px solid #007bff;
-        background: #f8f9fa;
-        padding: 1rem;
-        margin-bottom: 0.5rem;
-        border-radius: 0 8px 8px 0;
-        transition: all 0.2s;
-    }
-    
-    .related-log:hover {
-        background: #e9ecef;
-        transform: translateX(5px);
-    }
-    
-    .timeline-item {
-        position: relative;
-        padding-left: 2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .timeline-item::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0.5rem;
-        width: 12px;
-        height: 12px;
-        background: #007bff;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 0 0 3px #007bff;
-    }
-    
-    .timeline-item::after {
-        content: '';
-        position: absolute;
-        left: 5px;
-        top: 1.5rem;
-        width: 2px;
-        height: calc(100% - 1rem);
-        background: #dee2e6;
-    }
-    
-    .timeline-item:last-child::after {
-        display: none;
-    }
-    
-    .badge-custom {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-</style>
-{% endblock %}
+{% block title %}Dispensed Item Detail{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-pills me-2"></i>{{ title }}</h2>
-        <div>
-            {% if log_entry.prescription_item.prescription.id %}
-                <a href="{% url 'pharmacy:prescription_detail' log_entry.prescription_item.prescription.id %}"
-                   class="btn btn-info me-2">
-                    <i class="fas fa-file-prescription me-2"></i>View Prescription
-                </a>
-            {% else %}
-                <span class="btn btn-secondary disabled" title="No Prescription Available">
-                    <i class="fas fa-file-prescription me-2"></i>View Prescription
-                </span>
-            {% endif %}
-            <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Back to Tracker
-            </a>
-        </div>
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dispensed Item Detail</h1>
+        <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Back to Tracker
+        </a>
     </div>
 
+    <!-- Dispensed Item Information -->
     <div class="row">
-        <!-- Main Details -->
-        <div class="col-md-8">
-            <!-- Dispensing Log Details -->
-            <div class="card detail-card mb-4">
-                <div class="detail-header">
-                    <h4><i class="fas fa-pills me-2"></i>Dispensing Details</h4>
-                    <p class="mb-0">Complete information about this dispensing transaction</p>
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Dispensing Details</h6>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="dispensing-info">
-                                <h6><i class="fas fa-calendar-alt me-2"></i>Dispensing Information</h6>
-                                <div class="row">
-                                    <div class="col-12 mb-2">
-                                        <div class="info-label">Date & Time:</div>
-                                        <div class="info-value">{{ log_entry.dispensed_date|date:"F d, Y H:i:s" }}</div>
-                                    </div>
-                                    <div class="col-12 mb-2">
-                                        <div class="info-label">Dispensed By:</div>
-                                        <div class="info-value">
-                                            <i class="fas fa-user-md me-1"></i>
-                                            {{ log_entry.dispensed_by.get_full_name|default:"Unknown Staff" }}
-                                        </div>
-                                    </div>
-                                    <div class="col-12 mb-2">
-                                        <div class="info-label">Quantity Dispensed:</div>
-                                        <div class="info-value">
-                                            <span class="badge badge-custom bg-light text-dark fs-6">
-                                                {{ log_entry.dispensed_quantity }} units
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="info-label">Total Price:</div>
-                                        <div class="info-value">
-                                            <span class="badge badge-custom bg-light text-dark fs-6">
-                                                ₦{{ log_entry.total_price_for_this_log|floatformat:2 }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Medication</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.medication.name }} ({{ dispensing_log.prescription_item.medication.strength }})</p>
                         </div>
-                        <div class="col-md-6">
-                            <div class="medication-info">
-                                <h6><i class="fas fa-capsules me-2"></i>Medication Details</h6>
-                                <div class="row">
-                                    <div class="col-12 mb-2">
-                                        <div class="info-label">Name:</div>
-                                        <div class="info-value">{{ log_entry.prescription_item.medication.name }}</div>
-                                    </div>
-                                    {% if log_entry.prescription_item.medication.generic_name %}
-                                    <div class="col-12 mb-2">
-                                        <div class="info-label">Generic Name:</div>
-                                        <div class="info-value">{{ log_entry.prescription_item.medication.generic_name }}</div>
-                                    </div>
-                                    {% endif %}
-                                    <div class="col-12 mb-2">
-                                        <div class="info-label">Category:</div>
-                                        <div class="info-value">
-                                            {% if log_entry.prescription_item.medication.category %}
-                                                {{ log_entry.prescription_item.medication.category.name }}
-                                            {% else %}
-                                                <em>No category</em>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="info-label">Unit Price at Dispense:</div>
-                                        <div class="info-value">
-                                            <span class="badge badge-custom bg-light text-dark">
-                                                ₦{{ log_entry.unit_price_at_dispense|floatformat:2 }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Patient</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.prescription.patient.get_full_name }}</p>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Patient Information -->
-            <div class="card detail-card mb-4">
-                <div class="card-body">
-                    <div class="patient-info">
-                        <h6><i class="fas fa-user me-2"></i>Patient Information</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="info-label">Name:</div>
-                                <div class="info-value">{{ prescription.patient.get_full_name }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-label">Patient ID:</div>
-                                <div class="info-value">{{ prescription.patient.patient_id }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-label">Phone:</div>
-                                <div class="info-value">{{ prescription.patient.phone_number|default:"Not provided" }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-label">Email:</div>
-                                <div class="info-value">{{ prescription.patient.email|default:"Not provided" }}</div>
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Doctor</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.prescription.doctor.get_full_name|default:"N/A" }}</p>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Prescription Information -->
-            <div class="card detail-card">
-                <div class="card-body">
-                    <div class="prescription-info">
-                        <h6><i class="fas fa-file-prescription me-2"></i>Prescription Information</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="info-label">Prescription ID:</div>
-                                <div class="info-value">#{{ prescription.id }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-label">Type:</div>
-                                <div class="info-value">{{ prescription.get_prescription_type_display }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-label">Doctor:</div>
-                                <div class="info-value">{{ prescription.doctor.get_full_name }}</div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-label">Status:</div>
-                                <div class="info-value">
-                                    <span class="badge bg-{% if prescription.status == 'completed' %}success{% elif prescription.status == 'pending' %}warning{% else %}secondary{% endif %}">
-                                        {{ prescription.get_status_display }}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="info-label">Prescribed Quantity:</div>
-                                <div class="info-value">{{ log_entry.prescription_item.quantity }} units</div>
-                            </div>
-                            {% if log_entry.prescription_item.instructions %}
-                            <div class="col-12">
-                                <div class="info-label">Instructions:</div>
-                                <div class="info-value">{{ log_entry.prescription_item.instructions }}</div>
-                            </div>
-                            {% endif %}
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Dispensed Quantity</p>
+                            <p class="mb-0">{{ dispensing_log.dispensed_quantity }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Unit Price</p>
+                            <p class="mb-0">₦{{ dispensing_log.unit_price_at_dispense|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Total Price</p>
+                            <p class="mb-0">₦{{ dispensing_log.total_price_for_this_log|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Dispensed By</p>
+                            <p class="mb-0">{{ dispensing_log.dispensed_by.get_full_name|default:dispensing_log.dispensed_by.username }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Dispensary</p>
+                            <p class="mb-0">{{ dispensing_log.dispensary.name|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p class="mb-1 text-muted small">Dispensed Date</p>
+                            <p class="mb-0">{{ dispensing_log.dispensed_date|date:"M d, Y H:i" }}</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Sidebar -->
-        <div class="col-md-4">
-            <!-- Related Dispensing Logs -->
-            {% if related_logs %}
-            <div class="card detail-card mb-4">
-                <div class="card-header">
-                    <h6><i class="fas fa-history me-2"></i>Related Dispensing History</h6>
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Prescription Information</h6>
                 </div>
                 <div class="card-body">
-                    <div class="timeline">
-                        {% for log in related_logs %}
-                        <div class="timeline-item">
-                            <div class="related-log">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ log.dispensed_quantity }} units</strong>
-                                        <br><small class="text-muted">{{ log.dispensed_date|date:"M d, Y H:i" }}</small>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="badge bg-primary">${{ log.total_price_for_this_log|floatformat:2 }}</span>
-                                        <br><small class="text-muted">{{ log.dispensed_by.get_full_name|default:"Unknown" }}</small>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Prescription ID</p>
+                            <p class="mb-0">
+                                <a href="{% url 'pharmacy:prescription_detail' dispensing_log.prescription_item.prescription.id %}">
+                                    #{{ dispensing_log.prescription_item.prescription.id }}
+                                </a>
+                            </p>
                         </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Quick Actions -->
-            <div class="card detail-card">
-                <div class="card-header">
-                    <h6><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        {% if log_entry.prescription_item.prescription.id %}
-                            <a href="{% url 'pharmacy:prescription_detail' log_entry.prescription_item.prescription.id %}" class="btn btn-outline-primary">
-                                <i class="fas fa-file-prescription me-2"></i>View Full Prescription
-                            </a>
-                        {% else %}
-                            <span class="btn btn-outline-secondary disabled" title="No Prescription Available">
-                                <i class="fas fa-file-prescription me-2"></i>View Full Prescription
-                            </span>
-                        {% endif %}
-                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?patient_name={{ log_entry.prescription_item.prescription.patient.get_full_name|urlencode }}"
-                           class="btn btn-outline-info">
-                            <i class="fas fa-user me-2"></i>Patient's Dispensing History
-                        </a>
-                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?medication_name={{ log_entry.prescription_item.medication.name|urlencode }}"
-                           class="btn btn-outline-success">
-                            <i class="fas fa-pills me-2"></i>Medication Dispensing History
-                        </a>
-                        {% if log_entry.dispensed_by %}
-                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}?dispensed_by={{ log_entry.dispensed_by.id }}"
-                           class="btn btn-outline-warning">
-                            <i class="fas fa-user-md me-2"></i>Staff Dispensing History
-                        </a>
-                        {% endif %}
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Prescribed Quantity</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.quantity }}</p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Dosage</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.dosage }}</p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Frequency</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.frequency }}</p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Duration</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.duration }}</p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <p class="mb-1 text-muted small">Instructions</p>
+                            <p class="mb-0">{{ dispensing_log.prescription_item.instructions|default:"N/A" }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Add smooth scrolling to anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            document.querySelector(this.getAttribute('href')).scrollIntoView({
-                behavior: 'smooth'
-            });
-        });
-    });
-    
-    // Add copy to clipboard functionality for IDs
-    const copyableElements = document.querySelectorAll('[data-copy]');
-    copyableElements.forEach(element => {
-        element.style.cursor = 'pointer';
-        element.title = 'Click to copy';
-        element.addEventListener('click', function() {
-            navigator.clipboard.writeText(this.textContent).then(() => {
-                // Show temporary feedback
-                const originalText = this.textContent;
-                this.textContent = 'Copied!';
-                setTimeout(() => {
-                    this.textContent = originalText;
-                }, 1000);
-            });
-        });
-    });
-});
-</script>
 {% endblock %}

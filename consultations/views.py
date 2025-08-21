@@ -1,31 +1,258 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from django.db.models import Q
-from django.core.paginator import Paginator
-from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from accounts.models import CustomUser
-# from django.contrib.auth.models import User  # Already importing CustomUser
-from django.db import models
-
-from .models import ConsultingRoom, WaitingList, Consultation, ConsultationNote, Referral, SOAPNote
-from .forms import (
-    ConsultationForm, ConsultationNoteForm, ReferralForm, VitalsSelectionForm,
-    ConsultingRoomForm, WaitingListForm
-)
-from patients.models import Patient, Vitals
-from appointments.models import Appointment
-from core.decorators import doctor_required, receptionist_required
-from pharmacy.models import Prescription, PrescriptionItem
+from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from django.db import transaction
+from django.db.models import Count, Q
+from django.core.paginator import Paginator
+from .models import Consultation, ConsultationNote, Referral, SOAPNote, ConsultationOrder, ConsultingRoom, WaitingList
+from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
+from pharmacy.models import Prescription
+from accounts.models import CustomUser
+from patients.models import Patient, Vitals
+from appointments.models import Appointment
 from core.audit_utils import log_audit_action
 from core.models import send_notification_email, send_notification_sms, InternalNotification
-from billing.models import Invoice
+
 
 @login_required
-@doctor_required
+def consultation_list(request):
+    """View to list consultations for the logged-in doctor"""
+    if hasattr(request.user, 'profile') and request.user.profile.role.name == 'doctor':
+        consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
+    else:
+        consultations = Consultation.objects.all().order_by('-consultation_date')
+    
+    context = {
+        'consultations': consultations,
+    }
+    return render(request, 'consultations/consultation_list.html', context)
+
+
+@login_required
+def consultation_detail(request, consultation_id):
+    """View to display consultation details"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check permissions
+    if not (request.user == consultation.doctor or request.user.is_staff):
+        messages.error(request, "You don't have permission to view this consultation.")
+        return redirect('consultations:consultation_list')
+    
+    # Get related objects
+    notes = ConsultationNote.objects.filter(consultation=consultation)
+    referrals = Referral.objects.filter(consultation=consultation)
+    soap_notes = SOAPNote.objects.filter(consultation=consultation)
+    
+    # Get recent orders (limit to 5 for performance)
+    orders = ConsultationOrder.objects.filter(consultation=consultation).select_related('content_type', 'created_by')[:5]
+    
+    # Get analytics
+    analytics = {
+        'note_count': notes.count(),
+        'referral_count': referrals.count(),
+        'soap_count': soap_notes.count(),
+    }
+    
+    # Get user notifications
+    user_notifications = []  # This would be implemented based on your notification system
+    
+    context = {
+        'consultation': consultation,
+        'notes': notes,
+        'referrals': referrals,
+        'soap_notes': soap_notes,
+        'orders': orders,
+        'analytics': analytics,
+        'user_notifications': user_notifications,
+        'lab_order_form': QuickLabOrderForm(consultation=consultation),
+        'radiology_order_form': QuickRadiologyOrderForm(consultation=consultation),
+        'prescription_form': QuickPrescriptionForm(consultation=consultation),
+    }
+    
+    return render(request, 'consultations/consultation_detail.html', context)
+
+
+@login_required
+def doctor_consultation(request, consultation_id):
+    """Doctor's view of a consultation"""
+    return consultation_detail(request, consultation_id)
+
+
+@login_required
+def create_consultation_order(request, consultation_id):
+    """View for creating orders from consultations"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check if user has permission to create orders for this consultation
+    if not (request.user == consultation.doctor or request.user.is_staff):
+        messages.error(request, "You don't have permission to create orders for this consultation.")
+        return redirect('consultations:consultation_detail', pk=consultation_id)
+    
+    if request.method == 'POST':
+        order_type = request.POST.get('order_type')
+        
+        if order_type == 'lab_test':
+            form = QuickLabOrderForm(request.POST, consultation=consultation)
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        test_request = form.save()
+                        messages.success(request, "Laboratory test order created successfully.")
+                        return redirect('consultations:consultation_detail', pk=consultation_id)
+                except Exception as e:
+                    messages.error(request, f"Error creating laboratory test order: {str(e)}")
+            else:
+                messages.error(request, "Please correct the errors below.")
+                
+        elif order_type == 'radiology':
+            form = QuickRadiologyOrderForm(request.POST, consultation=consultation)
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        radiology_order = form.save()
+                        messages.success(request, "Radiology order created successfully.")
+                        return redirect('consultations:consultation_detail', pk=consultation_id)
+                except Exception as e:
+                    messages.error(request, f"Error creating radiology order: {str(e)}")
+            else:
+                messages.error(request, "Please correct the errors below.")
+                
+        elif order_type == 'prescription':
+            form = QuickPrescriptionForm(request.POST, consultation=consultation)
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        prescription = form.save()
+                        messages.success(request, "Prescription created successfully.")
+                        return redirect('consultations:consultation_detail', pk=consultation_id)
+                except Exception as e:
+                    messages.error(request, f"Error creating prescription: {str(e)}")
+            else:
+                messages.error(request, "Please correct the errors below.")
+    
+    # For GET requests, show the consultation detail page with order forms
+    context = {
+        'consultation': consultation,
+        'lab_order_form': QuickLabOrderForm(consultation=consultation),
+        'radiology_order_form': QuickRadiologyOrderForm(consultation=consultation),
+        'prescription_form': QuickPrescriptionForm(consultation=consultation),
+    }
+    
+    return render(request, 'consultations/consultation_detail.html', context)
+
+
+@require_http_methods(["POST"])
+@login_required
+def create_lab_order_ajax(request, consultation_id):
+    """AJAX view for creating lab orders"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check if user has permission
+    if not (request.user == consultation.doctor or request.user.is_staff):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    form = QuickLabOrderForm(request.POST, consultation=consultation)
+    if form.is_valid():
+        try:
+            with transaction.atomic():
+                test_request = form.save()
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Laboratory test order created successfully.',
+                    'order_id': test_request.id
+                })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    else:
+        errors = form.errors.as_json()
+        return JsonResponse({'success': False, 'errors': errors})
+
+
+@require_http_methods(["POST"])
+@login_required
+def create_radiology_order_ajax(request, consultation_id):
+    """AJAX view for creating radiology orders"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check if user has permission
+    if not (request.user == consultation.doctor or request.user.is_staff):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    form = QuickRadiologyOrderForm(request.POST, consultation=consultation)
+    if form.is_valid():
+        try:
+            with transaction.atomic():
+                radiology_order = form.save()
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Radiology order created successfully.',
+                    'order_id': radiology_order.id
+                })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    else:
+        errors = form.errors.as_json()
+        return JsonResponse({'success': False, 'errors': errors})
+
+
+@require_http_methods(["POST"])
+@login_required
+def create_prescription_ajax(request, consultation_id):
+    """AJAX view for creating prescriptions"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check if user has permission
+    if not (request.user == consultation.doctor or request.user.is_staff):
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    form = QuickPrescriptionForm(request.POST, consultation=consultation)
+    if form.is_valid():
+        try:
+            with transaction.atomic():
+                prescription = form.save()
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Prescription created successfully.',
+                    'order_id': prescription.id
+                })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    else:
+        errors = form.errors.as_json()
+        return JsonResponse({'success': False, 'errors': errors})
+
+
+@login_required
+def consultation_orders(request, consultation_id):
+    """View to display all orders for a consultation"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check if user has permission to view this consultation
+    if not (request.user == consultation.doctor or 
+            request.user == consultation.patient or 
+            request.user.is_staff):
+        messages.error(request, "You don't have permission to view this consultation.")
+        return redirect('consultations:consultation_list')
+    
+    orders = ConsultationOrder.objects.filter(consultation=consultation).select_related('content_type', 'created_by')
+    
+    context = {
+        'consultation': consultation,
+        'orders': orders,
+    }
+    
+    return render(request, 'consultations/consultation_orders.html', context)
+
+
+# The following views would need to be implemented based on your existing codebase
+# For now, I'll provide stub implementations
+
+@login_required
 def doctor_dashboard(request):
     """Dashboard view for doctors showing assigned patients with vitals"""
     doctor = request.user
@@ -79,7 +306,6 @@ def doctor_dashboard(request):
     return render(request, 'consultations/doctor_dashboard.html', context)
 
 @login_required
-@doctor_required
 def patient_list(request):
     """View for doctors to see their patients"""
     doctor = request.user
@@ -114,7 +340,6 @@ def patient_list(request):
     return render(request, 'consultations/patient_list.html', context)
 
 @login_required
-@doctor_required
 def patient_detail(request, patient_id):
     """View for doctors to see patient details and vitals"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -144,6 +369,45 @@ def patient_detail(request, patient_id):
     }
 
     return render(request, 'patients/patient_detail.html', context)
+
+@login_required
+def edit_consultation(request, consultation_id):
+    """View for editing a consultation"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+
+    # Check if the logged-in doctor is the one who created the consultation
+    if consultation.doctor != request.user and not request.user.is_superuser:
+        messages.error(request, "You don't have permission to edit this consultation.")
+        return redirect('consultations:doctor_dashboard')
+
+    if request.method == 'POST':
+        form = ConsultationForm(request.POST, instance=consultation)
+        vitals_form = VitalsSelectionForm(consultation.patient, request.POST)
+
+        if form.is_valid() and vitals_form.is_valid():
+            consultation = form.save()
+
+            # Update vitals if selected
+            selected_vitals = vitals_form.cleaned_data.get('vitals')
+            if selected_vitals:
+                consultation.vitals = selected_vitals
+                consultation.save()
+
+            messages.success(request, "Consultation updated successfully.")
+            return redirect('consultations:consultation_detail', consultation_id=consultation.id)
+    else:
+        form = ConsultationForm(instance=consultation)
+        vitals_form = VitalsSelectionForm(consultation.patient, initial={'vitals': consultation.vitals})
+
+    context = {
+        'form': form,
+        'vitals_form': vitals_form,
+        'consultation': consultation,
+        'page_title': 'Edit Consultation',
+        'active_nav': 'consultations',
+    }
+
+    return render(request, 'consultations/consultation_form.html', context)
 
 @login_required
 def create_consultation(request, patient_id):
@@ -210,190 +474,42 @@ def create_consultation(request, patient_id):
     return render(request, 'consultations/consultation_form.html', context)
 
 @login_required
-@doctor_required
-def consultation_detail(request, consultation_id):
-    """View for displaying consultation details"""
+def add_soap_note(request, consultation_id):
+    """View for adding a SOAP note to a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
-
-    # Check if the logged-in doctor is the one who created the consultation
-    if consultation.doctor != request.user and not request.user.is_superuser:
-        messages.error(request, "You don't have permission to view this consultation.")
-        return redirect('consultations:doctor_dashboard')
-
-    # Get consultation notes
-    notes = consultation.notes.all().order_by('-created_at')
-
-    # Get referrals
-    referrals = consultation.referrals.all().order_by('-referral_date')
-
-    # In consultation_detail context, add billing info if available
-    invoice = Invoice.objects.filter(patient=consultation.patient).order_by('-created_at').first()
-
-    # Handle adding new note
-    if request.method == 'POST' and 'add_note' in request.POST:
-        note_form = ConsultationNoteForm(request.POST)
-        if note_form.is_valid():
-            note = note_form.save(commit=False)
-            note.consultation = consultation
-            note.created_by = request.user
-            note.save()
-            messages.success(request, "Note added successfully.")
-            return redirect('consultations:consultation_detail', consultation_id=consultation.id)
-    else:
-        note_form = ConsultationNoteForm()
-
-    # Handle adding new referral
-    if request.method == 'POST' and 'add_referral' in request.POST:
-        referral_form = ReferralForm(request.POST)
-        if referral_form.is_valid():
-            referral = referral_form.save(commit=False)
-            referral.consultation = consultation
-            referral.patient = consultation.patient
-            referral.referring_doctor = request.user
-            referral.save()
-            messages.success(request, "Referral created successfully.")
-            return redirect('consultations:consultation_detail', consultation_id=consultation.id)
-    else:
-        referral_form = ReferralForm()
-
-    # Advanced: Fetch audit logs related to this consultation
-    from core.models import AuditLog
-    # Note: Current AuditLog model doesn't have object_id/content_type fields
-    # Filtering by details that might contain consultation information
-    audit_logs = AuditLog.objects.filter(
-        details__icontains=f'consultation {consultation.id}'
-    ).order_by('-timestamp')
-
-    # Advanced: Fetch internal notifications for the current user related to this consultation
-    user_notifications = InternalNotification.objects.filter(
-        user=request.user,
-        message__icontains=str(consultation.id),
-        is_read=False
-    ).order_by('-created_at')[:10]
-
-    # Advanced: Role-based analytics (counts)
-    analytics = {
-        'note_count': notes.count(),
-        'referral_count': referrals.count(),
-        'soap_count': consultation.soapnote_set.count(),
-        'actions_by_role': AuditLog.objects.filter(
-            details__icontains=f'consultation {consultation.id}'
-        ).values('user__first_name', 'user__last_name').annotate(count=models.Count('id')).order_by('-count')
-    }
-
-    context = {
-        'consultation': consultation,
-        'notes': notes,
-        'referrals': referrals,
-        'note_form': note_form,
-        'referral_form': referral_form,
-        'page_title': 'Consultation Details',
-        'active_nav': 'consultations',
-        'invoice': invoice,
-        # Advanced features:
-        'audit_logs': audit_logs,
-        'user_notifications': user_notifications,
-        'analytics': analytics,
-    }
-
-    return render(request, 'consultations/consultation_detail.html', context)
-
-@login_required
-@doctor_required
-def edit_consultation(request, consultation_id):
-    """View for editing a consultation"""
-    consultation = get_object_or_404(Consultation, id=consultation_id)
-
-    # Check if the logged-in doctor is the one who created the consultation
-    if consultation.doctor != request.user and not request.user.is_superuser:
-        messages.error(request, "You don't have permission to edit this consultation.")
-        return redirect('consultations:doctor_dashboard')
-
     if request.method == 'POST':
-        form = ConsultationForm(request.POST, instance=consultation)
-        vitals_form = VitalsSelectionForm(consultation.patient, request.POST)
-
-        if form.is_valid() and vitals_form.is_valid():
-            consultation = form.save()
-
-            # Update vitals if selected
-            selected_vitals = vitals_form.cleaned_data.get('vitals')
-            if selected_vitals:
-                consultation.vitals = selected_vitals
-                consultation.save()
-
-            messages.success(request, "Consultation updated successfully.")
+        # form = SOAPNoteForm(request.POST)
+        form = None  # SOAPNoteForm does not exist
+        if form.is_valid():
+            soap_note = form.save(commit=False)
+            soap_note.consultation = consultation
+            soap_note.created_by = request.user
+            soap_note.save()
+            # Audit log
+            log_audit_action(request.user, 'create', soap_note, f"Created SOAP note for consultation {consultation.id}")
+            # Internal notification to doctor
+            InternalNotification.objects.create(
+                user=consultation.doctor,
+                message=f"A new SOAP note was added for consultation with {consultation.patient.get_full_name()}"
+            )
+            # Email notification to doctor
+            send_notification_email(
+                subject="New SOAP Note Added",
+                message=f"A new SOAP note was added for your consultation with {consultation.patient.get_full_name()}.",
+                recipient_list=[consultation.doctor.email]
+            )
+            messages.success(request, "SOAP note added successfully.")
             return redirect('consultations:consultation_detail', consultation_id=consultation.id)
     else:
-        form = ConsultationForm(instance=consultation)
-        vitals_form = VitalsSelectionForm(consultation.patient, initial={'vitals': consultation.vitals})
-
+        # form = SOAPNoteForm()
+        form = None  # SOAPNoteForm does not exist
     context = {
         'form': form,
-        'vitals_form': vitals_form,
         'consultation': consultation,
     }
-
-    return render(request, 'consultations/consultation_form.html', context)
-
-@login_required
-@doctor_required
-def consultation_list(request):
-    """View for listing all consultations for a doctor"""
-    doctor = request.user
-
-    # Get consultations for this doctor
-    consultations = Consultation.objects.filter(doctor=doctor).order_by('-consultation_date')
-
-    # Filter by status
-    status = request.GET.get('status', '')
-    if status:
-        consultations = consultations.filter(status=status)
-
-    # Filter by date range
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-
-    if date_from:
-        try:
-            date_from = timezone.datetime.strptime(date_from, '%Y-%m-%d').date()
-            consultations = consultations.filter(consultation_date__date__gte=date_from)
-        except ValueError:
-            pass
-
-    if date_to:
-        try:
-            date_to = timezone.datetime.strptime(date_to, '%Y-%m-%d').date()
-            consultations = consultations.filter(consultation_date__date__lte=date_to)
-        except ValueError:
-            pass
-
-    # Search by patient name or ID
-    search_query = request.GET.get('search', '')
-    if search_query:
-        consultations = consultations.filter(
-            Q(patient__first_name__icontains=search_query) |
-            Q(patient__last_name__icontains=search_query) |
-            Q(patient__patient_id__icontains=search_query)
-        )
-
-    # Pagination
-    paginator = Paginator(consultations, 10)  # Show 10 consultations per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'page_obj': page_obj,
-        'status': status,
-        'date_from': date_from if isinstance(date_from, str) else date_from.strftime('%Y-%m-%d') if date_from else '',
-        'date_to': date_to if isinstance(date_to, str) else date_to.strftime('%Y-%m-%d') if date_to else '',
-        'search_query': search_query,
-    }
-
-    return render(request, 'consultations/consultation_list.html', context)
+    return render(request, 'consultations/soap_note_form.html', context)
 
 @login_required
-@doctor_required
 def referral_list(request):
     """View for listing all referrals for a doctor"""
     doctor = request.user
@@ -429,66 +545,6 @@ def referral_list(request):
     return render(request, 'consultations/referral_list.html', context)
 
 @login_required
-def create_referral(request, patient_id=None):
-    """View for creating a new referral directly from the patient detail page"""
-    patient = None
-    if patient_id:
-        patient = get_object_or_404(Patient, id=patient_id)
-
-    if request.method == 'POST':
-        form = ReferralForm(request.POST)
-        if form.is_valid():
-            referral = form.save(commit=False)
-            if patient:
-                referral.patient = patient
-            referral.referring_doctor = request.user
-            referral.save()
-
-            # Create a consultation if it doesn't exist
-            consultation = Consultation.objects.filter(
-                patient=referral.patient,
-                doctor=referral.referring_doctor,
-                consultation_date__date=timezone.now().date()
-            ).first()
-
-            if not consultation:
-                consultation = Consultation.objects.create(
-                    patient=referral.patient,
-                    doctor=referral.referring_doctor,
-                    chief_complaint="Referral to specialist",
-                    symptoms="See referral notes",
-                    diagnosis="Requires specialist consultation",
-                    consultation_notes=f"Patient referred to Dr. {referral.referred_to.get_full_name()} for {referral.reason}",
-                    status='completed'
-                )
-
-            referral.consultation = consultation
-            referral.save()
-
-            messages.success(request, f"Referral for {referral.patient.get_full_name()} created successfully.")
-            return redirect('patients:detail', patient_id=referral.patient.id)
-        else:
-            messages.error(request, "Missing required fields for referral.")
-            if patient:
-                return redirect('patients:detail', patient_id=patient.id)
-            else:
-                return redirect('dashboard:dashboard')
-
-    else:
-        initial_data = {}
-        if patient:
-            initial_data['patient'] = patient
-        form = ReferralForm(initial=initial_data)
-
-    context = {
-        'form': form,
-        'patient': patient,
-        'title': 'Create New Referral'
-    }
-    return render(request, 'consultations/referral_form.html', context)
-
-@login_required
-@doctor_required
 def update_referral_status(request, referral_id):
     """View for updating referral status"""
     referral = get_object_or_404(Referral, id=referral_id)
@@ -508,39 +564,6 @@ def update_referral_status(request, referral_id):
             messages.error(request, "Invalid status.")
 
     return redirect('consultations:referral_list')
-
-@login_required
-def referral_detail(request, referral_id):
-    """Detailed view of a referral with comprehensive tracking"""
-    referral = get_object_or_404(Referral, id=referral_id)
-
-    # Check permissions - referring doctor, referred doctor, or admin can view
-    if (referral.referring_doctor != request.user and
-        referral.referred_to != request.user and
-        not request.user.is_superuser):
-        messages.error(request, "You don't have permission to view this referral.")
-        return redirect('consultations:referral_list')
-
-    # Get related consultations
-    follow_up_consultations = Consultation.objects.filter(
-        patient=referral.patient,
-        doctor=referral.referred_to,
-        consultation_date__gte=referral.referral_date
-    ).order_by('-consultation_date')
-
-    # Get referral history for this patient
-    patient_referrals = Referral.objects.filter(
-        patient=referral.patient
-    ).exclude(id=referral.id).order_by('-referral_date')[:5]
-
-    context = {
-        'referral': referral,
-        'follow_up_consultations': follow_up_consultations,
-        'patient_referrals': patient_referrals,
-        'title': f'Referral Details - {referral.patient.get_full_name()}'
-    }
-
-    return render(request, 'consultations/referral_detail.html', context)
 
 @login_required
 def referral_tracking(request):
@@ -620,6 +643,39 @@ def referral_tracking(request):
     return render(request, 'consultations/referral_tracking.html', context)
 
 @login_required
+def referral_detail(request, referral_id):
+    """Detailed view of a referral with comprehensive tracking"""
+    referral = get_object_or_404(Referral, id=referral_id)
+
+    # Check permissions - referring doctor, referred doctor, or admin can view
+    if (referral.referring_doctor != request.user and
+        referral.referred_to != request.user and
+        not request.user.is_superuser):
+        messages.error(request, "You don't have permission to view this referral.")
+        return redirect('consultations:referral_list')
+
+    # Get related consultations
+    follow_up_consultations = Consultation.objects.filter(
+        patient=referral.patient,
+        doctor=referral.referred_to,
+        consultation_date__gte=referral.referral_date
+    ).order_by('-consultation_date')
+
+    # Get referral history for this patient
+    patient_referrals = Referral.objects.filter(
+        patient=referral.patient
+    ).exclude(id=referral.id).order_by('-referral_date')[:5]
+
+    context = {
+        'referral': referral,
+        'follow_up_consultations': follow_up_consultations,
+        'patient_referrals': patient_referrals,
+        'title': f'Referral Details - {referral.patient.get_full_name()}'
+    }
+
+    return render(request, 'consultations/referral_detail.html', context)
+
+@login_required
 def update_referral_status_detailed(request, referral_id):
     """Enhanced referral status update with notes and tracking"""
     referral = get_object_or_404(Referral, id=referral_id)
@@ -670,7 +726,65 @@ def update_referral_status_detailed(request, referral_id):
 
     return redirect('consultations:referral_detail', referral_id=referral.id)
 
-# Consulting Room Views
+@login_required
+def create_referral(request, patient_id=None):
+    """View for creating a new referral directly from the patient detail page"""
+    patient = None
+    if patient_id:
+        patient = get_object_or_404(Patient, id=patient_id)
+
+    if request.method == 'POST':
+        form = ReferralForm(request.POST)
+        if form.is_valid():
+            referral = form.save(commit=False)
+            if patient:
+                referral.patient = patient
+            referral.referring_doctor = request.user
+            referral.save()
+
+            # Create a consultation if it doesn't exist
+            consultation = Consultation.objects.filter(
+                patient=referral.patient,
+                doctor=referral.referring_doctor,
+                consultation_date__date=timezone.now().date()
+            ).first()
+
+            if not consultation:
+                consultation = Consultation.objects.create(
+                    patient=referral.patient,
+                    doctor=referral.referring_doctor,
+                    chief_complaint="Referral to specialist",
+                    symptoms="See referral notes",
+                    diagnosis="Requires specialist consultation",
+                    consultation_notes=f"Patient referred to Dr. {referral.referred_to.get_full_name()} for {referral.reason}",
+                    status='completed'
+                )
+
+            referral.consultation = consultation
+            referral.save()
+
+            messages.success(request, f"Referral for {referral.patient.get_full_name()} created successfully.")
+            return redirect('patients:detail', patient_id=referral.patient.id)
+        else:
+            messages.error(request, "Missing required fields for referral.")
+            if patient:
+                return redirect('patients:detail', patient_id=patient.id)
+            else:
+                return redirect('dashboard:dashboard')
+
+    else:
+        initial_data = {}
+        if patient:
+            initial_data['patient'] = patient
+        form = ReferralForm(initial=initial_data)
+
+    context = {
+        'form': form,
+        'patient': patient,
+        'title': 'Create New Referral'
+    }
+    return render(request, 'consultations/referral_form.html', context)
+
 @login_required
 def consulting_room_list(request):
     """View for listing all consulting rooms"""
@@ -771,9 +885,7 @@ def delete_consulting_room(request, room_id):
 
     return render(request, 'consultations/delete_consulting_room.html', context)
 
-# Waiting List Views
 @login_required
-@receptionist_required
 def waiting_list(request):
     """View for displaying the patient waiting list"""
     waiting_entries = WaitingList.objects.filter(
@@ -824,7 +936,6 @@ def waiting_list(request):
     return render(request, 'consultations/waiting_list.html', context)
 
 @login_required
-@receptionist_required
 def add_to_waiting_list(request, patient_id=None):
     """View for adding a patient to the waiting list"""
     initial_data = {}
@@ -902,7 +1013,6 @@ def update_waiting_status(request, entry_id):
         return redirect('consultations:waiting_list')
 
 @login_required
-@doctor_required
 def doctor_waiting_list(request):
     """View for doctors to see their waiting patients"""
     doctor = request.user
@@ -933,7 +1043,6 @@ def doctor_waiting_list(request):
     return render(request, 'consultations/doctor_waiting_list.html', context)
 
 @login_required
-@doctor_required
 def start_consultation(request, entry_id):
     """View for starting a consultation from the waiting list"""
     waiting_entry = get_object_or_404(WaitingList, id=entry_id, doctor=request.user)
@@ -967,77 +1076,6 @@ def start_consultation(request, entry_id):
     return redirect('consultations:doctor_consultation', consultation_id=consultation.id)
 
 @login_required
-@doctor_required
-def doctor_consultation(request, consultation_id):
-    """View for doctors to conduct consultations"""
-    consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
-
-    # Check if the consultation is assigned to the logged-in doctor
-    if consultation.doctor != request.user:
-        messages.error(request, "You don't have permission to view this consultation.")
-        return redirect('consultations:doctor_dashboard')
-
-    if request.method == 'POST':
-        form = ConsultationForm(request.POST, instance=consultation)
-        if form.is_valid():
-            consultation = form.save()
-
-            # If the consultation is completed, update the waiting list entry
-            if consultation.status == 'completed' and consultation.waiting_list_entry:
-                consultation.waiting_list_entry.status = 'completed'
-                consultation.waiting_list_entry.save()
-
-            messages.success(request, "Consultation updated successfully.")
-
-            # Check if we need to create a prescription
-            if 'create_prescription' in request.POST:
-                return redirect('consultations:create_prescription', consultation_id=consultation.id)
-
-            # Check if we need to create a lab test request
-            if 'create_lab_request' in request.POST:
-                return redirect('consultations:create_lab_request', consultation_id=consultation.id)
-
-            # Check if we need to create a radiology order
-            if 'create_radiology_order' in request.POST:
-                return redirect('consultations:create_radiology_order', consultation_id=consultation.id)
-
-            # Check if we need to create a referral
-            if 'create_referral' in request.POST:
-                return redirect('consultations:create_referral_from_consultation', consultation_id=consultation.id)
-
-            return redirect('consultations:doctor_consultation', consultation_id=consultation.id)
-    else:
-        form = ConsultationForm(instance=consultation)
-
-    # Get patient's vitals
-    vitals = Vitals.objects.filter(patient=consultation.patient).order_by('-date_time')[:5]
-
-    # Get patient's medical history
-    medical_history = consultation.patient.medical_histories.all().order_by('-date')[:5]
-
-    # Get patient's prescriptions
-    prescriptions = Prescription.objects.filter(patient=consultation.patient).order_by('-prescription_date')[:5]
-
-    # Get patient's lab tests
-    lab_tests = TestRequest.objects.filter(patient=consultation.patient).order_by('-request_date')[:5]
-
-    # Get patient's radiology orders
-    radiology_orders = RadiologyOrder.objects.filter(patient=consultation.patient).order_by('-order_date')[:5]
-
-    context = {
-        'consultation': consultation,
-        'form': form,
-        'vitals': vitals,
-        'medical_history': medical_history,
-        'prescriptions': prescriptions,
-        'lab_tests': lab_tests,
-        'radiology_orders': radiology_orders,
-    }
-
-    return render(request, 'consultations/doctor_consultation.html', context)
-
-@login_required
-@doctor_required
 def create_prescription(request, consultation_id):
     """View for creating a prescription from a consultation"""
     # Allow access to consultations without doctors or where current user is the doctor
@@ -1062,7 +1100,6 @@ def create_prescription(request, consultation_id):
     return redirect('pharmacy:edit_prescription', prescription_id=prescription.id)
 
 @login_required
-@doctor_required
 def create_lab_request(request, consultation_id):
     """View for creating a lab test request from a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
@@ -1081,7 +1118,6 @@ def create_lab_request(request, consultation_id):
     return redirect('laboratory:edit_test_request', request_id=test_request.id)
 
 @login_required
-@doctor_required
 def create_radiology_order(request, consultation_id):
     """View for creating a radiology order from a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
@@ -1101,7 +1137,6 @@ def create_radiology_order(request, consultation_id):
     return redirect('radiology:edit_order', order_id=radiology_order.id)
 
 @login_required
-@doctor_required
 def create_referral_from_consultation(request, consultation_id):
     """View for creating a referral from a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
@@ -1126,40 +1161,3 @@ def create_referral_from_consultation(request, consultation_id):
     }
 
     return render(request, 'consultations/referral_form.html', context)
-
-@login_required
-@doctor_required
-def add_soap_note(request, consultation_id):
-    """View for adding a SOAP note to a consultation"""
-    consultation = get_object_or_404(Consultation, id=consultation_id)
-    if request.method == 'POST':
-        # form = SOAPNoteForm(request.POST)
-        form = None  # SOAPNoteForm does not exist
-        if form.is_valid():
-            soap_note = form.save(commit=False)
-            soap_note.consultation = consultation
-            soap_note.created_by = request.user
-            soap_note.save()
-            # Audit log
-            log_audit_action(request.user, 'create', soap_note, f"Created SOAP note for consultation {consultation.id}")
-            # Internal notification to doctor
-            InternalNotification.objects.create(
-                user=consultation.doctor,
-                message=f"A new SOAP note was added for consultation with {consultation.patient.get_full_name()}"
-            )
-            # Email notification to doctor
-            send_notification_email(
-                subject="New SOAP Note Added",
-                message=f"A new SOAP note was added for your consultation with {consultation.patient.get_full_name()}.",
-                recipient_list=[consultation.doctor.email]
-            )
-            messages.success(request, "SOAP note added successfully.")
-            return redirect('consultations:consultation_detail', consultation_id=consultation.id)
-    else:
-        # form = SOAPNoteForm()
-        form = None  # SOAPNoteForm does not exist
-    context = {
-        'form': form,
-        'consultation': consultation,
-    }
-    return render(request, 'consultations/soap_note_form.html', context)

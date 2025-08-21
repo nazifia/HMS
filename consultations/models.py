@@ -5,6 +5,7 @@ User = settings.AUTH_USER_MODEL
 from patients.models import Patient, Vitals
 from appointments.models import Appointment
 
+
 class ConsultingRoom(models.Model):
     """Model for hospital consulting rooms"""
     room_number = models.CharField(max_length=20, unique=True)
@@ -20,6 +21,7 @@ class ConsultingRoom(models.Model):
 
     class Meta:
         ordering = ['room_number']
+
 
 class WaitingList(models.Model):
     """Model for patient waiting list"""
@@ -53,6 +55,7 @@ class WaitingList(models.Model):
         ordering = ['priority', 'check_in_time']
         verbose_name_plural = "Waiting List Entries"
 
+
 class Consultation(models.Model):
     """Model for doctor consultations"""
     STATUS_CHOICES = (
@@ -84,6 +87,7 @@ class Consultation(models.Model):
     class Meta:
         ordering = ['-consultation_date']
 
+
 class ConsultationNote(models.Model):
     """Model for additional consultation notes"""
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='notes')
@@ -96,6 +100,7 @@ class ConsultationNote(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
 
 class Referral(models.Model):
     """Model for patient referrals to other doctors/specialists"""
@@ -123,6 +128,7 @@ class Referral(models.Model):
     class Meta:
         ordering = ['-referral_date']
 
+
 class SOAPNote(models.Model):
     """Model for SOAP (Subjective, Objective, Assessment, Plan) clinical notes"""
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='soap_notes', db_index=True)
@@ -143,3 +149,67 @@ class SOAPNote(models.Model):
 
     def __str__(self):
         return f"SOAP Note for {self.consultation} by {self.created_by.get_full_name() if self.created_by else 'Unknown'} on {self.created_at.strftime('%Y-%m-%d')}"
+
+
+class ConsultationOrder(models.Model):
+    """Model for linking consultations with lab tests, radiology orders, and prescriptions"""
+    
+    ORDER_TYPE_CHOICES = (
+        ('lab_test', 'Laboratory Test'),
+        ('radiology', 'Radiology Order'),
+        ('prescription', 'Prescription'),
+    )
+    
+    STATUS_CHOICES = (
+        ('ordered', 'Ordered'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+    
+    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='orders')
+    order_type = models.CharField(max_length=20, choices=ORDER_TYPE_CHOICES)
+    
+    # Generic foreign key to link to different order types
+    content_type = models.ForeignKey('contenttypes.ContentType', on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ordered')
+    notes = models.TextField(blank=True, null=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_consultation_orders')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['consultation']),
+            models.Index(fields=['order_type']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_order_type_display()} Order for {self.consultation} - {self.get_status_display()}"
+    
+    @property
+    def order_object(self):
+        """Returns the actual order object (lab test, radiology order, or prescription)"""
+        from django.contrib.contenttypes.models import ContentType
+        try:
+            return self.content_type.get_object_for_this_type(pk=self.object_id)
+        except:
+            return None
+    
+    def get_order_details(self):
+        """Returns details about the order based on its type"""
+        order_obj = self.order_object
+        if not order_obj:
+            return "Order not found"
+            
+        if self.order_type == 'lab_test':
+            return f"Lab Test Request: {order_obj.tests.count()} tests for {order_obj.patient.get_full_name()}"
+        elif self.order_type == 'radiology':
+            return f"Radiology Order: {order_obj.test.name} for {order_obj.patient.get_full_name()}"
+        elif self.order_type == 'prescription':
+            return f"Prescription: {order_obj.items.count()} items for {order_obj.patient.get_full_name()}"
+        return "Order details not available"

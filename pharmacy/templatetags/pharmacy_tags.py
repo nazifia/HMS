@@ -98,3 +98,14 @@ def abs_val(value):
     Returns the absolute value of the input.
     """
     return abs(value)
+
+@register.filter
+def commas(value):
+    """
+    Format a number with commas as thousands separators.
+    Usage: {{ value|commas }}
+    """
+    try:
+        return f"{int(value):,}"
+    except (ValueError, TypeError):
+        return value

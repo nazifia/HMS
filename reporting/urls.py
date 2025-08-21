@@ -31,6 +31,11 @@ urlpatterns = [
     path('staff/', views.staff_reports, name='staff_reports'),
     path('financials/', views.financial_reports, name='financial_reports'),
 
+    # Pharmacy Sales Report
+    path('pharmacy/sales-report/', views.pharmacy_sales_report, name='pharmacy_sales_report'),
+    path('pharmacy/reports/sales-statistics/', views.pharmacy_sales_report, name='pharmacy_sales_statistics'),
+    path('pharmacy/reports/pharmacy-sales/', views.pharmacy_sales_report, name='pharmacy_sales_report_alt'),
+
     # Export URLs
     path('export/csv/<str:report_type>/', views.export_csv, name='export_csv'),
     path('export/pdf/<str:report_type>/', views.export_pdf, name='export_pdf'),

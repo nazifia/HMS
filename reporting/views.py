@@ -31,6 +31,7 @@ from pharmacy.models import Prescription
 from billing.models import Invoice
 from appointments.models import Appointment
 from patients.models import Patient
+from pharmacy.models import Medication, ActiveStoreInventory, DispensingLog
 
 from core.models import AuditLog, InternalNotification
 
@@ -321,25 +322,43 @@ def pharmacy_reports(request):
 
 @login_required
 def pharmacy_sales_report(request):
+    """View for pharmacy sales report"""
     form = PharmacySalesReportForm(request.GET)
-    prescriptions = Prescription.objects.filter(dispensed=True)
-
+    
+    # Start with all prescriptions that have been dispensed
+    prescriptions = Prescription.objects.filter(
+        status__in=['dispensed', 'partially_dispensed']
+    ).select_related('patient', 'doctor').prefetch_related('items__medication')
+    
+    # Apply filters if form is valid
     if form.is_valid():
         if form.cleaned_data.get('start_date'):
-            prescriptions = prescriptions.filter(created_at__date__gte=form.cleaned_data['start_date'])
+            prescriptions = prescriptions.filter(prescription_date__gte=form.cleaned_data['start_date'])
         if form.cleaned_data.get('end_date'):
-            prescriptions = prescriptions.filter(created_at__date__lte=form.cleaned_data['end_date'])
+            prescriptions = prescriptions.filter(prescription_date__lte=form.cleaned_data['end_date'])
         if form.cleaned_data.get('patient'):
             prescriptions = prescriptions.filter(patient=form.cleaned_data['patient'])
-
+    
+    # Calculate totals for the filtered prescriptions
+    total_prescriptions = prescriptions.count()
+    
+    # Pagination
     paginator = Paginator(prescriptions, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
+    
+    # Calculate total sales amount for displayed prescriptions
+    total_sales = 0
+    for prescription in page_obj:
+        total_sales += prescription.get_total_prescribed_price()
+    
     context = {
         'form': form,
         'page_obj': page_obj,
-        'title': 'Pharmacy Sales Reports'
+        'total_prescriptions': total_prescriptions,
+        'total_sales': total_sales,
+        'title': 'Pharmacy Sales Reports',
+        'active_nav': 'pharmacy',
     }
     return render(request, 'reporting/pharmacy_sales_report.html', context)
 

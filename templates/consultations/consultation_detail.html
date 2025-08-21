@@ -140,5 +140,309 @@
             {% endif %}
         </div>
     </div>
+    
+    <!-- Orders Section -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>
+                    <i class="fas fa-file-medical"></i> Orders
+                </h5>
+                <div>
+                    <a href="{% url 'consultations:consultation_orders' consultation.id %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list"></i> View All Orders
+                    </a>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createOrderModal">
+                        <i class="fas fa-plus"></i> Create New Order
+                    </button>
+                </div>
+            </div>
+            
+            {% if orders %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order Type</th>
+                                <th>Details</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders|slice:":5" %} <!-- Show only the 5 most recent orders -->
+                            <tr>
+                                <td>
+                                    {% if order.order_type == 'lab_test' %}
+                                        <i class="fas fa-vial text-primary"></i> Laboratory
+                                    {% elif order.order_type == 'radiology' %}
+                                        <i class="fas fa-x-ray text-info"></i> Radiology
+                                    {% elif order.order_type == 'prescription' %}
+                                        <i class="fas fa-prescription text-success"></i> Prescription
+                                    {% endif %}
+                                </td>
+                                <td>{{ order.get_order_details }}</td>
+                                <td>
+                                    <span class="badge bg-{{ order.get_status_display|lower }}">
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ order.created_at|date:"M d, Y H:i" }}</td>
+                                <td>
+                                    {% if order.order_type == 'lab_test' %}
+                                        <a href="{% url 'laboratory:test_request_detail' order.order_object.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    {% elif order.order_type == 'radiology' %}
+                                        <a href="{% url 'radiology:order_detail' order.order_object.id %}" 
+                                           class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    {% elif order.order_type == 'prescription' %}
+                                        <a href="{% url 'pharmacy:prescription_detail' order.order_object.id %}" 
+                                           class="btn btn-sm btn-outline-success">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if orders|length > 5 %}
+                    <div class="text-center">
+                        <a href="{% url 'consultations:consultation_orders' consultation.id %}" class="btn btn-outline-primary">
+                            View All {{ orders|length }} Orders
+                        </a>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No orders have been created for this consultation yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<!-- Create Order Modal -->
+<div class="modal fade" id="createOrderModal" tabindex="-1" aria-labelledby="createOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createOrderModalLabel">
+                    <i class="fas fa-plus-circle"></i> Create New Order
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="orderTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="lab-tab" data-bs-toggle="tab" data-bs-target="#lab" type="button" role="tab">
+                            <i class="fas fa-vial"></i> Laboratory
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="radiology-tab" data-bs-toggle="tab" data-bs-target="#radiology" type="button" role="tab">
+                            <i class="fas fa-x-ray"></i> Radiology
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="prescription-tab" data-bs-toggle="tab" data-bs-target="#prescription" type="button" role="tab">
+                            <i class="fas fa-prescription"></i> Prescription
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content mt-3" id="orderTabsContent">
+                    <!-- Laboratory Tab -->
+                    <div class="tab-pane fade show active" id="lab" role="tabpanel">
+                        <form id="labOrderForm" method="post" action="{% url 'consultations:create_lab_order_ajax' consultation.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">Laboratory Tests</label>
+                                {{ lab_order_form.tests }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Priority</label>
+                                {{ lab_order_form.priority }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                {{ lab_order_form.notes }}
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Lab Order
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Radiology Tab -->
+                    <div class="tab-pane fade" id="radiology" role="tabpanel">
+                        <form id="radiologyOrderForm" method="post" action="{% url 'consultations:create_radiology_order_ajax' consultation.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">Radiology Test</label>
+                                {{ radiology_order_form.test }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Priority</label>
+                                {{ radiology_order_form.priority }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Clinical Information</label>
+                                {{ radiology_order_form.clinical_information }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                {{ radiology_order_form.notes }}
+                            </div>
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-plus"></i> Create Radiology Order
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Prescription Tab -->
+                    <div class="tab-pane fade" id="prescription" role="tabpanel">
+                        <form id="prescriptionForm" method="post" action="{% url 'consultations:create_prescription_ajax' consultation.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">Diagnosis</label>
+                                {{ prescription_form.diagnosis }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Prescription Type</label>
+                                {{ prescription_form.prescription_type }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                {{ prescription_form.notes }}
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Create Prescription
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for handling form submissions -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle lab order form submission
+    document.getElementById('labOrderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                alert(data.message);
+                // Reload the page to show the new order
+                location.reload();
+            } else {
+                // Show error message
+                if (data.errors) {
+                    alert('Please correct the errors in the form.');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while creating the order.');
+        });
+    });
+    
+    // Handle radiology order form submission
+    document.getElementById('radiologyOrderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                alert(data.message);
+                // Reload the page to show the new order
+                location.reload();
+            } else {
+                // Show error message
+                if (data.errors) {
+                    alert('Please correct the errors in the form.');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while creating the order.');
+        });
+    });
+    
+    // Handle prescription form submission
+    document.getElementById('prescriptionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                alert(data.message);
+                // Reload the page to show the new order
+                location.reload();
+            } else {
+                // Show error message
+                if (data.errors) {
+                    alert('Please correct the errors in the form.');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while creating the order.');
+        });
+    });
+});
+</script>
 {% endblock %}
