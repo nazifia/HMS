@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Delete Ent Record{% endblock %}
+{% block title %}Delete ENT Record{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Delete Ent Record</h1>
+        <h1 class="h3 mb-0 text-gray-800">Delete ENT Record</h1>
     </div>
 
     <div class="card shadow mb-4">
         <div class="card-body">
             <div class="alert alert-warning">
                 <h4 class="alert-heading">Warning!</h4>
-                <p>Are you sure you want to delete the ent record for <strong>{{ record.patient.get_full_name }}</strong> dated {{ record.visit_date|date:"M d, Y" }}?</p>
+                <p>Are you sure you want to delete the ENT record for <strong>{{ record.patient.get_full_name }}</strong> dated {{ record.visit_date|date:"M d, Y" }}?</p>
                 <p>This action cannot be undone.</p>
             </div>
             

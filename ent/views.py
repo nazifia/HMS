@@ -205,3 +205,19 @@ def create_prescription_for_ent(request, record_id):
         'title': 'Create Prescription'
     }
     return render(request, 'ent/create_prescription.html', context)
+
+
+@login_required
+def delete_ent_record(request, record_id):
+    """View to delete an ent record"""
+    record = get_object_or_404(EntRecord, id=record_id)
+    
+    if request.method == 'POST':
+        record.delete()
+        messages.success(request, 'ENT record deleted successfully.')
+        return redirect('ent:ent_records_list')
+    
+    context = {
+        'record': record
+    }
+    return render(request, 'ent/ent_record_confirm_delete.html', context)

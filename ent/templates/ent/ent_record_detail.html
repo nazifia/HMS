@@ -26,7 +26,7 @@
                         <a href="{% url 'ent:edit_ent_record' record.id %}" class="btn btn-warning">
                             <i class="fas fa-edit"></i> Edit Record
                         </a>
-                        <a href="#" class="btn btn-primary">
+                        <a href="{% url 'ent:create_prescription_for_ent' record.id %}" class="btn btn-primary">
                             <i class="fas fa-prescription"></i> Create Prescription
                         </a>
                         <a href="{% url 'ent:ent_records_list' %}" class="btn btn-secondary">

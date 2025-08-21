@@ -13,7 +13,7 @@ from .models import (
 )
 from .forms import (
     MedicationForm, MedicationCategoryForm, SupplierForm, PurchaseForm, PurchaseItemForm,
-    PrescriptionForm, PrescriptionItemForm
+    PrescriptionForm, PrescriptionItemForm, DispensaryForm
 )
 from reporting.forms import PharmacySalesReportForm
 
