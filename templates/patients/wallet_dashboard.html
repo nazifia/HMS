@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Patient Wallet - {{ patient.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Wallet for {{ patient.get_full_name }}</h1>
+        <a href="{% url 'patients:detail' patient.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Patient
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Wallet Balance</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-left-primary shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                Current Balance
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                {% if patient.wallet %}
+                                                ₦{{ patient.wallet.balance|floatformat:2 }}
+                                                {% else %}
+                                                ₦0.00
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Wallet Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-success btn-block">
+                                <i class="fas fa-plus-circle me-2"></i>Add Funds
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'patients:wallet_withdrawal' patient.id %}" class="btn btn-warning btn-block">
+                                <i class="fas fa-minus-circle me-2"></i>Withdraw
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'patients:wallet_transfer' patient.id %}" class="btn btn-info btn-block">
+                                <i class="fas fa-exchange-alt me-2"></i>Transfer
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-secondary btn-block">
+                                <i class="fas fa-list me-2"></i>Transactions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

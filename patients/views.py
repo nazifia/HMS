@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
-from .models import Patient
-from .forms import PatientForm
+from .models import Patient, MedicalHistory, Vitals
+from .forms import PatientForm, MedicalHistoryForm
 from appointments.models import Appointment
 from consultations.models import Consultation
 from pharmacy.models import Prescription
@@ -168,31 +168,77 @@ def search_patients(request):
 @login_required
 def edit_medical_history(request, history_id):
     """View for editing patient medical history"""
-    # Implementation would depend on the medical history model
-    pass
+    medical_history = get_object_or_404(MedicalHistory, id=history_id)
+    
+    if request.method == 'POST':
+        form = MedicalHistoryForm(request.POST, instance=medical_history)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Medical history updated successfully.')
+            return redirect('patients:medical_history', patient_id=medical_history.patient.id)
+    else:
+        form = MedicalHistoryForm(instance=medical_history)
+    
+    context = {
+        'form': form,
+        'medical_history': medical_history,
+        'patient': medical_history.patient,
+        'page_title': f'Edit Medical History - {medical_history.patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/medical_history_form.html', context)
 
 
 @login_required
 def delete_medical_history(request, history_id):
     """View for deleting patient medical history"""
-    # Implementation would depend on the medical history model
-    pass
+    medical_history = get_object_or_404(MedicalHistory, id=history_id)
+    patient_id = medical_history.patient.id
+    
+    if request.method == 'POST':
+        medical_history.delete()
+        messages.success(request, 'Medical history deleted successfully.')
+        return redirect('patients:medical_history', patient_id=patient_id)
+    
+    context = {
+        'medical_history': medical_history,
+        'patient': medical_history.patient,
+        'page_title': f'Delete Medical History - {medical_history.patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/delete_medical_history.html', context)
 
 
 @login_required
 def patient_medical_history(request, patient_id):
     """View for displaying patient medical history"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation would depend on the medical history model
-    pass
+    medical_histories = MedicalHistory.objects.filter(patient=patient).order_by('-date')
+    
+    context = {
+        'patient': patient,
+        'medical_histories': medical_histories,
+        'page_title': f'Medical History - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/patient_medical_history.html', context)
 
 
 @login_required
 def patient_vitals(request, patient_id):
     """View for displaying patient vitals"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation would depend on the vitals model
-    pass
+    vitals = Vitals.objects.filter(patient=patient).order_by('-date_time')
+    
+    context = {
+        'patient': patient,
+        'vitals': vitals,
+    }
+    
+    return render(request, 'patients/patient_vitals.html', context)
 
 
 @login_required
@@ -241,8 +287,14 @@ def check_patient_nhia(request):
 def wallet_dashboard(request, patient_id):
     """View for patient wallet dashboard"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for wallet dashboard
-    pass
+    
+    context = {
+        'patient': patient,
+        'page_title': f'Wallet - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_dashboard.html', context)
 
 
 @login_required
@@ -257,8 +309,22 @@ def add_funds_to_wallet(request, patient_id):
 def wallet_transactions(request, patient_id):
     """View for displaying patient wallet transactions"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for wallet transactions
-    pass
+    
+    # Get wallet transactions
+    try:
+        transactions = patient.wallet.transactions.all().order_by('-created_at')
+    except AttributeError:
+        # If patient doesn't have a wallet yet
+        transactions = []
+    
+    context = {
+        'patient': patient,
+        'transactions': transactions,
+        'page_title': f'Wallet Transactions - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_transactions.html', context)
 
 
 @login_required

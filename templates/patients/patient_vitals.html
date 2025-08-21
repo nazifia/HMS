@@ -1,428 +1,73 @@
 {% extends 'base.html' %}
-{% load static %}
 
-{% block title %}{{ patient.get_full_name }} - Vitals History{% endblock %}
+{% block title %}Patient Vitals - {{ patient.get_full_name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Vitals History</h1>
-        <div>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#vitalsModal">
-                <i class="fas fa-plus fa-sm text-white-50"></i> Record New Vitals
-            </button>
-            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Patient
-            </a>
-        </div>
+        <h1 class="h3 mb-0 text-gray-800">Vitals for {{ patient.get_full_name }}</h1>
+        <a href="{% url 'patients:detail' patient.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Patient
+        </a>
     </div>
 
-    <!-- Patient Info Card -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-2 text-center">
-                    {% if patient.has_profile_image %}
-                        <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Vital Records</h6>
+                </div>
+                <div class="card-body">
+                    {% if vitals %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Temperature (°C)</th>
+                                    <th>Blood Pressure</th>
+                                    <th>Pulse Rate (bpm)</th>
+                                    <th>Respiratory Rate</th>
+                                    <th>Oxygen Saturation (%)</th>
+                                    <th>Height (cm)</th>
+                                    <th>Weight (kg)</th>
+                                    <th>BMI</th>
+                                    <th>Recorded By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for vital in vitals %}
+                                <tr>
+                                    <td>{{ vital.date_time|date:"Y-m-d H:i" }}</td>
+                                    <td>{{ vital.temperature|default:"-" }}</td>
+                                    <td>
+                                        {% if vital.blood_pressure_systolic and vital.blood_pressure_diastolic %}
+                                        {{ vital.blood_pressure_systolic }}/{{ vital.blood_pressure_diastolic }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ vital.pulse_rate|default:"-" }}</td>
+                                    <td>{{ vital.respiratory_rate|default:"-" }}</td>
+                                    <td>{{ vital.oxygen_saturation|default:"-" }}</td>
+                                    <td>{{ vital.height|default:"-" }}</td>
+                                    <td>{{ vital.weight|default:"-" }}</td>
+                                    <td>{{ vital.bmi|default:"-" }}</td>
+                                    <td>{{ vital.recorded_by }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No vitals recorded for this patient yet.
+                    </div>
                     {% endif %}
                 </div>
-                <div class="col-md-5">
-                    <h4>{{ patient.get_full_name }}</h4>
-                    <p class="mb-0"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
-                    <p class="mb-0"><strong>Gender:</strong> {{ patient.get_gender_display }}</p>
-                    <p class="mb-0"><strong>Age:</strong> {{ patient.get_age }} years</p>
-                </div>
-                <div class="col-md-5">
-                    <p class="mb-0"><strong>Date of Birth:</strong> {{ patient.date_of_birth|date:"F d, Y" }}</p>
-                    <p class="mb-0"><strong>Phone:</strong> {{ patient.phone_number }}</p>
-                    <p class="mb-0"><strong>Blood Group:</strong> {{ patient.blood_group|default:"Not specified" }}</p>
-                    <p class="mb-0"><strong>Registration Date:</strong> {{ patient.registration_date|date:"F d, Y" }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Vitals History Card -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Vitals History</h6>
-        </div>
-        <div class="card-body">
-            {% if vitals %}
-                <div class="table-responsive">
-                    <table class="table table-bordered" id="vitalsTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Date & Time</th>
-                                <th>Temperature (°C)</th>
-                                <th>Blood Pressure (mmHg)</th>
-                                <th>Pulse (bpm)</th>
-                                <th>Respiration (bpm)</th>
-                                <th>O₂ Saturation (%)</th>
-                                <th>Height (cm)</th>
-                                <th>Weight (kg)</th>
-                                <th>BMI</th>
-                                <th>Recorded By</th>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for vital in vitals %}
-                            <tr>
-                                <td>{{ vital.date_time|date:"M d, Y H:i" }}</td>
-                                <td>{{ vital.temperature|default:"-" }}</td>
-                                <td>{{ vital.blood_pressure_systolic|default:"-" }}/{{ vital.blood_pressure_diastolic|default:"-" }}</td>
-                                <td>{{ vital.pulse_rate|default:"-" }}</td>
-                                <td>{{ vital.respiratory_rate|default:"-" }}</td>
-                                <td>{{ vital.oxygen_saturation|default:"-" }}</td>
-                                <td>{{ vital.height|default:"-" }}</td>
-                                <td>{{ vital.weight|default:"-" }}</td>
-                                <td>{{ vital.bmi|floatformat:1|default:"-" }}</td>
-                                <td>{{ vital.recorded_by }}</td>
-                                <td>{{ vital.notes|default:"-"|truncatechars:30 }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle mr-1"></i> No vitals records found for this patient.
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Vitals Charts Card -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Vitals Trends</h6>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-xl-6 col-lg-6">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Temperature (°C)</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-area">
-                                <canvas id="temperatureChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-6 col-lg-6">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Blood Pressure (mmHg)</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-area">
-                                <canvas id="bpChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-6 col-lg-6">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Pulse Rate (bpm)</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-area">
-                                <canvas id="pulseChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-6 col-lg-6">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Weight (kg) & BMI</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-area">
-                                <canvas id="weightBmiChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Vitals Modal -->
-<div class="modal fade" id="vitalsModal" tabindex="-1" aria-labelledby="vitalsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="vitalsModalLabel">Record Vitals for {{ patient.get_full_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" action="{% url 'patients:detail' patient.id %}">
-                {% csrf_token %}
-                <input type="hidden" name="add_vitals" value="1">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_temperature">Temperature (°C)</label>
-                            <input type="number" step="0.1" min="35" max="42" name="temperature" id="id_temperature" class="form-control">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label for="id_blood_pressure_systolic">Systolic BP (mmHg)</label>
-                            <input type="number" min="70" max="250" name="blood_pressure_systolic" id="id_blood_pressure_systolic" class="form-control">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label for="id_blood_pressure_diastolic">Diastolic BP (mmHg)</label>
-                            <input type="number" min="40" max="150" name="blood_pressure_diastolic" id="id_blood_pressure_diastolic" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_pulse_rate">Pulse Rate (bpm)</label>
-                            <input type="number" min="40" max="200" name="pulse_rate" id="id_pulse_rate" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_respiratory_rate">Respiratory Rate (bpm)</label>
-                            <input type="number" min="10" max="40" name="respiratory_rate" id="id_respiratory_rate" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_oxygen_saturation">Oxygen Saturation (%)</label>
-                            <input type="number" min="70" max="100" name="oxygen_saturation" id="id_oxygen_saturation" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_height">Height (cm)</label>
-                            <input type="number" step="0.1" min="50" max="250" name="height" id="id_height" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_weight">Weight (kg)</label>
-                            <input type="number" step="0.1" min="3" max="300" name="weight" id="id_weight" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_bmi">BMI (calculated)</label>
-                            <input type="text" id="id_bmi" class="form-control" readonly>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <label for="id_notes">Notes</label>
-                            <textarea name="notes" id="id_notes" rows="3" class="form-control"></textarea>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <label for="id_recorded_by">Recorded By</label>
-                            <input type="text" name="recorded_by" id="id_recorded_by" class="form-control" value="{{ request.user.get_full_name }}">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save Vitals</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    // Calculate BMI when weight or height changes
-    document.addEventListener('DOMContentLoaded', function() {
-        const weightInput = document.getElementById('id_weight');
-        const heightInput = document.getElementById('id_height');
-        const bmiInput = document.getElementById('id_bmi');
-        
-        if (weightInput && heightInput && bmiInput) {
-            const calculateBMI = function() {
-                const weight = parseFloat(weightInput.value);
-                const height = parseFloat(heightInput.value) / 100; // Convert cm to m
-                
-                if (weight > 0 && height > 0) {
-                    const bmi = weight / (height * height);
-                    bmiInput.value = bmi.toFixed(2);
-                } else {
-                    bmiInput.value = '';
-                }
-            };
-            
-            weightInput.addEventListener('input', calculateBMI);
-            heightInput.addEventListener('input', calculateBMI);
-        }
-
-        // Initialize DataTable
-        if ($.fn.dataTable) {
-            $('#vitalsTable').DataTable({
-                "order": [[0, "desc"]]
-            });
-        }
-
-        // Prepare chart data
-        const vitalsData = {
-            dates: [{% for vital in vitals %}'{{ vital.date_time|date:"M d, Y H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}].reverse(),
-            temperatures: [{% for vital in vitals %}{% if vital.temperature %}{{ vital.temperature }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}].reverse(),
-            systolic: [{% for vital in vitals %}{% if vital.blood_pressure_systolic %}{{ vital.blood_pressure_systolic }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}].reverse(),
-            diastolic: [{% for vital in vitals %}{% if vital.blood_pressure_diastolic %}{{ vital.blood_pressure_diastolic }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}].reverse(),
-            pulse: [{% for vital in vitals %}{% if vital.pulse_rate %}{{ vital.pulse_rate }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}].reverse(),
-            weight: [{% for vital in vitals %}{% if vital.weight %}{{ vital.weight }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}].reverse(),
-            bmi: [{% for vital in vitals %}{% if vital.bmi %}{{ vital.bmi }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}].reverse()
-        };
-
-        // Create charts if there's data
-        if (vitalsData.dates.length > 0) {
-            // Temperature Chart
-            const temperatureCtx = document.getElementById('temperatureChart');
-            if (temperatureCtx) {
-                new Chart(temperatureCtx, {
-                    type: 'line',
-                    data: {
-                        labels: vitalsData.dates,
-                        datasets: [{
-                            label: 'Temperature (°C)',
-                            data: vitalsData.temperatures,
-                            borderColor: '#4e73df',
-                            backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                            pointRadius: 3,
-                            pointBackgroundColor: '#4e73df',
-                            pointBorderColor: '#4e73df',
-                            pointHoverRadius: 5,
-                            pointHoverBackgroundColor: '#4e73df',
-                            pointHoverBorderColor: '#4e73df',
-                            pointHitRadius: 10,
-                            pointBorderWidth: 2,
-                            tension: 0.3
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                min: 35,
-                                max: 42
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Blood Pressure Chart
-            const bpCtx = document.getElementById('bpChart');
-            if (bpCtx) {
-                new Chart(bpCtx, {
-                    type: 'line',
-                    data: {
-                        labels: vitalsData.dates,
-                        datasets: [{
-                            label: 'Systolic (mmHg)',
-                            data: vitalsData.systolic,
-                            borderColor: '#e74a3b',
-                            backgroundColor: 'rgba(231, 74, 59, 0.05)',
-                            pointRadius: 3,
-                            pointBackgroundColor: '#e74a3b',
-                            pointBorderColor: '#e74a3b',
-                            pointHoverRadius: 5,
-                            tension: 0.3
-                        },
-                        {
-                            label: 'Diastolic (mmHg)',
-                            data: vitalsData.diastolic,
-                            borderColor: '#1cc88a',
-                            backgroundColor: 'rgba(28, 200, 138, 0.05)',
-                            pointRadius: 3,
-                            pointBackgroundColor: '#1cc88a',
-                            pointBorderColor: '#1cc88a',
-                            pointHoverRadius: 5,
-                            tension: 0.3
-                        }]
-                    }
-                });
-            }
-
-            // Pulse Chart
-            const pulseCtx = document.getElementById('pulseChart');
-            if (pulseCtx) {
-                new Chart(pulseCtx, {
-                    type: 'line',
-                    data: {
-                        labels: vitalsData.dates,
-                        datasets: [{
-                            label: 'Pulse Rate (bpm)',
-                            data: vitalsData.pulse,
-                            borderColor: '#f6c23e',
-                            backgroundColor: 'rgba(246, 194, 62, 0.05)',
-                            pointRadius: 3,
-                            pointBackgroundColor: '#f6c23e',
-                            pointBorderColor: '#f6c23e',
-                            pointHoverRadius: 5,
-                            tension: 0.3
-                        }]
-                    }
-                });
-            }
-
-            // Weight & BMI Chart
-            const weightBmiCtx = document.getElementById('weightBmiChart');
-            if (weightBmiCtx) {
-                new Chart(weightBmiCtx, {
-                    type: 'line',
-                    data: {
-                        labels: vitalsData.dates,
-                        datasets: [{
-                            label: 'Weight (kg)',
-                            data: vitalsData.weight,
-                            borderColor: '#36b9cc',
-                            backgroundColor: 'rgba(54, 185, 204, 0.05)',
-                            pointRadius: 3,
-                            pointBackgroundColor: '#36b9cc',
-                            pointBorderColor: '#36b9cc',
-                            pointHoverRadius: 5,
-                            tension: 0.3,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'BMI',
-                            data: vitalsData.bmi,
-                            borderColor: '#858796',
-                            backgroundColor: 'rgba(133, 135, 150, 0.05)',
-                            pointRadius: 3,
-                            pointBackgroundColor: '#858796',
-                            pointBorderColor: '#858796',
-                            pointHoverRadius: 5,
-                            tension: 0.3,
-                            yAxisID: 'y1'
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                title: {
-                                    display: true,
-                                    text: 'Weight (kg)'
-                                }
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                title: {
-                                    display: true,
-                                    text: 'BMI'
-                                },
-                                grid: {
-                                    drawOnChartArea: false
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        }
-    });
-</script>
 {% endblock %}

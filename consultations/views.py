@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from .models import Consultation, ConsultationNote, Referral, SOAPNote, ConsultationOrder, ConsultingRoom, WaitingList
-from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm, ConsultingRoomForm
+from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm, ConsultingRoomForm, WaitingListForm, ReferralForm, ConsultationForm, VitalsSelectionForm
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription

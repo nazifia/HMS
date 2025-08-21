@@ -1,10 +1,12 @@
 from django import forms
-from django.contrib.contenttypes.models import ContentType
-from .models import ConsultationOrder, ConsultingRoom
+from django.utils import timezone
+from .models import ConsultationOrder, ConsultingRoom, WaitingList, Referral, Consultation
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
-from accounts.models import Department
+from accounts.models import Department, CustomUser
+from patients.models import Patient, Vitals
+from appointments.models import Appointment
 
 
 class ConsultingRoomForm(forms.ModelForm):
@@ -27,6 +29,111 @@ class ConsultingRoomForm(forms.ModelForm):
         self.fields['department'].queryset = Department.objects.all().order_by('name')
         # Set empty label for department
         self.fields['department'].empty_label = "Select Department (Optional)"
+
+
+class WaitingListForm(forms.ModelForm):
+    """Form for adding patients to the waiting list"""
+    
+    class Meta:
+        model = WaitingList
+        fields = ['patient', 'consulting_room', 'doctor', 'appointment', 'priority', 'notes']
+        widgets = {
+            'patient': forms.Select(attrs={'class': 'form-select select2'}),
+            'consulting_room': forms.Select(attrs={'class': 'form-select select2'}),
+            'doctor': forms.Select(attrs={'class': 'form-select select2'}),
+            'appointment': forms.Select(attrs={'class': 'form-select select2'}),
+            'priority': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set querysets for dropdowns
+        self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        self.fields['consulting_room'].queryset = ConsultingRoom.objects.filter(is_active=True).order_by('room_number')
+        self.fields['doctor'].queryset = CustomUser.objects.filter(is_active=True, profile__role='doctor').order_by('first_name', 'last_name')
+        self.fields['appointment'].queryset = Appointment.objects.filter(
+            status__in=['scheduled', 'confirmed']
+        ).order_by('appointment_date', 'appointment_time')
+        
+        # Set empty labels
+        self.fields['doctor'].empty_label = "Select Doctor (Optional)"
+        self.fields['appointment'].empty_label = "Select Appointment (Optional)"
+
+
+class ReferralForm(forms.ModelForm):
+    """Form for creating referrals"""
+    
+    class Meta:
+        model = Referral
+        fields = ['patient', 'referred_to', 'reason', 'notes']
+        widgets = {
+            'patient': forms.Select(attrs={'class': 'form-select select2'}),
+            'referred_to': forms.Select(attrs={'class': 'form-select select2'}),
+            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set querysets for dropdowns
+        self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        self.fields['referred_to'].queryset = CustomUser.objects.filter(
+            is_active=True, 
+            profile__role='doctor'
+        ).order_by('first_name', 'last_name')
+        
+        # Set empty labels
+        self.fields['referred_to'].empty_label = "Select Referred Doctor"
+
+
+class ConsultationForm(forms.ModelForm):
+    """Form for creating and editing consultations"""
+    
+    class Meta:
+        model = Consultation
+        fields = ['patient', 'doctor', 'vitals', 'chief_complaint', 'symptoms', 'diagnosis', 'consultation_notes']
+        widgets = {
+            'patient': forms.Select(attrs={'class': 'form-select select2'}),
+            'doctor': forms.Select(attrs={'class': 'form-select select2'}),
+            'vitals': forms.Select(attrs={'class': 'form-select select2'}),
+            'chief_complaint': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'symptoms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'diagnosis': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'consultation_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set querysets for dropdowns
+        self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        self.fields['doctor'].queryset = CustomUser.objects.filter(
+            is_active=True, 
+            profile__role='doctor'
+        ).order_by('first_name', 'last_name')
+        self.fields['vitals'].queryset = Vitals.objects.all().order_by('-date_time')
+        
+        # Set empty labels
+        self.fields['doctor'].empty_label = "Select Doctor (Optional)"
+        self.fields['vitals'].empty_label = "Select Vitals (Optional)"
+
+
+class VitalsSelectionForm(forms.Form):
+    """Form for selecting vitals for a consultation"""
+    
+    vitals = forms.ModelChoiceField(
+        queryset=Vitals.objects.none(),  # Will be set in __init__
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        required=False,
+        empty_label="Select Vitals (Optional)"
+    )
+    
+    def __init__(self, patient, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set queryset for vitals dropdown based on the patient
+        self.fields['vitals'].queryset = Vitals.objects.filter(
+            patient=patient
+        ).order_by('-date_time')
 
 
 class ConsultationOrderForm(forms.ModelForm):
