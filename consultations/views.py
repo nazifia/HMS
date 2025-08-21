@@ -14,6 +14,7 @@ from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
 from accounts.models import CustomUser, Department
 from patients.models import Patient, Vitals
+from patients.utils import get_safe_vitals_for_patient, get_latest_safe_vitals_for_patient
 from appointments.models import Appointment
 from core.audit_utils import log_audit_action
 from core.models import send_notification_email, send_notification_sms, InternalNotification
@@ -344,8 +345,8 @@ def patient_detail(request, patient_id):
     """View for doctors to see patient details and vitals"""
     patient = get_object_or_404(Patient, id=patient_id)
 
-    # Get patient's vitals
-    vitals = Vitals.objects.filter(patient=patient).order_by('-date_time')
+    # Get patient's vitals using safe utility function
+    vitals = get_safe_vitals_for_patient(patient)
 
     # Get patient's consultations with this doctor
     consultations = Consultation.objects.filter(
@@ -422,8 +423,8 @@ def create_consultation(request, patient_id):
         appointment_date=today
     ).first()
 
-    # Get the latest vitals
-    latest_vitals = Vitals.objects.filter(patient=patient).order_by('-date_time').first()
+    # Get the latest vitals using safe utility function
+    latest_vitals = get_latest_safe_vitals_for_patient(patient)
 
     if request.method == 'POST':
         form = ConsultationForm(request.POST, initial={'patient': patient, 'doctor': request.user})

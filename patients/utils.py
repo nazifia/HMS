@@ -1,6 +1,9 @@
-from django.db import transaction
-from .models import Patient
+from django.db import transaction, connection
+from .models import Patient, Vitals
 from nhia.models import NHIAPatient
+import logging
+
+logger = logging.getLogger(__name__)
 
 def merge_patients(primary_patient, secondary_patient, is_nhia_patient=False, nhia_reg_number=None):
     """
@@ -67,3 +70,68 @@ def merge_patients(primary_patient, secondary_patient, is_nhia_patient=False, nh
         primary_patient.save()
 
     return primary_patient
+
+
+def get_safe_vitals_for_patient(patient, limit=None):
+    """
+    Safely get vitals for a patient, handling InvalidOperation errors
+
+    Args:
+        patient: Patient instance
+        limit: Optional limit on number of vitals to return
+
+    Returns:
+        List of valid Vitals objects
+    """
+    try:
+        # Try normal query first
+        queryset = Vitals.objects.filter(patient=patient).order_by('-date_time')
+        if limit:
+            queryset = queryset[:limit]
+        return list(queryset)
+    except Exception as e:
+        logger.warning(f"Database error when querying vitals for patient {patient.id}: {e}")
+
+        # Fallback: get IDs first, then filter individually
+        try:
+            with connection.cursor() as cursor:
+                sql = "SELECT id FROM patients_vitals WHERE patient_id = %s ORDER BY date_time DESC"
+                params = [patient.id]
+                if limit:
+                    sql += f" LIMIT {limit}"
+                cursor.execute(sql, params)
+                vital_ids = [row[0] for row in cursor.fetchall()]
+
+            # Get each vital individually, skipping invalid ones
+            valid_vitals = []
+            for vital_id in vital_ids:
+                try:
+                    vital = Vitals.objects.get(id=vital_id)
+                    # Test decimal field access
+                    _ = vital.temperature
+                    _ = vital.height
+                    _ = vital.weight
+                    _ = vital.bmi
+                    valid_vitals.append(vital)
+                except Exception:
+                    logger.warning(f"Skipping vital record {vital_id} due to invalid decimal data")
+                    continue
+
+            return valid_vitals
+        except Exception as inner_e:
+            logger.error(f"Failed to retrieve vitals for patient {patient.id}: {inner_e}")
+            return []
+
+
+def get_latest_safe_vitals_for_patient(patient):
+    """
+    Safely get the latest vitals for a patient
+
+    Args:
+        patient: Patient instance
+
+    Returns:
+        Latest Vitals object or None
+    """
+    vitals = get_safe_vitals_for_patient(patient, limit=1)
+    return vitals[0] if vitals else None

@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.conf import settings
 import random
+import logging
 
 
 class Patient(models.Model):
@@ -189,6 +190,61 @@ class Vitals(models.Model):
     class Meta:
         verbose_name_plural = "Vitals"
         ordering = ['-date_time']
+
+    @classmethod
+    def safe_filter(cls, **kwargs):
+        """
+        Safely filter vitals, handling InvalidOperation errors from decimal fields
+        Returns a list of valid vitals, skipping any with invalid decimal data
+        """
+        logger = logging.getLogger(__name__)
+        try:
+            # Try normal query first
+            return list(cls.objects.filter(**kwargs))
+        except Exception as e:
+            logger.warning(f"Database error when querying vitals: {e}")
+
+            # Fallback: get IDs first, then filter individually
+            try:
+                from django.db import connection
+
+                # Build WHERE clause from kwargs
+                where_conditions = []
+                params = []
+                for key, value in kwargs.items():
+                    if key.endswith('__order_by'):
+                        continue
+                    where_conditions.append(f"{key.replace('__', '_')} = %s")
+                    params.append(value)
+
+                where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        f"SELECT id FROM patients_vitals WHERE {where_clause} ORDER BY date_time DESC",
+                        params
+                    )
+                    vital_ids = [row[0] for row in cursor.fetchall()]
+
+                # Get each vital individually, skipping invalid ones
+                valid_vitals = []
+                for vital_id in vital_ids:
+                    try:
+                        vital = cls.objects.get(id=vital_id)
+                        # Test decimal field access
+                        _ = vital.temperature
+                        _ = vital.height
+                        _ = vital.weight
+                        _ = vital.bmi
+                        valid_vitals.append(vital)
+                    except Exception:
+                        logger.warning(f"Skipping vital record {vital_id} due to invalid decimal data")
+                        continue
+
+                return valid_vitals
+            except Exception as inner_e:
+                logger.error(f"Failed to retrieve vitals with fallback method: {inner_e}")
+                return []
 
 
 class PatientWallet(models.Model):

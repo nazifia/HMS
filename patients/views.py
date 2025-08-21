@@ -6,7 +6,8 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
 from .models import Patient, MedicalHistory, Vitals
-from .forms import PatientForm, MedicalHistoryForm
+from .forms import PatientForm, MedicalHistoryForm, VitalsForm
+from .utils import get_safe_vitals_for_patient
 from appointments.models import Appointment
 from consultations.models import Consultation
 from pharmacy.models import Prescription
@@ -231,35 +232,127 @@ def patient_medical_history(request, patient_id):
 def patient_vitals(request, patient_id):
     """View for displaying patient vitals"""
     patient = get_object_or_404(Patient, id=patient_id)
-    vitals = Vitals.objects.filter(patient=patient).order_by('-date_time')
-    
+
+    if request.method == 'POST':
+        vitals_form = VitalsForm(request.POST, user=request.user)
+        if vitals_form.is_valid():
+            vital = vitals_form.save(commit=False)
+            vital.patient = patient
+            # Auto-populate recorded_by if not provided
+            if not vital.recorded_by and request.user.is_authenticated:
+                if hasattr(request.user, 'get_full_name') and request.user.get_full_name():
+                    vital.recorded_by = request.user.get_full_name()
+                else:
+                    vital.recorded_by = request.user.username
+            vital.save()
+            messages.success(request, 'Vital signs recorded successfully.')
+            return redirect('patients:vitals', patient_id=patient.id)
+    else:
+        vitals_form = VitalsForm(user=request.user)
+
+    # Use safe vitals utility function to handle InvalidOperation errors
+    vitals = get_safe_vitals_for_patient(patient)
+    if not vitals:
+        # Check if there were any vitals at all (vs. just invalid ones)
+        from django.db import connection
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) FROM patients_vitals WHERE patient_id = %s", [patient_id])
+                total_count = cursor.fetchone()[0]
+            if total_count > 0:
+                messages.warning(request, 'Some vital records could not be displayed due to data issues.')
+        except Exception:
+            pass
+
     context = {
         'patient': patient,
         'vitals': vitals,
+        'vitals_form': vitals_form,
+        'page_title': f'Patient Vitals - {patient.get_full_name()}',
+        'active_nav': 'patients',
     }
-    
+
     return render(request, 'patients/patient_vitals.html', context)
 
 
 @login_required
 def pwa_manifest(request):
     """View for PWA manifest"""
-    # Implementation for PWA manifest
-    pass
+    from django.http import JsonResponse
+
+    manifest = {
+        "name": "Hospital Management System",
+        "short_name": "HMS",
+        "description": "Comprehensive Hospital Management System",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#4e73df",
+        "icons": [
+            {
+                "src": "/static/img/icon-192x192.png",
+                "sizes": "192x192",
+                "type": "image/png"
+            },
+            {
+                "src": "/static/img/icon-512x512.png",
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+        ]
+    }
+
+    return JsonResponse(manifest, content_type='application/manifest+json')
 
 
 @login_required
 def service_worker(request):
     """View for service worker"""
-    # Implementation for service worker
-    pass
+    from django.http import HttpResponse
+
+    service_worker_js = """
+    const CACHE_NAME = 'hms-cache-v1';
+    const urlsToCache = [
+        '/',
+        '/static/css/sb-admin-2.min.css',
+        '/static/js/sb-admin-2.min.js',
+        '/static/vendor/jquery/jquery.min.js',
+        '/static/vendor/bootstrap/js/bootstrap.bundle.min.js',
+    ];
+
+    self.addEventListener('install', function(event) {
+        event.waitUntil(
+            caches.open(CACHE_NAME)
+                .then(function(cache) {
+                    return cache.addAll(urlsToCache);
+                })
+        );
+    });
+
+    self.addEventListener('fetch', function(event) {
+        event.respondWith(
+            caches.match(event.request)
+                .then(function(response) {
+                    if (response) {
+                        return response;
+                    }
+                    return fetch(event.request);
+                })
+        );
+    });
+    """
+
+    return HttpResponse(service_worker_js, content_type='application/javascript')
 
 
 @login_required
 def offline_fallback(request):
     """View for offline fallback"""
-    # Implementation for offline fallback
-    pass
+    context = {
+        'page_title': 'Offline - HMS',
+        'message': 'You are currently offline. Please check your internet connection.',
+    }
+    return render(request, 'patients/offline.html', context)
 
 
 @login_required
@@ -279,8 +372,27 @@ def demo_push_notification(request):
 @login_required
 def check_patient_nhia(request):
     """View for checking patient NHIA status"""
-    # Implementation for checking patient NHIA status
-    pass
+    patient_id = request.GET.get('patient_id')
+    if not patient_id:
+        return JsonResponse({'error': 'Patient ID is required'}, status=400)
+
+    try:
+        patient = Patient.objects.get(id=patient_id)
+        nhia_status = {
+            'has_nhia': hasattr(patient, 'nhia_info') and patient.nhia_info is not None,
+            'patient_name': patient.get_full_name(),
+            'patient_id': patient.patient_id,
+        }
+
+        if nhia_status['has_nhia']:
+            nhia_status.update({
+                'nhia_reg_number': patient.nhia_info.nhia_reg_number,
+                'is_active': patient.nhia_info.is_active,
+            })
+
+        return JsonResponse(nhia_status)
+    except Patient.DoesNotExist:
+        return JsonResponse({'error': 'Patient not found'}, status=404)
 
 
 @login_required

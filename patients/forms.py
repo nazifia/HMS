@@ -168,14 +168,69 @@ class VitalsForm(forms.ModelForm):
         fields = [
             'temperature', 'blood_pressure_systolic', 'blood_pressure_diastolic',
             'pulse_rate', 'respiratory_rate', 'oxygen_saturation', 'height',
-            'weight', 'notes'
+            'weight', 'notes', 'recorded_by'
         ]
         widgets = {
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'temperature': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1'}),
+            'blood_pressure_systolic': forms.NumberInput(attrs={'class': 'form-control'}),
+            'blood_pressure_diastolic': forms.NumberInput(attrs={'class': 'form-control'}),
+            'pulse_rate': forms.NumberInput(attrs={'class': 'form-control'}),
+            'respiratory_rate': forms.NumberInput(attrs={'class': 'form-control'}),
+            'oxygen_saturation': forms.NumberInput(attrs={'class': 'form-control'}),
+            'height': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1'}),
+            'weight': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'recorded_by': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        # Extract user from kwargs if provided
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # Make recorded_by optional
+        self.fields['recorded_by'].required = False
+
+        # Auto-populate recorded_by field with current user's name
+        if self.user and not self.instance.pk:  # Only for new records
+            if hasattr(self.user, 'get_full_name') and self.user.get_full_name():
+                self.fields['recorded_by'].initial = self.user.get_full_name()
+            elif hasattr(self.user, 'username'):
+                self.fields['recorded_by'].initial = self.user.username
+
+    def clean_temperature(self):
+        data = self.cleaned_data.get('temperature')
+        if data is not None:
+            try:
+                return float(data)
+            except (ValueError, TypeError):
+                raise forms.ValidationError("Enter a valid number.")
+        return data
+
+    def clean_height(self):
+        data = self.cleaned_data.get('height')
+        if data is not None:
+            try:
+                return float(data)
+            except (ValueError, TypeError):
+                raise forms.ValidationError("Enter a valid number.")
+        return data
+
+    def clean_weight(self):
+        data = self.cleaned_data.get('weight')
+        if data is not None:
+            try:
+                return float(data)
+            except (ValueError, TypeError):
+                raise forms.ValidationError("Enter a valid number.")
+        return data
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # Set default value for recorded_by if not provided
+        if not cleaned_data.get('recorded_by'):
+            cleaned_data['recorded_by'] = 'System'
 
         # Calculate BMI if height and weight are provided
         height = cleaned_data.get('height')
