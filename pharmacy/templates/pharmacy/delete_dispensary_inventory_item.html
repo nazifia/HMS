@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h3>{{ page_title }}</h3>
+    <div class="card">
+        <div class="card-body">
+            <p>Are you sure you want to delete inventory item: <strong>{{ inventory_item.medication.name }}</strong> ?</p>
+            <form method="post">
+                {% csrf_token %}
+                <button class="btn btn-danger" type="submit">Delete</button>
+                <a href="{% url 'pharmacy:dispensary_inventory' dispensary.id %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

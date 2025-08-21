@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
-    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory
+    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory, ActiveStoreInventory
 )
 from patients.models import Patient
 from django.contrib.auth import get_user_model
@@ -284,6 +284,9 @@ class DispenseItemForm(forms.Form):
                 self.fields['quantity_to_dispense'].initial = initial_qty_to_dispense
                 self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, available_stock)
                 self.fields['quantity_to_dispense'].widget.attrs['min'] = 0 # Allow 0 if user unchecks
+                # Pre-select items that are eligible for dispensing only if a dispensary was provided
+                if self.selected_dispensary:
+                    self.fields['dispense_this_item'].initial = True
 
             # Set initial value for dispensary field if selected_dispensary is provided
             if self.selected_dispensary:
@@ -331,7 +334,7 @@ class DispenseItemForm(forms.Form):
 
         # Get available stock from MedicationInventory for the selected dispensary
         available_stock = 0
-        if dispensary: # Use the cleaned_data dispensary here
+        if dispensary:
             try:
                 med_inventory = MedicationInventory.objects.get(
                     medication=self.prescription_item.medication,
@@ -340,13 +343,22 @@ class DispenseItemForm(forms.Form):
                 available_stock = med_inventory.stock_quantity
             except MedicationInventory.DoesNotExist:
                 available_stock = 0
+        else:
+            # No dispensary selected yet; skip stock validation until dispensary provided
+            available_stock = None
         logging.debug(f"  Remaining Qty: {remaining_qty}, Is Fully Dispensed: {is_fully_dispensed}, Available Stock: {available_stock}")
         print(f"DEBUG: DispenseItemForm clean - Item ID: {self.prescription_item.id if self.prescription_item else 'None'}")
         print(f"DEBUG:   Remaining Qty: {remaining_qty}")
         print(f"DEBUG:   Is Fully Dispensed: {is_fully_dispensed}")
         print(f"DEBUG:   Available Stock: {available_stock}")
 
-        can_be_dispensed = remaining_qty > 0 and available_stock > 0 and not is_fully_dispensed
+        # Determine if we can dispense only when we have stock info
+        can_be_dispensed = False
+        if available_stock is None:
+            # Can't determine stock until a dispensary is chosen; defer strict stock check
+            can_be_dispensed = remaining_qty > 0 and not is_fully_dispensed
+        else:
+            can_be_dispensed = remaining_qty > 0 and available_stock > 0 and not is_fully_dispensed
 
         if dispense_this_item and not can_be_dispensed:
             error_message = ""
@@ -354,9 +366,11 @@ class DispenseItemForm(forms.Form):
                 error_message = "This item is already fully dispensed."
             elif remaining_qty <= 0:
                 error_message = "No remaining quantity to dispense for this item."
+            elif available_stock is None:
+                error_message = "Please select a dispensary to check stock for this item."
             elif available_stock <= 0:
                 error_message = "This item is out of stock at the selected dispensary."
-            
+
             if error_message:
                 raise forms.ValidationError(error_message)
 
@@ -370,7 +384,7 @@ class DispenseItemForm(forms.Form):
             elif quantity_to_dispense > remaining_qty:
                 self.add_error('quantity_to_dispense', f'Cannot dispense more than remaining ({remaining_qty}).')
                 logging.warning(f"  Validation Error: Quantity ({quantity_to_dispense}) > remaining ({remaining_qty}) for item {self.prescription_item.id}.")
-            elif quantity_to_dispense > available_stock:
+            elif available_stock is not None and quantity_to_dispense > available_stock:
                 self.add_error('quantity_to_dispense', f'Not enough stock at selected dispensary. Available: {available_stock}.')
                 logging.warning(f"  Validation Error: Quantity ({quantity_to_dispense}) > available stock ({available_stock}) for item {self.prescription_item.id}.")
         
@@ -382,7 +396,10 @@ from django.forms.formsets import BaseFormSet
 
 class BaseDispenseItemFormSet(BaseFormSet):
     def __init__(self, *args, **kwargs):
+        # prescription_items_qs: queryset/list of PrescriptionItem objects to bind to each form
         self.prescription_items_qs = kwargs.pop('prescription_items_qs', None)
+        # form_kwargs may include things like 'selected_dispensary' that individual forms need
+        self.form_kwargs = kwargs.pop('form_kwargs', None)
         super().__init__(*args, **kwargs)
 
     def add_fields(self, form, index):
@@ -763,6 +780,23 @@ class MedicationInventoryForm(forms.ModelForm):
             'dispensary': forms.Select(attrs={'class': 'form-control'}),
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'reorder_level': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+
+class ActiveStoreInventoryForm(forms.ModelForm):
+    """Form for managing ActiveStoreInventory (active store per dispensary)"""
+
+    class Meta:
+        model = ActiveStoreInventory
+        fields = ['medication', 'active_store', 'stock_quantity', 'reorder_level', 'batch_number', 'expiry_date', 'unit_cost']
+        widgets = {
+            'medication': forms.Select(attrs={'class': 'form-control'}),
+            'active_store': forms.Select(attrs={'class': 'form-control'}),
+            'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'reorder_level': forms.NumberInput(attrs={'class': 'form-control'}),
+            'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'expiry_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'unit_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
 
 

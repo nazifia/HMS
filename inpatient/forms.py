@@ -98,17 +98,26 @@ class AdmissionForm(forms.ModelForm):
             try:
                 patient_instance = Patient.objects.get(id=patient_id)
                 if patient_instance.patient_type == 'nhia':
-                    from nhia.models import AuthorizationCode
-                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
-                        patient=patient_instance,
-                        status='active'
-                    ).order_by('-generated_at')
+                    # Import inside block to avoid import-time dependency issues
+                    try:
+                        from nhia.models import AuthorizationCode
+                    except Exception:
+                        AuthorizationCode = None
+                    if AuthorizationCode:
+                        self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                            patient=patient_instance,
+                            status='active'
+                        ).order_by('-generated_at')
+                    else:
+                        self.fields['authorization_code'].queryset = []
                 else:
-                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+                    # Not an NHIA patient: no authorization codes
+                    self.fields['authorization_code'].queryset = []
             except Patient.DoesNotExist:
-                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+                # If patient not found, ensure queryset is empty
+                self.fields['authorization_code'].queryset = []
         else:
-            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+            self.fields['authorization_code'].queryset = []
 
 class DischargeForm(forms.ModelForm):
     class Meta:
