@@ -425,97 +425,447 @@ def revenue_analysis(request):
 
 @login_required
 def comprehensive_revenue_analysis(request):
-    """View for comprehensive revenue analysis"""
-    # Get date range from request or default to last 30 days
-    end_date = timezone.now().date()
-    start_date = end_date - timezone.timedelta(days=30)
+    """Enhanced view for comprehensive revenue analysis across all hospital departments"""
+    from .revenue_service import RevenueAggregationService, MonthFilterHelper
+    from .forms import ComprehensiveRevenueFilterForm
+    import csv
+    import json
+    from django.http import HttpResponse
     
-    # Override with form data if provided
-    if request.GET.get('start_date'):
-        try:
-            start_date = timezone.datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d').date()
-        except ValueError:
-            pass
+    # Initialize form with request data
+    filter_form = ComprehensiveRevenueFilterForm(request.GET or None)
     
-    if request.GET.get('end_date'):
-        try:
-            end_date = timezone.datetime.strptime(request.GET.get('end_date'), '%Y-%m-%d').date()
-        except ValueError:
-            pass
+    # Get date range based on form input or default to current month
+    if filter_form.is_valid():
+        start_date, end_date = filter_form.get_date_range()
+        selected_departments = filter_form.cleaned_data.get('departments', [])
+        include_daily_breakdown = filter_form.cleaned_data.get('include_daily_breakdown', False)
+    else:
+        # Default to current month
+        start_date, end_date = MonthFilterHelper.get_current_month()
+        selected_departments = []
+        include_daily_breakdown = False
     
-    # Ensure start_date is not after end_date
-    if start_date > end_date:
-        start_date, end_date = end_date, start_date
+    # Initialize revenue aggregation service
+    revenue_service = RevenueAggregationService(start_date, end_date)
     
-    # Get all prescriptions within the date range that have been dispensed
-    prescriptions = Prescription.objects.filter(
-        prescription_date__range=[start_date, end_date],
-        status__in=['dispensed', 'partially_dispensed']
-    ).select_related('patient', 'doctor')
+    # Get comprehensive revenue data
+    comprehensive_data = revenue_service.get_comprehensive_revenue()
     
-    # Calculate revenue from dispensed items
-    total_revenue = 0
-    medication_revenue = {}
-    doctor_revenue = {}
-    daily_revenue = {}
-    
-    # Initialize daily revenue for each day in the range
-    current_date = start_date
-    while current_date <= end_date:
-        daily_revenue[current_date] = 0
-        current_date += timezone.timedelta(days=1)
-    
-    for prescription in prescriptions:
-        # Get all dispensing logs for this prescription
-        dispensing_logs = DispensingLog.objects.filter(
-            prescription_item__prescription=prescription,
-            dispensed_date__date__range=[start_date, end_date]
-        ).select_related('prescription_item__medication', 'dispensed_by')
+    # Handle CSV export
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="revenue_analysis_{start_date}_to_{end_date}.csv"'
         
-        for log in dispensing_logs:
-            # Add to total revenue
-            total_revenue += float(log.total_price_for_this_log)
+        writer = csv.writer(response)
+        
+        # Write header information
+        writer.writerow(['Hospital Revenue Analysis Report'])
+        writer.writerow(['Period:', f'{start_date} to {end_date}'])
+        writer.writerow(['Generated:', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+        writer.writerow([])  # Empty row
+        
+        # Write summary data
+        writer.writerow(['Department', 'Revenue (₦)', 'Transactions', 'Percentage of Total'])
+        total_revenue = comprehensive_data['total_revenue']
+        
+        for dept_key, dept_name in [
+            ('pharmacy_revenue', 'Pharmacy'),
+            ('laboratory_revenue', 'Laboratory'),
+            ('consultation_revenue', 'Consultations'),
+            ('theatre_revenue', 'Theatre'),
+            ('admission_revenue', 'Admissions'),
+            ('general_revenue', 'General & Others'),
+            ('wallet_revenue', 'Wallet Transactions')
+        ]:
+            dept_data = comprehensive_data[dept_key]
+            revenue = dept_data['total_revenue']
+            transactions = dept_data.get('total_payments', dept_data.get('total_transactions', 0))
+            percentage = (revenue / total_revenue * 100) if total_revenue > 0 else 0
             
-            # Add to medication revenue
-            medication_name = log.prescription_item.medication.name
-            if medication_name in medication_revenue:
-                medication_revenue[medication_name] += float(log.total_price_for_this_log)
-            else:
-                medication_revenue[medication_name] = float(log.total_price_for_this_log)
+            writer.writerow([
+                dept_name,
+                f'{revenue:.2f}',
+                transactions,
+                f'{percentage:.1f}%'
+            ])
+        
+        writer.writerow(['Total', f'{total_revenue:.2f}', '', '100%'])
+        
+        # Add monthly trends if available
+        monthly_trends = revenue_service.get_monthly_trends(12)
+        if monthly_trends:
+            writer.writerow([])  # Empty row
+            writer.writerow(['Monthly Trends (Last 12 Months)'])
+            writer.writerow(['Month', 'Pharmacy', 'Laboratory', 'Consultations', 'Theatre', 'Admissions', 'General', 'Wallet', 'Total'])
             
-            # Add to doctor revenue
-            doctor_name = prescription.doctor.get_full_name() if prescription.doctor else "Unknown"
-            if doctor_name in doctor_revenue:
-                doctor_revenue[doctor_name] += float(log.total_price_for_this_log)
-            else:
-                doctor_revenue[doctor_name] = float(log.total_price_for_this_log)
-            
-            # Add to daily revenue
-            log_date = log.dispensed_date.date()
-            if log_date in daily_revenue:
-                daily_revenue[log_date] += float(log.total_price_for_this_log)
+            for trend in monthly_trends:
+                writer.writerow([
+                    trend['month'],
+                    f"{trend['pharmacy']:.2f}",
+                    f"{trend['laboratory']:.2f}",
+                    f"{trend['consultations']:.2f}",
+                    f"{trend['theatre']:.2f}",
+                    f"{trend['admissions']:.2f}",
+                    f"{trend['general']:.2f}",
+                    f"{trend['wallet']:.2f}",
+                    f"{trend['total_revenue']:.2f}"
+                ])
+        
+        # Add daily breakdown if requested
+        if include_daily_breakdown:
+            daily_breakdown = revenue_service.get_daily_breakdown()
+            if daily_breakdown:
+                writer.writerow([])  # Empty row
+                writer.writerow(['Daily Breakdown'])
+                writer.writerow(['Date', 'Pharmacy', 'Laboratory', 'Consultations', 'Theatre', 'Admissions', 'General', 'Wallet', 'Total'])
+                
+                for day in daily_breakdown:
+                    writer.writerow([
+                        day['date_str'],
+                        f"{day['pharmacy']:.2f}",
+                        f"{day['laboratory']:.2f}",
+                        f"{day['consultations']:.2f}",
+                        f"{day['theatre']:.2f}",
+                        f"{day['admissions']:.2f}",
+                        f"{day['general']:.2f}",
+                        f"{day['wallet']:.2f}",
+                        f"{day['total_revenue']:.2f}"
+                    ])
+        
+        return response
     
-    # Sort medication revenue by value (descending)
-    medication_revenue_sorted = sorted(medication_revenue.items(), key=lambda x: x[1], reverse=True)
+    # Get monthly trends (last 12 months)
+    monthly_trends = revenue_service.get_monthly_trends(12)
     
-    # Sort doctor revenue by value (descending)
-    doctor_revenue_sorted = sorted(doctor_revenue.items(), key=lambda x: x[1], reverse=True)
+    # Get daily breakdown if requested and date range is reasonable (max 90 days)
+    daily_breakdown = []
+    if include_daily_breakdown:
+        date_diff = (end_date - start_date).days
+        if date_diff <= 90:  # Only include daily breakdown for up to 90 days
+            daily_breakdown = revenue_service.get_daily_breakdown()
     
-    # Convert daily revenue to sorted list for charting
-    daily_revenue_sorted = sorted(daily_revenue.items())
+    # Filter departments if specific ones are selected
+    if selected_departments:
+        # Filter out unselected departments from display
+        filtered_data = {}
+        for dept in selected_departments:
+            if dept == 'pharmacy':
+                filtered_data['pharmacy_revenue'] = comprehensive_data['pharmacy_revenue']
+            elif dept == 'laboratory':
+                filtered_data['laboratory_revenue'] = comprehensive_data['laboratory_revenue']
+            elif dept == 'consultations':
+                filtered_data['consultation_revenue'] = comprehensive_data['consultation_revenue']
+            elif dept == 'theatre':
+                filtered_data['theatre_revenue'] = comprehensive_data['theatre_revenue']
+            elif dept == 'admissions':
+                filtered_data['admission_revenue'] = comprehensive_data['admission_revenue']
+            elif dept == 'general':
+                filtered_data['general_revenue'] = comprehensive_data['general_revenue']
+            elif dept == 'wallet':
+                filtered_data['wallet_revenue'] = comprehensive_data['wallet_revenue']
+        
+        # Recalculate total revenue for filtered departments
+        filtered_total = sum(data['total_revenue'] for data in filtered_data.values())
+        comprehensive_data.update(filtered_data)
+        comprehensive_data['total_revenue'] = filtered_total
+    
+    # Calculate revenue distribution percentages
+    total_revenue = comprehensive_data['total_revenue']
+    if total_revenue > 0:
+        for dept_key in ['pharmacy_revenue', 'laboratory_revenue', 'consultation_revenue', 
+                        'theatre_revenue', 'admission_revenue', 'general_revenue', 'wallet_revenue']:
+            if dept_key in comprehensive_data:
+                dept_revenue = comprehensive_data[dept_key]['total_revenue']
+                comprehensive_data[dept_key]['percentage'] = (dept_revenue / total_revenue) * 100
+    
+    # Prepare chart data for monthly trends
+    chart_months = [trend['month'] for trend in monthly_trends]
+    chart_data = {
+        'months': json.dumps(chart_months),
+        'pharmacy': json.dumps([float(trend['pharmacy']) for trend in monthly_trends]),
+        'laboratory': json.dumps([float(trend['laboratory']) for trend in monthly_trends]),
+        'consultations': json.dumps([float(trend['consultations']) for trend in monthly_trends]),
+        'theatre': json.dumps([float(trend['theatre']) for trend in monthly_trends]),
+        'admissions': json.dumps([float(trend['admissions']) for trend in monthly_trends]),
+        'general': json.dumps([float(trend['general']) for trend in monthly_trends]),
+        'wallet': json.dumps([float(trend['wallet']) for trend in monthly_trends]),
+        'total': json.dumps([float(trend['total_revenue']) for trend in monthly_trends])
+    }
+    
+    # Top revenue sources analysis
+    revenue_sources = [
+        {'name': 'Pharmacy', 'revenue': comprehensive_data['pharmacy_revenue']['total_revenue'], 'icon': 'fas fa-pills', 'color': 'primary'},
+        {'name': 'Laboratory', 'revenue': comprehensive_data['laboratory_revenue']['total_revenue'], 'icon': 'fas fa-microscope', 'color': 'success'},
+        {'name': 'Consultations', 'revenue': comprehensive_data['consultation_revenue']['total_revenue'], 'icon': 'fas fa-stethoscope', 'color': 'info'},
+        {'name': 'Theatre', 'revenue': comprehensive_data['theatre_revenue']['total_revenue'], 'icon': 'fas fa-procedures', 'color': 'warning'},
+        {'name': 'Admissions', 'revenue': comprehensive_data['admission_revenue']['total_revenue'], 'icon': 'fas fa-bed', 'color': 'danger'},
+        {'name': 'General & Others', 'revenue': comprehensive_data['general_revenue']['total_revenue'], 'icon': 'fas fa-receipt', 'color': 'secondary'},
+        {'name': 'Wallet', 'revenue': comprehensive_data['wallet_revenue']['total_revenue'], 'icon': 'fas fa-wallet', 'color': 'dark'}
+    ]
+    
+    # Sort by revenue (highest first)
+    revenue_sources.sort(key=lambda x: x['revenue'], reverse=True)
+    
+    # Performance metrics
+    performance_metrics = {
+        'total_transactions': sum([
+            comprehensive_data['pharmacy_revenue']['total_payments'],
+            comprehensive_data['laboratory_revenue']['total_payments'],
+            comprehensive_data['consultation_revenue']['total_payments'],
+            comprehensive_data['theatre_revenue']['total_payments'],
+            comprehensive_data['admission_revenue']['total_payments'],
+            comprehensive_data['general_revenue']['total_payments'],
+            comprehensive_data['wallet_revenue']['total_transactions']
+        ]),
+        'average_transaction_value': total_revenue / max(1, sum([
+            comprehensive_data['pharmacy_revenue']['total_payments'],
+            comprehensive_data['laboratory_revenue']['total_payments'],
+            comprehensive_data['consultation_revenue']['total_payments'],
+            comprehensive_data['theatre_revenue']['total_payments'],
+            comprehensive_data['admission_revenue']['total_payments'],
+            comprehensive_data['general_revenue']['total_payments'],
+            comprehensive_data['wallet_revenue']['total_transactions']
+        ])),
+        'days_in_period': (end_date - start_date).days + 1,
+        'daily_average': total_revenue / max(1, (end_date - start_date).days + 1)
+    }
+    
+    context = {
+        'filter_form': filter_form,
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_revenue': total_revenue,
+        'comprehensive_data': comprehensive_data,
+        'monthly_trends': monthly_trends,
+        'daily_breakdown': daily_breakdown,
+        'chart_data': chart_data,
+        'revenue_sources': revenue_sources,
+        'performance_metrics': performance_metrics,
+        'include_daily_breakdown': include_daily_breakdown,
+        'selected_departments': selected_departments,
+        'page_title': 'Comprehensive Revenue Analysis',
+        'active_nav': 'pharmacy',
+        
+        # Individual department data for backward compatibility with template
+        'pharmacy_revenue': comprehensive_data['pharmacy_revenue'],
+        'lab_revenue': comprehensive_data['laboratory_revenue'],
+        'consultation_revenue': comprehensive_data['consultation_revenue'],
+        'theatre_revenue': comprehensive_data['theatre_revenue'],
+        'admission_revenue': comprehensive_data['admission_revenue'],
+        'general_revenue': comprehensive_data['general_revenue'],
+        'wallet_revenue': comprehensive_data['wallet_revenue'],
+    }
+    
+    return render(request, 'pharmacy/comprehensive_revenue_analysis.html', context)
+
+
+def test_revenue_charts_public(request):
+    """Temporary public view to test revenue charts without authentication"""
+    from .revenue_service import RevenueAggregationService, MonthFilterHelper
+    import json
+    
+    # Get current month date range
+    start_date, end_date = MonthFilterHelper.get_current_month()
+    
+    # Initialize revenue aggregation service
+    revenue_service = RevenueAggregationService(start_date, end_date)
+    
+    # Get comprehensive revenue data
+    comprehensive_data = revenue_service.get_comprehensive_revenue()
+    
+    # Get monthly trends (last 12 months)
+    monthly_trends = revenue_service.get_monthly_trends(12)
+    
+    # Prepare chart data for monthly trends
+    chart_months = [trend['month'] for trend in monthly_trends]
+    chart_data = {
+        'months': json.dumps(chart_months),
+        'pharmacy': json.dumps([float(trend['pharmacy']) for trend in monthly_trends]),
+        'laboratory': json.dumps([float(trend['laboratory']) for trend in monthly_trends]),
+        'consultations': json.dumps([float(trend['consultations']) for trend in monthly_trends]),
+        'theatre': json.dumps([float(trend['theatre']) for trend in monthly_trends]),
+        'admissions': json.dumps([float(trend['admissions']) for trend in monthly_trends]),
+        'general': json.dumps([float(trend['general']) for trend in monthly_trends]),
+        'wallet': json.dumps([float(trend['wallet']) for trend in monthly_trends]),
+        'total': json.dumps([float(trend['total_revenue']) for trend in monthly_trends])
+    }
+    
+    # Top revenue sources analysis
+    revenue_sources = [
+        {'name': 'Pharmacy', 'revenue': comprehensive_data['pharmacy_revenue']['total_revenue'], 'icon': 'fas fa-pills', 'color': 'primary'},
+        {'name': 'Laboratory', 'revenue': comprehensive_data['laboratory_revenue']['total_revenue'], 'icon': 'fas fa-microscope', 'color': 'success'},
+        {'name': 'Consultations', 'revenue': comprehensive_data['consultation_revenue']['total_revenue'], 'icon': 'fas fa-stethoscope', 'color': 'info'},
+        {'name': 'Theatre', 'revenue': comprehensive_data['theatre_revenue']['total_revenue'], 'icon': 'fas fa-procedures', 'color': 'warning'},
+        {'name': 'Admissions', 'revenue': comprehensive_data['admission_revenue']['total_revenue'], 'icon': 'fas fa-bed', 'color': 'danger'},
+        {'name': 'General & Others', 'revenue': comprehensive_data['general_revenue']['total_revenue'], 'icon': 'fas fa-receipt', 'color': 'secondary'},
+        {'name': 'Wallet', 'revenue': comprehensive_data['wallet_revenue']['total_revenue'], 'icon': 'fas fa-wallet', 'color': 'dark'}
+    ]
+    
+    # Sort by revenue (highest first)
+    revenue_sources.sort(key=lambda x: x['revenue'], reverse=True)
+    
+    # Performance metrics
+    total_revenue = comprehensive_data['total_revenue']
+    performance_metrics = {
+        'total_transactions': sum([
+            comprehensive_data['pharmacy_revenue']['total_payments'],
+            comprehensive_data['laboratory_revenue']['total_payments'],
+            comprehensive_data['consultation_revenue']['total_payments'],
+            comprehensive_data['theatre_revenue']['total_payments'],
+            comprehensive_data['admission_revenue']['total_payments'],
+            comprehensive_data['general_revenue']['total_payments'],
+            comprehensive_data['wallet_revenue']['total_transactions']
+        ]),
+        'average_transaction_value': total_revenue / max(1, sum([
+            comprehensive_data['pharmacy_revenue']['total_payments'],
+            comprehensive_data['laboratory_revenue']['total_payments'],
+            comprehensive_data['consultation_revenue']['total_payments'],
+            comprehensive_data['theatre_revenue']['total_payments'],
+            comprehensive_data['admission_revenue']['total_payments'],
+            comprehensive_data['general_revenue']['total_payments'],
+            comprehensive_data['wallet_revenue']['total_transactions']
+        ])),
+        'days_in_period': (end_date - start_date).days + 1,
+        'daily_average': total_revenue / max(1, (end_date - start_date).days + 1)
+    }
     
     context = {
         'start_date': start_date,
         'end_date': end_date,
         'total_revenue': total_revenue,
-        'medication_revenue': medication_revenue_sorted,
-        'doctor_revenue': doctor_revenue_sorted,
-        'daily_revenue': daily_revenue_sorted,
-        'page_title': 'Comprehensive Revenue Analysis',
+        'comprehensive_data': comprehensive_data,
+        'monthly_trends': monthly_trends,
+        'daily_breakdown': [],
+        'chart_data': chart_data,
+        'revenue_sources': revenue_sources,
+        'performance_metrics': performance_metrics,
+        'include_daily_breakdown': False,
+        'selected_departments': [],
+        'page_title': 'Revenue Charts Test',
         'active_nav': 'pharmacy',
+        
+        # Individual department data for backward compatibility with template
+        'pharmacy_revenue': comprehensive_data['pharmacy_revenue'],
+        'lab_revenue': comprehensive_data['laboratory_revenue'],
+        'consultation_revenue': comprehensive_data['consultation_revenue'],
+        'theatre_revenue': comprehensive_data['theatre_revenue'],
+        'admission_revenue': comprehensive_data['admission_revenue'],
+        'general_revenue': comprehensive_data['general_revenue'],
+        'wallet_revenue': comprehensive_data['wallet_revenue'],
     }
     
     return render(request, 'pharmacy/comprehensive_revenue_analysis.html', context)
+
+
+@login_required
+def comprehensive_revenue_analysis_debug(request):
+    """Debug view for comprehensive revenue analysis to check data flow"""
+    from .revenue_service import RevenueAggregationService, MonthFilterHelper
+    from .forms import ComprehensiveRevenueFilterForm
+    
+    # Initialize form with request data
+    filter_form = ComprehensiveRevenueFilterForm(request.GET or None)
+    
+    # Get date range based on form input or default to current month
+    if filter_form.is_valid():
+        start_date, end_date = filter_form.get_date_range()
+        selected_departments = filter_form.cleaned_data.get('departments', [])
+        include_daily_breakdown = filter_form.cleaned_data.get('include_daily_breakdown', False)
+    else:
+        # Default to current month
+        start_date, end_date = MonthFilterHelper.get_current_month()
+        selected_departments = []
+        include_daily_breakdown = False
+    
+    # Initialize revenue aggregation service
+    revenue_service = RevenueAggregationService(start_date, end_date)
+    
+    # Get comprehensive revenue data
+    comprehensive_data = revenue_service.get_comprehensive_revenue()
+    
+    # Get monthly trends (last 12 months)
+    monthly_trends = revenue_service.get_monthly_trends(12)
+    
+    # Prepare chart data for monthly trends
+    chart_months = [trend['month'] for trend in monthly_trends]
+    chart_data = {
+        'months': chart_months,
+        'pharmacy': [float(trend['pharmacy']) for trend in monthly_trends],
+        'laboratory': [float(trend['laboratory']) for trend in monthly_trends],
+        'consultations': [float(trend['consultations']) for trend in monthly_trends],
+        'theatre': [float(trend['theatre']) for trend in monthly_trends],
+        'admissions': [float(trend['admissions']) for trend in monthly_trends],
+        'general': [float(trend['general']) for trend in monthly_trends],
+        'wallet': [float(trend['wallet']) for trend in monthly_trends],
+        'total': [float(trend['total_revenue']) for trend in monthly_trends]
+    }
+    
+    # Top revenue sources analysis
+    revenue_sources = [
+        {'name': 'Pharmacy', 'revenue': comprehensive_data['pharmacy_revenue']['total_revenue'], 'icon': 'fas fa-pills', 'color': 'primary'},
+        {'name': 'Laboratory', 'revenue': comprehensive_data['laboratory_revenue']['total_revenue'], 'icon': 'fas fa-microscope', 'color': 'success'},
+        {'name': 'Consultations', 'revenue': comprehensive_data['consultation_revenue']['total_revenue'], 'icon': 'fas fa-stethoscope', 'color': 'info'},
+        {'name': 'Theatre', 'revenue': comprehensive_data['theatre_revenue']['total_revenue'], 'icon': 'fas fa-procedures', 'color': 'warning'},
+        {'name': 'Admissions', 'revenue': comprehensive_data['admission_revenue']['total_revenue'], 'icon': 'fas fa-bed', 'color': 'danger'},
+        {'name': 'General & Others', 'revenue': comprehensive_data['general_revenue']['total_revenue'], 'icon': 'fas fa-receipt', 'color': 'secondary'},
+        {'name': 'Wallet', 'revenue': comprehensive_data['wallet_revenue']['total_revenue'], 'icon': 'fas fa-wallet', 'color': 'dark'}
+    ]
+    
+    # Sort by revenue (highest first)
+    revenue_sources.sort(key=lambda x: x['revenue'], reverse=True)
+    
+    # Performance metrics
+    total_revenue = comprehensive_data['total_revenue']
+    performance_metrics = {
+        'total_transactions': sum([
+            comprehensive_data['pharmacy_revenue']['total_payments'],
+            comprehensive_data['laboratory_revenue']['total_payments'],
+            comprehensive_data['consultation_revenue']['total_payments'],
+            comprehensive_data['theatre_revenue']['total_payments'],
+            comprehensive_data['admission_revenue']['total_payments'],
+            comprehensive_data['general_revenue']['total_payments'],
+            comprehensive_data['wallet_revenue']['total_transactions']
+        ]),
+        'average_transaction_value': total_revenue / max(1, sum([
+            comprehensive_data['pharmacy_revenue']['total_payments'],
+            comprehensive_data['laboratory_revenue']['total_payments'],
+            comprehensive_data['consultation_revenue']['total_payments'],
+            comprehensive_data['theatre_revenue']['total_payments'],
+            comprehensive_data['admission_revenue']['total_payments'],
+            comprehensive_data['general_revenue']['total_payments'],
+            comprehensive_data['wallet_revenue']['total_transactions']
+        ])),
+        'days_in_period': (end_date - start_date).days + 1,
+        'daily_average': total_revenue / max(1, (end_date - start_date).days + 1)
+    }
+    
+    context = {
+        'filter_form': filter_form,
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_revenue': total_revenue,
+        'comprehensive_data': comprehensive_data,
+        'monthly_trends': monthly_trends,
+        'chart_data': chart_data,
+        'revenue_sources': revenue_sources,
+        'performance_metrics': performance_metrics,
+        'include_daily_breakdown': include_daily_breakdown,
+        'selected_departments': selected_departments,
+        'page_title': 'Revenue Analysis Debug',
+        'active_nav': 'pharmacy',
+        
+        # Individual department data for backward compatibility with template
+        'pharmacy_revenue': comprehensive_data['pharmacy_revenue'],
+        'lab_revenue': comprehensive_data['laboratory_revenue'],
+        'consultation_revenue': comprehensive_data['consultation_revenue'],
+        'theatre_revenue': comprehensive_data['theatre_revenue'],
+        'admission_revenue': comprehensive_data['admission_revenue'],
+        'general_revenue': comprehensive_data['general_revenue'],
+        'wallet_revenue': comprehensive_data['wallet_revenue'],
+    }
+    
+    return render(request, 'pharmacy/revenue_debug.html', context)
 
 
 @login_required

@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ page_title }} - HMS{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'vendor/datatables/dataTables.bootstrap4.min.css' %}" rel="stylesheet">
+<link href="{% static 'css/sb-admin-2.min.css' %}" rel="stylesheet">
+<style>
+    .revenue-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #4e73df;
+    }
+    .revenue-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .revenue-amount {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #2e59d9;
+    }
+    .growth-positive {
+        color: #1cc88a;
+    }
+    .growth-negative {
+        color: #e74a3b;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 1rem 0;
+    }
+    .filter-panel {
+        background: #f8f9fc;
+        padding: 1.5rem;
+        border-radius: 0.35rem;
+        margin-bottom: 2rem;
+    }
+    .department-breakdown {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .specialty-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .progress-sm {
+        height: 0.5rem;
+    }
+    .export-buttons {
+        text-align: right;
+        margin-bottom: 1rem;
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255,255,255,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-chart-pie fa-fw"></i> {{ page_title }}
+    </h1>
+    <div class="export-buttons">
+        <button class="btn btn-success btn-sm" onclick="exportData('csv')">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </button>
+        <button class="btn btn-info btn-sm" onclick="exportData('excel')">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="exportData('pdf')">
+            <i class="fas fa-file-pdf"></i> Export PDF
+        </button>
+    </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="filter-panel">
+    <form method="GET" id="filter-form" class="row">
+        <div class="col-md-3">
+            <label for="date_filter" class="form-label">Date Range</label>
+            <select name="date_filter" id="date_filter" class="form-control">
+                {% for value, label in date_filter_options %}
+                    <option value="{{ value }}" {% if value == date_filter %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2" id="custom-date-start" style="display: none;">
+            <label for="start_date" class="form-label">Start Date</label>
+            <input type="date" name="start_date" id="start_date" class="form-control" 
+                   value="{{ start_date|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-2" id="custom-date-end" style="display: none;">
+            <label for="end_date" class="form-label">End Date</label>
+            <input type="date" name="end_date" id="end_date" class="form-control" 
+                   value="{{ end_date|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-3">
+            <label for="department_filter" class="form-label">Department</label>
+            <select name="department_filter" id="department_filter" class="form-control">
+                {% for value, label in department_filter_options %}
+                    <option value="{{ value }}" {% if value == department_filter %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="payment_method_filter" class="form-label">Payment Method</label>
+            <select name="payment_method_filter" id="payment_method_filter" class="form-control">
+                {% for value, label in payment_method_options %}
+                    <option value="{{ value }}" {% if value == payment_method_filter %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary btn-block">
+                <i class="fas fa-filter"></i> Apply Filters
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if not error %}
+<!-- Revenue Summary Cards -->
+<div class="row mb-4">
+    <!-- Total Revenue -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card revenue-card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Revenue
+                        </div>
+                        <div class="revenue-amount">
+                            ₦{{ breakdown_data.total_revenue|floatformat:2|intcomma }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clinical Services Revenue -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card revenue-card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Clinical Services
+                        </div>
+                        <div class="revenue-amount text-success">
+                            ₦{{ breakdown_data.summary_by_category.clinical_services.revenue|floatformat:2|intcomma }}
+                        </div>
+                        <div class="text-xs">
+                            {{ breakdown_data.summary_by_category.clinical_services.percentage }}% of total
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Support Services Revenue -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card revenue-card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Support Services
+                        </div>
+                        <div class="revenue-amount text-info">
+                            ₦{{ breakdown_data.summary_by_category.support_services.revenue|floatformat:2|intcomma }}
+                        </div>
+                        <div class="text-xs">
+                            {{ breakdown_data.summary_by_category.support_services.percentage }}% of total
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-hospital fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Growth Rate -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card revenue-card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Growth Rate
+                        </div>
+                        <div class="revenue-amount {% if comparison_data.growth_rate >= 0 %}growth-positive{% else %}growth-negative{% endif %}">
+                            {% if comparison_data.growth_rate >= 0 %}+{% endif %}{{ comparison_data.growth_rate }}%
+                        </div>
+                        <div class="text-xs">vs previous period</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Row -->
+<div class="row">
+    <!-- Revenue Breakdown Chart -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Revenue Distribution</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                        aria-labelledby="dropdownMenuLink">
+                        <div class="dropdown-header">Chart Options:</div>
+                        <a class="dropdown-item" href="#" onclick="changeChartType('pie')">Pie Chart</a>
+                        <a class="dropdown-item" href="#" onclick="changeChartType('doughnut')">Doughnut Chart</a>
+                        <a class="dropdown-item" href="#" onclick="changeChartType('bar')">Bar Chart</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="revenueDistributionChart"></canvas>
+                    <div id="chart-loading" class="loading-overlay" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Departments -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Top Revenue Departments</h6>
+            </div>
+            <div class="card-body department-breakdown">
+                {% for dept_name, dept_data in breakdown_data.clinical_services.items %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold">{{ dept_name|title }}</span>
+                        <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
+                    </div>
+                    <div class="progress progress-sm">
+                        <div class="progress-bar bg-primary" role="progressbar" 
+                             style="width: {% widthratio dept_data.revenue breakdown_data.total_revenue 100 %}%" 
+                             aria-valuenow="{{ dept_data.revenue }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="{{ breakdown_data.total_revenue }}">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        {{ dept_data.transactions }} transactions • 
+                        Avg: ₦{{ dept_data.avg_transaction|floatformat:2|intcomma }}
+                    </small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clinical Services Detailed Breakdown -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Clinical Services Breakdown</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Pharmacy Details -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card border-left-success">
+                            <div class="card-body">
+                                <h6 class="font-weight-bold text-success">
+                                    <i class="fas fa-pills"></i> Pharmacy
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>Revenue:</strong> 
+                                    ₦{{ enhanced_data.pharmacy_details.total_revenue|floatformat:2|intcomma }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Prescriptions:</strong> 
+                                    {{ enhanced_data.pharmacy_details.total_dispensed|default:0 }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Avg Value:</strong> 
+                                    ₦{{ enhanced_data.pharmacy_details.avg_prescription_value|floatformat:2|intcomma }}
+                                </p>
+                                <a href="{% url 'core:department_revenue_detail' 'pharmacy' %}?date_filter={{ date_filter }}" 
+                                   class="btn btn-sm btn-success">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Laboratory Details -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card border-left-info">
+                            <div class="card-body">
+                                <h6 class="font-weight-bold text-info">
+                                    <i class="fas fa-flask"></i> Laboratory
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>Revenue:</strong> 
+                                    ₦{{ enhanced_data.laboratory_details.total_revenue|floatformat:2|intcomma }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Tests:</strong> 
+                                    {{ enhanced_data.laboratory_details.total_requests|default:0 }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Completion:</strong> 
+                                    {{ enhanced_data.laboratory_details.completion_rate|default:0 }}%
+                                </p>
+                                <a href="{% url 'core:department_revenue_detail' 'laboratory' %}?date_filter={{ date_filter }}" 
+                                   class="btn btn-sm btn-info">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consultation Details -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card border-left-warning">
+                            <div class="card-body">
+                                <h6 class="font-weight-bold text-warning">
+                                    <i class="fas fa-user-md"></i> Consultations
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>Revenue:</strong> 
+                                    ₦{{ enhanced_data.consultation_details.total_revenue|floatformat:2|intcomma }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Consultations:</strong> 
+                                    {{ enhanced_data.consultation_details.total_payments|default:0 }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Avg Fee:</strong> 
+                                    ₦{{ enhanced_data.consultation_details.avg_consultation_fee|floatformat:2|intcomma }}
+                                </p>
+                                <a href="{% url 'core:department_revenue_detail' 'consultation' %}?date_filter={{ date_filter }}" 
+                                   class="btn btn-sm btn-warning">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Specialty Departments -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Specialty Departments</h6>
+            </div>
+            <div class="card-body">
+                <div class="specialty-grid">
+                    {% for dept_name, dept_data in breakdown_data.specialty_departments.items %}
+                    <div class="card border-left-secondary">
+                        <div class="card-body p-3">
+                            <h6 class="font-weight-bold">{{ dept_name|title|replace:"_":" " }}</h6>
+                            <p class="mb-1">
+                                <strong>Revenue:</strong> ₦{{ dept_data.revenue|floatformat:2|intcomma }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Records:</strong> {{ dept_data.records|default:0 }}
+                            </p>
+                            <a href="{% url 'core:department_revenue_detail' dept_name %}?date_filter={{ date_filter }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                Details
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Trends Chart -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Revenue Trends</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="revenueTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Error State -->
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Error Loading Revenue Data</h4>
+            <p>{{ error }}</p>
+            <hr>
+            <p class="mb-0">Please try refreshing the page or contact system administrator.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chart.js/Chart.min.js' %}"></script>
+<script src="{% static 'vendor/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'vendor/datatables/dataTables.bootstrap4.min.js' %}"></script>
+
+<script>
+// Initialize charts and functionality
+$(document).ready(function() {
+    initializeCharts();
+    setupEventHandlers();
+});
+
+// Date filter change handler
+$('#date_filter').change(function() {
+    if ($(this).val() === 'custom_range') {
+        $('#custom-date-start, #custom-date-end').show();
+    } else {
+        $('#custom-date-start, #custom-date-end').hide();
+    }
+});
+
+// Initialize on page load
+$('#date_filter').trigger('change');
+
+function initializeCharts() {
+    {% if not error %}
+    // Revenue Distribution Chart
+    const distributionCtx = document.getElementById('revenueDistributionChart').getContext('2d');
+    new Chart(distributionCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                'Clinical Services',
+                'Support Services', 
+                'Administrative Services',
+                'Specialty Departments'
+            ],
+            datasets: [{
+                data: [
+                    {{ breakdown_data.summary_by_category.clinical_services.revenue }},
+                    {{ breakdown_data.summary_by_category.support_services.revenue }},
+                    {{ breakdown_data.summary_by_category.administrative_services.revenue }},
+                    {{ breakdown_data.summary_by_category.specialty_departments.revenue }}
+                ],
+                backgroundColor: [
+                    '#4e73df',
+                    '#1cc88a', 
+                    '#36b9cc',
+                    '#f6c23e'
+                ],
+                hoverBackgroundColor: [
+                    '#2e59d9',
+                    '#17a673',
+                    '#2c9faf',
+                    '#dda20a'
+                ],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        const dataset = data.datasets[tooltipItem.datasetIndex];
+                        const value = dataset.data[tooltipItem.index];
+                        return data.labels[tooltipItem.index] + ': ₦' + 
+                               new Intl.NumberFormat().format(value);
+                    }
+                }
+            },
+            legend: {
+                display: true,
+                position: 'bottom'
+            },
+            cutoutPercentage: 80,
+        },
+    });
+
+    // Revenue Trends Chart (if trend data exists)
+    {% if breakdown_data.trends %}
+    const trendsCtx = document.getElementById('revenueTrendsChart').getContext('2d');
+    new Chart(trendsCtx, {
+        type: 'line',
+        data: {
+            labels: [
+                {% for month, data in breakdown_data.trends.items %}
+                    '{{ month }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Total Revenue',
+                data: [
+                    {% for month, data in breakdown_data.trends.items %}
+                        {{ data.grand_total }},
+                    {% endfor %}
+                ],
+                borderColor: '#4e73df',
+                backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                tension: 0.3
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₦' + new Intl.NumberFormat().format(value);
+                        }
+                    }
+                }
+            },
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem) {
+                        return 'Revenue: ₦' + new Intl.NumberFormat().format(tooltipItem.yLabel);
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+    {% endif %}
+}
+
+function setupEventHandlers() {
+    // Auto-submit form on filter change
+    $('#department_filter, #payment_method_filter').change(function() {
+        $('#filter-form').submit();
+    });
+}
+
+function exportData(format) {
+    showLoading();
+    const params = new URLSearchParams(window.location.search);
+    params.set('format', format);
+    
+    window.location.href = '{% url "core:export_revenue_breakdown" %}?' + params.toString();
+    hideLoading();
+}
+
+function changeChartType(type) {
+    // Implement chart type change functionality
+    console.log('Changing chart type to:', type);
+}
+
+function showLoading() {
+    $('.loading-overlay').show();
+}
+
+function hideLoading() {
+    $('.loading-overlay').hide();
+}
+
+// Auto-refresh data every 5 minutes
+setInterval(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

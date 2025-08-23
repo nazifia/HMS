@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}Comprehensive Revenue Analysis - Simple{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">Comprehensive Hospital Revenue Analysis</h1>
+        </div>
+    </div>
+
+    <!-- Date Range Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-1"></i>
+                <strong>Period:</strong> {{ start_date|date:'M d, Y' }} to {{ end_date|date:'M d, Y' }}
+                ({{ performance_metrics.days_in_period }} days)
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Revenue Display -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h2 class="card-title">Total Hospital Revenue</h2>
+                    <h1 class="display-4">₦{{ total_revenue|floatformat:2 }}</h1>
+                    <p class="mb-0">{{ performance_metrics.total_transactions }} total transactions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Revenue Breakdown -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Revenue by Department</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>Revenue</th>
+                                    <th>Transactions</th>
+                                    <th>% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><i class="fas fa-pills text-primary"></i> Pharmacy</td>
+                                    <td>₦{{ pharmacy_revenue.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ pharmacy_revenue.total_payments|default:0 }}</td>
+                                    <td>
+                                        {% if total_revenue > 0 %}
+                                            {{ pharmacy_revenue.total_revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-microscope text-success"></i> Laboratory</td>
+                                    <td>₦{{ lab_revenue.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ lab_revenue.total_payments|default:0 }}</td>
+                                    <td>
+                                        {% if total_revenue > 0 %}
+                                            {{ lab_revenue.total_revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-stethoscope text-info"></i> Consultations</td>
+                                    <td>₦{{ consultation_revenue.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ consultation_revenue.total_payments|default:0 }}</td>
+                                    <td>
+                                        {% if total_revenue > 0 %}
+                                            {{ consultation_revenue.total_revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-procedures text-warning"></i> Theatre</td>
+                                    <td>₦{{ theatre_revenue.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ theatre_revenue.total_payments|default:0 }}</td>
+                                    <td>
+                                        {% if total_revenue > 0 %}
+                                            {{ theatre_revenue.total_revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-bed text-danger"></i> Admissions</td>
+                                    <td>₦{{ admission_revenue.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ admission_revenue.total_payments|default:0 }}</td>
+                                    <td>
+                                        {% if total_revenue > 0 %}
+                                            {{ admission_revenue.total_revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-receipt text-secondary"></i> General & Others</td>
+                                    <td>₦{{ general_revenue.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ general_revenue.total_payments|default:0 }}</td>
+                                    <td>
+                                        {% if total_revenue > 0 %}
+                                            {{ general_revenue.total_revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-wallet text-dark"></i> Wallet Transactions</td>
+                                    <td>₦{{ wallet_revenue.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ wallet_revenue.total_transactions|default:0 }}</td>
+                                    <td>
+                                        {% if total_revenue > 0 %}
+                                            {{ wallet_revenue.total_revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="table-primary">
+                                <tr>
+                                    <th>Total</th>
+                                    <th>₦{{ total_revenue|floatformat:2 }}</th>
+                                    <th>{{ performance_metrics.total_transactions }}</th>
+                                    <th>100%</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Average Transaction</h5>
+                    <h3 class="text-primary">₦{{ performance_metrics.average_transaction_value|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Daily Average</h5>
+                    <h3 class="text-success">₦{{ performance_metrics.daily_average|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Transactions</h5>
+                    <h3 class="text-info">{{ performance_metrics.total_transactions }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Period Length</h5>
+                    <h3 class="text-warning">{{ performance_metrics.days_in_period }} days</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Trends Data (Raw) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Monthly Trends (Last 12 Months)</h5>
+                </div>
+                <div class="card-body">
+                    {% if monthly_trends %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Pharmacy</th>
+                                    <th>Laboratory</th>
+                                    <th>Consultations</th>
+                                    <th>Theatre</th>
+                                    <th>Admissions</th>
+                                    <th>General</th>
+                                    <th>Wallet</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trend in monthly_trends %}
+                                <tr>
+                                    <td>{{ trend.month }}</td>
+                                    <td>₦{{ trend.pharmacy|floatformat:2 }}</td>
+                                    <td>₦{{ trend.laboratory|floatformat:2 }}</td>
+                                    <td>₦{{ trend.consultations|floatformat:2 }}</td>
+                                    <td>₦{{ trend.theatre|floatformat:2 }}</td>
+                                    <td>₦{{ trend.admissions|floatformat:2 }}</td>
+                                    <td>₦{{ trend.general|floatformat:2 }}</td>
+                                    <td>₦{{ trend.wallet|floatformat:2 }}</td>
+                                    <td><strong>₦{{ trend.total_revenue|floatformat:2 }}</strong></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No monthly trend data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Data Debug -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Chart Data (For Debugging)</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Months Array:</h6>
+                    <pre>{{ chart_data.months|safe }}</pre>
+                    
+                    <h6>Pharmacy Data Array:</h6>
+                    <pre>{{ chart_data.pharmacy|safe }}</pre>
+                    
+                    <h6>Laboratory Data Array:</h6>
+                    <pre>{{ chart_data.laboratory|safe }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Testing -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Filter Links</h5>
+                </div>
+                <div class="card-body">
+                    <a href="?filter_type=current_month" class="btn btn-outline-primary me-2">Current Month</a>
+                    <a href="?filter_type=previous_month" class="btn btn-outline-secondary me-2">Previous Month</a>
+                    <a href="?filter_type=last_3_months" class="btn btn-outline-info me-2">Last 3 Months</a>
+                    <a href="/pharmacy/revenue/comprehensive/debug/" class="btn btn-outline-warning">Debug View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
