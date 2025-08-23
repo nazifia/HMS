@@ -121,4 +121,21 @@ urlpatterns = [
     # AJAX Endpoints
     path('api/medication-autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),
     path('prescriptions/<int:prescription_id>/stock-quantities/', views.get_stock_quantities, name='get_stock_quantities'),
+    
+    # Medical Pack Management
+    path('packs/', views.medical_pack_list, name='medical_pack_list'),
+    path('packs/create/', views.create_medical_pack, name='create_medical_pack'),
+    path('packs/<int:pack_id>/', views.medical_pack_detail, name='medical_pack_detail'),
+    path('packs/<int:pack_id>/edit/', views.edit_medical_pack, name='edit_medical_pack'),
+    path('packs/<int:pack_id>/items/', views.manage_pack_items, name='manage_pack_items'),
+    path('packs/<int:pack_id>/items/<int:item_id>/delete/', views.delete_pack_item, name='delete_pack_item'),
+    
+    # Pack Order Management
+    path('pack-orders/', views.pack_order_list, name='pack_order_list'),
+    path('pack-orders/create/', views.create_pack_order, name='create_pack_order'),
+    path('pack-orders/create/<int:pack_id>/', views.create_pack_order, name='create_pack_order_for_pack'),
+    path('pack-orders/<int:order_id>/', views.pack_order_detail, name='pack_order_detail'),
+    path('pack-orders/<int:order_id>/approve/', views.approve_pack_order, name='approve_pack_order'),
+    path('pack-orders/<int:order_id>/process/', views.process_pack_order, name='process_pack_order'),
+    path('pack-orders/<int:order_id>/dispense/', views.dispense_pack_order, name='dispense_pack_order'),
 ]

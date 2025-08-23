@@ -19,27 +19,57 @@ from datetime import datetime, timedelta
 @login_required
 def patient_list(request):
     """View for listing all patients with search and pagination"""
+    from .forms import PatientSearchForm
+    
+    # Initialize search form
+    search_form = PatientSearchForm(request.GET or None)
+    
     # Get all active patients
     patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
     
-    # Search functionality
-    search_query = request.GET.get('search', '')
-    if search_query:
-        patients = patients.filter(
-            Q(first_name__icontains=search_query) |
-            Q(last_name__icontains=search_query) |
-            Q(patient_id__icontains=search_query) |
-            Q(phone_number__icontains=search_query)
-        )
+    # Apply search filters if form is valid
+    if search_form.is_valid():
+        search_query = search_form.cleaned_data.get('search')
+        gender = search_form.cleaned_data.get('gender')
+        blood_group = search_form.cleaned_data.get('blood_group')
+        city = search_form.cleaned_data.get('city')
+        date_from = search_form.cleaned_data.get('date_from')
+        date_to = search_form.cleaned_data.get('date_to')
+        
+        # Apply search query filter
+        if search_query:
+            patients = patients.filter(
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(patient_id__icontains=search_query) |
+                Q(phone_number__icontains=search_query) |
+                Q(email__icontains=search_query)
+            )
+        
+        # Apply additional filters
+        if gender:
+            patients = patients.filter(gender=gender)
+        if blood_group:
+            patients = patients.filter(blood_group=blood_group)
+        if city:
+            patients = patients.filter(city__icontains=city)
+        if date_from:
+            patients = patients.filter(registration_date__gte=date_from)
+        if date_to:
+            patients = patients.filter(registration_date__lte=date_to)
+    
+    # Get total count for display
+    total_patients = patients.count()
     
     # Pagination
-    paginator = Paginator(patients, 10)  # Show 10 patients per page
+    paginator = Paginator(patients, 15)  # Show 15 patients per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
     context = {
         'page_obj': page_obj,
-        'search_query': search_query,
+        'search_form': search_form,
+        'total_patients': total_patients,
         'page_title': 'Patient List',
         'active_nav': 'patients',
     }

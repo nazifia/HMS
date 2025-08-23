@@ -216,6 +216,58 @@
                 </div>
             </div>
             
+            <!-- Medical Packs Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Medical Packs</h6>
+                    <a href="{% url 'theatre:order_medical_pack_for_surgery' object.id %}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus fa-sm"></i> Order Pack
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if object.pack_orders.all %}
+                    <div class="list-group">
+                        {% for pack_order in object.pack_orders.all %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ pack_order.pack.name }}</h6>
+                                <small class="text-muted">Ordered: {{ pack_order.order_date|date:"d/m/Y H:i" }}</small>
+                                {% if pack_order.scheduled_date %}
+                                <br><small class="text-info">Needed: {{ pack_order.scheduled_date|date:"d/m/Y H:i" }}</small>
+                                {% endif %}
+                            </div>
+                            <div>
+                                {% if pack_order.status == 'pending' %}
+                                <span class="badge badge-warning">{{ pack_order.get_status_display }}</span>
+                                {% elif pack_order.status == 'approved' %}
+                                <span class="badge badge-info">{{ pack_order.get_status_display }}</span>
+                                {% elif pack_order.status == 'processing' %}
+                                <span class="badge badge-primary">{{ pack_order.get_status_display }}</span>
+                                {% elif pack_order.status == 'ready' %}
+                                <span class="badge badge-success">{{ pack_order.get_status_display }}</span>
+                                {% elif pack_order.status == 'dispensed' %}
+                                <span class="badge badge-success">{{ pack_order.get_status_display }}</span>
+                                {% elif pack_order.status == 'cancelled' %}
+                                <span class="badge badge-danger">{{ pack_order.get_status_display }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-center text-muted">No medical packs ordered for this surgery.</p>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'theatre:order_medical_pack_for_surgery' object.id %}" class="btn btn-success">
+                            <i class="fas fa-box-open mr-2"></i> Order Medical Pack
+                        </a>
+                        <small class="form-text text-muted mt-2">
+                            Order pre-configured medical packs for this surgery
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
             <!-- Actions Card -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3">

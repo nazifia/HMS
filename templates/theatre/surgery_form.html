@@ -2,6 +2,9 @@
 {% load crispy_forms_tags %}
 
 {% block extra_css %}
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <style>
 .autocomplete-results {
     position: absolute;
@@ -31,6 +34,64 @@
 .position-relative {
     position: relative;
 }
+
+.staff-suggestions {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 5px;
+}
+
+.staff-suggestions .suggestion-btn {
+    margin: 2px;
+    text-align: center;
+    min-width: 120px;
+}
+
+.staff-suggestions .suggestion-btn small {
+    font-size: 0.7em;
+    color: #6c757d;
+}
+
+.surgery-history {
+    background-color: #e7f3ff;
+    border-left: 3px solid #007bff;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 0 4px 4px 0;
+}
+
+.surgery-history h6 {
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.gap-1 {
+    gap: 0.25rem;
+}
+
+.patient-dropdown-section {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.patient-dropdown-section .form-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.select2-container--bootstrap-5 .select2-selection {
+    border-color: #ced4da;
+}
+
+.select2-container--bootstrap-5 .select2-selection:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
 </style>
 {% endblock %}
 
@@ -49,15 +110,33 @@ Create Surgery
             <h2 class="card-title">{% if form.instance.pk %}Edit Surgery{% else %}Create Surgery{% endif %}</h2>
         </div>
         <div class="card-body">
-            <form method="post">
+            <form method="post" id="surgery-form">
                 {% csrf_token %}
+                
+                <!-- Add error messages display -->
+                {% if form.errors or team_formset.errors or equipment_formset.errors %}
+                <div class="alert alert-danger">
+                    <h6>Please correct the following errors:</h6>
+                    {% if form.errors %}
+                        {% for field, errors in form.errors.items %}
+                            <div><strong>{{ field|title }}:</strong> {{ errors|join:", " }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    {% if team_formset.errors %}
+                        <div><strong>Surgical Team:</strong> Please check the team member information.</div>
+                    {% endif %}
+                    {% if equipment_formset.errors %}
+                        <div><strong>Equipment:</strong> Please check the equipment information.</div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="id_patient_search">Search Patient</label>
+                            <label for="id_patient_search">Search Patient <span class="text-danger">*</span></label>
                             <div class="position-relative">
-                                {{ form.patient_search|as_crispy_field }}
+                                {{ form.patient_search }}
                                 <div id="patient-search-results" class="autocomplete-results" style="display: none;"></div>
                             </div>
                             <div id="selected-patient-info" class="mt-2" style="display: none;">
@@ -66,6 +145,34 @@ Create Surgery
                                     <span id="patient-name"></span> (<span id="patient-id"></span>)
                                     <br><small>Age: <span id="patient-age"></span> | Gender: <span id="patient-gender"></span> | Phone: <span id="patient-phone"></span></small>
                                 </div>
+                            </div>
+                            <div id="patient-required-warning" class="alert alert-warning" style="display: none;">
+                                <small><i class="fas fa-exclamation-triangle"></i> Please search and select a patient to continue.</small>
+                            </div>
+                            
+                            <!-- Alternative: Direct Patient Selection Dropdown -->
+                            <div class="mt-3 patient-dropdown-section">
+                                <label for="id_patient_dropdown" class="form-label">
+                                    <i class="fas fa-list"></i> Or select directly from list:
+                                </label>
+                                <select id="id_patient_dropdown" class="form-select select2" data-placeholder="Select a patient...">
+                                    <option value="">Choose a patient...</option>
+                                    {% for patient in all_patients %}
+                                        <option value="{{ patient.id }}" 
+                                                data-patient-name="{{ patient.get_full_name }}"
+                                                data-patient-pid="{{ patient.patient_id }}"
+                                                data-patient-age="{{ patient.get_age }}"
+                                                data-patient-gender="{{ patient.get_gender_display }}"
+                                                data-patient-phone="{{ patient.phone_number|default:'N/A' }}">
+                                            {{ patient.get_full_name }} ({{ patient.patient_id }}) - {{ patient.get_gender_display }}, {{ patient.get_age }} years
+                                        </option>
+                                    {% empty %}
+                                        <option value="" disabled>No patients registered</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i> You can either search above or select from this dropdown
+                                </small>
                             </div>
                         </div>
                         {{ form.patient }}
@@ -76,10 +183,32 @@ Create Surgery
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        {{ form.primary_surgeon|as_crispy_field }}
+                        <div class="form-group">
+                            <label for="{{ form.primary_surgeon.id_for_label }}">
+                                Primary Surgeon <small class="text-muted">(Optional - can be assigned later)</small>
+                            </label>
+                            {{ form.primary_surgeon.as_widget }}
+                            {% if form.primary_surgeon.help_text %}
+                                <small class="form-text text-muted">{{ form.primary_surgeon.help_text }}</small>
+                            {% endif %}
+                            {% if form.primary_surgeon.errors %}
+                                <div class="invalid-feedback d-block">{{ form.primary_surgeon.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        {{ form.anesthetist|as_crispy_field }}
+                        <div class="form-group">
+                            <label for="{{ form.anesthetist.id_for_label }}">
+                                Anesthetist <small class="text-muted">(Optional - can be assigned later)</small>
+                            </label>
+                            {{ form.anesthetist.as_widget }}
+                            {% if form.anesthetist.help_text %}
+                                <small class="form-text text-muted">{{ form.anesthetist.help_text }}</small>
+                            {% endif %}
+                            {% if form.anesthetist.errors %}
+                                <div class="invalid-feedback d-block">{{ form.anesthetist.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 <div class="row">
@@ -102,17 +231,15 @@ Create Surgery
                 
                 <!-- Authorization Code Field (only for NHIA patients) -->
                 <div class="form-group" id="authorization-code-section" style="display: none;">
-                    <label for="id_authorization_code">Authorization Code</label>
-                    {{ form.authorization_code|as_crispy_field }}
-                    <small class="form-text text-muted">
-                        Select an authorization code if this surgery is covered by NHIA.
-                    </small>
-                </div>
-                
-                <!-- Authorization Code Field (only for NHIA patients) -->
-                <div class="form-group" id="authorization-code-section" style="display: none;">
-                    <label for="id_authorization_code">Authorization Code</label>
-                    {{ form.authorization_code|as_crispy_field }}
+                    <label for="id_authorization_code">
+                        NHIA Authorization Code <small class="text-muted">(Optional - for NHIA patients)</small>
+                    </label>
+                    {% if form.authorization_code %}
+                        {{ form.authorization_code.as_widget }}
+                        {% if form.authorization_code.errors %}
+                            <div class="invalid-feedback d-block">{{ form.authorization_code.errors.0 }}</div>
+                        {% endif %}
+                    {% endif %}
                     <small class="form-text text-muted">
                         Select an authorization code if this surgery is covered by NHIA.
                     </small>
@@ -196,9 +323,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // Patient search functionality
     const patientSearchField = document.getElementById('id_patient_search');
     const patientIdField = document.getElementById('id_patient');
+    const patientDropdown = document.getElementById('id_patient_dropdown');
     const searchResults = document.getElementById('patient-search-results');
     const selectedPatientInfo = document.getElementById('selected-patient-info');
+    const patientWarning = document.getElementById('patient-required-warning');
     let searchTimeout;
+
+    // Show warning initially if no patient is selected
+    if (patientIdField && !patientIdField.value && patientWarning) {
+        patientWarning.style.display = 'block';
+    }
+    
+    // Initialize Select2 for patient dropdown
+    if (patientDropdown && typeof $ !== 'undefined') {
+        $(patientDropdown).select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Select a patient...',
+            allowClear: true
+        });
+        
+        // Handle dropdown selection
+        $(patientDropdown).on('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                selectPatientFromDropdown(selectedOption);
+            } else {
+                clearPatientSelection();
+            }
+        });
+    }
 
     if (patientSearchField) {
         patientSearchField.addEventListener('input', function() {
@@ -214,10 +368,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Debounce search
             searchTimeout = setTimeout(() => {
-                fetch(`/patients/search/?term=${encodeURIComponent(searchTerm)}`)
+                fetch(`/core/api/patients/search/?q=${encodeURIComponent(searchTerm)}`)
                     .then(response => response.json())
                     .then(data => {
-                        displaySearchResults(data);
+                        displaySearchResults(data.patients);
                     })
                     .catch(error => {
                         console.error('Error searching patients:', error);
@@ -242,20 +396,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let html = '<div class="list-group">';
         patients.forEach(patient => {
+            // Calculate age from patient data if available
+            const age = patient.age || 'N/A';
+            const gender = patient.gender || 'N/A';
+            const phone = patient.phone || 'N/A';
+            
             html += `
                 <a href="#" class="list-group-item list-group-item-action patient-result"
                    data-patient-id="${patient.id}"
                    data-patient-name="${patient.name}"
                    data-patient-pid="${patient.patient_id}"
-                   data-patient-age="${patient.age}"
-                   data-patient-gender="${patient.gender}"
-                   data-patient-phone="${patient.phone}">
+                   data-patient-age="${age}"
+                   data-patient-gender="${gender}"
+                   data-patient-phone="${phone}">
                     <div class="d-flex w-100 justify-content-between">
                         <h6 class="mb-1">${patient.name}</h6>
                         <small>${patient.patient_id}</small>
                     </div>
-                    <p class="mb-1">Age: ${patient.age} | Gender: ${patient.gender}</p>
-                    <small>Phone: ${patient.phone}</small>
+                    <p class="mb-1">Age: ${age} | Gender: ${gender}</p>
+                    <small>Phone: ${phone}</small>
                 </a>
             `;
         });
@@ -297,8 +456,88 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedPatientInfo.style.display = 'block';
         searchResults.style.display = 'none';
         
+        // Hide the patient warning since a patient is now selected
+        if (patientWarning) {
+            patientWarning.style.display = 'none';
+        }
+        
+        // Sync the dropdown selection
+        if (patientDropdown && typeof $ !== 'undefined') {
+            $(patientDropdown).val(patientId).trigger('change.select2');
+        }
+        
         // Check if patient is NHIA and show authorization code field
         checkPatientNHIAStatus(patientId);
+        
+        // Fetch patient surgery history and populate surgeon/anesthetist suggestions
+        fetchPatientSurgeryHistory(patientId);
+    }
+    
+    // Function to handle patient selection from dropdown
+    function selectPatientFromDropdown(selectedOption) {
+        const patientId = selectedOption.value;
+        const patientName = selectedOption.dataset.patientName;
+        const patientPid = selectedOption.dataset.patientPid;
+        const patientAge = selectedOption.dataset.patientAge;
+        const patientGender = selectedOption.dataset.patientGender;
+        const patientPhone = selectedOption.dataset.patientPhone;
+
+        // Set the hidden patient field
+        patientIdField.value = patientId;
+
+        // Update search field with patient name
+        patientSearchField.value = patientName;
+
+        // Show selected patient info
+        document.getElementById('patient-name').textContent = patientName;
+        document.getElementById('patient-id').textContent = patientPid;
+        document.getElementById('patient-age').textContent = patientAge;
+        document.getElementById('patient-gender').textContent = patientGender;
+        document.getElementById('patient-phone').textContent = patientPhone;
+
+        selectedPatientInfo.style.display = 'block';
+        searchResults.style.display = 'none';
+        
+        // Hide the patient warning since a patient is now selected
+        if (patientWarning) {
+            patientWarning.style.display = 'none';
+        }
+        
+        // Check if patient is NHIA and show authorization code field
+        checkPatientNHIAStatus(patientId);
+        
+        // Fetch patient surgery history and populate surgeon/anesthetist suggestions
+        fetchPatientSurgeryHistory(patientId);
+    }
+    
+    // Function to clear patient selection
+    function clearPatientSelection() {
+        patientIdField.value = '';
+        patientSearchField.value = '';
+        selectedPatientInfo.style.display = 'none';
+        
+        if (patientWarning) {
+            patientWarning.style.display = 'block';
+        }
+        
+        // Clear dropdown selection
+        if (patientDropdown && typeof $ !== 'undefined') {
+            $(patientDropdown).val(null).trigger('change');
+        }
+        
+        // Hide authorization code section
+        document.getElementById('authorization-code-section').style.display = 'none';
+        
+        // Clear any existing surgery history and suggestions
+        const existingHistory = selectedPatientInfo.querySelector('.surgery-history');
+        if (existingHistory) {
+            existingHistory.remove();
+        }
+        
+        // Clear medical staff suggestions
+        document.querySelectorAll('.staff-suggestions').forEach(suggestion => {
+            suggestion.remove();
+        });
     }
     
     // Function to check if patient is NHIA
@@ -327,6 +566,169 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             document.getElementById('authorization-code-section').style.display = 'none';
         }
+    }
+    
+    // Function to fetch patient surgery history and suggest medical staff
+    function fetchPatientSurgeryHistory(patientId) {
+        fetch(`/theatre/patient-surgery-history/?patient_id=${patientId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Error fetching patient surgery history:', data.error);
+                    return;
+                }
+                
+                // Display surgery history information
+                displaySurgeryHistory(data.surgery_history);
+                
+                // Show suggested surgeons and anesthetists
+                displayMedicalStaffSuggestions(data.suggested_surgeons, data.suggested_anesthetists);
+            })
+            .catch(error => {
+                console.error('Error fetching patient surgery history:', error);
+            });
+    }
+    
+    // Function to display surgery history
+    function displaySurgeryHistory(surgeryHistory) {
+        let historyHtml = '';
+        if (surgeryHistory.length > 0) {
+            historyHtml = `
+                <div class="mt-2">
+                    <h6 class="text-muted">Recent Surgery History:</h6>
+                    <ul class="list-unstyled">
+            `;
+            surgeryHistory.forEach(surgery => {
+                historyHtml += `
+                    <li class="mb-1">
+                        <small class="text-muted">
+                            ${surgery.date}: ${surgery.surgery_type}
+                            ${surgery.surgeon ? ` - Surgeon: ${surgery.surgeon}` : ''}
+                            ${surgery.anesthetist ? ` - Anesthetist: ${surgery.anesthetist}` : ''}
+                        </small>
+                    </li>
+                `;
+            });
+            historyHtml += '</ul></div>';
+        }
+        
+        // Add surgery history to the selected patient info section
+        const existingHistory = selectedPatientInfo.querySelector('.surgery-history');
+        if (existingHistory) {
+            existingHistory.remove();
+        }
+        if (historyHtml) {
+            const historyDiv = document.createElement('div');
+            historyDiv.className = 'surgery-history';
+            historyDiv.innerHTML = historyHtml;
+            selectedPatientInfo.appendChild(historyDiv);
+        }
+    }
+    
+    // Function to display medical staff suggestions
+    function displayMedicalStaffSuggestions(suggestedSurgeons, suggestedAnesthetists) {
+        // Display surgeon suggestions
+        if (suggestedSurgeons.length > 0) {
+            displayStaffSuggestions('primary_surgeon', suggestedSurgeons, 'Suggested Surgeons');
+        }
+        
+        // Display anesthetist suggestions
+        if (suggestedAnesthetists.length > 0) {
+            displayStaffSuggestions('anesthetist', suggestedAnesthetists, 'Suggested Anesthetists');
+        }
+    }
+    
+    // Function to display staff suggestions for a specific field
+    function displayStaffSuggestions(fieldName, suggestions, title) {
+        const fieldContainer = document.querySelector(`#id_${fieldName}`).closest('.form-group');
+        
+        // Remove existing suggestions
+        const existingSuggestions = fieldContainer.querySelector('.staff-suggestions');
+        if (existingSuggestions) {
+            existingSuggestions.remove();
+        }
+        
+        if (suggestions.length === 0) return;
+        
+        // Create suggestions container
+        const suggestionsDiv = document.createElement('div');
+        suggestionsDiv.className = 'staff-suggestions mt-2';
+        
+        let suggestionsHtml = `
+            <small class="text-muted d-block mb-1">${title} (based on patient history):</small>
+            <div class="btn-group-toggle d-flex flex-wrap gap-1">
+        `;
+        
+        suggestions.forEach(staff => {
+            suggestionsHtml += `
+                <button type="button" class="btn btn-sm btn-outline-primary suggestion-btn"
+                        data-staff-id="${staff.id}" data-field="${fieldName}">
+                    ${staff.name}
+                    <small class="d-block">${staff.specialization}</small>
+                </button>
+            `;
+        });
+        
+        suggestionsHtml += '</div>';
+        suggestionsDiv.innerHTML = suggestionsHtml;
+        
+        // Add click handlers to suggestion buttons
+        suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const staffId = this.dataset.staffId;
+                const fieldName = this.dataset.field;
+                const select = document.getElementById(`id_${fieldName}`);
+                
+                // Set the selected value
+                select.value = staffId;
+                
+                // Visual feedback
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-primary');
+                
+                // Reset other suggestion buttons in the same group
+                suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(otherBtn => {
+                    if (otherBtn !== this) {
+                        otherBtn.classList.remove('btn-primary');
+                        otherBtn.classList.add('btn-outline-primary');
+                    }
+                });
+            });
+        });
+        
+        fieldContainer.appendChild(suggestionsDiv);
+    }
+    
+    // Form submission validation
+    const surgeryForm = document.getElementById('surgery-form');
+    if (surgeryForm) {
+        surgeryForm.addEventListener('submit', function(e) {
+            const patientId = patientIdField.value;
+            
+            if (!patientId) {
+                e.preventDefault();
+                alert('Please select a patient before submitting the form.');
+                patientSearchField.focus();
+                return false;
+            }
+            
+            // Check if required fields are filled
+            const requiredFields = ['surgery_type', 'scheduled_date', 'expected_duration'];
+            let missingFields = [];
+            
+            requiredFields.forEach(fieldName => {
+                const field = document.getElementById(`id_${fieldName}`);
+                if (field && !field.value.trim()) {
+                    missingFields.push(fieldName.replace('_', ' ').toUpperCase());
+                }
+            });
+            
+            if (missingFields.length > 0) {
+                e.preventDefault();
+                alert(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+                return false;
+            }
+        });
     }
     
     // Team Formset
@@ -360,4 +762,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- Select2 JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 {% endblock %}

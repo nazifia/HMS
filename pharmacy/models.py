@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from accounts.models import CustomUser
 from patients.models import Patient
@@ -721,3 +721,282 @@ class MedicationTransfer(models.Model):
         verbose_name = "Medication Transfer"
         verbose_name_plural = "Medication Transfers"
         ordering = ['-requested_at']
+
+
+class MedicalPack(models.Model):
+    """Model representing a predefined pack of medications and consumables for specific medical procedures"""
+    PACK_TYPE_CHOICES = [
+        ('surgery', 'Surgery Pack'),
+        ('labor', 'Labor/Delivery Pack'),
+        ('emergency', 'Emergency Pack'),
+        ('general', 'General Medical Pack'),
+    ]
+    
+    SURGERY_TYPE_CHOICES = [
+        ('appendectomy', 'Appendectomy'),
+        ('cholecystectomy', 'Cholecystectomy'),
+        ('hernia_repair', 'Hernia Repair'),
+        ('cesarean_section', 'Cesarean Section'),
+        ('tonsillectomy', 'Tonsillectomy'),
+        ('orthopedic_surgery', 'Orthopedic Surgery'),
+        ('cardiac_surgery', 'Cardiac Surgery'),
+        ('neurosurgery', 'Neurosurgery'),
+        ('general_surgery', 'General Surgery'),
+        ('plastic_surgery', 'Plastic Surgery'),
+    ]
+    
+    LABOR_TYPE_CHOICES = [
+        ('normal_delivery', 'Normal Delivery'),
+        ('assisted_delivery', 'Assisted Delivery'),
+        ('cesarean_delivery', 'Cesarean Delivery'),
+        ('labor_induction', 'Labor Induction'),
+        ('episiotomy', 'Episiotomy'),
+        ('emergency_delivery', 'Emergency Delivery'),
+    ]
+    
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    pack_type = models.CharField(max_length=20, choices=PACK_TYPE_CHOICES)
+    surgery_type = models.CharField(max_length=50, choices=SURGERY_TYPE_CHOICES, blank=True, null=True)
+    labor_type = models.CharField(max_length=50, choices=LABOR_TYPE_CHOICES, blank=True, null=True)
+    
+    # Risk level and complexity
+    risk_level = models.CharField(max_length=20, choices=[
+        ('low', 'Low Risk'),
+        ('medium', 'Medium Risk'),
+        ('high', 'High Risk'),
+        ('critical', 'Critical Risk'),
+    ], default='medium')
+    
+    # Pricing
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    # Status and availability
+    is_active = models.BooleanField(default=True)
+    requires_approval = models.BooleanField(default=False)
+    
+    # Metadata
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.name} - {self.get_pack_type_display()}"
+    
+    def get_total_cost(self):
+        """Calculate total cost from pack items"""
+        total = 0
+        for item in self.items.all():
+            total += item.medication.price * item.quantity
+        return total
+    
+    def update_total_cost(self):
+        """Update the total cost field"""
+        self.total_cost = self.get_total_cost()
+        self.save(update_fields=['total_cost'])
+    
+    def get_items_count(self):
+        """Get number of different medications in this pack"""
+        return self.items.count()
+    
+    def get_total_quantity(self):
+        """Get total quantity of all items in this pack"""
+        from django.db.models import Sum
+        return self.items.aggregate(total=Sum('quantity'))['total'] or 0
+    
+    def can_be_ordered(self):
+        """Check if pack can be ordered (all medications available)"""
+        for item in self.items.all():
+            # Check if medication is available in sufficient quantity
+            available_stock = MedicationInventory.objects.filter(
+                medication=item.medication
+            ).aggregate(total=models.Sum('stock_quantity'))['total'] or 0
+            
+            if available_stock < item.quantity:
+                return False, f"Insufficient stock for {item.medication.name}"
+        
+        return True, "Pack can be ordered"
+    
+    class Meta:
+        verbose_name = "Medical Pack"
+        verbose_name_plural = "Medical Packs"
+        ordering = ['pack_type', 'name']
+        indexes = [
+            models.Index(fields=['pack_type']),
+            models.Index(fields=['surgery_type']),
+            models.Index(fields=['labor_type']),
+            models.Index(fields=['is_active']),
+        ]
+
+
+class PackItem(models.Model):
+    """Model representing an item (medication/consumable) within a medical pack"""
+    ITEM_TYPE_CHOICES = [
+        ('medication', 'Medication'),
+        ('consumable', 'Consumable'),
+        ('equipment', 'Equipment'),
+        ('supply', 'Medical Supply'),
+    ]
+    
+    pack = models.ForeignKey(MedicalPack, on_delete=models.CASCADE, related_name='items')
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
+    quantity = models.IntegerField()
+    item_type = models.CharField(max_length=20, choices=ITEM_TYPE_CHOICES, default='medication')
+    
+    # Usage instructions
+    usage_instructions = models.TextField(blank=True, null=True)
+    is_critical = models.BooleanField(default=False, help_text="Critical item that cannot be substituted")
+    is_optional = models.BooleanField(default=False, help_text="Optional item that can be omitted if not available")
+    
+    # Ordering within pack
+    order = models.PositiveIntegerField(default=0, help_text="Order of usage in procedure")
+    
+    def __str__(self):
+        return f"{self.medication.name} x{self.quantity} in {self.pack.name}"
+    
+    def get_total_cost(self):
+        """Get total cost for this pack item"""
+        return self.medication.price * self.quantity
+    
+    class Meta:
+        verbose_name = "Pack Item"
+        verbose_name_plural = "Pack Items"
+        ordering = ['order', 'medication__name']
+        unique_together = ['pack', 'medication']
+
+
+class PackOrder(models.Model):
+    """Model representing an order for a medical pack"""
+    ORDER_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('processing', 'Processing'),
+        ('ready', 'Ready for Collection'),
+        ('dispensed', 'Dispensed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    # Basic information
+    pack = models.ForeignKey(MedicalPack, on_delete=models.PROTECT)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='pack_orders')
+    
+    # Medical context
+    surgery = models.ForeignKey('theatre.Surgery', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
+    labor_record = models.ForeignKey('labor.LaborRecord', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
+    
+    # Ordering details
+    ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='ordered_packs')
+    order_date = models.DateTimeField(auto_now_add=True)
+    scheduled_date = models.DateTimeField(null=True, blank=True, help_text="When the pack is needed")
+    
+    # Status and processing
+    status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')
+    processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_packs')
+    dispensed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispensed_packs')
+    
+    # Timing
+    approved_at = models.DateTimeField(null=True, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    dispensed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Notes and instructions
+    order_notes = models.TextField(blank=True, null=True)
+    processing_notes = models.TextField(blank=True, null=True)
+    
+    # Linked prescription (when converted to individual items)
+    prescription = models.ForeignKey(Prescription, on_delete=models.SET_NULL, null=True, blank=True, related_name='pack_orders')
+    
+    def __str__(self):
+        return f"Pack Order: {self.pack.name} for {self.patient.get_full_name()}"
+    
+    def can_be_approved(self):
+        """Check if pack order can be approved"""
+        return self.status == 'pending'
+    
+    def can_be_processed(self):
+        """Check if pack order can be processed"""
+        return self.status in ['approved', 'pending'] and not self.processed_by
+    
+    def can_be_dispensed(self):
+        """Check if pack order can be dispensed"""
+        return self.status == 'ready' and not self.dispensed_by
+    
+    def create_prescription(self):
+        """Convert pack order to individual prescription items"""
+        from django.db import transaction
+        
+        if self.prescription:
+            return self.prescription
+        
+        with transaction.atomic():
+            # Create prescription
+            prescription = Prescription.objects.create(
+                patient=self.patient,
+                doctor=self.ordered_by,
+                prescription_date=timezone.now().date(),
+                diagnosis=f"Pack order: {self.pack.name}",
+                notes=f"Auto-generated from pack order #{self.id}",
+                prescription_type='outpatient' if not self.surgery else 'inpatient'
+            )
+            
+            # Create prescription items for each pack item
+            for pack_item in self.pack.items.all():
+                PrescriptionItem.objects.create(
+                    prescription=prescription,
+                    medication=pack_item.medication,
+                    dosage='As per pack requirements',
+                    frequency='As needed',
+                    duration='Single use',
+                    quantity=pack_item.quantity,
+                    instructions=pack_item.usage_instructions or 'Use as directed for procedure'
+                )
+            
+            # Link prescription to this pack order
+            self.prescription = prescription
+            self.save()
+            
+            return prescription
+    
+    def approve_order(self, user):
+        """Approve the pack order"""
+        if not self.can_be_approved():
+            raise ValueError("Pack order cannot be approved in current status")
+        
+        self.status = 'approved'
+        self.approved_at = timezone.now()
+        self.save()
+    
+    def process_order(self, user):
+        """Process the pack order and create prescription"""
+        if not self.can_be_processed():
+            raise ValueError("Pack order cannot be processed in current status")
+        
+        # Create prescription from pack items
+        prescription = self.create_prescription()
+        
+        self.status = 'ready'
+        self.processed_by = user
+        self.processed_at = timezone.now()
+        self.save()
+        
+        return prescription
+    
+    def dispense_order(self, user):
+        """Mark pack order as dispensed"""
+        if not self.can_be_dispensed():
+            raise ValueError("Pack order cannot be dispensed in current status")
+        
+        self.status = 'dispensed'
+        self.dispensed_by = user
+        self.dispensed_at = timezone.now()
+        self.save()
+    
+    class Meta:
+        verbose_name = "Pack Order"
+        verbose_name_plural = "Pack Orders"
+        ordering = ['-order_date']
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['order_date']),
+            models.Index(fields=['scheduled_date']),
+        ]

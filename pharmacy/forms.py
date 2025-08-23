@@ -5,7 +5,8 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
-    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory, ActiveStoreInventory
+    PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory, ActiveStoreInventory,
+    MedicalPack, PackItem, PackOrder
 )
 from patients.models import Patient
 from django.contrib.auth import get_user_model
@@ -1045,3 +1046,293 @@ class ComprehensiveRevenueFilterForm(forms.Form):
         else:
             # Default to current month
             return MonthFilterHelper.get_current_month()
+
+
+# Medical Pack Forms
+class MedicalPackForm(forms.ModelForm):
+    """Form for creating and editing medical packs"""
+    
+    class Meta:
+        model = MedicalPack
+        fields = [
+            'name', 'description', 'pack_type', 'surgery_type', 'labor_type',
+            'risk_level', 'requires_approval', 'is_active'
+        ]
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'pack_type': forms.Select(attrs={'class': 'form-select', 'onchange': 'handlePackTypeChange()'}),
+            'surgery_type': forms.Select(attrs={'class': 'form-select', 'id': 'surgery-type-select'}),
+            'labor_type': forms.Select(attrs={'class': 'form-select', 'id': 'labor-type-select'}),
+            'risk_level': forms.Select(attrs={'class': 'form-select'}),
+            'requires_approval': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Initially hide surgery_type and labor_type fields
+        self.fields['surgery_type'].required = False
+        self.fields['labor_type'].required = False
+        
+        # Add help text
+        self.fields['requires_approval'].help_text = 'Check if this pack requires approval before processing'
+        self.fields['pack_type'].help_text = 'Select the type of medical pack'
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        pack_type = cleaned_data.get('pack_type')
+        surgery_type = cleaned_data.get('surgery_type')
+        labor_type = cleaned_data.get('labor_type')
+        
+        # Validate that appropriate type is selected based on pack type
+        if pack_type == 'surgery' and not surgery_type:
+            raise ValidationError('Surgery type is required for surgery packs.')
+        elif pack_type == 'labor' and not labor_type:
+            raise ValidationError('Labor type is required for labor packs.')
+        
+        # Clear inappropriate type fields
+        if pack_type != 'surgery':
+            cleaned_data['surgery_type'] = None
+        if pack_type != 'labor':
+            cleaned_data['labor_type'] = None
+            
+        return cleaned_data
+
+
+class PackItemForm(forms.ModelForm):
+    """Form for creating and editing pack items"""
+    
+    medication = forms.ModelChoiceField(
+        queryset=Medication.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Medication/Consumable"
+    )
+    
+    class Meta:
+        model = PackItem
+        fields = [
+            'medication', 'quantity', 'item_type', 'usage_instructions',
+            'is_critical', 'is_optional', 'order'
+        ]
+        widgets = {
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'item_type': forms.Select(attrs={'class': 'form-select'}),
+            'usage_instructions': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'is_critical': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_optional': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Add help text
+        self.fields['is_critical'].help_text = 'Critical items cannot be substituted'
+        self.fields['is_optional'].help_text = 'Optional items can be omitted if unavailable'
+        self.fields['order'].help_text = 'Order of usage in procedure (0 for no specific order)'
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        is_critical = cleaned_data.get('is_critical')
+        is_optional = cleaned_data.get('is_optional')
+        
+        # Item cannot be both critical and optional
+        if is_critical and is_optional:
+            raise ValidationError('Item cannot be both critical and optional.')
+            
+        return cleaned_data
+
+
+class PackOrderForm(forms.ModelForm):
+    """Form for creating pack orders"""
+    
+    pack = forms.ModelChoiceField(
+        queryset=MedicalPack.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Medical Pack"
+    )
+    
+    patient = forms.ModelChoiceField(
+        queryset=Patient.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Patient"
+    )
+    
+    scheduled_date = forms.DateTimeField(
+        required=False,
+        widget=forms.DateTimeInput(attrs={
+            'type': 'datetime-local',
+            'class': 'form-control'
+        }),
+        help_text='When the pack is needed (optional)'
+    )
+    
+    class Meta:
+        model = PackOrder
+        fields = [
+            'pack', 'patient', 'scheduled_date', 'order_notes'
+        ]
+        widgets = {
+            'order_notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        # Handle pre-selection of patient and related objects
+        self.preselected_patient = kwargs.pop('preselected_patient', None)
+        self.surgery = kwargs.pop('surgery', None)
+        self.labor_record = kwargs.pop('labor_record', None)
+        request = kwargs.pop('request', None)
+        
+        super().__init__(*args, **kwargs)
+        
+        # Handle patient preselection
+        if self.preselected_patient:
+            self.fields['patient'].initial = self.preselected_patient
+            self.fields['patient'].widget.attrs.update({
+                'readonly': True,
+                'disabled': True,
+                'class': 'form-select',
+                'style': 'background-color: #e9ecef; cursor: not-allowed;'
+            })
+            self.fields['patient'].queryset = Patient.objects.filter(id=self.preselected_patient.id)
+            
+            # Add hidden field for patient
+            self.fields['patient_hidden'] = forms.ModelChoiceField(
+                queryset=Patient.objects.filter(id=self.preselected_patient.id),
+                initial=self.preselected_patient,
+                widget=forms.HiddenInput(),
+                required=True
+            )
+        
+        # Filter packs based on context
+        if self.surgery:
+            # Filter to surgery packs
+            surgery_type_mapping = {
+                'Appendectomy': 'appendectomy',
+                'Cholecystectomy': 'cholecystectomy',
+                'Hernia Repair': 'hernia_repair',
+                'Cesarean Section': 'cesarean_section',
+                'Tonsillectomy': 'tonsillectomy',
+            }
+            
+            surgery_type = surgery_type_mapping.get(self.surgery.surgery_type.name)
+            if surgery_type:
+                self.fields['pack'].queryset = MedicalPack.objects.filter(
+                    is_active=True,
+                    pack_type='surgery',
+                    surgery_type=surgery_type
+                )
+            else:
+                self.fields['pack'].queryset = MedicalPack.objects.filter(
+                    is_active=True,
+                    pack_type='surgery'
+                )
+                
+        elif self.labor_record:
+            # Filter to labor packs
+            self.fields['pack'].queryset = MedicalPack.objects.filter(
+                is_active=True,
+                pack_type='labor'
+            )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Handle patient field when disabled
+        if 'patient_hidden' in self.fields:
+            cleaned_data['patient'] = cleaned_data.get('patient_hidden')
+        
+        # Validate scheduled date
+        scheduled_date = cleaned_data.get('scheduled_date')
+        if scheduled_date and scheduled_date < timezone.now():
+            raise ValidationError('Scheduled date cannot be in the past.')
+            
+        return cleaned_data
+    
+    def save(self, commit=True):
+        pack_order = super().save(commit=False)
+        
+        # Set related objects
+        if self.surgery:
+            pack_order.surgery = self.surgery
+        if self.labor_record:
+            pack_order.labor_record = self.labor_record
+            
+        if commit:
+            pack_order.save()
+            
+        return pack_order
+
+
+class PackFilterForm(forms.Form):
+    """Form for filtering medical packs"""
+    
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search packs...'
+        }),
+        label='Search'
+    )
+    
+    pack_type = forms.ChoiceField(
+        choices=[('', 'All Types')] + MedicalPack.PACK_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Pack Type'
+    )
+    
+    risk_level = forms.ChoiceField(
+        choices=[('', 'All Risk Levels'), ('low', 'Low'), ('medium', 'Medium'), ('high', 'High'), ('critical', 'Critical')],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Risk Level'
+    )
+    
+    is_active = forms.ChoiceField(
+        choices=[('', 'All'), ('true', 'Active'), ('false', 'Inactive')],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Status'
+    )
+
+
+class PackOrderFilterForm(forms.Form):
+    """Form for filtering pack orders"""
+    
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search orders...'
+        }),
+        label='Search'
+    )
+    
+    status = forms.ChoiceField(
+        choices=[('', 'All Statuses')] + PackOrder.ORDER_STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Order Status'
+    )
+    
+    pack_type = forms.ChoiceField(
+        choices=[('', 'All Types')] + MedicalPack.PACK_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Pack Type'
+    )
+    
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='From Date'
+    )
+    
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='To Date'
+    )

@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .surgery-context {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .pack-preview {
+        background: #f8f9fa;
+        border: 1px solid #e3e6f0;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .item-preview {
+        background: #ffffff;
+        border: 1px solid #e3e6f0;
+        border-radius: 0.25rem;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-shopping-cart text-primary"></i> {{ page_title }}
+        </h1>
+        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Surgery
+        </a>
+    </div>
+
+    <!-- Surgery Context -->
+    <div class="surgery-context">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h4 class="mb-2">
+                    <i class="fas fa-scalpel me-2"></i>
+                    Surgery: {{ surgery.surgery_type.name }}
+                </h4>
+                <p class="mb-1"><strong>Patient:</strong> {{ surgery.patient.get_full_name }} ({{ surgery.patient.patient_id }})</p>
+                <p class="mb-1"><strong>Surgeon:</strong> {{ surgery.primary_surgeon.get_full_name }}</p>
+                <p class="mb-0"><strong>Scheduled:</strong> {{ surgery.scheduled_date|date:"M d, Y H:i" }}</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <span class="badge bg-light text-dark p-2">
+                    <i class="fas fa-calendar-alt"></i> {{ surgery.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Order Form -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-file-medical"></i> Medical Pack Order
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="packOrderForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.pack.id_for_label }}" class="form-label">
+                                        Medical Pack <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.pack }}
+                                    {% if form.pack.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.pack.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Select a medical pack appropriate for {{ surgery.surgery_type.name }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden patient field since it's pre-filled from surgery -->
+                        <input type="hidden" name="patient" value="{{ surgery.patient.id }}">
+
+                        <div class="mb-3">
+                            <label for="{{ form.scheduled_date.id_for_label }}" class="form-label">
+                                Scheduled Date/Time
+                            </label>
+                            {{ form.scheduled_date }}
+                            {% if form.scheduled_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.scheduled_date.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                When is this pack needed? (Defaults to surgery date)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.order_notes.id_for_label }}" class="form-label">
+                                Order Notes
+                            </label>
+                            {{ form.order_notes }}
+                            {% if form.order_notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.order_notes.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Any special instructions or notes for this pack order
+                            </div>
+                        </div>
+
+                        <!-- Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-shopping-cart"></i> Order Pack
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pack Preview -->
+        <div class="col-lg-4">
+            {% if pack %}
+            <div class="pack-preview">
+                <h5 class="mb-2">
+                    <i class="fas fa-scalpel me-2"></i>
+                    {{ pack.name }}
+                </h5>
+                <p class="mb-2">{{ pack.description }}</p>
+                
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <small class="text-muted">Surgery Type:</small><br>
+                        {% if pack.surgery_type %}
+                            <span class="badge bg-secondary">{{ pack.get_surgery_type_display }}</span>
+                        {% else %}
+                            <span class="text-muted">General</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Risk Level:</small><br>
+                        <span class="badge 
+                            {% if pack.risk_level == 'low' %}bg-success
+                            {% elif pack.risk_level == 'medium' %}bg-warning text-dark
+                            {% elif pack.risk_level == 'high' %}bg-danger
+                            {% else %}bg-dark{% endif %}">
+                            {{ pack.get_risk_level_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <div class="h4 mb-0 text-success">₦{{ pack.get_total_cost|floatformat:2 }}</div>
+                    <small>Total Cost</small>
+                </div>
+                
+                {% if pack.requires_approval %}
+                <div class="mt-2">
+                    <span class="badge bg-warning text-dark">
+                        <i class="fas fa-exclamation-triangle"></i> Requires Approval
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Pack Contents</h6>
+                </div>
+                <div class="card-body">
+                    {% for item in pack.items.all %}
+                    <div class="item-preview">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ item.medication.name }}</strong>
+                                {% if item.is_critical %}
+                                    <span class="badge bg-danger ms-1" title="Critical Item">!</span>
+                                {% elif item.is_optional %}
+                                    <span class="badge bg-success ms-1" title="Optional Item">?</span>
+                                {% endif %}
+                                {% if item.usage_instructions %}
+                                    <br><small class="text-muted">{{ item.usage_instructions|truncatewords:8 }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <div>Qty: <strong>{{ item.quantity }}</strong></div>
+                                <small class="text-success">₦{{ item.get_total_cost|floatformat:2 }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Select a Pack</h5>
+                    <p class="text-muted">Choose a medical pack to see its contents and cost breakdown.</p>
+                    
+                    {% if available_packs %}
+                    <div class="text-start mt-4">
+                        <h6>Available Surgery Packs:</h6>
+                        {% for available_pack in available_packs %}
+                        <div class="mb-2">
+                            <a href="?pack_id={{ available_pack.id }}" class="btn btn-outline-primary btn-sm w-100">
+                                {{ available_pack.name }}
+                                <span class="badge bg-success ms-2">₦{{ available_pack.get_total_cost|floatformat:2 }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for better dropdowns
+    $('#id_pack').select2({
+        theme: 'bootstrap-5',
+        width: '100%'
+    });
+
+    // Handle pack selection change to update preview
+    $('#id_pack').change(function() {
+        const packId = $(this).val();
+        if (packId) {
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('pack_id', packId);
+            window.location.href = currentUrl.toString();
+        }
+    });
+
+    // Form validation
+    $('#packOrderForm').on('submit', function(e) {
+        const pack = $('#id_pack').val();
+        
+        if (!pack) {
+            e.preventDefault();
+            alert('Please select a medical pack.');
+            return false;
+        }
+    });
+
+    // Set minimum datetime for scheduled_date to current time
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const minDateTime = now.toISOString().slice(0, 16);
+    $('#id_scheduled_date').attr('min', minDateTime);
+});
+</script>
+{% endblock %}

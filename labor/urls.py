@@ -11,4 +11,5 @@ urlpatterns = [
     path('<int:record_id>/delete/', views.delete_labor_record, name='delete_labor_record'),
     path('search-patients/', views.search_labor_patients, name='search_labor_patients'),
     path('<int:record_id>/create-prescription/', views.create_prescription_for_labor, name='create_prescription_for_labor'),
+    path('<int:record_id>/order-medical-pack/', views.order_medical_pack_for_labor, name='order_medical_pack_for_labor'),
 ]

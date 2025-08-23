@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e3e6f0;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -0.6rem;
+        top: 0.2rem;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background: #5a5c69;
+    }
+    .timeline-item.completed::before {
+        background: #1cc88a;
+    }
+    .timeline-item.current::before {
+        background: #f6c23e;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(246, 194, 62, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(246, 194, 62, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(246, 194, 62, 0); }
+    }
+    .pack-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    .action-btn {
+        margin: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back Button -->
+    <div class="mb-3">
+        <a href="{% url 'pharmacy:pack_order_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Orders
+        </a>
+    </div>
+
+    <!-- Order Header -->
+    <div class="pack-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-file-medical me-2"></i>
+                    Pack Order #{{ pack_order.id }}
+                </h1>
+                <p class="mb-1"><strong>Pack:</strong> {{ pack_order.pack.name }}</p>
+                <p class="mb-0"><strong>Patient:</strong> {{ pack_order.patient.get_full_name }} ({{ pack_order.patient.patient_id }})</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="mb-2">
+                    {% if pack_order.status == 'pending' %}
+                        <span class="badge status-badge bg-warning text-dark">
+                            <i class="fas fa-clock"></i> Pending
+                        </span>
+                    {% elif pack_order.status == 'approved' %}
+                        <span class="badge status-badge bg-info">
+                            <i class="fas fa-check"></i> Approved
+                        </span>
+                    {% elif pack_order.status == 'processing' %}
+                        <span class="badge status-badge bg-primary">
+                            <i class="fas fa-cogs"></i> Processing
+                        </span>
+                    {% elif pack_order.status == 'ready' %}
+                        <span class="badge status-badge bg-success">
+                            <i class="fas fa-box"></i> Ready
+                        </span>
+                    {% elif pack_order.status == 'dispensed' %}
+                        <span class="badge status-badge bg-secondary">
+                            <i class="fas fa-check-double"></i> Dispensed
+                        </span>
+                    {% elif pack_order.status == 'cancelled' %}
+                        <span class="badge status-badge bg-danger">
+                            <i class="fas fa-times"></i> Cancelled
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="h4 mb-0">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</div>
+                <small>Total Cost</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Order Details -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Order Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Order Details</h6>
+                            <table class="table table-borderless table-sm">
+                                <tr>
+                                    <td><strong>Order ID:</strong></td>
+                                    <td>{{ pack_order.id }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Order Date:</strong></td>
+                                    <td>{{ pack_order.order_date|date:"M d, Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ordered By:</strong></td>
+                                    <td>{{ pack_order.ordered_by.get_full_name|default:"Unknown" }}</td>
+                                </tr>
+                                {% if pack_order.scheduled_date %}
+                                <tr>
+                                    <td><strong>Scheduled:</strong></td>
+                                    <td>{{ pack_order.scheduled_date|date:"M d, Y H:i" }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Patient Information</h6>
+                            <table class="table table-borderless table-sm">
+                                <tr>
+                                    <td><strong>Name:</strong></td>
+                                    <td>{{ pack_order.patient.get_full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Patient ID:</strong></td>
+                                    <td>{{ pack_order.patient.patient_id }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phone:</strong></td>
+                                    <td>{{ pack_order.patient.phone_number|default:"Not provided" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Gender:</strong></td>
+                                    <td>{{ pack_order.patient.get_gender_display }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    {% if pack_order.surgery %}
+                    <div class="mt-3">
+                        <h6>Surgery Context</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-scalpel"></i>
+                            <strong>Surgery:</strong> {{ pack_order.surgery.surgery_type.name }}<br>
+                            <strong>Scheduled:</strong> {{ pack_order.surgery.scheduled_date|date:"M d, Y H:i" }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if pack_order.labor_record %}
+                    <div class="mt-3">
+                        <h6>Labor Context</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-baby"></i>
+                            <strong>Labor Record:</strong> #{{ pack_order.labor_record.id }}<br>
+                            <strong>Admission:</strong> {{ pack_order.labor_record.admission_date|date:"M d, Y H:i" }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if pack_order.order_notes %}
+                    <div class="mt-3">
+                        <h6>Order Notes</h6>
+                        <div class="alert alert-secondary">
+                            {{ pack_order.order_notes }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if pack_order.processing_notes %}
+                    <div class="mt-3">
+                        <h6>Processing Notes</h6>
+                        <div class="alert alert-warning">
+                            {{ pack_order.processing_notes }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pack Contents -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Pack Contents</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Type</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in pack_order.pack.items.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.medication.name }}</strong>
+                                        {% if item.is_critical %}
+                                            <span class="badge bg-danger ms-1" title="Critical Item">Critical</span>
+                                        {% elif item.is_optional %}
+                                            <span class="badge bg-success ms-1" title="Optional Item">Optional</span>
+                                        {% endif %}
+                                        {% if item.usage_instructions %}
+                                            <br><small class="text-muted">{{ item.usage_instructions|truncatewords:10 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.get_item_type_display }}</td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">₦{{ item.medication.price|floatformat:2 }}</td>
+                                    <td class="text-end">₦{{ item.get_total_cost|floatformat:2 }}</td>
+                                    <td class="text-center">
+                                        {% if pack_order.status == 'dispensed' %}
+                                            <span class="badge bg-success">Dispensed</span>
+                                        {% elif pack_order.status == 'ready' %}
+                                            <span class="badge bg-warning">Ready</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="4" class="text-end">Total Cost:</th>
+                                    <th class="text-end">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% if pack_order.prescription %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Generated Prescription</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success">
+                        <i class="fas fa-prescription-bottle"></i>
+                        This pack order has been converted to prescription 
+                        <a href="{% url 'pharmacy:prescription_detail' pack_order.prescription.id %}" class="alert-link">
+                            #{{ pack_order.prescription.id }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Order Timeline & Actions -->
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if pack_order.can_be_approved %}
+                            <a href="{% url 'pharmacy:approve_pack_order' pack_order.id %}" 
+                               class="btn btn-success action-btn">
+                                <i class="fas fa-check"></i> Approve Order
+                            </a>
+                        {% endif %}
+
+                        {% if pack_order.can_be_processed %}
+                            <a href="{% url 'pharmacy:process_pack_order' pack_order.id %}" 
+                               class="btn btn-primary action-btn">
+                                <i class="fas fa-cogs"></i> Process Order
+                            </a>
+                        {% endif %}
+
+                        {% if pack_order.can_be_dispensed %}
+                            <a href="{% url 'pharmacy:dispense_pack_order' pack_order.id %}" 
+                               class="btn btn-warning action-btn">
+                                <i class="fas fa-box"></i> Mark as Dispensed
+                            </a>
+                        {% endif %}
+
+                        {% if pack_order.prescription %}
+                            <a href="{% url 'pharmacy:prescription_detail' pack_order.prescription.id %}" 
+                               class="btn btn-info action-btn">
+                                <i class="fas fa-prescription-bottle"></i> View Prescription
+                            </a>
+                        {% endif %}
+
+                        <hr>
+                        
+                        <a href="{% url 'pharmacy:pack_order_list' %}" 
+                           class="btn btn-outline-secondary action-btn">
+                            <i class="fas fa-list"></i> All Orders
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Timeline -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Order Timeline</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item completed">
+                            <div>
+                                <strong>Order Created</strong><br>
+                                <small class="text-muted">{{ pack_order.order_date|date:"M d, Y H:i" }}</small><br>
+                                <small>By: {{ pack_order.ordered_by.get_full_name|default:"System" }}</small>
+                            </div>
+                        </div>
+
+                        {% if pack_order.approved_at %}
+                        <div class="timeline-item completed">
+                            <div>
+                                <strong>Order Approved</strong><br>
+                                <small class="text-muted">{{ pack_order.approved_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% elif pack_order.status == 'pending' %}
+                        <div class="timeline-item current">
+                            <div>
+                                <strong>Awaiting Approval</strong><br>
+                                <small class="text-muted">Pending approval</small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if pack_order.processed_at %}
+                        <div class="timeline-item completed">
+                            <div>
+                                <strong>Order Processed</strong><br>
+                                <small class="text-muted">{{ pack_order.processed_at|date:"M d, Y H:i" }}</small><br>
+                                <small>By: {{ pack_order.processed_by.get_full_name|default:"System" }}</small>
+                            </div>
+                        </div>
+                        {% elif pack_order.status in 'approved,processing' %}
+                        <div class="timeline-item current">
+                            <div>
+                                <strong>Processing Order</strong><br>
+                                <small class="text-muted">Converting to prescription</small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if pack_order.dispensed_at %}
+                        <div class="timeline-item completed">
+                            <div>
+                                <strong>Order Dispensed</strong><br>
+                                <small class="text-muted">{{ pack_order.dispensed_at|date:"M d, Y H:i" }}</small><br>
+                                <small>By: {{ pack_order.dispensed_by.get_full_name|default:"System" }}</small>
+                            </div>
+                        </div>
+                        {% elif pack_order.status == 'ready' %}
+                        <div class="timeline-item current">
+                            <div>
+                                <strong>Ready for Collection</strong><br>
+                                <small class="text-muted">Awaiting dispensing</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize tooltips
+    $('[title]').tooltip();
+    
+    // Add confirmation for critical actions
+    $('a[href*="approve"], a[href*="process"], a[href*="dispense"]').click(function(e) {
+        const action = $(this).text().trim();
+        if (!confirm(`Are you sure you want to ${action.toLowerCase()}?`)) {
+            e.preventDefault();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

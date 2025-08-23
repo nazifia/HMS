@@ -10,7 +10,8 @@ from .forms import LaborRecordForm, LaborRecordSearchForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
-from pharmacy.models import Prescription, PrescriptionItem
+from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
+from pharmacy.forms import PackOrderForm
 
 @login_required
 def labor_records_list(request):
@@ -202,3 +203,95 @@ def create_prescription_for_labor(request, record_id):
         'title': 'Create Prescription'
     }
     return render(request, 'labor/create_prescription.html', context)
+
+
+@login_required
+def order_medical_pack_for_labor(request, record_id):
+    """Order a medical pack for a specific labor record"""
+    record = get_object_or_404(LaborRecord, id=record_id)
+    
+    # Get labor-specific packs
+    available_packs = MedicalPack.objects.filter(
+        is_active=True,
+        pack_type='labor'
+    )
+    
+    # Filter by labor type if available
+    if record.mode_of_delivery:
+        delivery_type_packs = available_packs.filter(
+            labor_type__icontains=record.mode_of_delivery.lower()
+        )
+        if delivery_type_packs.exists():
+            available_packs = delivery_type_packs
+    
+    if request.method == 'POST':
+        form = PackOrderForm(request.POST)
+        
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    pack_order = form.save(commit=False)
+                    pack_order.patient = record.patient
+                    pack_order.labor_record = record
+                    pack_order.ordered_by = request.user
+                    
+                    # Set scheduled date to labor visit date if not provided
+                    if not pack_order.scheduled_date:
+                        pack_order.scheduled_date = record.visit_date
+                    
+                    pack_order.save()
+                    
+                    # Automatically create prescription from pack items
+                    try:
+                        prescription = pack_order.create_prescription()
+                        messages.success(
+                            request, 
+                            f'Medical pack "{pack_order.pack.name}" ordered successfully for labor record. '
+                            f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications.'
+                        )
+                    except Exception as e:
+                        # Pack order was created but prescription failed
+                        messages.warning(
+                            request,
+                            f'Medical pack "{pack_order.pack.name}" ordered successfully, but prescription creation failed: {str(e)}. '
+                            f'Please create the prescription manually if needed.'
+                        )
+                    return redirect('labor:labor_record_detail', record_id=record.id)
+                    
+            except Exception as e:
+                messages.error(request, f'Error creating pack order: {str(e)}')
+        else:
+            messages.error(request, 'Please correct the form errors.')
+    else:
+        # Pre-populate form with labor context
+        initial_data = {
+            'patient': record.patient.id,
+            'scheduled_date': record.visit_date,
+            'order_notes': f'Pack order for labor record: {record.diagnosis or "Labor/Delivery"}'
+        }
+        form = PackOrderForm(initial=initial_data)
+        
+        # Filter pack choices to labor-specific packs
+        form.fields['pack'].queryset = available_packs
+        form.fields['patient'].initial = record.patient
+        form.fields['patient'].widget.attrs['readonly'] = True
+    
+    context = {
+        'record': record,
+        'form': form,
+        'available_packs': available_packs,
+        'page_title': 'Order Medical Pack for Labor',
+        'pack': None  # Will be set if pack_id is in GET params
+    }
+    
+    # Handle pack preview
+    pack_id = request.GET.get('pack_id')
+    if pack_id:
+        try:
+            pack = get_object_or_404(MedicalPack, id=pack_id, is_active=True)
+            context['pack'] = pack
+            context['form'].fields['pack'].initial = pack
+        except:
+            pass
+    
+    return render(request, 'labor/order_medical_pack.html', context)

@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, F
@@ -9,7 +10,8 @@ from django.utils import timezone
 from .models import (
     Medication, MedicationCategory, Supplier, Purchase, PurchaseItem,
     Prescription, PrescriptionItem, Dispensary, ActiveStore, ActiveStoreInventory, MedicationInventory,
-    BulkStore, BulkStoreInventory, MedicationTransfer, DispensingLog
+    BulkStore, BulkStoreInventory, MedicationTransfer, DispensingLog,
+    MedicalPack, PackItem, PackOrder
 )
 from .forms import (
     MedicationForm, MedicationCategoryForm, SupplierForm, PurchaseForm, PurchaseItemForm,
@@ -1977,3 +1979,416 @@ def low_stock_alerts(request):
     }
     
     return render(request, 'pharmacy/alerts.html', context)
+
+
+# Medical Pack Management Views
+
+@login_required
+def medical_pack_list(request):
+    """View for listing all medical packs"""
+    from .forms import PackFilterForm
+    
+    form = PackFilterForm(request.GET)
+    packs = MedicalPack.objects.select_related().prefetch_related('items__medication')
+    
+    # Apply filters
+    if form.is_valid():
+        if form.cleaned_data.get('search'):
+            search = form.cleaned_data['search']
+            packs = packs.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search) |
+                Q(items__medication__name__icontains=search)
+            ).distinct()
+        
+        if form.cleaned_data.get('pack_type'):
+            packs = packs.filter(pack_type=form.cleaned_data['pack_type'])
+        
+        if form.cleaned_data.get('risk_level'):
+            packs = packs.filter(risk_level=form.cleaned_data['risk_level'])
+        
+        if form.cleaned_data.get('is_active'):
+            is_active = form.cleaned_data['is_active'] == 'true'
+            packs = packs.filter(is_active=is_active)
+    
+    # Pagination
+    paginator = Paginator(packs, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'page_title': 'Medical Packs',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/medical_packs/pack_list.html', context)
+
+
+@login_required
+def medical_pack_detail(request, pack_id):
+    """View for displaying medical pack details"""
+    pack = get_object_or_404(MedicalPack, id=pack_id)
+    
+    # Check if pack can be ordered
+    can_order, order_message = pack.can_be_ordered()
+    
+    context = {
+        'pack': pack,
+        'can_order': can_order,
+        'order_message': order_message,
+        'page_title': f'Pack Details - {pack.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/medical_packs/pack_detail.html', context)
+
+
+@login_required
+def create_medical_pack(request):
+    """View for creating a new medical pack"""
+    from .forms import MedicalPackForm
+    
+    if request.method == 'POST':
+        form = MedicalPackForm(request.POST)
+        if form.is_valid():
+            pack = form.save(commit=False)
+            pack.created_by = request.user
+            pack.save()
+            messages.success(request, f'Medical pack "{pack.name}" created successfully.')
+            return redirect('pharmacy:medical_pack_detail', pack_id=pack.id)
+    else:
+        form = MedicalPackForm()
+    
+    context = {
+        'form': form,
+        'page_title': 'Create Medical Pack',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/medical_packs/pack_form.html', context)
+
+
+@login_required
+def edit_medical_pack(request, pack_id):
+    """View for editing a medical pack"""
+    from .forms import MedicalPackForm
+    
+    pack = get_object_or_404(MedicalPack, id=pack_id)
+    
+    if request.method == 'POST':
+        form = MedicalPackForm(request.POST, instance=pack)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Medical pack "{pack.name}" updated successfully.')
+            return redirect('pharmacy:medical_pack_detail', pack_id=pack.id)
+    else:
+        form = MedicalPackForm(instance=pack)
+    
+    context = {
+        'form': form,
+        'pack': pack,
+        'page_title': f'Edit Pack - {pack.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/medical_packs/pack_form.html', context)
+
+
+@login_required
+def manage_pack_items(request, pack_id):
+    """View for managing items in a medical pack"""
+    from .forms import PackItemForm
+    
+    pack = get_object_or_404(MedicalPack, id=pack_id)
+    
+    if request.method == 'POST':
+        form = PackItemForm(request.POST)
+        if form.is_valid():
+            pack_item = form.save(commit=False)
+            pack_item.pack = pack
+            pack_item.save()
+            pack.update_total_cost()
+            messages.success(request, f'Added {pack_item.medication.name} to pack.')
+            return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
+    else:
+        form = PackItemForm()
+    
+    pack_items = pack.items.select_related('medication').order_by('order', 'medication__name')
+    
+    context = {
+        'pack': pack,
+        'pack_items': pack_items,
+        'form': form,
+        'page_title': f'Manage Items - {pack.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/medical_packs/manage_pack_items.html', context)
+
+
+@login_required
+def delete_pack_item(request, pack_id, item_id):
+    """View for deleting an item from a medical pack"""
+    pack = get_object_or_404(MedicalPack, id=pack_id)
+    pack_item = get_object_or_404(PackItem, id=item_id, pack=pack)
+    
+    if request.method == 'POST':
+        medication_name = pack_item.medication.name
+        pack_item.delete()
+        pack.update_total_cost()
+        messages.success(request, f'Removed {medication_name} from pack.')
+        return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
+    
+    context = {
+        'pack': pack,
+        'pack_item': pack_item,
+        'page_title': f'Delete Item - {pack_item.medication.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/medical_packs/confirm_delete_item.html', context)
+
+
+@login_required
+def create_pack_order(request, pack_id=None):
+    """View for creating a pack order"""
+    from .forms import PackOrderForm
+    from patients.models import Patient
+    
+    pack = None
+    if pack_id:
+        pack = get_object_or_404(MedicalPack, id=pack_id)
+    
+    # Check for surgery or labor record context
+    surgery_id = request.GET.get('surgery_id')
+    labor_id = request.GET.get('labor_id')
+    patient_id = request.GET.get('patient_id')
+    
+    surgery = None
+    labor_record = None
+    patient = None
+    
+    if surgery_id:
+        try:
+            from theatre.models import Surgery
+            surgery = Surgery.objects.get(id=surgery_id)
+            patient = surgery.patient
+        except Surgery.DoesNotExist:
+            messages.error(request, 'Surgery not found.')
+            return redirect('pharmacy:medical_pack_list')
+        except ImportError:
+            messages.error(request, 'Surgery module not available.')
+            return redirect('pharmacy:medical_pack_list')
+    
+    if labor_id:
+        try:
+            from labor.models import LaborRecord
+            labor_record = LaborRecord.objects.get(id=labor_id)
+            patient = labor_record.patient
+        except LaborRecord.DoesNotExist:
+            messages.error(request, 'Labor record not found.')
+            return redirect('pharmacy:medical_pack_list')
+        except ImportError:
+            messages.error(request, 'Labor module not available.')
+            return redirect('pharmacy:medical_pack_list')
+    
+    if patient_id and not patient:
+        try:
+            patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            messages.error(request, 'Patient not found.')
+            return redirect('pharmacy:medical_pack_list')
+    
+    if request.method == 'POST':
+        form = PackOrderForm(
+            request.POST,
+            preselected_patient=patient,
+            surgery=surgery,
+            labor_record=labor_record
+        )
+        if form.is_valid():
+            pack_order = form.save(commit=False)
+            pack_order.ordered_by = request.user
+            if pack:
+                pack_order.pack = pack
+            pack_order.save()
+            
+            # Automatically create prescription from pack items
+            try:
+                prescription = pack_order.create_prescription()
+                messages.success(
+                    request,
+                    f'Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. '
+                    f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications.'
+                )
+                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            except Exception as e:
+                # Pack order was created but prescription failed
+                messages.warning(
+                    request,
+                    f'Pack order for {pack_order.pack.name} created successfully (Order ID: {pack_order.id}), '
+                    f'but prescription creation failed: {str(e)}. Please create the prescription manually if needed.'
+                )
+                return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+    else:
+        initial_data = {}
+        if pack:
+            initial_data['pack'] = pack
+        if patient:
+            initial_data['patient'] = patient
+            
+        form = PackOrderForm(
+            initial=initial_data,
+            preselected_patient=patient,
+            surgery=surgery,
+            labor_record=labor_record
+        )
+    
+    context = {
+        'form': form,
+        'pack': pack,
+        'surgery': surgery,
+        'labor_record': labor_record,
+        'patient': patient,
+        'page_title': 'Create Pack Order',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+
+
+@login_required
+def pack_order_list(request):
+    """View for listing pack orders"""
+    from .forms import PackOrderFilterForm
+    
+    form = PackOrderFilterForm(request.GET)
+    orders = PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by').order_by('-order_date')
+    
+    # Apply filters
+    if form.is_valid():
+        if form.cleaned_data.get('search'):
+            search = form.cleaned_data['search']
+            orders = orders.filter(
+                Q(pack__name__icontains=search) |
+                Q(patient__first_name__icontains=search) |
+                Q(patient__last_name__icontains=search) |
+                Q(patient__patient_id__icontains=search)
+            )
+        
+        if form.cleaned_data.get('status'):
+            orders = orders.filter(status=form.cleaned_data['status'])
+        
+        if form.cleaned_data.get('pack_type'):
+            orders = orders.filter(pack__pack_type=form.cleaned_data['pack_type'])
+        
+        if form.cleaned_data.get('date_from'):
+            orders = orders.filter(order_date__date__gte=form.cleaned_data['date_from'])
+        
+        if form.cleaned_data.get('date_to'):
+            orders = orders.filter(order_date__date__lte=form.cleaned_data['date_to'])
+    
+    # Pagination
+    paginator = Paginator(orders, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'page_title': 'Pack Orders',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/pack_orders/pack_order_list.html', context)
+
+
+@login_required
+def pack_order_detail(request, order_id):
+    """View for displaying pack order details"""
+    pack_order = get_object_or_404(
+        PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by', 'prescription'),
+        id=order_id
+    )
+    
+    context = {
+        'pack_order': pack_order,
+        'page_title': f'Pack Order #{pack_order.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/pack_orders/pack_order_detail.html', context)
+
+
+@login_required
+def approve_pack_order(request, order_id):
+    """View for approving a pack order"""
+    pack_order = get_object_or_404(PackOrder, id=order_id)
+    
+    if request.method == 'POST':
+        try:
+            pack_order.approve_order(request.user)
+            messages.success(request, f'Pack order #{pack_order.id} approved successfully.')
+        except ValueError as e:
+            messages.error(request, str(e))
+        
+        return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+    
+    context = {
+        'pack_order': pack_order,
+        'page_title': f'Approve Pack Order #{pack_order.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/pack_orders/approve_pack_order.html', context)
+
+
+@login_required
+def process_pack_order(request, order_id):
+    """View for processing a pack order (converting to prescription)"""
+    pack_order = get_object_or_404(PackOrder, id=order_id)
+    
+    if request.method == 'POST':
+        try:
+            prescription = pack_order.process_order(request.user)
+            messages.success(
+                request,
+                f'Pack order #{pack_order.id} processed successfully. Prescription #{prescription.id} created.'
+            )
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+    
+    context = {
+        'pack_order': pack_order,
+        'page_title': f'Process Pack Order #{pack_order.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/pack_orders/process_pack_order.html', context)
+
+
+@login_required
+def dispense_pack_order(request, order_id):
+    """View for marking a pack order as dispensed"""
+    pack_order = get_object_or_404(PackOrder, id=order_id)
+    
+    if request.method == 'POST':
+        try:
+            pack_order.dispense_order(request.user)
+            messages.success(request, f'Pack order #{pack_order.id} marked as dispensed.')
+        except ValueError as e:
+            messages.error(request, str(e))
+        
+        return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+    
+    context = {
+        'pack_order': pack_order,
+        'page_title': f'Dispense Pack Order #{pack_order.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/pack_orders/dispense_pack_order.html', context)

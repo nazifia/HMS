@@ -7,9 +7,11 @@ from django.db import transaction
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Count, Q
+from django.http import JsonResponse
 from patients.models import Patient
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
-from pharmacy.models import Prescription, PrescriptionItem
+from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
+from pharmacy.forms import PackOrderForm
 
 from .models import (
     OperationTheatre,
@@ -144,6 +146,9 @@ class SurgeryDetailView(LoginRequiredMixin, DetailView):
             context['checklist_form'] = PreOperativeChecklistForm(instance=surgery.pre_op_checklist)
         except PreOperativeChecklist.DoesNotExist:
             context['checklist_form'] = PreOperativeChecklistForm()
+        
+        # Add pack orders for this surgery
+        context['pack_orders'] = surgery.pack_orders.all().order_by('-order_date')
 
         return context
 
@@ -203,6 +208,10 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+        
+        # Add all active patients for the dropdown
+        data['all_patients'] = Patient.objects.filter(is_active=True).select_related().order_by('first_name', 'last_name')
+        
         if 'team_formset' not in kwargs:
             if self.request.POST:
                 data['team_formset'] = SurgicalTeamFormSet(self.request.POST)
@@ -220,9 +229,31 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         form = self.get_form()
         team_formset = SurgicalTeamFormSet(self.request.POST)
         equipment_formset = EquipmentUsageFormSet(self.request.POST)
+        
+        # Debug: Print form validation status
+        print(f"Form valid: {form.is_valid()}")
+        if not form.is_valid():
+            print(f"Form errors: {form.errors}")
+            print(f"Form data: {form.data}")
+        
+        print(f"Team formset valid: {team_formset.is_valid()}")
+        if not team_formset.is_valid():
+            print(f"Team formset errors: {team_formset.errors}")
+            
+        print(f"Equipment formset valid: {equipment_formset.is_valid()}")
+        if not equipment_formset.is_valid():
+            print(f"Equipment formset errors: {equipment_formset.errors}")
+        
         if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
             return self.form_valid(form, team_formset, equipment_formset)
         else:
+            # Add error messages for the user
+            if not form.is_valid():
+                messages.error(request, 'There are errors in the surgery form. Please check the required fields.')
+            if not team_formset.is_valid():
+                messages.error(request, 'There are errors in the surgical team information.')
+            if not equipment_formset.is_valid():
+                messages.error(request, 'There are errors in the equipment information.')
             return self.form_invalid(form, team_formset, equipment_formset)
 
     def form_valid(self, form, team_formset, equipment_formset):
@@ -328,6 +359,12 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
     form_class = SurgeryForm
     template_name = 'theatre/surgery_form.html'
     success_url = reverse_lazy('theatre:surgery_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add all active patients for the dropdown
+        context['all_patients'] = Patient.objects.filter(is_active=True).select_related().order_by('first_name', 'last_name')
+        return context
 
 
 class SurgeryDeleteView(LoginRequiredMixin, DeleteView):
@@ -674,6 +711,65 @@ def theatre_statistics_report(request):
 
 # Theatre Dashboard View
 @login_required
+def get_patient_surgery_history(request):
+    """
+    AJAX view to get patient's surgery history and suggest surgeons/anesthetists
+    """
+    patient_id = request.GET.get('patient_id')
+    
+    if not patient_id:
+        return JsonResponse({'error': 'Patient ID is required'}, status=400)
+    
+    try:
+        patient = Patient.objects.get(id=patient_id)
+        
+        # Get patient's previous surgeries
+        previous_surgeries = Surgery.objects.filter(
+            patient=patient,
+            status='completed'
+        ).select_related('primary_surgeon', 'anesthetist', 'surgery_type').order_by('-scheduled_date')[:5]
+        
+        # Extract frequently used surgeons and anesthetists
+        surgeons = []
+        anesthetists = []
+        surgery_history = []
+        
+        for surgery in previous_surgeries:
+            surgery_history.append({
+                'surgery_type': surgery.surgery_type.name,
+                'date': surgery.scheduled_date.strftime('%Y-%m-%d'),
+                'surgeon': surgery.primary_surgeon.get_full_name() if surgery.primary_surgeon else None,
+                'anesthetist': surgery.anesthetist.get_full_name() if surgery.anesthetist else None
+            })
+            
+            if surgery.primary_surgeon and surgery.primary_surgeon.id not in [s['id'] for s in surgeons]:
+                surgeons.append({
+                    'id': surgery.primary_surgeon.id,
+                    'name': surgery.primary_surgeon.get_full_name(),
+                    'specialization': getattr(surgery.primary_surgeon.profile, 'specialization', 'Surgeon') if hasattr(surgery.primary_surgeon, 'profile') else 'Surgeon'
+                })
+            
+            if surgery.anesthetist and surgery.anesthetist.id not in [a['id'] for a in anesthetists]:
+                anesthetists.append({
+                    'id': surgery.anesthetist.id,
+                    'name': surgery.anesthetist.get_full_name(),
+                    'specialization': getattr(surgery.anesthetist.profile, 'specialization', 'Anesthetist') if hasattr(surgery.anesthetist, 'profile') else 'Anesthetist'
+                })
+        
+        return JsonResponse({
+            'surgery_history': surgery_history,
+            'suggested_surgeons': surgeons,
+            'suggested_anesthetists': anesthetists,
+            'total_surgeries': previous_surgeries.count()
+        })
+        
+    except Patient.DoesNotExist:
+        return JsonResponse({'error': 'Patient not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
 def create_prescription_for_theatre(request, surgery_id):
     """Create a prescription for a theatre patient"""
     from .models import Surgery
@@ -737,3 +833,97 @@ def create_prescription_for_theatre(request, surgery_id):
         'title': 'Create Prescription'
     }
     return render(request, 'theatre/create_prescription.html', context)
+
+
+@login_required
+def order_medical_pack_for_surgery(request, surgery_id):
+    """Order a medical pack for a specific surgery"""
+    from .models import Surgery
+    surgery = get_object_or_404(Surgery, id=surgery_id)
+    
+    # Get surgery-specific packs
+    available_packs = MedicalPack.objects.filter(
+        is_active=True,
+        pack_type='surgery'
+    )
+    
+    # Filter by surgery type if available
+    if hasattr(surgery.surgery_type, 'name'):
+        surgery_type_packs = available_packs.filter(
+            surgery_type__icontains=surgery.surgery_type.name.lower()
+        )
+        if surgery_type_packs.exists():
+            available_packs = surgery_type_packs
+    
+    if request.method == 'POST':
+        form = PackOrderForm(request.POST)
+        
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    pack_order = form.save(commit=False)
+                    pack_order.patient = surgery.patient
+                    pack_order.surgery = surgery
+                    pack_order.ordered_by = request.user
+                    
+                    # Set scheduled date to surgery date if not provided
+                    if not pack_order.scheduled_date:
+                        pack_order.scheduled_date = surgery.scheduled_date
+                    
+                    pack_order.save()
+                    
+                    # Automatically create prescription from pack items
+                    try:
+                        prescription = pack_order.create_prescription()
+                        messages.success(
+                            request, 
+                            f'Medical pack "{pack_order.pack.name}" ordered successfully for surgery. '
+                            f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications.'
+                        )
+                    except Exception as e:
+                        # Pack order was created but prescription failed
+                        messages.warning(
+                            request,
+                            f'Medical pack "{pack_order.pack.name}" ordered successfully, but prescription creation failed: {str(e)}. '
+                            f'Please create the prescription manually if needed.'
+                        )
+                    
+                    return redirect('theatre:surgery_detail', pk=surgery.id)
+                    
+            except Exception as e:
+                messages.error(request, f'Error creating pack order: {str(e)}')
+        else:
+            messages.error(request, 'Please correct the form errors.')
+    else:
+        # Pre-populate form with surgery context
+        initial_data = {
+            'patient': surgery.patient.id,
+            'scheduled_date': surgery.scheduled_date,
+            'order_notes': f'Pack order for surgery: {surgery.surgery_type.name}'
+        }
+        form = PackOrderForm(initial=initial_data)
+        
+        # Filter pack choices to surgery-specific packs
+        form.fields['pack'].queryset = available_packs
+        form.fields['patient'].initial = surgery.patient
+        form.fields['patient'].widget.attrs['readonly'] = True
+    
+    context = {
+        'surgery': surgery,
+        'form': form,
+        'available_packs': available_packs,
+        'page_title': 'Order Medical Pack for Surgery',
+        'pack': None  # Will be set if pack_id is in GET params
+    }
+    
+    # Handle pack preview
+    pack_id = request.GET.get('pack_id')
+    if pack_id:
+        try:
+            pack = get_object_or_404(MedicalPack, id=pack_id, is_active=True)
+            context['pack'] = pack
+            context['form'].fields['pack'].initial = pack
+        except:
+            pass
+    
+    return render(request, 'theatre/order_medical_pack.html', context)

@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pack-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    .pack-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .pack-type-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .risk-level-badge {
+        font-size: 0.7rem;
+    }
+    .pack-cost {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-box-open text-primary"></i> Medical Packs
+        </h1>
+        <div class="d-flex">
+            <a href="{% url 'pharmacy:create_medical_pack' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create New Pack
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-filter"></i> Filters
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    {{ form.search.label_tag }}
+                    {{ form.search }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.pack_type.label_tag }}
+                    {{ form.pack_type }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.risk_level.label_tag }}
+                    {{ form.risk_level }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.is_active.label_tag }}
+                    {{ form.is_active }}
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                    <a href="{% url 'pharmacy:medical_pack_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pack Cards -->
+    <div class="row">
+        {% for pack in page_obj %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card pack-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        {% if pack.pack_type == 'surgery' %}
+                            <i class="fas fa-scalpel text-danger me-2"></i>
+                        {% elif pack.pack_type == 'labor' %}
+                            <i class="fas fa-baby text-pink me-2"></i>
+                        {% elif pack.pack_type == 'emergency' %}
+                            <i class="fas fa-ambulance text-warning me-2"></i>
+                        {% else %}
+                            <i class="fas fa-medical-kit text-info me-2"></i>
+                        {% endif %}
+                        <span class="badge pack-type-badge 
+                            {% if pack.pack_type == 'surgery' %}bg-danger
+                            {% elif pack.pack_type == 'labor' %}bg-pink
+                            {% elif pack.pack_type == 'emergency' %}bg-warning text-dark
+                            {% else %}bg-info{% endif %}">
+                            {{ pack.get_pack_type_display }}
+                        </span>
+                    </div>
+                    <span class="badge risk-level-badge
+                        {% if pack.risk_level == 'low' %}bg-success
+                        {% elif pack.risk_level == 'medium' %}bg-warning text-dark
+                        {% elif pack.risk_level == 'high' %}bg-danger
+                        {% else %}bg-dark{% endif %}">
+                        {{ pack.get_risk_level_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title mb-2">{{ pack.name }}</h5>
+                    <p class="card-text text-muted mb-3">
+                        {{ pack.description|truncatewords:15 }}
+                    </p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Items:</small><br>
+                            <strong>{{ pack.get_items_count }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Total Cost:</small><br>
+                            <span class="pack-cost text-success">₦{{ pack.get_total_cost|floatformat:2 }}</span>
+                        </div>
+                    </div>
+
+                    {% if pack.surgery_type %}
+                    <div class="mb-2">
+                        <small class="text-muted">Surgery Type:</small><br>
+                        <span class="badge bg-secondary">{{ pack.get_surgery_type_display }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if pack.labor_type %}
+                    <div class="mb-2">
+                        <small class="text-muted">Labor Type:</small><br>
+                        <span class="badge bg-secondary">{{ pack.get_labor_type_display }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if pack.requires_approval %}
+                    <div class="mb-2">
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-exclamation-triangle"></i> Requires Approval
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'pharmacy:medical_pack_detail' pack.id %}" 
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <a href="{% url 'pharmacy:create_pack_order_for_pack' pack.id %}" 
+                           class="btn btn-success btn-sm">
+                            <i class="fas fa-shopping-cart"></i> Order
+                        </a>
+                        <a href="{% url 'pharmacy:edit_medical_pack' pack.id %}" 
+                           class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Medical Packs Found</h4>
+                <p class="text-muted">No medical packs match your current filters.</p>
+                <a href="{% url 'pharmacy:create_medical_pack' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create First Pack
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Pack pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    
+    // Add hover effects
+    $('.pack-card').hover(
+        function() {
+            $(this).find('.card-footer .btn-group').addClass('show');
+        },
+        function() {
+            $(this).find('.card-footer .btn-group').removeClass('show');
+        }
+    );
+});
+</script>
+{% endblock %}

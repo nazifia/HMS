@@ -26,6 +26,9 @@ urlpatterns = [
     path('surgeries/<int:pk>/', views.SurgeryDetailView.as_view(), name='surgery_detail'),
     path('surgeries/<int:pk>/edit/', views.SurgeryUpdateView.as_view(), name='surgery_update'),
     path('surgeries/<int:pk>/delete/', views.SurgeryDeleteView.as_view(), name='surgery_delete'),
+    
+    # Patient surgery history for auto-population
+    path('patient-surgery-history/', views.get_patient_surgery_history, name='patient_surgery_history'),
 
     # Pre-Operative Checklist URLs
     path('surgeries/<int:surgery_id>/pre-op-checklist/add/', views.PreOperativeChecklistCreateView.as_view(), name='pre_op_checklist_create'),
@@ -60,6 +63,9 @@ urlpatterns = [
     
     # Prescription functionality
     path('surgeries/<int:surgery_id>/create-prescription/', views.create_prescription_for_theatre, name='create_prescription_for_theatre'),
+    
+    # Medical Pack functionality  
+    path('surgeries/<int:surgery_id>/order-medical-pack/', views.order_medical_pack_for_surgery, name='order_medical_pack_for_surgery'),
     
     # Payment management
     path('surgeries/<int:surgery_id>/payment/', payment_views.theatre_payment, name='theatre_payment'),

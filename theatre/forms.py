@@ -1,4 +1,5 @@
 from django import forms
+from django import forms
 from django.forms import inlineformset_factory
 from .models import (
     OperationTheatre, 
@@ -13,6 +14,13 @@ from .models import (
 )
 from patients.models import Patient
 from accounts.models import CustomUser
+
+# Import AuthorizationCode, handle case where nhia app might not be available
+# Fixed UnboundLocalError issue
+try:
+    from nhia.models import AuthorizationCode
+except ImportError:
+    AuthorizationCode = None
 
 
 class DateTimeInput(forms.DateTimeInput):
@@ -63,16 +71,64 @@ class SurgeryForm(forms.ModelForm):
     patient_search = forms.CharField(
         required=False,
         label="Search Patient",
-        widget=forms.TextInput(attrs={'placeholder': 'Search by name or ID'})
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by name or ID',
+            'class': 'form-control',
+            'id': 'id_patient_search'
+        })
     )
     
-    # Authorization code field
-    authorization_code = forms.ModelChoiceField(
-        queryset=None,  # Will be set in __init__
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        empty_label="Select Authorization Code (Optional)"
-    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Add authorization code field if AuthorizationCode model is available
+        if AuthorizationCode is not None:
+            self.fields['authorization_code'] = forms.ModelChoiceField(
+                queryset=AuthorizationCode.objects.none(),  # Empty queryset by default
+                required=False,
+                widget=forms.Select(attrs={'class': 'form-select'}),
+                empty_label="Select Authorization Code (Optional)"
+            )
+            
+            # Set authorization code queryset based on patient
+            patient_id = self.initial.get('patient') or self.data.get('patient')
+            if patient_id:
+                try:
+                    patient_instance = Patient.objects.get(id=patient_id)
+                    if hasattr(patient_instance, 'patient_type') and patient_instance.patient_type == 'nhia':
+                        self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                            patient=patient_instance,
+                            status='active'
+                        ).order_by('-generated_at')
+                except Patient.DoesNotExist:
+                    pass  # Keep empty queryset
+        
+        # Filter surgeons and anesthetists
+        self.fields['primary_surgeon'].queryset = CustomUser.objects.filter(
+            profile__specialization__icontains='surgeon'
+        )
+        self.fields['anesthetist'].queryset = CustomUser.objects.filter(
+            profile__specialization__icontains='anesthetist'
+        )
+        
+        # Make surgeon and anesthetist optional
+        self.fields['primary_surgeon'].required = False
+        self.fields['anesthetist'].required = False
+        self.fields['primary_surgeon'].empty_label = "Select Surgeon (Optional)"
+        self.fields['anesthetist'].empty_label = "Select Anesthetist (Optional)"
+        
+        # Add helpful labels
+        self.fields['primary_surgeon'].label = "Primary Surgeon"
+        self.fields['anesthetist'].label = "Anesthetist"
+        self.fields['primary_surgeon'].help_text = "Can be assigned later if not selected now"
+        self.fields['anesthetist'].help_text = "Can be assigned later if not selected now"
+        
+        # If editing an existing surgery, populate the patient search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            self.fields['patient_search'].initial = str(self.instance.patient)
+            
+        # Ensure patient field is required
+        self.fields['patient'].required = True
 
     class Meta:
         model = Surgery
@@ -91,40 +147,14 @@ class SurgeryForm(forms.ModelForm):
             'expected_duration': 'Format: HH:MM:SS',
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Filter surgeons and anesthetists
-        self.fields['primary_surgeon'].queryset = CustomUser.objects.filter(
-            profile__specialization__icontains='surgeon'
-        )
-        self.fields['anesthetist'].queryset = CustomUser.objects.filter(
-            profile__specialization__icontains='anesthetist'
-        )
-        
-        # If editing an existing surgery, populate the patient search field
-        if self.instance and self.instance.pk and self.instance.patient:
-            self.fields['patient_search'].initial = str(self.instance.patient)
-            
-        # Set authorization code queryset based on patient
-        patient_id = self.initial.get('patient') or self.data.get('patient')
-        if patient_id:
-            try:
-                patient_instance = Patient.objects.get(id=patient_id)
-                if patient_instance.patient_type == 'nhia':
-                    from nhia.models import AuthorizationCode
-                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
-                        patient=patient_instance,
-                        status='active'
-                    ).order_by('-generated_at')
-                else:
-                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
-            except Patient.DoesNotExist:
-                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
-        else:
-            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
-
     def clean(self):
         cleaned_data = super().clean()
+        
+        # Ensure patient is selected
+        patient = cleaned_data.get('patient')
+        if not patient:
+            raise forms.ValidationError("Please search and select a patient before submitting the form.")
+        
         theatre = cleaned_data.get('theatre')
         scheduled_date = cleaned_data.get('scheduled_date')
         expected_duration = cleaned_data.get('expected_duration')

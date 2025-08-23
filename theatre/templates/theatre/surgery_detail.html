@@ -24,6 +24,9 @@
             <a href="{% url 'theatre:surgery_update' object.pk %}" class="btn btn-primary">Edit Surgery</a>
             <a href="{% url 'theatre:surgery_delete' object.pk %}" class="btn btn-danger">Delete Surgery</a>
             <a href="{% url 'theatre:surgery_log_list' object.pk %}" class="btn btn-info">View Surgery Log</a>
+            <a href="{% url 'theatre:order_medical_pack_for_surgery' object.pk %}" class="btn btn-success">
+                <i class="fas fa-shopping-cart"></i> Order Medical Pack
+            </a>
         </div>
     </div>
 
@@ -74,6 +77,70 @@
                 <p>No post-operative notes available.</p>
             {% endif %}
             <a href="{% url 'theatre:post_op_note_create' object.pk %}" class="btn btn-primary">Add Post-Operative Note</a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-shopping-cart"></i> Medical Pack Orders
+        </div>
+        <div class="card-body">
+            {% if object.pack_orders.all %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Pack Name</th>
+                                <th>Order Date</th>
+                                <th>Status</th>
+                                <th>Total Cost</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pack_order in object.pack_orders.all %}
+                            <tr>
+                                <td>
+                                    <strong>{{ pack_order.pack.name }}</strong><br>
+                                    <small class="text-muted">{{ pack_order.pack.get_pack_type_display }}</small>
+                                </td>
+                                <td>{{ pack_order.order_date|date:"M d, Y H:i" }}</td>
+                                <td>
+                                    {% if pack_order.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif pack_order.status == 'approved' %}
+                                        <span class="badge bg-info">Approved</span>
+                                    {% elif pack_order.status == 'processing' %}
+                                        <span class="badge bg-primary">Processing</span>
+                                    {% elif pack_order.status == 'ready' %}
+                                        <span class="badge bg-success">Ready</span>
+                                    {% elif pack_order.status == 'dispensed' %}
+                                        <span class="badge bg-secondary">Dispensed</span>
+                                    {% elif pack_order.status == 'cancelled' %}
+                                        <span class="badge bg-danger">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-success">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</td>
+                                <td>
+                                    <a href="{% url 'pharmacy:pack_order_detail' pack_order.id %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-shopping-cart fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">No medical pack orders for this surgery.</p>
+                    <a href="{% url 'theatre:order_medical_pack_for_surgery' object.pk %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Order Medical Pack
+                    </a>
+                </div>
+            {% endif %}
         </div>
     </div>
 

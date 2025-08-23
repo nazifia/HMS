@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pack-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .item-card {
+        border-left: 4px solid #4e73df;
+        transition: all 0.3s ease;
+    }
+    .item-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    .critical-item {
+        border-left-color: #e74a3b;
+        background-color: #fdf2f2;
+    }
+    .optional-item {
+        border-left-color: #1cc88a;
+        background-color: #f1f9f6;
+    }
+    .add-item-form {
+        background: #f8f9fc;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .drag-handle {
+        cursor: grab;
+        color: #aaa;
+    }
+    .drag-handle:active {
+        cursor: grabbing;
+    }
+    .sortable-placeholder {
+        border: 2px dashed #4e73df;
+        background: #f8f9fc;
+        height: 100px;
+        margin: 10px 0;
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-list text-primary"></i> {{ page_title }}
+        </h1>
+        <a href="{% url 'pharmacy:medical_pack_detail' pack.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Pack
+        </a>
+    </div>
+
+    <!-- Pack Header -->
+    <div class="pack-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-2">{{ pack.name }}</h2>
+                <p class="mb-0">{{ pack.description }}</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="h4 mb-1">{{ pack_items.count }} Items</div>
+                <div class="h5 mb-0">₦{{ pack.get_total_cost|floatformat:2 }}</div>
+                <small>Total Cost</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Add Item Form -->
+        <div class="col-lg-4">
+            <div class="add-item-form">
+                <h5 class="mb-3"><i class="fas fa-plus text-primary"></i> Add New Item</h5>
+                
+                <form method="post" id="addItemForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.medication.id_for_label }}" class="form-label">
+                            Medication/Item <span class="text-danger">*</span>
+                        </label>
+                        {{ form.medication }}
+                        {% if form.medication.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.medication.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="{{ form.quantity.id_for_label }}" class="form-label">
+                                    Quantity <span class="text-danger">*</span>
+                                </label>
+                                {{ form.quantity }}
+                                {% if form.quantity.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.quantity.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="{{ form.item_type.id_for_label }}" class="form-label">Type</label>
+                                {{ form.item_type }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.usage_instructions.id_for_label }}" class="form-label">
+                            Usage Instructions
+                        </label>
+                        {{ form.usage_instructions }}
+                        {% if form.usage_instructions.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.usage_instructions.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="form-check">
+                                {{ form.is_critical }}
+                                <label class="form-check-label" for="{{ form.is_critical.id_for_label }}">
+                                    Critical Item
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check">
+                                {{ form.is_optional }}
+                                <label class="form-check-label" for="{{ form.is_optional.id_for_label }}">
+                                    Optional Item
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.order.id_for_label }}" class="form-label">Order</label>
+                        {{ form.order }}
+                        <div class="form-text">
+                            Order of usage in procedure (0 for no specific order)
+                        </div>
+                    </div>
+
+                    <!-- Form Errors -->
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pack Items List -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Pack Items</h6>
+                    {% if pack_items %}
+                    <span class="badge bg-primary">{{ pack_items.count }} item{{ pack_items.count|pluralize }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if pack_items %}
+                        <div id="sortable-items">
+                            {% for item in pack_items %}
+                            <div class="card item-card mb-3 
+                                {% if item.is_critical %}critical-item
+                                {% elif item.is_optional %}optional-item{% endif %}"
+                                data-item-id="{{ item.id }}">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-1 text-center">
+                                            <i class="fas fa-grip-vertical drag-handle"></i>
+                                        </div>
+                                        <div class="col-5">
+                                            <h6 class="mb-1">
+                                                {{ item.medication.name }}
+                                                {% if item.is_critical %}
+                                                    <span class="badge bg-danger ms-1" title="Critical Item">Critical</span>
+                                                {% elif item.is_optional %}
+                                                    <span class="badge bg-success ms-1" title="Optional Item">Optional</span>
+                                                {% endif %}
+                                            </h6>
+                                            <div class="text-muted small">
+                                                <span class="badge bg-light text-dark">{{ item.get_item_type_display }}</span>
+                                                {% if item.order %}
+                                                    | Order: {{ item.order }}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-2 text-center">
+                                            <div class="fw-bold text-primary">{{ item.quantity }}</div>
+                                            <small class="text-muted">Quantity</small>
+                                        </div>
+                                        <div class="col-2 text-center">
+                                            <div class="fw-bold text-success">₦{{ item.get_total_cost|floatformat:2 }}</div>
+                                            <small class="text-muted">₦{{ item.medication.price|floatformat:2 }} each</small>
+                                        </div>
+                                        <div class="col-2 text-end">
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#itemModal{{ item.id }}"
+                                                        title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <a href="{% url 'pharmacy:delete_pack_item' pack.id item.id %}" 
+                                                   class="btn btn-sm btn-outline-danger"
+                                                   onclick="return confirm('Are you sure you want to remove this item?')"
+                                                   title="Remove Item">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if item.usage_instructions %}
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <small class="text-muted">
+                                                <strong>Instructions:</strong> {{ item.usage_instructions|truncatewords:15 }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Item Detail Modal -->
+                            <div class="modal fade" id="itemModal{{ item.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">{{ item.medication.name }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>Generic Name:</strong><br>
+                                                    <span class="text-muted">{{ item.medication.generic_name|default:"Not specified" }}</span>
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>Category:</strong><br>
+                                                    <span class="text-muted">{{ item.medication.category.name }}</span>
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>Dosage Form:</strong><br>
+                                                    <span class="text-muted">{{ item.medication.dosage_form|default:"Not specified" }}</span>
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>Strength:</strong><br>
+                                                    <span class="text-muted">{{ item.medication.strength|default:"Not specified" }}</span>
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>Quantity in Pack:</strong><br>
+                                                    <span class="badge bg-primary">{{ item.quantity }}</span>
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>Total Cost:</strong><br>
+                                                    <span class="badge bg-success">₦{{ item.get_total_cost|floatformat:2 }}</span>
+                                                </div>
+                                            </div>
+                                            {% if item.usage_instructions %}
+                                            <hr>
+                                            <strong>Usage Instructions:</strong><br>
+                                            <div class="text-muted">{{ item.usage_instructions }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Items in Pack</h5>
+                            <p class="text-muted">Add items to this pack using the form on the left.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for medication selection
+    $('#id_medication').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Search and select medication...',
+        allowClear: true
+    });
+
+    // Initialize sortable list
+    const sortableEl = document.getElementById('sortable-items');
+    if (sortableEl) {
+        Sortable.create(sortableEl, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-placeholder',
+            onEnd: function(evt) {
+                // Handle order update - could be implemented with AJAX
+                console.log('Item moved from', evt.oldIndex, 'to', evt.newIndex);
+            }
+        });
+    }
+
+    // Prevent both critical and optional from being checked
+    $('#id_is_critical').change(function() {
+        if ($(this).is(':checked')) {
+            $('#id_is_optional').prop('checked', false);
+        }
+    });
+
+    $('#id_is_optional').change(function() {
+        if ($(this).is(':checked')) {
+            $('#id_is_critical').prop('checked', false);
+        }
+    });
+
+    // Form validation
+    $('#addItemForm').on('submit', function(e) {
+        const medication = $('#id_medication').val();
+        const quantity = $('#id_quantity').val();
+        
+        if (!medication) {
+            e.preventDefault();
+            alert('Please select a medication.');
+            return false;
+        }
+        
+        if (!quantity || quantity <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid quantity.');
+            return false;
+        }
+    });
+
+    // Auto-update cost when medication or quantity changes
+    function updateCost() {
+        const medicationSelect = $('#id_medication');
+        const quantityInput = $('#id_quantity');
+        const selectedOption = medicationSelect.find('option:selected');
+        
+        if (selectedOption.val() && quantityInput.val()) {
+            // Could fetch medication price via AJAX and calculate total
+            // For now, just visual feedback
+            medicationSelect.addClass('is-valid');
+            quantityInput.addClass('is-valid');
+        }
+    }
+
+    $('#id_medication, #id_quantity').change(updateCost);
+
+    // Initialize tooltips
+    $('[title]').tooltip();
+});
+</script>
+{% endblock %}
