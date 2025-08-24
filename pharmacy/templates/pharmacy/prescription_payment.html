@@ -338,8 +338,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const paymentSourceCards = document.querySelectorAll('.payment-source-card');
     const transactionIdInput = document.getElementById('{{ form.transaction_id.id_for_label }}');
 
-    const walletBalance = {{ patient_wallet.balance|default:0 }};
-    const maxAmount = {{ remaining_amount }};
+    const walletBalance = parseFloat('{% if patient_wallet and patient_wallet.balance is not None %}{{ patient_wallet.balance|floatformat:2 }}{% else %}0{% endif %}');
+    const maxAmount = parseFloat('{{ remaining_amount|floatformat:2 }}');
+    const isNhiaPatient = '{% if pricing_breakdown.is_nhia_patient %}true{% else %}false{% endif %}' === 'true';
 
     // Handle payment source selection
     function handlePaymentSourceChange() {
@@ -471,11 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Enhanced confirmation with source and NHIA information
         const sourceText = selectedSource === 'patient_wallet' ? 'Patient Wallet' : 'Billing Office';
         const methodText = paymentMethodSelect.options[paymentMethodSelect.selectedIndex].text;
-        {% if pricing_breakdown.is_nhia_patient %}
-        const patientType = 'NHIA Patient (10% payment)';
-        {% else %}
-        const patientType = 'Non-NHIA Patient (100% payment)';
-        {% endif %}
+        const patientType = isNhiaPatient ? 'NHIA Patient (10% payment)' : 'Non-NHIA Patient (100% payment)';
 
         if (!confirm(`Confirm payment of ₦${amount.toFixed(2)} for ${patientType} via ${sourceText} (${methodText})?`)) {
             e.preventDefault();

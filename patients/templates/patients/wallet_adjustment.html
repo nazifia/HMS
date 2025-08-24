@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const reasonInput = document.getElementById('id_reason');
     const adjustmentSummary = document.getElementById('adjustment-summary');
     const adjustmentBtn = document.getElementById('adjustment-btn');
-    const currentBalance = {{ wallet.balance }};
+    const currentBalance = parseFloat('{{ wallet.balance|default:"0" }}') || 0;
     
     function updateAdjustmentSummary() {
         const adjustmentType = adjustmentTypeSelect.value;
