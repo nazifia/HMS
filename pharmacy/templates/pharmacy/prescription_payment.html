@@ -364,8 +364,8 @@ document.addEventListener('DOMContentLoaded', function() {
             paymentMethodSelect.style.pointerEvents = 'none'; // Prevent user interaction
             paymentMethodSelect.closest('.form-group').style.opacity = '0.6';
 
-            // Update amount validation for wallet balance
-            amountInput.setAttribute('max', Math.min(walletBalance, maxAmount));
+            // Allow wallet payments even with insufficient balance (negative balance allowed)
+            // Max amount restriction removed to support negative balances
 
             // Hide transaction ID for wallet payments
             if (transactionIdInput) {

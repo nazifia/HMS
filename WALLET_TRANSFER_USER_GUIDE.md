@@ -69,10 +69,10 @@ The Wallet Fund Transfer feature allows hospital staff to securely transfer fund
 - **Active Patients**: Can only transfer to active patients
 
 ### Balance Handling
-- The system allows transfers even if they exceed the current balance
-- Wallets can have negative balances
-- Warning messages are shown for transfers exceeding balance
-- This flexibility accommodates various hospital billing scenarios
+- **Negative Balances Allowed**: The system fully supports transfers even if they exceed the current balance
+- **No Balance Restrictions**: Wallets can have negative balances for maximum flexibility
+- **Informational Warnings**: Warning messages are shown for transfers exceeding balance, but transactions are not blocked
+- **Healthcare Billing Flexibility**: This accommodation supports various hospital billing scenarios where immediate payment may not be available
 
 ## Transfer Features
 

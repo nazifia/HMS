@@ -506,6 +506,112 @@ def billing_reports(request):
     }
     return render(request, 'billing/billing_reports.html', context)
 
+
+@login_required
+def surgery_billing(request, surgery_id):
+    """View for managing surgery billing including pack costs"""
+    from theatre.models import Surgery
+    from patients.models import PatientWallet
+    from .forms import PaymentForm
+    
+    surgery = get_object_or_404(Surgery, id=surgery_id)
+    
+    # Get or create invoice for surgery
+    invoice = surgery.invoice
+    if not invoice:
+        # Create invoice if it doesn't exist
+        invoice = Invoice.objects.create(
+            patient=surgery.patient,
+            invoice_date=surgery.scheduled_date.date(),
+            due_date=surgery.scheduled_date.date() + timezone.timedelta(days=7),
+            status='pending',
+            subtotal=Decimal('0.00'),
+            tax_amount=Decimal('0.00'),
+            total_amount=Decimal('0.00'),
+            source_app='theatre',
+            created_by=request.user
+        )
+        surgery.invoice = invoice
+        surgery.save()
+    
+    # Get pack orders for this surgery
+    pack_orders = surgery.pack_orders.all().select_related('pack')
+    
+    # Calculate pack costs breakdown
+    pack_costs = []
+    total_pack_cost = Decimal('0.00')
+    for pack_order in pack_orders:
+        pack_cost = pack_order.pack.get_total_cost()
+        pack_costs.append({
+            'pack_order': pack_order,
+            'cost': pack_cost
+        })
+        total_pack_cost += pack_cost
+    
+    # Get or create patient wallet
+    patient_wallet, created = PatientWallet.objects.get_or_create(
+        patient=surgery.patient,
+        defaults={'balance': Decimal('0.00')}
+    )
+    
+    # Handle payment processing
+    if request.method == 'POST':
+        form = PaymentForm(
+            request.POST,
+            invoice=invoice,
+            patient_wallet=patient_wallet
+        )
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    payment = form.save(commit=False)
+                    payment.invoice = invoice
+                    payment.received_by = request.user
+                    
+                    payment_source = form.cleaned_data['payment_source']
+                    if payment_source == 'patient_wallet':
+                        payment.payment_method = 'wallet'
+                    
+                    payment.save()
+                    
+                    messages.success(
+                        request, 
+                        f'Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.'
+                    )
+                    return redirect('billing:surgery_billing', surgery_id=surgery.id)
+                    
+            except Exception as e:
+                messages.error(request, f'Error processing payment: {str(e)}')
+    else:
+        # Pre-fill the amount with the remaining balance
+        form = PaymentForm(
+            invoice=invoice,
+            patient_wallet=patient_wallet,
+            initial={
+                'amount': invoice.get_balance(),
+                'payment_date': timezone.now().date(),
+                'payment_method': 'cash'
+            }
+        )
+    
+    # Get payment history
+    payments = invoice.payments.all().order_by('-payment_date')
+    
+    context = {
+        'surgery': surgery,
+        'invoice': invoice,
+        'pack_orders': pack_orders,
+        'pack_costs': pack_costs,
+        'total_pack_cost': total_pack_cost,
+        'form': form,
+        'patient_wallet': patient_wallet,
+        'payments': payments,
+        'remaining_balance': invoice.get_balance(),
+        'title': f'Surgery Billing - {surgery.surgery_type.name}'
+    }
+    
+    return render(request, 'billing/surgery_billing.html', context)
+
 @login_required
 def export_billing_report_csv(request):
     """Export billing report as CSV (by department, service, provider)"""

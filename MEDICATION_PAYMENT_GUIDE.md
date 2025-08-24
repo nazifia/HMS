@@ -1,9 +1,13 @@
-# 💊 How to Make Payment for Prescribed Medications - Billing Officer Guide
+# 💊 How to Make Payment for Prescribed Medications - Complete Guide
 
 ## Overview
-This guide explains how billing officers can process payments for prescribed medications in the HMS system. When a prescription is created, an invoice is automatically generated that must be paid before medications can be dispensed.
+This guide explains how to process payments for prescribed medications in the HMS system using the **dual-source payment system**. Payments can be made from either the **pharmacy** or **billing office** and are recorded/considered accordingly across the system.
 
-## 🔄 Payment Workflow
+## 🔄 Dual-Source Payment Workflow
+
+### Payment Sources Available
+1. **Pharmacy Interface** - Patient wallet-focused payments
+2. **Billing Office Interface** - Professional payment processing with dual options
 
 ### Step 1: Prescription Creation → Invoice Generation
 1. **Doctor creates prescription** for patient
@@ -12,22 +16,31 @@ This guide explains how billing officers can process payments for prescribed med
 4. **Prescription payment_status**: Initially set to `'unpaid'`
 5. **Dispensing**: Blocked until payment is completed
 
-### Step 2: Locate the Invoice
-Billing officers can find medication invoices through multiple routes:
+### Step 2: Locate and Access Payment Options
 
-#### Option A: From Prescription Detail Page
+#### Payment Source Options:
+
+**Option A: Pharmacy Interface (Patient Wallet Focused)**
 1. Navigate to **Pharmacy → Prescriptions**
 2. Click **View** on the prescription
-3. Look for **Payment Status** section
-4. Click **"Pay Invoice #[ID]"** button (if unpaid)
+3. Click **"Patient Wallet Payment"** button
+4. Process payment through pharmacy interface
 
-#### Option B: From Billing System
+**Option B: Billing Office Interface (Dual-Source)**
+1. Navigate to **Pharmacy → Prescriptions**
+2. Click **View** on the prescription
+3. Click **"Billing Office Payment"** button
+4. Choose between:
+   - Direct payment (cash/card/bank transfer)
+   - Patient wallet payment
+
+**Option C: From Billing System**
 1. Navigate to **Billing → Invoices**
 2. Look for invoices with **Source**: "Pharmacy"
 3. Filter by **Status**: "Pending" or "Partially Paid"
 4. Click **"Record Payment"** button
 
-#### Option C: Direct Invoice Access
+**Option D: Direct Invoice Access**
 1. Navigate to **Billing → Invoice Detail** (if you have invoice ID)
 2. Click **"Record Payment"** button
 
@@ -119,7 +132,7 @@ Notes: [Optional - any additional information]
 - ✅ **Cannot exceed remaining balance**
 - ✅ **Must be positive amount**
 - ✅ **Payment date cannot be future date**
-- ✅ **Wallet payments check available balance**
+- ✅ **Wallet payments allow negative balances**
 
 ### System Integration:
 - ✅ **Automatic prescription status update**
@@ -156,8 +169,8 @@ Notes: [Optional - any additional information]
 #### Issue: "Payment amount exceeds remaining balance"
 - **Solution**: Check current balance and enter correct amount
 
-#### Issue: "Wallet payment failed"
-- **Solution**: Verify patient wallet has sufficient funds
+#### Issue: "Wallet payment processing error"
+- **Solution**: Check network connection and try again
 
 #### Issue: "Invoice already paid"
 - **Solution**: Check payment history, invoice may be fully paid
@@ -357,4 +370,4 @@ The payment system is responsive and works on:
 - Amount ≤ Remaining Balance
 - Amount > 0
 - Payment Date ≤ Today
-- Wallet Balance ≥ Payment Amount (for wallet payments)
+- Wallet payments allow negative balances (no minimum balance requirement)

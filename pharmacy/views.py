@@ -22,6 +22,7 @@ from reporting.forms import PharmacySalesReportForm
 from django.forms import formset_factory
 from .forms import DispenseItemForm, BaseDispenseItemFormSet
 from decimal import Decimal
+from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 
 @login_required
@@ -1383,18 +1384,281 @@ def delete_prescription_item(request, item_id):
 
 @login_required
 def prescription_payment(request, prescription_id):
-    """View for prescription payment"""
+    """View for prescription payment - patient wallet focused"""
+    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+    from pharmacy_billing.utils import create_pharmacy_invoice
+    from patients.models import PatientWallet
+    from .forms import PrescriptionPaymentForm
+    from django.db import transaction
+    from core.audit_utils import log_audit_action
+    from core.models import InternalNotification
+    
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    # Implementation for prescription payment
-    pass
+    
+    # Get or create pharmacy invoice
+    pharmacy_invoice = None
+    try:
+        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+    except PharmacyInvoice.DoesNotExist:
+        # Create invoice using the utility function
+        total_price = prescription.get_total_prescribed_price()
+        pharmacy_invoice = create_pharmacy_invoice(request, prescription, total_price)
+        if not pharmacy_invoice:
+            messages.error(request, 'Failed to create invoice for this prescription.')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    # Get patient wallet
+    patient_wallet = None
+    try:
+        patient_wallet = PatientWallet.objects.get(patient=prescription.patient)
+    except PatientWallet.DoesNotExist:
+        # Create wallet if it doesn't exist
+        patient_wallet = PatientWallet.objects.create(
+            patient=prescription.patient,
+            balance=0
+        )
+    
+    remaining_amount = pharmacy_invoice.get_balance()
+    
+    if remaining_amount <= 0:
+        messages.info(request, 'This prescription has already been fully paid.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    if request.method == 'POST':
+        form = PrescriptionPaymentForm(
+            request.POST,
+            invoice=pharmacy_invoice,
+            prescription=prescription,
+            patient_wallet=patient_wallet
+        )
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    amount = form.cleaned_data['amount']
+                    payment_method = form.cleaned_data['payment_method']
+                    payment_source = form.cleaned_data['payment_source']
+                    transaction_id = form.cleaned_data.get('transaction_id', '')
+                    notes = form.cleaned_data.get('notes', '')
+                    
+                    # Create payment record using pharmacy billing system
+                    payment = PharmacyPayment.objects.create(
+                        invoice=pharmacy_invoice,
+                        amount=amount,
+                        payment_method=payment_method,
+                        transaction_id=transaction_id,
+                        notes=notes + f' (Payment source: {payment_source})',
+                        received_by=request.user
+                    )
+                    
+                    # Handle wallet payment
+                    if payment_source == 'patient_wallet':
+                        # Create wallet transaction for negative balance support
+                        from patients.models import WalletTransaction
+                        WalletTransaction.objects.create(
+                            wallet=patient_wallet,
+                            transaction_type='pharmacy_payment',
+                            amount=-amount,  # Negative for deduction
+                            description=f'Payment for prescription #{prescription.id}',
+                            created_by=request.user
+                        )
+                        # Update wallet balance
+                        patient_wallet.balance -= amount
+                        patient_wallet.save()
+                    
+                    # Update invoice
+                    pharmacy_invoice.amount_paid += amount
+                    if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
+                        pharmacy_invoice.status = 'paid'
+                        prescription.payment_status = 'paid'
+                        prescription.save(update_fields=['payment_status'])
+                    else:
+                        pharmacy_invoice.status = 'partially_paid'
+                    
+                    pharmacy_invoice.save()
+                    
+                    # Audit log
+                    log_audit_action(
+                        request.user,
+                        'create',
+                        payment,
+                        f'Recorded {payment_source} payment of ₦{amount:.2f} for prescription #{prescription.id}'
+                    )
+                    
+                    # Notification
+                    if prescription.doctor:
+                        InternalNotification.objects.create(
+                            user=prescription.doctor,
+                            message=f'Payment of ₦{amount:.2f} recorded for prescription #{prescription.id} via {payment_source}'
+                        )
+                    
+                    messages.success(request, f'Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                    
+            except Exception as e:
+                messages.error(request, f'Error processing payment: {str(e)}')
+    else:
+        # Pre-fill form with remaining amount and wallet payment as default
+        form = PrescriptionPaymentForm(
+            invoice=pharmacy_invoice,
+            prescription=prescription,
+            patient_wallet=patient_wallet,
+            initial={
+                'amount': remaining_amount,
+                'payment_method': 'wallet',
+                'payment_source': 'patient_wallet'
+            }
+        )
+    
+    context = {
+        'form': form,
+        'prescription': prescription,
+        'pharmacy_invoice': pharmacy_invoice,
+        'invoice': pharmacy_invoice,  # Template expects 'invoice'
+        'patient_wallet': patient_wallet,
+        'remaining_amount': remaining_amount,
+        'title': f'Prescription Payment - #{prescription.id}'
+    }
+    
+    return render(request, 'pharmacy/prescription_payment.html', context)
 
 
 @login_required
 def billing_office_medication_payment(request, prescription_id):
-    """View for billing office medication payment"""
+    """View for billing office medication payment - dual payment source support"""
+    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+    from pharmacy_billing.utils import create_pharmacy_invoice
+    from patients.models import PatientWallet
+    from django.db import transaction
+    from core.audit_utils import log_audit_action
+    from core.models import InternalNotification
+    
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    # Implementation for billing office medication payment
-    pass
+    
+    # Get or create pharmacy invoice
+    pharmacy_invoice = None
+    try:
+        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+    except PharmacyInvoice.DoesNotExist:
+        # Create invoice using the utility function
+        total_price = prescription.get_total_prescribed_price()
+        pharmacy_invoice = create_pharmacy_invoice(request, prescription, total_price)
+        if not pharmacy_invoice:
+            messages.error(request, 'Failed to create invoice for this prescription.')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    # Get patient wallet
+    patient_wallet = None
+    try:
+        patient_wallet = PatientWallet.objects.get(patient=prescription.patient)
+    except PatientWallet.DoesNotExist:
+        # Create wallet if it doesn't exist
+        patient_wallet = PatientWallet.objects.create(
+            patient=prescription.patient,
+            balance=0
+        )
+    
+    remaining_amount = pharmacy_invoice.get_balance()
+    
+    if remaining_amount <= 0:
+        messages.info(request, 'This prescription has already been fully paid.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    if request.method == 'POST':
+        payment_source = request.POST.get('payment_source', 'billing_office')
+        amount = request.POST.get('amount')
+        payment_method = request.POST.get('payment_method', 'cash')
+        transaction_id = request.POST.get('transaction_id', '')
+        notes = request.POST.get('notes', '')
+        
+        try:
+            amount = Decimal(amount)
+            if amount <= 0:
+                messages.error(request, 'Payment amount must be greater than zero.')
+                return redirect('pharmacy:billing_office_medication_payment', prescription_id=prescription.id)
+            
+            if amount > pharmacy_invoice.get_balance():
+                messages.error(request, f'Payment amount cannot exceed the remaining balance of ₦{pharmacy_invoice.get_balance():.2f}.')
+                return redirect('pharmacy:billing_office_medication_payment', prescription_id=prescription.id)
+            
+            with transaction.atomic():
+                # Force wallet payment method for wallet payments
+                if payment_source == 'patient_wallet':
+                    payment_method = 'wallet'
+                
+                # Create payment record using pharmacy billing system  
+                payment = PharmacyPayment.objects.create(
+                    invoice=pharmacy_invoice,
+                    amount=amount,
+                    payment_method=payment_method,
+                    transaction_id=transaction_id,
+                    notes=notes + f' (Billing office - {payment_source})',
+                    received_by=request.user
+                )
+                
+                # Handle wallet payment
+                if payment_source == 'patient_wallet':
+                    # Create wallet transaction for negative balance support
+                    from patients.models import WalletTransaction
+                    WalletTransaction.objects.create(
+                        wallet=patient_wallet,
+                        transaction_type='pharmacy_payment',
+                        amount=-amount,  # Negative for deduction
+                        description=f'Payment for prescription #{prescription.id} (Billing office)',
+                        created_by=request.user
+                    )
+                    # Update wallet balance
+                    patient_wallet.balance -= amount
+                    patient_wallet.save()
+                
+                # Update invoice
+                pharmacy_invoice.amount_paid += amount
+                if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
+                    pharmacy_invoice.status = 'paid'
+                    # Mark that this is a manual payment processed by billing staff
+                    pharmacy_invoice._manual_payment_processed = True
+                    prescription.payment_status = 'paid'
+                    prescription.save(update_fields=['payment_status'])
+                else:
+                    pharmacy_invoice.status = 'partially_paid'
+                
+                pharmacy_invoice.save()
+                
+                # Audit log
+                log_audit_action(
+                    request.user,
+                    'create',
+                    payment,
+                    f'Billing office recorded {payment_source} payment of ₦{amount:.2f} for prescription #{prescription.id}'
+                )
+                
+                # Notification
+                if prescription.doctor:
+                    InternalNotification.objects.create(
+                        user=prescription.doctor,
+                        message=f'Billing office recorded payment of ₦{amount:.2f} for prescription #{prescription.id} via {payment_source}'
+                    )
+                
+                messages.success(request, f'Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid payment amount.')
+        except Exception as e:
+            messages.error(request, f'Error processing payment: {str(e)}')
+    
+    # Get payment history
+    payments = pharmacy_invoice.payments.all().order_by('-payment_date')
+    
+    context = {
+        'prescription': prescription,
+        'pharmacy_invoice': pharmacy_invoice,
+        'patient_wallet': patient_wallet,
+        'remaining_amount': remaining_amount,
+        'payments': payments,
+        'title': f'Billing Office - Medication Payment #{prescription.id}'
+    }
+    
+    return render(request, 'pharmacy/billing_office_medication_payment.html', context)
 
 
 @login_required
@@ -2218,10 +2482,15 @@ def create_pack_order(request, pack_id=None):
             # Automatically create prescription from pack items
             try:
                 prescription = pack_order.create_prescription()
+                
+                # Add pack costs to patient billing
+                _add_pack_to_patient_billing(pack_order.patient, pack_order, 'pharmacy')
+                
                 messages.success(
                     request,
                     f'Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. '
-                    f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications.'
+                    f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications. '
+                    f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing.'
                 )
                 return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
             except Exception as e:
@@ -2392,3 +2661,65 @@ def dispense_pack_order(request, order_id):
     }
     
     return render(request, 'pharmacy/pack_orders/dispense_pack_order.html', context)
+
+
+def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy'):
+    """Helper function to add pack costs to patient billing"""
+    
+    # Create or get invoice for patient
+    invoice, created = Invoice.objects.get_or_create(
+        patient=patient,
+        status='pending',
+        source_app='pharmacy',  # Using pharmacy as the source for pack orders
+        defaults={
+            'invoice_date': timezone.now().date(),
+            'due_date': timezone.now().date() + timezone.timedelta(days=7),
+            'subtotal': Decimal('0.00'),
+            'tax_amount': Decimal('0.00'),
+            'total_amount': Decimal('0.00'),
+            'created_by': pack_order.ordered_by,
+        }
+    )
+    
+    # Create or get medical pack service category
+    pack_service_category, _ = ServiceCategory.objects.get_or_create(
+        name="Medical Packs",
+        defaults={'description': 'Pre-packaged medical supplies and medications'}
+    )
+    
+    # Create or get service for this specific pack
+    service, _ = Service.objects.get_or_create(
+        name=f"Medical Pack: {pack_order.pack.name}",
+        category=pack_service_category,
+        defaults={
+            'price': pack_order.pack.get_total_cost(),
+            'description': f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
+            'tax_percentage': Decimal('0.00')  # Assuming no tax on medical packs
+        }
+    )
+    
+    # Add invoice item for the pack
+    pack_cost = pack_order.pack.get_total_cost()
+    invoice_item = InvoiceItem.objects.create(
+        invoice=invoice,
+        service=service,
+        description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id}) - {source_context.title()}",
+        quantity=1,
+        unit_price=pack_cost,
+        tax_percentage=Decimal('0.00'),
+        tax_amount=Decimal('0.00'),
+        discount_amount=Decimal('0.00'),
+        total_amount=pack_cost
+    )
+    
+    # Update invoice totals
+    invoice.subtotal = invoice.items.aggregate(
+        total=models.Sum('total_amount')
+    )['total'] or Decimal('0.00')
+    invoice.tax_amount = invoice.items.aggregate(
+        total=models.Sum('tax_amount')
+    )['total'] or Decimal('0.00')
+    invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    invoice.save()
+    
+    return invoice_item

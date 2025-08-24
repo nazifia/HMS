@@ -20,6 +20,7 @@ urlpatterns = [
     path('services/<int:service_id>/delete/', views.delete_service, name='delete_service'),
     path('patient/<int:patient_id>/invoices/', views.patient_invoices, name='patient_invoices'),
     path('reports/', views.billing_reports, name='reports'),
+    path('surgery/<int:surgery_id>/billing/', views.surgery_billing, name='surgery_billing'),
     path('reports/export/csv/', views.export_billing_report_csv, name='export_report_csv'),
     path('admission-invoices/', views.admission_invoices, name='admission_invoices'),
 

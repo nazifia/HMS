@@ -3,15 +3,17 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import transaction, models
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Count, Q
 from django.http import JsonResponse
+from decimal import Decimal
 from patients.models import Patient
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
 from pharmacy.forms import PackOrderForm
+from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 from .models import (
     OperationTheatre,
@@ -346,6 +348,23 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         return redirect(self.get_success_url())
 
     def form_invalid(self, form, team_formset, equipment_formset):
+        # Add specific error messages for formsets
+        if team_formset.errors or team_formset.non_form_errors():
+            for i, form_errors in enumerate(team_formset.errors):
+                if form_errors:
+                    messages.error(self.request, f"Surgical Team: Please check the team member information in form {i+1}.")
+            if team_formset.non_form_errors():
+                for error in team_formset.non_form_errors():
+                    messages.error(self.request, f"Surgical Team: {error}")
+        
+        if equipment_formset.errors or equipment_formset.non_form_errors():
+            for i, form_errors in enumerate(equipment_formset.errors):
+                if form_errors:
+                    messages.error(self.request, f"Equipment: Please check the equipment information in form {i+1}.")
+            if equipment_formset.non_form_errors():
+                for error in equipment_formset.non_form_errors():
+                    messages.error(self.request, f"Equipment: {error}")
+        
         return self.render_to_response(
             self.get_context_data(
                 form=form,
@@ -364,7 +383,67 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         # Add all active patients for the dropdown
         context['all_patients'] = Patient.objects.filter(is_active=True).select_related().order_by('first_name', 'last_name')
+        
+        # Add formsets for team and equipment (same as CreateView)
+        if 'team_formset' not in kwargs:
+            if self.request.POST:
+                context['team_formset'] = SurgicalTeamFormSet(self.request.POST, instance=self.object)
+            else:
+                context['team_formset'] = SurgicalTeamFormSet(instance=self.object)
+        if 'equipment_formset' not in kwargs:
+            if self.request.POST:
+                context['equipment_formset'] = EquipmentUsageFormSet(self.request.POST, instance=self.object)
+            else:
+                context['equipment_formset'] = EquipmentUsageFormSet(instance=self.object)
         return context
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        team_formset = SurgicalTeamFormSet(self.request.POST, instance=self.object)
+        equipment_formset = EquipmentUsageFormSet(self.request.POST, instance=self.object)
+        
+        if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
+            return self.form_valid(form, team_formset, equipment_formset)
+        else:
+            return self.form_invalid(form, team_formset, equipment_formset)
+    
+    def form_valid(self, form, team_formset, equipment_formset):
+        with transaction.atomic():
+            self.object = form.save()
+            team_formset.instance = self.object
+            team_formset.save()
+            equipment_formset.instance = self.object
+            equipment_formset.save()
+            
+        messages.success(self.request, 'Surgery updated successfully.')
+        return redirect(self.get_success_url())
+    
+    def form_invalid(self, form, team_formset, equipment_formset):
+        # Add specific error messages for formsets
+        if team_formset.errors or team_formset.non_form_errors():
+            for i, form_errors in enumerate(team_formset.errors):
+                if form_errors:
+                    messages.error(self.request, f"Surgical Team: Please check the team member information in form {i+1}.")
+            if team_formset.non_form_errors():
+                for error in team_formset.non_form_errors():
+                    messages.error(self.request, f"Surgical Team: {error}")
+        
+        if equipment_formset.errors or equipment_formset.non_form_errors():
+            for i, form_errors in enumerate(equipment_formset.errors):
+                if form_errors:
+                    messages.error(self.request, f"Equipment: Please check the equipment information in form {i+1}.")
+            if equipment_formset.non_form_errors():
+                for error in equipment_formset.non_form_errors():
+                    messages.error(self.request, f"Equipment: {error}")
+        
+        return self.render_to_response(
+            self.get_context_data(
+                form=form,
+                team_formset=team_formset,
+                equipment_formset=equipment_formset
+            )
+        )
 
 
 class SurgeryDeleteView(LoginRequiredMixin, DeleteView):
@@ -875,10 +954,15 @@ def order_medical_pack_for_surgery(request, surgery_id):
                     # Automatically create prescription from pack items
                     try:
                         prescription = pack_order.create_prescription()
+                        
+                        # Add pack costs to surgery invoice
+                        _add_pack_to_surgery_invoice(surgery, pack_order)
+                        
                         messages.success(
                             request, 
                             f'Medical pack "{pack_order.pack.name}" ordered successfully for surgery. '
-                            f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications.'
+                            f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications. '
+                            f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to the surgery invoice.'
                         )
                     except Exception as e:
                         # Pack order was created but prescription failed
@@ -927,3 +1011,68 @@ def order_medical_pack_for_surgery(request, surgery_id):
             pass
     
     return render(request, 'theatre/order_medical_pack.html', context)
+
+
+def _add_pack_to_surgery_invoice(surgery, pack_order):
+    """Helper function to add pack costs to surgery invoice"""
+    # Get or create invoice for surgery
+    if not surgery.invoice:
+        # Create invoice if it doesn't exist
+        invoice = Invoice.objects.create(
+            patient=surgery.patient,
+            invoice_date=surgery.scheduled_date.date(),
+            due_date=surgery.scheduled_date.date() + timezone.timedelta(days=7),
+            status='pending',
+            subtotal=Decimal('0.00'),
+            tax_amount=Decimal('0.00'),
+            total_amount=Decimal('0.00'),
+            created_by=pack_order.ordered_by,
+            source_app='theatre'
+        )
+        surgery.invoice = invoice
+        surgery.save()
+    else:
+        invoice = surgery.invoice
+    
+    # Create or get medical pack service category
+    pack_service_category, _ = ServiceCategory.objects.get_or_create(
+        name="Medical Packs",
+        defaults={'description': 'Pre-packaged medical supplies and medications'}
+    )
+    
+    # Create or get service for this specific pack
+    service, _ = Service.objects.get_or_create(
+        name=f"Medical Pack: {pack_order.pack.name}",
+        category=pack_service_category,
+        defaults={
+            'price': pack_order.pack.get_total_cost(),
+            'description': f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
+            'tax_percentage': Decimal('0.00')  # Assuming no tax on medical packs
+        }
+    )
+    
+    # Add invoice item for the pack
+    pack_cost = pack_order.pack.get_total_cost()
+    invoice_item = InvoiceItem.objects.create(
+        invoice=invoice,
+        service=service,
+        description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id})",
+        quantity=1,
+        unit_price=pack_cost,
+        tax_percentage=Decimal('0.00'),
+        tax_amount=Decimal('0.00'),
+        discount_amount=Decimal('0.00'),
+        total_amount=pack_cost
+    )
+    
+    # Update invoice totals
+    invoice.subtotal = invoice.items.aggregate(
+        total=models.Sum('total_amount')
+    )['total'] or Decimal('0.00')
+    invoice.tax_amount = invoice.items.aggregate(
+        total=models.Sum('tax_amount')
+    )['total'] or Decimal('0.00')
+    invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    invoice.save()
+    
+    return invoice_item

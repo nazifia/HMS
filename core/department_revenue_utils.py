@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 
 from billing.models import Invoice, Payment as BillingPayment, InvoiceItem, Service
-from pharmacy_billing.models import Payment as PharmacyPayment
+# from pharmacy_billing.models import Payment as PharmacyPayment
 from pharmacy.models import DispensingLog, Medication, PrescriptionItem
 from patients.models import WalletTransaction, Patient
 from appointments.models import Appointment
@@ -51,13 +51,14 @@ class DepartmentRevenueCalculator:
         Enhanced pharmacy revenue calculation with medication breakdown
         """
         try:
-            # Base pharmacy revenue (existing logic)
-            pharmacy_payments = PharmacyPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date]
-            ).aggregate(
-                total_amount=Sum('amount'),
-                total_payments=Count('id')
-            )
+            # Base pharmacy revenue (existing logic) - Temporarily disabled
+            # pharmacy_payments = PharmacyPayment.objects.filter(
+            #     payment_date__range=[self.start_date, self.end_date]
+            # ).aggregate(
+            #     total_amount=Sum('amount'),
+            #     total_payments=Count('id')
+            # )
+            pharmacy_payments = {'total_amount': Decimal('0.00'), 'total_payments': 0}
             
             dispensing_revenue = DispensingLog.objects.filter(
                 dispensed_date__date__range=[self.start_date, self.end_date]

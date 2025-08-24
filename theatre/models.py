@@ -92,6 +92,9 @@ class Surgery(models.Model):
     # Authorization code for NHIA patients
     authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='surgeries')
     
+    # Link to billing invoice
+    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='surgery_invoices')
+    
     def __str__(self):
         return f"Surgery for {self.patient} - {self.surgery_type} ({self.get_status_display()})"
     

@@ -77,7 +77,6 @@ INSTALLED_APPS = [
     'doctors',
     'appointments',
     'pharmacy.apps.PharmacyConfig',
-    'pharmacy_billing',
     'laboratory',
     'billing',
     'inpatient',

@@ -206,6 +206,20 @@
                     <!-- Dispensed Items Tracker -->
                     <a class="collapse-item {% if '/pharmacy/dispensed-items/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensed_items_tracker' %}">Dispensed Items Tracker</a>
 
+                    <!-- TEST SECTION - SHOULD BE VISIBLE -->
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">TEST SECTION:</h6>
+                    <a class="collapse-item" href="#">Test Link 1</a>
+                    <a class="collapse-item" href="#">Test Link 2</a>
+
+                    <!-- Medical Pack Management Section -->
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Medical Packs:</h6>
+                    <a class="collapse-item {% if '/pharmacy/packs/' in request.path %}active{% endif %}" href="{% url 'pharmacy:medical_pack_list' %}">All Medical Packs</a>
+                    <a class="collapse-item {% if request.path == '/pharmacy/packs/create/' %}active{% endif %}" href="{% url 'pharmacy:create_medical_pack' %}">Create New Pack</a>
+                    <a class="collapse-item {% if '/pharmacy/pack-orders/' in request.path %}active{% endif %}" href="{% url 'pharmacy:pack_order_list' %}">Pack Orders</a>
+                    <a class="collapse-item {% if request.path == '/pharmacy/pack-orders/create/' %}active{% endif %}" href="{% url 'pharmacy:create_pack_order' %}">Order Medical Pack</a>
+
                     <!-- Reports for pharmacists and admins -->
                     {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
                     <div class="collapse-divider"></div>
@@ -236,13 +250,13 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Pharmacy Reports -->
-        <li class="nav-item {% if '/pharmacy/sales-report/' in request.path %}active{% endif %}">
+        <!-- Nav Item - Pharmacy Reports - Temporarily disabled -->
+        <!-- <li class="nav-item {% if '/pharmacy/sales-report/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'reporting:pharmacy_sales_report' %}">
                 <i class="fas fa-fw fa-chart-bar text-white"></i>
                 <span class="text-white">Pharmacy Report Dashboard</span>
             </a>
-        </li>
+        </li> -->
 
         <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins) -->
         {% if user.is_superuser or user.profile and user.profile.role in 'admin,lab_technician,doctor' %}
@@ -343,6 +357,10 @@
                     <a class="collapse-item {% if request.path == '/theatre/teams/' %}active{% endif %}" href="{% url 'theatre:team_list' %}">Surgical Teams</a>
                     <a class="collapse-item {% if request.path == '/theatre/equipment/' %}active{% endif %}" href="{% url 'theatre:equipment_list' %}">Equipment</a>
                     <a class="collapse-item {% if request.path == '/theatre/equipment/maintenance/' %}active{% endif %}" href="{% url 'theatre:equipment_maintenance' %}">Equipment Maintenance</a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Medical Supplies:</h6>
+                    <a class="collapse-item {% if '/pharmacy/packs/' in request.path %}active{% endif %}" href="{% url 'pharmacy:medical_pack_list' %}?pack_type=surgery">Surgery Packs</a>
+                    <a class="collapse-item {% if '/pharmacy/pack-orders/create/' in request.path %}active{% endif %}" href="{% url 'pharmacy:create_pack_order' %}">Order Surgery Pack</a>
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Reports:</h6>
                     <a class="collapse-item {% if request.path == '/theatre/reports/surgery-report/' %}active{% endif %}" href="{% url 'theatre:surgery_report' %}">Surgery Report</a>
@@ -446,15 +464,15 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Reports (Available to admins only) -->
-        {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+        <!-- Nav Item - Reports (Available to admins only) - Temporarily disabled -->
+        <!-- {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
         <li class="nav-item {% if '/reporting/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'reporting:dashboard' %}">
                 <i class="fas fa-fw fa-chart-bar text-white"></i>
                 <span class="text-white">Reports</span>
             </a>
         </li>
-        {% endif %}
+        {% endif %} -->
 
         <!-- Nav Item - Departments (Available to application admins only) -->
         {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}

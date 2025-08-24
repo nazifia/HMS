@@ -39,7 +39,7 @@ urlpatterns = [
     path('billing/', include('billing.urls')),
     path('inpatient/', include('inpatient.urls')),
     path('hr/', include('hr.urls')),
-    path('reporting/', include('reporting.urls')),
+    path('reporting/', include(('reporting.urls', 'reporting'), namespace='reporting')),
     path('consultations/', include('consultations.urls')),
     path('radiology/', include('radiology.urls', namespace='radiology')),
     path('core/', include(('core.urls', 'core'), namespace='core')),

@@ -62,6 +62,7 @@ class Invoice(models.Model):
         ('radiology', 'Radiology'),
         ('pharmacy', 'Pharmacy'),
         ('appointment', 'Appointment'),
+        ('theatre', 'Theatre'),
         ('billing', 'Billing/General'), # For invoices created directly
         ('other', 'Other'),
     )

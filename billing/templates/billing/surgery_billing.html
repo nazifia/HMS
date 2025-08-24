@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-file-invoice-dollar text-primary"></i> {{ title }}
+        </h1>
+        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Surgery
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Surgery Information -->
+        <div class="col-lg-8">
+            <!-- Surgery Details -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Surgery Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Patient:</strong> {{ surgery.patient.get_full_name }}</p>
+                            <p><strong>Patient ID:</strong> {{ surgery.patient.patient_id }}</p>
+                            <p><strong>Surgery Type:</strong> {{ surgery.surgery_type.name }}</p>
+                            <p><strong>Surgeon:</strong> {{ surgery.primary_surgeon.get_full_name|default:"Not assigned" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Scheduled Date:</strong> {{ surgery.scheduled_date|date:"M d, Y H:i" }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge badge-{% if surgery.status == 'scheduled' %}primary{% elif surgery.status == 'completed' %}success{% elif surgery.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                    {{ surgery.get_status_display }}
+                                </span>
+                            </p>
+                            <p><strong>Theatre:</strong> {{ surgery.theatre.name|default:"Not assigned" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Pack Costs -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Medical Pack Costs</h6>
+                </div>
+                <div class="card-body">
+                    {% if pack_costs %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Pack Name</th>
+                                        <th>Order Date</th>
+                                        <th>Status</th>
+                                        <th>Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pack_cost in pack_costs %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ pack_cost.pack_order.pack.name }}</strong><br>
+                                            <small class="text-muted">{{ pack_cost.pack_order.pack.get_pack_type_display }}</small>
+                                        </td>
+                                        <td>{{ pack_cost.pack_order.order_date|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            {% if pack_cost.pack_order.status == 'pending' %}
+                                                <span class="badge badge-warning">Pending</span>
+                                            {% elif pack_cost.pack_order.status == 'approved' %}
+                                                <span class="badge badge-info">Approved</span>
+                                            {% elif pack_cost.pack_order.status == 'dispensed' %}
+                                                <span class="badge badge-success">Dispensed</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">{{ pack_cost.pack_order.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-right">₦{{ pack_cost.cost|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="3" class="text-right">Total Pack Costs:</th>
+                                        <th class="text-right">₦{{ total_pack_cost|floatformat:2 }}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-box-open fa-2x text-muted mb-2"></i>
+                            <p class="text-muted">No medical packs ordered for this surgery.</p>
+                            <a href="{% url 'theatre:order_medical_pack_for_surgery' surgery.id %}" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Order Medical Pack
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Payment History -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
+                </div>
+                <div class="card-body">
+                    {% if payments %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Received By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in payments %}
+                                    <tr>
+                                        <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                        <td>₦{{ payment.amount|floatformat:2 }}</td>
+                                        <td>{{ payment.get_payment_method_display }}</td>
+                                        <td>{{ payment.received_by.get_full_name|default:"System" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No payments recorded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Processing -->
+        <div class="col-lg-4">
+            <!-- Invoice Summary -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Invoice Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-8">Total Amount:</div>
+                        <div class="col-4 text-right">₦{{ invoice.total_amount|floatformat:2 }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-8">Amount Paid:</div>
+                        <div class="col-4 text-right">₦{{ invoice.amount_paid|floatformat:2 }}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-8"><strong>Balance Due:</strong></div>
+                        <div class="col-4 text-right">
+                            <strong class="{% if remaining_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                ₦{{ remaining_balance|floatformat:2 }}
+                            </strong>
+                        </div>
+                    </div>
+
+                    {% if remaining_balance <= 0 %}
+                        <div class="alert alert-success mt-3 mb-0">
+                            <i class="fas fa-check-circle"></i> Invoice fully paid
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Payment Form -->
+            {% if remaining_balance > 0 %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Record Payment</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Amount</label>
+                            {{ form.amount }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Payment Source</label>
+                            {{ form.payment_source }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Payment Method</label>
+                            {{ form.payment_method }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Payment Date</label>
+                            {{ form.payment_date }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Transaction ID (Optional)</label>
+                            {{ form.transaction_id }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes (Optional)</label>
+                            {{ form.notes }}
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-block">
+                            <i class="fas fa-money-bill-wave"></i> Record Payment
+                        </button>
+                    </form>
+
+                    {% if patient_wallet.balance > 0 %}
+                    <hr>
+                    <div class="text-center">
+                        <small class="text-muted">
+                            Patient Wallet Balance: ₦{{ patient_wallet.balance|floatformat:2 }}
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'billing:print' invoice.id %}" class="btn btn-outline-primary" target="_blank">
+                            <i class="fas fa-print"></i> Print Invoice
+                        </a>
+                        
+                        <a href="{% url 'theatre:order_medical_pack_for_surgery' surgery.id %}" class="btn btn-outline-success">
+                            <i class="fas fa-plus"></i> Add Medical Pack
+                        </a>
+                        
+                        <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-outline-info">
+                            <i class="fas fa-file-invoice"></i> View Full Invoice
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

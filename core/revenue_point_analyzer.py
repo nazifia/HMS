@@ -13,7 +13,7 @@ import calendar
 
 # Existing imports maintained for compatibility
 from billing.models import Invoice, Payment as BillingPayment, InvoiceItem
-from pharmacy_billing.models import Payment as PharmacyPayment
+# from pharmacy_billing.models import Payment as PharmacyPayment
 from pharmacy.models import DispensingLog
 from patients.models import WalletTransaction
 
@@ -572,13 +572,13 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
                 total_payments=Count('id')
             ).order_by('-total_amount')
             
-            # Also get pharmacy payment methods
-            pharmacy_methods = PharmacyPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date]
-            ).values('payment_method').annotate(
-                total_amount=Sum('amount'),
-                total_payments=Count('id')
-            )
+            # Also get pharmacy payment methods - Temporarily disabled
+            # pharmacy_methods = PharmacyPayment.objects.filter(
+            #     payment_date__range=[self.start_date, self.end_date]
+            # ).values('payment_method').annotate(
+            #     total_amount=Sum('amount'),
+            #     total_payments=Count('id')
+            # )
             
             # Combine and aggregate
             method_totals = defaultdict(lambda: {'amount': Decimal('0.00'), 'count': 0})
@@ -588,10 +588,10 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
                 method_totals[method]['amount'] += pm['total_amount'] or Decimal('0.00')
                 method_totals[method]['count'] += pm['total_payments'] or 0
             
-            for pm in pharmacy_methods:
-                method = pm['payment_method'] or 'unknown'
-                method_totals[method]['amount'] += pm['total_amount'] or Decimal('0.00')
-                method_totals[method]['count'] += pm['total_payments'] or 0
+            # for pm in pharmacy_methods:
+            #     method = pm['payment_method'] or 'unknown'
+            #     method_totals[method]['amount'] += pm['total_amount'] or Decimal('0.00')
+            #     method_totals[method]['count'] += pm['total_payments'] or 0
             
             return dict(method_totals)
         except:

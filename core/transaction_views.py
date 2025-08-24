@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from patients.models import Patient, PatientWallet, WalletTransaction
 from billing.models import Payment as BillingPayment, Invoice
-from pharmacy_billing.models import Payment as PharmacyPayment
+# from pharmacy_billing.models import Payment as PharmacyPayment
 from inpatient.models import Admission
 from consultations.models import Consultation
 from theatre.models import Surgery
@@ -88,29 +88,29 @@ def comprehensive_transaction_history(request, patient_id=None):
             'invoice': bp.invoice,
         })
     
-    # 3. Pharmacy Payments
-    pharmacy_payments = PharmacyPayment.objects.filter(
-        created_at__date__range=[date_from, date_to]
-    ).select_related('invoice', 'invoice__patient', 'received_by')
-    if patient:
-        pharmacy_payments = pharmacy_payments.filter(invoice__patient=patient)
-    
-    for pp in pharmacy_payments:
-        transactions.append({
-            'date': pp.created_at,
-            'type': 'Pharmacy Payment',
-            'subtype': pp.get_payment_method_display(),
-            'amount': pp.amount,
-            'balance_after': None,
-            'description': f"Pharmacy payment for Invoice #{pp.invoice.id}",
-            'reference': pp.transaction_id or f"PHARM-{pp.id}",
-            'patient': pp.invoice.patient,
-            'created_by': pp.received_by,
-            'status': 'Completed',
-            'source': 'pharmacy',
-            'related_object': pp,
-            'invoice': pp.invoice,
-        })
+    # 3. Pharmacy Payments - Temporarily disabled
+    # pharmacy_payments = PharmacyPayment.objects.filter(
+    #     created_at__date__range=[date_from, date_to]
+    # ).select_related('invoice', 'invoice__patient', 'received_by')
+    # if patient:
+    #     pharmacy_payments = pharmacy_payments.filter(invoice__patient=patient)
+    # 
+    # for pp in pharmacy_payments:
+    #     transactions.append({
+    #         'date': pp.created_at,
+    #         'type': 'Pharmacy Payment',
+    #         'subtype': pp.get_payment_method_display(),
+    #         'amount': pp.amount,
+    #         'balance_after': None,
+    #         'description': f"Pharmacy payment for Invoice #{pp.invoice.id}",
+    #         'reference': pp.transaction_id or f"PHARM-{pp.id}",
+    #         'patient': pp.invoice.patient,
+    #         'created_by': pp.received_by,
+    #         'status': 'Completed',
+    #         'source': 'pharmacy',
+    #         'related_object': pp,
+    #         'invoice': pp.invoice,
+    #     })
     
     # 4. Admission Payments (from invoices)
     admission_invoices = Invoice.objects.filter(

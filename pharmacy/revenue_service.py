@@ -12,7 +12,7 @@ from collections import defaultdict
 import calendar
 
 from billing.models import Invoice, Payment as BillingPayment
-from pharmacy_billing.models import Payment as PharmacyPayment
+# from pharmacy_billing.models import Payment as PharmacyPayment
 from pharmacy.models import DispensingLog
 from patients.models import WalletTransaction
 
@@ -40,13 +40,14 @@ class RevenueAggregationService:
         Returns:
             dict: Pharmacy revenue breakdown
         """
-        # Pharmacy billing payments
-        pharmacy_payments = PharmacyPayment.objects.filter(
-            payment_date__range=[self.start_date, self.end_date]
-        ).aggregate(
-            total_amount=Sum('amount'),
-            total_payments=Count('id')
-        )
+        # Pharmacy billing payments - Temporarily disabled
+        # pharmacy_payments = PharmacyPayment.objects.filter(
+        #     payment_date__range=[self.start_date, self.end_date]
+        # ).aggregate(
+        #     total_amount=Sum('amount'),
+        #     total_payments=Count('id')
+        # )
+        pharmacy_payments = {'total_amount': Decimal('0.00'), 'total_payments': 0}
         
         # Dispensing logs (for direct medication sales)
         dispensing_revenue = DispensingLog.objects.filter(

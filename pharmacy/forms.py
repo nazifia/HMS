@@ -701,6 +701,16 @@ class PrescriptionPaymentForm(forms.ModelForm):
         initial='direct',
         help_text="Choose payment method"
     )
+    
+    transaction_id = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter transaction ID (optional)'
+        }),
+        label='Transaction ID',
+        help_text='Reference number for electronic payments'
+    )
 
     class Meta:
         model = Payment

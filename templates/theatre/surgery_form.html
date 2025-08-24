@@ -92,6 +92,45 @@
     border-color: #80bdff;
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
+
+/* Validation error styles */
+.form-error {
+    border-color: #dc3545 !important;
+    background-color: #fff5f5;
+}
+
+.form-error:focus {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.formset-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.team-form, .equipment-form {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+}
+
+.team-form.has-error, .equipment-form.has-error {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
 </style>
 {% endblock %}
 
@@ -178,7 +217,18 @@ Create Surgery
                         {{ form.patient }}
                     </div>
                     <div class="col-md-6">
-                        {{ form.surgery_type|as_crispy_field }}
+                        <div class="form-group">
+                            <label for="{{ form.surgery_type.id_for_label }}">
+                                Surgery Type <small class="text-muted">(Optional - can be specified later)</small>
+                            </label>
+                            {{ form.surgery_type.as_widget }}
+                            {% if form.surgery_type.help_text %}
+                                <small class="form-text text-muted">{{ form.surgery_type.help_text }}</small>
+                            {% endif %}
+                            {% if form.surgery_type.errors %}
+                                <div class="invalid-feedback d-block">{{ form.surgery_type.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 <div class="row">
@@ -213,7 +263,18 @@ Create Surgery
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        {{ form.theatre|as_crispy_field }}
+                        <div class="form-group">
+                            <label for="{{ form.theatre.id_for_label }}">
+                                Operation Theatre <small class="text-muted">(Optional - can be assigned later)</small>
+                            </label>
+                            {{ form.theatre.as_widget }}
+                            {% if form.theatre.help_text %}
+                                <small class="form-text text-muted">{{ form.theatre.help_text }}</small>
+                            {% endif %}
+                            {% if form.theatre.errors %}
+                                <div class="invalid-feedback d-block">{{ form.theatre.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-md-6">
                         {{ form.status|as_crispy_field }}
@@ -221,13 +282,96 @@ Create Surgery
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        {{ form.scheduled_date|as_crispy_field }}
+                        <div class="form-group">
+                            <label for="{{ form.scheduled_date.id_for_label }}">
+                                Scheduled Date/Time <small class="text-muted">(Optional - can be scheduled later)</small>
+                            </label>
+                            {{ form.scheduled_date.as_widget }}
+                            {% if form.scheduled_date.help_text %}
+                                <small class="form-text text-muted">{{ form.scheduled_date.help_text }}</small>
+                            {% endif %}
+                            {% if form.scheduled_date.errors %}
+                                <div class="invalid-feedback d-block">{{ form.scheduled_date.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        {{ form.expected_duration|as_crispy_field }}
+                        <div class="form-group">
+                            <label for="{{ form.expected_duration.id_for_label }}">
+                                Expected Duration <small class="text-muted">(Optional - can be estimated later)</small>
+                            </label>
+                            {{ form.expected_duration.as_widget }}
+                            {% if form.expected_duration.help_text %}
+                                <small class="form-text text-muted">{{ form.expected_duration.help_text }}</small>
+                            {% endif %}
+                            {% if form.expected_duration.errors %}
+                                <div class="invalid-feedback d-block">{{ form.expected_duration.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 {{ form.pre_surgery_notes|as_crispy_field }}
+                
+                <!-- Flexible Editing Controls -->
+                <hr>
+                <div class="card border-info mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-cog"></i> Flexible Editing Options
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    {{ form.skip_conflict_validation }}
+                                    <label class="form-check-label" for="{{ form.skip_conflict_validation.id_for_label }}">
+                                        {{ form.skip_conflict_validation.label }}
+                                    </label>
+                                    <div class="form-text text-muted">
+                                        {{ form.skip_conflict_validation.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    {{ form.allow_flexible_scheduling }}
+                                    <label class="form-check-label" for="{{ form.allow_flexible_scheduling.id_for_label }}">
+                                        {{ form.allow_flexible_scheduling.label }}
+                                    </label>
+                                    <div class="form-text text-muted">
+                                        {{ form.allow_flexible_scheduling.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-3">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle"></i> Flexible Mode Information
+                            </h6>
+                            <ul class="mb-0">
+                                <li><strong>Normal Mode:</strong> All fields (except Patient) are optional, but conflicts will block saving.</li>
+                                <li><strong>Skip Conflicts:</strong> Allows overlapping theatre/staff bookings with warning messages.</li>
+                                <li><strong>Flexible Scheduling:</strong> Shows warnings instead of errors for conflicts - surgery can still be saved.</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Display validation warnings if any -->
+                        {% if form._warnings %}
+                        <div class="alert alert-warning mt-3">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-exclamation-triangle"></i> Scheduling Warnings
+                            </h6>
+                            <ul class="mb-0">
+                                {% for warning in form._warnings %}
+                                <li>{{ warning }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
                 
                 <!-- Authorization Code Field (only for NHIA patients) -->
                 <div class="form-group" id="authorization-code-section" style="display: none;">
@@ -728,7 +872,86 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert(`Please fill in the following required fields: ${missingFields.join(', ')}`);
                 return false;
             }
+            
+            // Validate team formset
+            const teamFormsetErrors = validateTeamFormset();
+            if (teamFormsetErrors.length > 0) {
+                e.preventDefault();
+                alert('Surgical Team Errors:\n' + teamFormsetErrors.join('\n'));
+                return false;
+            }
+            
+            // Validate equipment formset
+            const equipmentFormsetErrors = validateEquipmentFormset();
+            if (equipmentFormsetErrors.length > 0) {
+                e.preventDefault();
+                alert('Equipment Errors:\n' + equipmentFormsetErrors.join('\n'));
+                return false;
+            }
         });
+    }
+    
+    // Function to validate team formset
+    function validateTeamFormset() {
+        const errors = [];
+        const teamForms = teamFormList.querySelectorAll('.team-form');
+        
+        teamForms.forEach((form, index) => {
+            const deleteCheckbox = form.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (deleteCheckbox && deleteCheckbox.checked) {
+                return; // Skip validation for forms marked for deletion
+            }
+            
+            const staffSelect = form.querySelector('select[name$="-staff"]');
+            const roleSelect = form.querySelector('select[name$="-role"]');
+            
+            // Check if any field has data
+            const hasData = (staffSelect && staffSelect.value) || (roleSelect && roleSelect.value);
+            
+            if (hasData) {
+                // If form has data, validate required fields
+                if (!staffSelect || !staffSelect.value) {
+                    errors.push(`Team Member ${index + 1}: Please select a staff member.`);
+                }
+                if (!roleSelect || !roleSelect.value) {
+                    errors.push(`Team Member ${index + 1}: Please select a role.`);
+                }
+            }
+        });
+        
+        return errors;
+    }
+    
+    // Function to validate equipment formset
+    function validateEquipmentFormset() {
+        const errors = [];
+        const equipmentForms = equipmentFormList.querySelectorAll('.equipment-form');
+        
+        equipmentForms.forEach((form, index) => {
+            const deleteCheckbox = form.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (deleteCheckbox && deleteCheckbox.checked) {
+                return; // Skip validation for forms marked for deletion
+            }
+            
+            const equipmentSelect = form.querySelector('select[name$="-equipment"]');
+            const quantityInput = form.querySelector('input[name$="-quantity_used"]');
+            
+            // Check if any field has data
+            const hasData = (equipmentSelect && equipmentSelect.value) || 
+                           (quantityInput && quantityInput.value);
+            
+            if (hasData) {
+                // If form has data, validate required fields
+                if (!equipmentSelect || !equipmentSelect.value) {
+                    errors.push(`Equipment ${index + 1}: Please select equipment.`);
+                }
+                if (!quantityInput || !quantityInput.value || parseInt(quantityInput.value) <= 0) {
+                    errors.push(`Equipment ${index + 1}: Please enter a valid quantity (greater than 0).`);
+                }
+            }
+        });
+        
+        return errors;
     }
     
     // Team Formset
@@ -743,6 +966,14 @@ document.addEventListener('DOMContentLoaded', function() {
             let newForm = emptyTeamForm.replace(/__prefix__/g, formNum);
             teamFormList.insertAdjacentHTML('beforeend', newForm);
             teamTotalForms.value = formNum + 1;
+            
+            // Add real-time validation to new form
+            addFormValidation(teamFormList.lastElementChild, 'team');
+        });
+        
+        // Add validation to existing forms
+        teamFormList.querySelectorAll('.team-form').forEach(form => {
+            addFormValidation(form, 'team');
         });
     }
 
@@ -758,6 +989,152 @@ document.addEventListener('DOMContentLoaded', function() {
             let newForm = emptyEquipmentForm.replace(/__prefix__/g, formNum);
             equipmentFormList.insertAdjacentHTML('beforeend', newForm);
             equipmentTotalForms.value = formNum + 1;
+            
+            // Add real-time validation to new form
+            addFormValidation(equipmentFormList.lastElementChild, 'equipment');
+        });
+        
+        // Add validation to existing forms
+        equipmentFormList.querySelectorAll('.equipment-form').forEach(form => {
+            addFormValidation(form, 'equipment');
+        });
+    }
+    
+    // Function to add real-time validation to formset forms
+    function addFormValidation(form, type) {
+        if (type === 'team') {
+            const staffSelect = form.querySelector('select[name$="-staff"]');
+            const roleSelect = form.querySelector('select[name$="-role"]');
+            
+            if (staffSelect) {
+                staffSelect.addEventListener('change', function() {
+                    validateTeamForm(form);
+                });
+            }
+            
+            if (roleSelect) {
+                roleSelect.addEventListener('change', function() {
+                    validateTeamForm(form);
+                });
+            }
+        } else if (type === 'equipment') {
+            const equipmentSelect = form.querySelector('select[name$="-equipment"]');
+            const quantityInput = form.querySelector('input[name$="-quantity_used"]');
+            
+            if (equipmentSelect) {
+                equipmentSelect.addEventListener('change', function() {
+                    validateEquipmentForm(form);
+                });
+            }
+            
+            if (quantityInput) {
+                quantityInput.addEventListener('input', function() {
+                    validateEquipmentForm(form);
+                });
+            }
+        }
+    }
+    
+    // Function to validate individual team form
+    function validateTeamForm(form) {
+        const staffSelect = form.querySelector('select[name$="-staff"]');
+        const roleSelect = form.querySelector('select[name$="-role"]');
+        const deleteCheckbox = form.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        
+        // Clear previous errors
+        clearFormErrors(form);
+        
+        if (deleteCheckbox && deleteCheckbox.checked) {
+            return; // Skip validation for forms marked for deletion
+        }
+        
+        const hasData = (staffSelect && staffSelect.value) || (roleSelect && roleSelect.value);
+        
+        if (hasData) {
+            let hasErrors = false;
+            
+            if (!staffSelect || !staffSelect.value) {
+                addFieldError(staffSelect, 'Please select a staff member.');
+                hasErrors = true;
+            }
+            
+            if (!roleSelect || !roleSelect.value) {
+                addFieldError(roleSelect, 'Please select a role.');
+                hasErrors = true;
+            }
+            
+            if (hasErrors) {
+                form.classList.add('has-error');
+            }
+        }
+    }
+    
+    // Function to validate individual equipment form
+    function validateEquipmentForm(form) {
+        const equipmentSelect = form.querySelector('select[name$="-equipment"]');
+        const quantityInput = form.querySelector('input[name$="-quantity_used"]');
+        const deleteCheckbox = form.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        
+        // Clear previous errors
+        clearFormErrors(form);
+        
+        if (deleteCheckbox && deleteCheckbox.checked) {
+            return; // Skip validation for forms marked for deletion
+        }
+        
+        const hasData = (equipmentSelect && equipmentSelect.value) || 
+                       (quantityInput && quantityInput.value);
+        
+        if (hasData) {
+            let hasErrors = false;
+            
+            if (!equipmentSelect || !equipmentSelect.value) {
+                addFieldError(equipmentSelect, 'Please select equipment.');
+                hasErrors = true;
+            }
+            
+            if (!quantityInput || !quantityInput.value || parseInt(quantityInput.value) <= 0) {
+                addFieldError(quantityInput, 'Please enter a valid quantity (greater than 0).');
+                hasErrors = true;
+            }
+            
+            if (hasErrors) {
+                form.classList.add('has-error');
+            }
+        }
+    }
+    
+    // Function to add field error
+    function addFieldError(field, message) {
+        if (!field) return;
+        
+        field.classList.add('form-error');
+        
+        // Remove existing error message
+        const existingError = field.parentNode.querySelector('.error-message');
+        if (existingError) {
+            existingError.remove();
+        }
+        
+        // Add new error message
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        field.parentNode.appendChild(errorDiv);
+    }
+    
+    // Function to clear form errors
+    function clearFormErrors(form) {
+        form.classList.remove('has-error');
+        
+        // Remove error styling from fields
+        form.querySelectorAll('.form-error').forEach(field => {
+            field.classList.remove('form-error');
+        });
+        
+        // Remove error messages
+        form.querySelectorAll('.error-message').forEach(error => {
+            error.remove();
         });
     }
 });

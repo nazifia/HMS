@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
+from decimal import Decimal
 from .models import LaborRecord
 from .forms import LaborRecordForm, LaborRecordSearchForm
 from patients.models import Patient
@@ -12,6 +13,7 @@ from core.patient_search_utils import search_patients_by_query, format_patient_s
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
 from pharmacy.forms import PackOrderForm
+from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 @login_required
 def labor_records_list(request):
@@ -244,10 +246,15 @@ def order_medical_pack_for_labor(request, record_id):
                     # Automatically create prescription from pack items
                     try:
                         prescription = pack_order.create_prescription()
+                        
+                        # Add pack costs to patient billing
+                        _add_pack_to_patient_billing(record.patient, pack_order, 'labor')
+                        
                         messages.success(
                             request, 
                             f'Medical pack "{pack_order.pack.name}" ordered successfully for labor record. '
-                            f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications.'
+                            f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications. '
+                            f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing.'
                         )
                     except Exception as e:
                         # Pack order was created but prescription failed
@@ -295,3 +302,67 @@ def order_medical_pack_for_labor(request, record_id):
             pass
     
     return render(request, 'labor/order_medical_pack.html', context)
+
+
+def _add_pack_to_patient_billing(patient, pack_order, source_context='general'):
+    """Helper function to add pack costs to patient billing"""
+    from django.utils import timezone
+    
+    # Create or get invoice for patient
+    invoice, created = Invoice.objects.get_or_create(
+        patient=patient,
+        status='pending',
+        source_app='pharmacy',  # Using pharmacy as the source for pack orders
+        defaults={
+            'invoice_date': timezone.now().date(),
+            'due_date': timezone.now().date() + timezone.timedelta(days=7),
+            'subtotal': Decimal('0.00'),
+            'tax_amount': Decimal('0.00'),
+            'total_amount': Decimal('0.00'),
+            'created_by': pack_order.ordered_by,
+        }
+    )
+    
+    # Create or get medical pack service category
+    pack_service_category, _ = ServiceCategory.objects.get_or_create(
+        name="Medical Packs",
+        defaults={'description': 'Pre-packaged medical supplies and medications'}
+    )
+    
+    # Create or get service for this specific pack
+    service, _ = Service.objects.get_or_create(
+        name=f"Medical Pack: {pack_order.pack.name}",
+        category=pack_service_category,
+        defaults={
+            'price': pack_order.pack.get_total_cost(),
+            'description': f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
+            'tax_percentage': Decimal('0.00')  # Assuming no tax on medical packs
+        }
+    )
+    
+    # Add invoice item for the pack
+    pack_cost = pack_order.pack.get_total_cost()
+    invoice_item = InvoiceItem.objects.create(
+        invoice=invoice,
+        service=service,
+        description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id}) - {source_context.title()}",
+        quantity=1,
+        unit_price=pack_cost,
+        tax_percentage=Decimal('0.00'),
+        tax_amount=Decimal('0.00'),
+        discount_amount=Decimal('0.00'),
+        total_amount=pack_cost
+    )
+    
+    # Update invoice totals
+    from django.db import models
+    invoice.subtotal = invoice.items.aggregate(
+        total=models.Sum('total_amount')
+    )['total'] or Decimal('0.00')
+    invoice.tax_amount = invoice.items.aggregate(
+        total=models.Sum('tax_amount')
+    )['total'] or Decimal('0.00')
+    invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    invoice.save()
+    
+    return invoice_item

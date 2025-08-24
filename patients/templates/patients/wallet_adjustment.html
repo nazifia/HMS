@@ -259,20 +259,14 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('adjustment-amount').textContent = `₦${amount.toFixed(2)}`;
             document.getElementById('adjustment-reason').textContent = reason.substring(0, 50) + (reason.length > 50 ? '...' : '');
             
-            // Enable/disable adjustment button
-            if (adjustmentType === 'debit' && amount > currentBalance) {
-                adjustmentBtn.disabled = true;
-                adjustmentBtn.className = 'btn btn-danger';
-                adjustmentBtn.innerHTML = '<i class="fas fa-ban"></i> Insufficient Balance';
+            // Allow adjustments even with insufficient balance (negative balance allowed)
+            adjustmentBtn.disabled = false;
+            if (adjustmentType === 'credit') {
+                adjustmentBtn.className = 'btn btn-success';
+                adjustmentBtn.innerHTML = '<i class="fas fa-plus"></i> Credit Adjustment';
             } else {
-                adjustmentBtn.disabled = false;
-                if (adjustmentType === 'credit') {
-                    adjustmentBtn.className = 'btn btn-success';
-                    adjustmentBtn.innerHTML = '<i class="fas fa-plus"></i> Credit Adjustment';
-                } else {
-                    adjustmentBtn.className = 'btn btn-warning';
-                    adjustmentBtn.innerHTML = '<i class="fas fa-minus"></i> Debit Adjustment';
-                }
+                adjustmentBtn.className = 'btn btn-warning';
+                adjustmentBtn.innerHTML = '<i class="fas fa-minus"></i> Debit Adjustment';
             }
         } else {
             adjustmentSummary.style.display = 'none';
@@ -304,12 +298,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 feedback.innerHTML = `<i class="fas fa-arrow-up"></i> Balance after credit: ₦${newBalance.toFixed(2)}`;
             } else {
                 newBalance = currentBalance - amount;
-                if (amount > currentBalance) {
-                    feedback.className += ' text-danger';
-                    feedback.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Insufficient balance for debit!';
-                } else {
-                    feedback.className += ' text-warning';
-                    feedback.innerHTML = `<i class="fas fa-arrow-down"></i> Balance after debit: ₦${newBalance.toFixed(2)}`;
+                feedback.className += ' text-warning';
+                feedback.innerHTML = `<i class="fas fa-arrow-down"></i> Balance after debit: ₦${newBalance.toFixed(2)}`;
+                
+                // Show warning for negative balance but still allow it
+                if (newBalance < 0) {
+                    feedback.innerHTML += ' <small class="text-info">(Negative balance allowed)</small>';
                 }
             }
             

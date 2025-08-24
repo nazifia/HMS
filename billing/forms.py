@@ -107,11 +107,12 @@ class PaymentForm(forms.ModelForm):
         payment_source = cleaned_data.get('payment_source')
         amount = cleaned_data.get('amount')
         
-        if payment_source == 'patient_wallet' and self.patient_wallet and amount:
-            if amount > self.patient_wallet.balance:
-                raise forms.ValidationError(
-                    f'Insufficient wallet balance. Available: ₦{self.patient_wallet.balance:.2f}, Required: ₦{amount:.2f}'
-                )
+        # Force wallet payment method for wallet payments
+        if payment_source == 'patient_wallet':
+            cleaned_data['payment_method'] = 'wallet'
+
+        # Allow wallet payments even with insufficient balance (negative balance allowed)
+        # Wallet balance validation removed to support negative balances
         
         if self.invoice and amount:
             remaining_balance = self.invoice.get_balance()
@@ -172,12 +173,9 @@ class AdmissionPaymentForm(forms.ModelForm):
             # Force wallet payment method for wallet payments
             cleaned_data['payment_method'] = 'wallet'
 
-            # Check wallet balance
-            if self.patient_wallet and amount:
-                if amount > self.patient_wallet.balance:
-                    raise forms.ValidationError(
-                        f'Insufficient wallet balance. Available: ₦{self.patient_wallet.balance:.2f}, Required: ₦{amount:.2f}'
-                    )
+            # Allow wallet payments even with insufficient balance (negative balance allowed)
+            # Wallet balance validation removed to support negative balances
+            
         elif payment_source == 'billing_office':
             # Ensure wallet is not selected for billing office payments
             if payment_method == 'wallet':
