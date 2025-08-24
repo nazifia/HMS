@@ -2598,7 +2598,22 @@ def approve_pack_order(request, order_id):
     
     if request.method == 'POST':
         try:
+            # Get approval notes from form
+            approval_notes = request.POST.get('approval_notes', '').strip()
+            
+            # Store approval notes in processing_notes field
+            if approval_notes:
+                existing_notes = pack_order.processing_notes or ''
+                approval_note_entry = f"[APPROVAL - {timezone.now().strftime('%Y-%m-%d %H:%M')} by {request.user.get_full_name()}]: {approval_notes}"
+                if existing_notes:
+                    pack_order.processing_notes = f"{existing_notes}\n\n{approval_note_entry}"
+                else:
+                    pack_order.processing_notes = approval_note_entry
+                pack_order.save()
+            
+            # Approve the order
             pack_order.approve_order(request.user)
+            
             messages.success(request, f'Pack order #{pack_order.id} approved successfully.')
         except ValueError as e:
             messages.error(request, str(e))

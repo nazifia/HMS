@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-form .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .search-form .btn {
+        margin-right: 0.5rem;
+    }
+
+    .pack-order-card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .pack-order-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 15px;
+    }
+
+    .search-highlight {
+        background-color: #fff3cd;
+        padding: 0.1rem 0.2rem;
+        border-radius: 0.2rem;
+    }
+
+    .form-control:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+
+    .btn-xs {
+        padding: 0.125rem 0.25rem;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        border-radius: 0.2rem;
+    }
+
+    .pack-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .cost-display {
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .table-responsive {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-boxes text-primary"></i>
+            {{ page_title }}
+        </h1>
+        <div>
+            <a href="{% url 'pharmacy:medical_pack_list' %}" class="btn btn-outline-primary btn-sm mr-2">
+                <i class="fas fa-box"></i> Manage Packs
+            </a>
+            <a href="{% url 'pharmacy:create_pack_order' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> New Pack Order
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filter Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-search"></i> Search & Filter Pack Orders
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="search-form">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="{{ form.search.id_for_label }}">{{ form.search.label }}</label>
+                            {{ form.search }}
+                            <small class="text-muted">Search by pack name, patient name, or patient ID</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                            {{ form.status }}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.pack_type.id_for_label }}">{{ form.pack_type.label }}</label>
+                            {{ form.pack_type }}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.date_from.id_for_label }}">{{ form.date_from.label }}</label>
+                            {{ form.date_from }}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="{{ form.date_to.id_for_label }}">{{ form.date_to.label }}</label>
+                            {{ form.date_to }}
+                        </div>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <div class="form-group w-100">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <a href="{% url 'pharmacy:pack_order_list' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-times"></i> Clear Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pack Orders List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Pack Orders
+            </h6>
+            {% if page_obj %}
+                <small class="text-muted">
+                    Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} orders
+                </small>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Order #</th>
+                                <th>Pack Information</th>
+                                <th>Patient</th>
+                                <th>Order Date</th>
+                                <th>Scheduled</th>
+                                <th>Status</th>
+                                <th>Ordered By</th>
+                                <th>Cost</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in page_obj %}
+                            <tr>
+                                <td>
+                                    <strong>#{{ order.id }}</strong>
+                                    {% if order.surgery %}
+                                        <br><small class="text-info">
+                                            <i class="fas fa-scalpel"></i> Surgery
+                                        </small>
+                                    {% elif order.labor_record %}
+                                        <br><small class="text-pink">
+                                            <i class="fas fa-baby"></i> Labor
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="pack-info">
+                                        <strong>{{ order.pack.name }}</strong>
+                                        <br>
+                                        <small>{{ order.pack.get_pack_type_display }}</small>
+                                        <br>
+                                        <small><i class="fas fa-pills"></i> {{ order.pack.items.count }} item(s)</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong>{{ order.patient.get_full_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">ID: {{ order.patient.patient_id }}</small>
+                                    {% if order.patient.phone_number %}
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-phone"></i> {{ order.patient.phone_number }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ order.order_date|date:"M d, Y" }}
+                                    <br>
+                                    <small class="text-muted">{{ order.order_date|date:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    {% if order.scheduled_date %}
+                                        {{ order.scheduled_date|date:"M d, Y" }}
+                                        <br>
+                                        <small class="text-muted">{{ order.scheduled_date|date:"H:i" }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Not scheduled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if order.status == 'pending' %}
+                                        <span class="badge status-badge bg-warning text-dark">
+                                            <i class="fas fa-clock"></i> Pending
+                                        </span>
+                                    {% elif order.status == 'approved' %}
+                                        <span class="badge status-badge bg-info">
+                                            <i class="fas fa-check"></i> Approved
+                                        </span>
+                                    {% elif order.status == 'processing' %}
+                                        <span class="badge status-badge bg-primary">
+                                            <i class="fas fa-cogs"></i> Processing
+                                        </span>
+                                    {% elif order.status == 'ready' %}
+                                        <span class="badge status-badge bg-success">
+                                            <i class="fas fa-box"></i> Ready
+                                        </span>
+                                    {% elif order.status == 'dispensed' %}
+                                        <span class="badge status-badge bg-secondary">
+                                            <i class="fas fa-check-double"></i> Dispensed
+                                        </span>
+                                    {% elif order.status == 'cancelled' %}
+                                        <span class="badge status-badge bg-danger">
+                                            <i class="fas fa-times"></i> Cancelled
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if order.ordered_by %}
+                                        {{ order.ordered_by.get_full_name }}
+                                    {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="cost-display text-success">
+                                        ₦{{ order.pack.get_total_cost|floatformat:2 }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'pharmacy:pack_order_detail' order.id %}" 
+                                           class="btn btn-outline-primary btn-xs" 
+                                           title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        {% if order.can_be_approved %}
+                                            <a href="{% url 'pharmacy:approve_pack_order' order.id %}" 
+                                               class="btn btn-outline-success btn-xs" 
+                                               title="Approve Order">
+                                                <i class="fas fa-check"></i>
+                                            </a>
+                                        {% endif %}
+                                        
+                                        {% if order.can_be_processed %}
+                                            <a href="{% url 'pharmacy:process_pack_order' order.id %}" 
+                                               class="btn btn-outline-warning btn-xs" 
+                                               title="Process Order">
+                                                <i class="fas fa-cogs"></i>
+                                            </a>
+                                        {% endif %}
+                                        
+                                        {% if order.can_be_dispensed %}
+                                            <a href="{% url 'pharmacy:dispense_pack_order' order.id %}" 
+                                               class="btn btn-outline-info btn-xs" 
+                                               title="Dispense Order">
+                                                <i class="fas fa-hand-holding-medical"></i>
+                                            </a>
+                                        {% endif %}
+                                        
+                                        {% if order.prescription %}
+                                            <a href="{% url 'pharmacy:prescription_detail' order.prescription.id %}" 
+                                               class="btn btn-outline-secondary btn-xs" 
+                                               title="View Prescription">
+                                                <i class="fas fa-prescription"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p>No pack orders found matching your criteria.</p>
+                                        <a href="{% url 'pharmacy:create_pack_order' %}" class="btn btn-primary">
+                                            <i class="fas fa-plus"></i> Create First Pack Order
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Pack Orders pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+                                        <i class="fas fa-chevron-left"></i> Previous
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+                                        Next <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Pack Orders Available</h5>
+                    <p class="text-muted">Get started by creating your first pack order.</p>
+                    <a href="{% url 'pharmacy:create_pack_order' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create Pack Order
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Auto-submit form on filter change (optional)
+    const selectElements = document.querySelectorAll('select[name="status"], select[name="pack_type"]');
+    selectElements.forEach(function(select) {
+        select.addEventListener('change', function() {
+            // Optional: Auto-submit form when filters change
+            // this.form.submit();
+        });
+    });
+
+    // Search input enhancement
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            // Optional: Add live search functionality here
+        });
+    }
+
+    // Date range validation
+    const dateFromInput = document.querySelector('input[name="date_from"]');
+    const dateToInput = document.querySelector('input[name="date_to"]');
+    
+    if (dateFromInput && dateToInput) {
+        dateFromInput.addEventListener('change', function() {
+            if (this.value && dateToInput.value && this.value > dateToInput.value) {
+                alert('Start date cannot be later than end date.');
+                this.value = '';
+            }
+        });
+        
+        dateToInput.addEventListener('change', function() {
+            if (this.value && dateFromInput.value && this.value < dateFromInput.value) {
+                alert('End date cannot be earlier than start date.');
+                this.value = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .approval-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .pack-info-card {
+        background: #f8f9fc;
+        border-left: 4px solid #28a745;
+        padding: 1.5rem;
+        border-radius: 0.35rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .patient-info-card {
+        background: #e8f4f8;
+        border-left: 4px solid #17a2b8;
+        padding: 1.5rem;
+        border-radius: 0.35rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .context-alert {
+        border-radius: 0.5rem;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+    
+    .approval-actions {
+        background: #fff;
+        border: 2px dashed #28a745;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .btn-approve {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-approve:hover {
+        background: linear-gradient(135deg, #218838 0%, #1e9689 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .status-warning {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back Button -->
+    <div class="mb-3">
+        <a href="{% url 'pharmacy:pack_order_detail' pack_order.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Order Details
+        </a>
+    </div>
+
+    <!-- Approval Header -->
+    <div class="approval-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Approve Pack Order
+                </h1>
+                <p class="mb-0 h5">Order #{{ pack_order.id }} - {{ pack_order.pack.name }}</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="status-warning">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-2"></i>
+                    <div class="h6">Requires Approval</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Order Information -->
+        <div class="col-lg-8">
+            <!-- Pack Information -->
+            <div class="pack-info-card">
+                <h5 class="text-success mb-3">
+                    <i class="fas fa-box"></i> Pack Information
+                </h5>
+                <div class="info-grid">
+                    <div>
+                        <strong>Pack Name:</strong><br>
+                        {{ pack_order.pack.name }}
+                    </div>
+                    <div>
+                        <strong>Pack Type:</strong><br>
+                        {{ pack_order.pack.get_pack_type_display }}
+                    </div>
+                    <div>
+                        <strong>Total Items:</strong><br>
+                        {{ pack_order.pack.items.count }} medication(s)
+                    </div>
+                    <div>
+                        <strong>Total Cost:</strong><br>
+                        <span class="h6 text-success">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</span>
+                    </div>
+                </div>
+                
+                {% if pack_order.pack.description %}
+                <div class="mt-3">
+                    <strong>Description:</strong><br>
+                    {{ pack_order.pack.description }}
+                </div>
+                {% endif %}
+                
+                {% if pack_order.pack.risk_level %}
+                <div class="mt-3">
+                    <strong>Risk Level:</strong>
+                    {% if pack_order.pack.risk_level == 'low' %}
+                        <span class="badge badge-success">{{ pack_order.pack.get_risk_level_display }}</span>
+                    {% elif pack_order.pack.risk_level == 'medium' %}
+                        <span class="badge badge-warning">{{ pack_order.pack.get_risk_level_display }}</span>
+                    {% elif pack_order.pack.risk_level == 'high' %}
+                        <span class="badge badge-danger">{{ pack_order.pack.get_risk_level_display }}</span>
+                    {% elif pack_order.pack.risk_level == 'critical' %}
+                        <span class="badge badge-dark">{{ pack_order.pack.get_risk_level_display }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Patient Information -->
+            <div class="patient-info-card">
+                <h5 class="text-info mb-3">
+                    <i class="fas fa-user-injured"></i> Patient Information
+                </h5>
+                <div class="info-grid">
+                    <div>
+                        <strong>Patient Name:</strong><br>
+                        {{ pack_order.patient.get_full_name }}
+                    </div>
+                    <div>
+                        <strong>Patient ID:</strong><br>
+                        {{ pack_order.patient.patient_id }}
+                    </div>
+                    <div>
+                        <strong>Gender:</strong><br>
+                        {{ pack_order.patient.get_gender_display }}
+                    </div>
+                    <div>
+                        <strong>Phone:</strong><br>
+                        {{ pack_order.patient.phone_number|default:"Not provided" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Details -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Order Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div>
+                            <strong>Order Date:</strong><br>
+                            {{ pack_order.order_date|date:"M d, Y H:i" }}
+                        </div>
+                        <div>
+                            <strong>Ordered By:</strong><br>
+                            {{ pack_order.ordered_by.get_full_name|default:"Unknown" }}
+                        </div>
+                        {% if pack_order.scheduled_date %}
+                        <div>
+                            <strong>Scheduled Date:</strong><br>
+                            {{ pack_order.scheduled_date|date:"M d, Y H:i" }}
+                        </div>
+                        {% endif %}
+                        <div>
+                            <strong>Current Status:</strong><br>
+                            <span class="badge badge-warning">
+                                <i class="fas fa-clock"></i> {{ pack_order.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    {% if pack_order.order_notes %}
+                    <div class="mt-3">
+                        <strong>Order Notes:</strong><br>
+                        <div class="alert alert-secondary">
+                            {{ pack_order.order_notes }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Context Information -->
+            {% if pack_order.surgery %}
+            <div class="alert alert-info context-alert">
+                <h6 class="alert-heading">
+                    <i class="fas fa-scalpel"></i> Surgery Context
+                </h6>
+                <p class="mb-1"><strong>Surgery:</strong> {{ pack_order.surgery.surgery_type.name }}</p>
+                <p class="mb-0"><strong>Scheduled:</strong> {{ pack_order.surgery.scheduled_date|date:"M d, Y H:i" }}</p>
+            </div>
+            {% elif pack_order.labor_record %}
+            <div class="alert alert-info context-alert">
+                <h6 class="alert-heading">
+                    <i class="fas fa-baby"></i> Labor Context
+                </h6>
+                <p class="mb-1"><strong>Labor Record:</strong> #{{ pack_order.labor_record.id }}</p>
+                <p class="mb-0"><strong>Admission:</strong> {{ pack_order.labor_record.admission_date|date:"M d, Y H:i" }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Pack Items -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-pills"></i> Pack Contents
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if pack_order.pack.items.all %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Total Price</th>
+                                        <th>Instructions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in pack_order.pack.items.all %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.medication.name }}</strong>
+                                            {% if item.is_critical %}
+                                                <span class="badge badge-danger badge-sm ml-1">Critical</span>
+                                            {% elif item.is_optional %}
+                                                <span class="badge badge-secondary badge-sm ml-1">Optional</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>₦{{ item.medication.price|floatformat:2 }}</td>
+                                        <td>₦{{ item.get_total_cost|floatformat:2 }}</td>
+                                        <td>{{ item.usage_instructions|default:"As needed" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No items in this pack.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Approval Actions -->
+        <div class="col-lg-4">
+            <div class="approval-actions">
+                <h5 class="text-success mb-4">
+                    <i class="fas fa-clipboard-check"></i> Approval Required
+                </h5>
+                
+                <p class="text-muted mb-4">
+                    Review the pack order details and confirm approval. Once approved, the order will proceed to the processing stage.
+                </p>
+                
+                <form method="post" id="approval-form">
+                    {% csrf_token %}
+                    
+                    <div class="form-group mb-4">
+                        <label for="approval_notes" class="font-weight-bold">
+                            <i class="fas fa-comment"></i> Approval Notes (Optional)
+                        </label>
+                        <textarea name="approval_notes" id="approval_notes" 
+                                class="form-control" rows="4" 
+                                placeholder="Add any notes or comments about this approval..."></textarea>
+                        <small class="form-text text-muted">
+                            These notes will be recorded with the approval.
+                        </small>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-approve">
+                            <i class="fas fa-check-circle"></i> Approve Pack Order
+                        </button>
+                        <a href="{% url 'pharmacy:pack_order_detail' pack_order.id %}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Approval Information -->
+            <div class="card shadow mt-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Approval Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle"></i> Important
+                        </h6>
+                        <p class="mb-2">By approving this pack order, you confirm that:</p>
+                        <ul class="mb-0">
+                            <li>The pack contents are appropriate for the patient</li>
+                            <li>All medications are clinically indicated</li>
+                            <li>The order details have been verified</li>
+                            <li>The patient context has been considered</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-sm text-muted">
+                        <strong>Next Steps:</strong><br>
+                        After approval, the order will move to "Approved" status and can be processed by pharmacy staff to create individual prescription items.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('approval-form');
+    
+    form.addEventListener('submit', function(e) {
+        const confirmMessage = `Are you sure you want to approve Pack Order #{{ pack_order.id }}?\n\n` +
+                              `Pack: {{ pack_order.pack.name }}\n` +
+                              `Patient: {{ pack_order.patient.get_full_name }}\n` +
+                              `Total Cost: ₦{{ pack_order.pack.get_total_cost|floatformat:2 }}\n\n` +
+                              `This action cannot be undone.`;
+        
+        if (!confirm(confirmMessage)) {
+            e.preventDefault();
+        }
+    });
+    
+    // Auto-resize textarea
+    const textarea = document.getElementById('approval_notes');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+});
+</script>
+{% endblock %}

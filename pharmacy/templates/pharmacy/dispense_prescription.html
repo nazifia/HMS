@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -95,6 +96,16 @@
     
     .quick-actions {
         margin-bottom: 15px;
+    }
+    
+    .quick-actions .btn-group .btn {
+        font-weight: 500;
+    }
+    
+
+    
+    #selected-count {
+        font-weight: 500;
     }
     
     .alert {
@@ -219,8 +230,8 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th width="5%">
-                                <input type="checkbox" id="select-all" class="form-check-input">
+                            <th width="10%" class="text-center">
+                                Select
                             </th>
                             <th>Medication</th>
                             <th>Prescribed Qty</th>
@@ -275,22 +286,18 @@
                 </table>
                 
                 {% if prescription.items.all %}
-                    <div class="p-3 border-top">
+                    <div class="p-3 border-top bg-light">
                         <div class="row align-items-center">
                             <div class="col-md-6">
-                                <div class="quick-actions">
-                                    <button type="button" id="select-all-btn" class="btn btn-outline-primary btn-sm">
-                                        Select All
-                                    </button>
-                                    <button type="button" id="clear-all-btn" class="btn btn-outline-secondary btn-sm">
-                                        Clear All
-                                    </button>
-                                </div>
+                                <small class="text-muted">Select individual items to dispense</small>
                             </div>
                             <div class="col-md-6 text-md-end">
                                 <button type="submit" id="dispense-btn" class="btn btn-dispense">
                                     <i class="fas fa-pills"></i> Dispense Selected Items
                                 </button>
+                                <div class="mt-1">
+                                    <small class="text-muted" id="selected-count">0 items selected</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -307,13 +314,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const dispensarySelect = document.getElementById('dispensary-select');
     const dispensaryIdInput = document.getElementById('dispensary-id-input');
     const dispensaryStatus = document.getElementById('dispensary-status');
-    const selectAllCheckbox = document.getElementById('select-all');
-    const selectAllBtn = document.getElementById('select-all-btn');
-    const clearAllBtn = document.getElementById('clear-all-btn');
     const dispenseBtn = document.getElementById('dispense-btn');
     const itemCheckboxes = document.querySelectorAll('.item-checkbox');
     const quantityInputs = document.querySelectorAll('.quantity-input');
-    
+
     // Handle dispensary selection
     dispensarySelect.addEventListener('change', function() {
         const dispensaryId = this.value;
@@ -482,18 +486,12 @@ document.addEventListener('DOMContentLoaded', function() {
             cb.checked = false;
         });
         quantityInputs.forEach(input => input.disabled = true);
-        selectAllCheckbox.disabled = true;
-        selectAllBtn.disabled = true;
-        clearAllBtn.disabled = true;
         dispenseBtn.disabled = true;
     }
     
     // Enable global controls
     function enableGlobalControls() {
         console.log('Enabling global controls');
-        if (selectAllCheckbox) selectAllCheckbox.disabled = false;
-        if (selectAllBtn) selectAllBtn.disabled = false;
-        if (clearAllBtn) clearAllBtn.disabled = false;
         if (dispenseBtn) dispenseBtn.disabled = false;
 
         // Also enable all item controls
@@ -507,43 +505,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     
-    // Handle select all
-    selectAllCheckbox.addEventListener('change', function() {
-        const availableCheckboxes = Array.from(itemCheckboxes).filter(cb => !cb.disabled);
-        availableCheckboxes.forEach(cb => cb.checked = this.checked);
-        updateDispenseButton();
-    });
-    
-    selectAllBtn.addEventListener('click', function() {
-        const availableCheckboxes = Array.from(itemCheckboxes).filter(cb => !cb.disabled);
-        availableCheckboxes.forEach(cb => cb.checked = true);
-        selectAllCheckbox.checked = true;
-        updateDispenseButton();
-    });
-    
-    // Handle clear all
-    clearAllBtn.addEventListener('click', function() {
-        itemCheckboxes.forEach(cb => cb.checked = false);
-        selectAllCheckbox.checked = false;
-        updateDispenseButton();
-    });
-    
     // Handle individual checkbox changes
     itemCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateDispenseButton);
+        checkbox.addEventListener('change', function() {
+            updateDispenseButton();
+        });
     });
-    
-    // Update dispense button state
+
+
+    // Update dispense button state and selected count
     function updateDispenseButton() {
         const checkedBoxes = Array.from(itemCheckboxes).filter(cb => cb.checked);
-        // Only require items to be checked, not dispensary selection
-        dispenseBtn.disabled = checkedBoxes.length === 0;
+        const selectedCount = checkedBoxes.length;
 
-        // Update select all checkbox state
-        const availableCheckboxes = Array.from(itemCheckboxes).filter(cb => !cb.disabled);
-        const checkedAvailable = availableCheckboxes.filter(cb => cb.checked);
-        selectAllCheckbox.checked = availableCheckboxes.length > 0 && checkedAvailable.length === availableCheckboxes.length;
-        selectAllCheckbox.indeterminate = checkedAvailable.length > 0 && checkedAvailable.length < availableCheckboxes.length;
+        // Update dispense button
+        dispenseBtn.disabled = selectedCount === 0;
+
+        // Update selected count display
+        const selectedCountElement = document.getElementById('selected-count');
+        if (selectedCountElement) {
+            selectedCountElement.textContent = `${selectedCount} item${selectedCount !== 1 ? 's' : ''} selected`;
+            selectedCountElement.className = selectedCount > 0 ? 'text-primary fw-bold' : 'text-muted';
+        }
     }
     
     // Form submission validation
@@ -613,6 +596,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Enabled item on page load:', row.dataset.itemId);
         }
     });
+
+    // Initialize dispense button
+    updateDispenseButton();
 });
 </script>
 {% endblock %}

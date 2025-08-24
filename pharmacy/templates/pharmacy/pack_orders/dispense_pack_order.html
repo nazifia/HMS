@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dispense-header {
+        background: linear-gradient(135deg, #28a745 0%, #17a2b8 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .pack-info-card {
+        background: #f8f9fc;
+        border-left: 4px solid #28a745;
+        padding: 1.5rem;
+        border-radius: 0.35rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .patient-info-card {
+        background: #e8f4f8;
+        border-left: 4px solid #17a2b8;
+        padding: 1.5rem;
+        border-radius: 0.35rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dispense-actions {
+        background: #fff;
+        border: 2px dashed #28a745;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .btn-dispense {
+        background: linear-gradient(135deg, #28a745 0%, #17a2b8 100%);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-dispense:hover {
+        background: linear-gradient(135deg, #218838 0%, #138496 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .dispense-warning {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    .prescription-link {
+        background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 1rem;
+    }
+    
+    .prescription-link:hover {
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back Button -->
+    <div class="mb-3">
+        <a href="{% url 'pharmacy:pack_order_detail' pack_order.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Order Details
+        </a>
+    </div>
+
+    <!-- Dispense Header -->
+    <div class="dispense-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-hand-holding-medical me-2"></i>
+                    Dispense Pack Order
+                </h1>
+                <p class="mb-0 h5">Order #{{ pack_order.id }} - {{ pack_order.pack.name }}</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="dispense-warning">
+                    <i class="fas fa-box fa-3x mb-2"></i>
+                    <div class="h6">Ready for Dispensing</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Order Information -->
+        <div class="col-lg-8">
+            <!-- Pack Information -->
+            <div class="pack-info-card">
+                <h5 class="text-success mb-3">
+                    <i class="fas fa-box"></i> Pack Information
+                </h5>
+                <div class="info-grid">
+                    <div>
+                        <strong>Pack Name:</strong><br>
+                        {{ pack_order.pack.name }}
+                    </div>
+                    <div>
+                        <strong>Pack Type:</strong><br>
+                        {{ pack_order.pack.get_pack_type_display }}
+                    </div>
+                    <div>
+                        <strong>Total Items:</strong><br>
+                        {{ pack_order.pack.items.count }} medication(s)
+                    </div>
+                    <div>
+                        <strong>Total Cost:</strong><br>
+                        <span class="h6 text-success">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</span>
+                    </div>
+                </div>
+                
+                {% if pack_order.pack.description %}
+                <div class="mt-3">
+                    <strong>Description:</strong><br>
+                    {{ pack_order.pack.description }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Patient Information -->
+            <div class="patient-info-card">
+                <h5 class="text-info mb-3">
+                    <i class="fas fa-user-injured"></i> Patient Information
+                </h5>
+                <div class="info-grid">
+                    <div>
+                        <strong>Patient Name:</strong><br>
+                        {{ pack_order.patient.get_full_name }}
+                    </div>
+                    <div>
+                        <strong>Patient ID:</strong><br>
+                        {{ pack_order.patient.patient_id }}
+                    </div>
+                    <div>
+                        <strong>Gender:</strong><br>
+                        {{ pack_order.patient.get_gender_display }}
+                    </div>
+                    <div>
+                        <strong>Phone:</strong><br>
+                        {{ pack_order.patient.phone_number|default:"Not provided" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Timeline -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-clock"></i> Order Timeline
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div>
+                            <strong>Order Date:</strong><br>
+                            {{ pack_order.order_date|date:"M d, Y H:i" }}
+                        </div>
+                        <div>
+                            <strong>Ordered By:</strong><br>
+                            {{ pack_order.ordered_by.get_full_name|default:"Unknown" }}
+                        </div>
+                        {% if pack_order.approved_at %}
+                        <div>
+                            <strong>Approved:</strong><br>
+                            <span class="text-success">{{ pack_order.approved_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                        {% endif %}
+                        {% if pack_order.processed_at %}
+                        <div>
+                            <strong>Processed:</strong><br>
+                            <span class="text-info">{{ pack_order.processed_at|date:"M d, Y H:i" }}</span>
+                            {% if pack_order.processed_by %}
+                                <br><small>by {{ pack_order.processed_by.get_full_name }}</small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <strong>Current Status:</strong><br>
+                        <span class="badge badge-success">
+                            <i class="fas fa-box"></i> {{ pack_order.get_status_display }}
+                        </span>
+                    </div>
+                    
+                    {% if pack_order.processing_notes %}
+                    <div class="mt-3">
+                        <strong>Processing Notes:</strong><br>
+                        <div class="alert alert-info">
+                            {{ pack_order.processing_notes|linebreaksbr }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Related Prescription -->
+            {% if pack_order.prescription %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-prescription-bottle"></i> Related Prescription
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'pharmacy:prescription_detail' pack_order.prescription.id %}" class="prescription-link">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Prescription #{{ pack_order.prescription.id }}</h6>
+                                <p class="mb-0">{{ pack_order.prescription.items.count }} items • {{ pack_order.prescription.get_status_display }}</p>
+                            </div>
+                            <i class="fas fa-external-link-alt fa-lg"></i>
+                        </div>
+                    </a>
+                    <small class="text-muted">
+                        View the detailed prescription to manage individual medication dispensing
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Pack Items -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-pills"></i> Pack Contents
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if pack_order.pack.items.all %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Total Price</th>
+                                        <th>Instructions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in pack_order.pack.items.all %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.medication.name }}</strong>
+                                            {% if item.is_critical %}
+                                                <span class="badge badge-danger badge-sm ml-1">Critical</span>
+                                            {% elif item.is_optional %}
+                                                <span class="badge badge-secondary badge-sm ml-1">Optional</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>₦{{ item.medication.price|floatformat:2 }}</td>
+                                        <td>₦{{ item.get_total_cost|floatformat:2 }}</td>
+                                        <td>{{ item.usage_instructions|default:"As needed" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No items in this pack.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Dispense Actions -->
+        <div class="col-lg-4">
+            <div class="dispense-actions">
+                <h5 class="text-success mb-4">
+                    <i class="fas fa-hand-holding-medical"></i> Mark as Dispensed
+                </h5>
+                
+                <p class="text-muted mb-4">
+                    Confirm that this pack order has been dispensed to the patient. This will mark the order as complete.
+                </p>
+                
+                <form method="post" id="dispense-form">
+                    {% csrf_token %}
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-dispense">
+                            <i class="fas fa-check-circle"></i> Mark as Dispensed
+                        </button>
+                        <a href="{% url 'pharmacy:pack_order_detail' pack_order.id %}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Dispensing Information -->
+            <div class="card shadow mt-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Dispensing Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle"></i> Important
+                        </h6>
+                        <p class="mb-2">Before marking as dispensed, ensure that:</p>
+                        <ul class="mb-0">
+                            <li>All medications have been physically dispensed</li>
+                            <li>Patient has received proper instructions</li>
+                            <li>All documentation is complete</li>
+                            <li>Patient has signed for receipt (if required)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-sm text-muted">
+                        <strong>After Dispensing:</strong><br>
+                        The pack order will be marked as complete and removed from active dispensing queues.
+                    </div>
+                </div>
+            </div>
+
+            {% if pack_order.prescription %}
+            <div class="card shadow mt-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-lightbulb"></i> Alternative Option
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        You can also manage individual medication dispensing through the related prescription.
+                    </p>
+                    <a href="{% url 'pharmacy:prescription_detail' pack_order.prescription.id %}" 
+                       class="btn btn-outline-info btn-block">
+                        <i class="fas fa-prescription-bottle"></i> Manage via Prescription
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('dispense-form');
+    
+    form.addEventListener('submit', function(e) {
+        const confirmMessage = `Are you sure you want to mark Pack Order #{{ pack_order.id }} as dispensed?\n\n` +
+                              `Pack: {{ pack_order.pack.name }}\n` +
+                              `Patient: {{ pack_order.patient.get_full_name }}\n` +
+                              `Items: {{ pack_order.pack.items.count }} medication(s)\n\n` +
+                              `This confirms that all medications have been physically dispensed to the patient.\n\n` +
+                              `This action cannot be undone.`;
+        
+        if (!confirm(confirmMessage)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

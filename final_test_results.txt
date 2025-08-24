@@ -1,0 +1,4 @@
+FINAL TEST RESULTS
+==================
+
+Test 1: Importing pharmacy views...
