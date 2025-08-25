@@ -2,12 +2,12 @@
 
 ## Overview
 
-This design document outlines the enhancement of the existing Pharmacy Revenue Comprehensive page (`http://127.0.0.1:8000/pharmacy/revenue/comprehensive/`) to include revenue generated from all hospital departments and implement month-based search functionality.
+This design document outlines the enhancement of the existing Pharmacy Revenue Comprehensive page (previously at `http://127.0.0.1:8000/pharmacy/revenue/comprehensive/`, now available at `http://127.0.0.1:8000/pharmacy/revenue/statistics/`) to include revenue generated from all hospital departments and implement month-based search functionality.
 
 ## Current State Analysis
 
 ### Existing Implementation
-- **URL**: `/pharmacy/revenue/comprehensive/`
+- **URL**: `/pharmacy/revenue/statistics/` (previously `/pharmacy/revenue/comprehensive/`)
 - **View**: `comprehensive_revenue_analysis` in `pharmacy/views.py`
 - **Template**: `pharmacy/templates/pharmacy/comprehensive_revenue_analysis.html`
 - **Current Scope**: Limited to pharmacy dispensing logs only

@@ -60,6 +60,14 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    {% load url_helpers %}
+                    {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
+                    <a class="nav-link" href="{{ revenue_url }}">
+                        <i class="fas fa-chart-line fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Revenue Statistics
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="{% url 'accounts:user_dashboard' %}">
                         <i class="fas fa-user-shield fa-sm fa-fw mr-2 text-gray-400"></i>
                         User Management

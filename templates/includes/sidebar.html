@@ -454,12 +454,14 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Comprehensive Revenue Analysis -->
-        {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
-        <li class="nav-item {% if '/pharmacy/revenue/comprehensive/' in request.path %}active{% endif %}">
-            <a class="nav-link" href="{% url 'pharmacy:comprehensive_revenue_analysis' %}">
+        <!-- Nav Item - Simple Revenue Statistics (visible to all authenticated users) -->
+        {% if user.is_authenticated %}
+        <li class="nav-item {% if '/pharmacy/revenue/statistics/' in request.path %}active{% endif %}">
+            {% load url_helpers %}
+            {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
+            <a class="nav-link" href="{{ revenue_url }}">
                 <i class="fas fa-fw fa-chart-line text-white"></i>
-                <span class="text-white">Revenue Analysis</span>
+                <span class="text-white">Revenue Statistics</span>
             </a>
         </li>
         {% endif %}

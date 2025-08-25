@@ -34,4 +34,7 @@ urlpatterns = [
     # Reporting Integration URLs
     path('reporting/revenue-report/<int:report_id>/', reporting_integration.execute_revenue_report, name='execute_revenue_report'),
     path('reporting/widget-data/<int:widget_id>/', reporting_integration.revenue_widget_data, name='revenue_widget_data'),
+    
+    # Test URL for URL helpers
+    path('test-url-helpers/', views.test_url_helpers, name='test_url_helpers'),
 ]

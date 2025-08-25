@@ -80,7 +80,7 @@ def test_template_rendering():
         from django.template.loader import get_template
         
         # Try to load the template
-        template = get_template('pharmacy/comprehensive_revenue_analysis.html')
+        template = get_template('pharmacy/simple_revenue_statistics.html')
         print("✅ Template loads successfully")
         
         # Create sample context data

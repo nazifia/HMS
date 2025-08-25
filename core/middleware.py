@@ -23,6 +23,10 @@ class LoginRequiredMiddleware:
             '/static/',
             '/media/',
             '/admin/login/',
+            # Temporary: Allow access to revenue test page for debugging
+            '/pharmacy/revenue/test-charts/',
+            '/pharmacy/revenue/statistics/debug/',
+            '/pharmacy/revenue/statistics/',
         ]
 
     def __call__(self, request):

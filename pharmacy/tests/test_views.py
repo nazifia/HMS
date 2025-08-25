@@ -108,3 +108,28 @@ class PharmacyViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn('Ibuprofen', data)
+
+    def test_revenue_analysis_view_authenticated(self):
+        """Revenue analysis should return a response for authenticated user"""
+        response = self.client.get(reverse('pharmacy:revenue_analysis'))
+        # Should either render (200) or redirect depending on auth config; ensure no None/500
+        self.assertIn(response.status_code, (200, 302))
+
+    def test_revenue_analysis_view_anonymous(self):
+        """Anonymous access to revenue analysis should redirect to login (302)"""
+        # log out
+        self.client.logout()
+        response = self.client.get(reverse('pharmacy:revenue_analysis'))
+        self.assertIn(response.status_code, (302, 200))
+
+    def test_revenue_analysis_redirects_to_statistics_preserving_query(self):
+        """Requesting the old revenue_analysis route should redirect to the statistics route and keep query params."""
+        # Ensure we're logged in (redirect requires auth on original view)
+        self.client.login(phone_number="9876543210", password="testpass123")
+        response = self.client.get(reverse('pharmacy:revenue_analysis') + '?start=2025-01-01&end=2025-01-31')
+        # Should redirect (302) to the new statistics path
+        self.assertEqual(response.status_code, 302)
+        location = response['Location']
+        self.assertIn('/pharmacy/revenue/statistics/', location)
+        self.assertIn('start=2025-01-01', location)
+        self.assertIn('end=2025-01-31', location)

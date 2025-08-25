@@ -3,8 +3,12 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from patients.models import Patient
+
+
+@login_required
+def test_url_helpers(request):
+    """View for testing URL helper functions and template tags"""
+    return render(request, 'test_url_helpers.html')
 
 
 def home_view(request):

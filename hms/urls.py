@@ -34,7 +34,7 @@ urlpatterns = [
     path('patients/', include('patients.urls')),
     path('doctors/', include('doctors.urls')),
     path('appointments/', include('appointments.urls')),
-    path('pharmacy/', include('pharmacy.urls')),
+    path('pharmacy/', include(('pharmacy.urls', 'pharmacy'), namespace='pharmacy')),
     path('laboratory/', include('laboratory.urls')),
     path('billing/', include('billing.urls')),
     path('inpatient/', include('inpatient.urls')),

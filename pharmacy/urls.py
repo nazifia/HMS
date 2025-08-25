@@ -1,4 +1,5 @@
 from django.urls import path, include
+from django.views.generic.base import RedirectView
 from . import views
 from .api import urls as api_urls
 
@@ -34,9 +35,10 @@ urlpatterns = [
     path('procurement/analytics/', views.procurement_analytics, name='procurement_analytics'),
     path('procurement/reorder-suggestions/', views.automated_reorder_suggestions, name='reorder_suggestions'),
     path('revenue/analysis/', views.revenue_analysis, name='revenue_analysis'),
-    path('revenue/comprehensive/', views.comprehensive_revenue_analysis, name='comprehensive_revenue_analysis'),
-    path('revenue/comprehensive/debug/', views.comprehensive_revenue_analysis_debug, name='comprehensive_revenue_analysis_debug'),
-    path('revenue/test-charts/', views.test_revenue_charts_public, name='test_revenue_charts_public'),
+    # Backwards-compatible redirect: old comprehensive URL -> canonical statistics view
+    path('revenue/comprehensive/', RedirectView.as_view(pattern_name='pharmacy:simple_revenue_statistics', query_string=True, permanent=False), name='revenue_comprehensive_redirect'),
+    path('revenue/test-charts/', views.simple_revenue_statistics, name='test_revenue_charts_public'),
+    path('revenue/statistics/', views.simple_revenue_statistics, name='simple_revenue_statistics'),
     path('expense/analysis/', views.expense_analysis, name='expense_analysis'),
     path('medications/<int:medication_id>/procure/', views.create_procurement_request, name='create_procurement_request'),
     path('api/suppliers/', views.api_suppliers, name='api_suppliers'),

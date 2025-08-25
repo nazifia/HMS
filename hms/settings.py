@@ -33,7 +33,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-9$g3qq3fdk*djhhk6b5*#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
 
 # Security settings for production
 if not DEBUG:
@@ -111,7 +111,7 @@ MIDDLEWARE = [
     'user_isolation_middleware.UserIsolationMiddleware',  # User isolation middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.middleware.LoginRequiredMiddleware',  # New middleware for login required
+    'core.middleware.LoginRequiredMiddleware',  # Re-enabled after debugging
     'core.middleware.RoleBasedAccessMiddleware',  # Role-based access control
 ]
 

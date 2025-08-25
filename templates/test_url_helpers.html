@@ -1,0 +1,27 @@
+{% load url_helpers %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test URL Helpers</title>
+</head>
+<body>
+    <h1>Test URL Helpers</h1>
+    
+    <h2>Testing safe_url</h2>
+    {% safe_url 'pharmacy:simple_revenue_statistics' as revenue_url %}
+    {% if revenue_url %}
+        <p>Valid URL: <a href="{{ revenue_url }}">Revenue Statistics</a></p>
+    {% else %}
+        <p>URL resolution failed - no link shown</p>
+    {% endif %}
+    
+    <h2>Testing safe_url_or_default</h2>
+    <p>Valid URL: <a href="{% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' %}">Revenue Statistics</a></p>
+    <p>Invalid URL: <a href="{% safe_url_or_default 'pharmacy:nonexistent_url' '#' %}">Non-existent Page</a></p>
+    
+    <h2>Testing resolve_url_or_none filter</h2>
+    <p>Valid URL string: {{ '/pharmacy/revenue/statistics/'|resolve_url_or_none }}</p>
+    <p>Invalid URL string: {{ 'invalid-url'|resolve_url_or_none }}</p>
+</body>
+</html>

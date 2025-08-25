@@ -183,6 +183,6 @@ if __name__ == "__main__":
     
     if revenue_test_passed and chart_test_passed:
         print("\n🎉 All tests passed! The revenue analysis should now display charts with data.")
-        print("📌 Visit: http://127.0.0.1:8000/pharmacy/revenue/comprehensive/")
+        print("📌 Visit: http://127.0.0.1:8000/pharmacy/revenue/statistics/")
     else:
         print("\n⚠️  Some tests failed. Please check the errors above.")

@@ -24,7 +24,7 @@ def test_page_access():
         client = Client()
         
         # Try without authentication first
-        response = client.get('/pharmacy/revenue/comprehensive/')
+        response = client.get('/pharmacy/revenue/statistics/')
         print(f"📊 Response Status (no auth): {response.status_code}")
         
         if response.status_code == 302:
@@ -38,7 +38,7 @@ def test_page_access():
             )
             
             client.force_login(user)
-            response = client.get('/pharmacy/revenue/comprehensive/')
+            response = client.get('/pharmacy/revenue/statistics/')
             print(f"📊 Response Status (with auth): {response.status_code}")
         
         if response.status_code == 200:
@@ -88,11 +88,11 @@ def test_view_directly():
     try:
         from django.test import RequestFactory
         from django.contrib.auth import get_user_model
-        from pharmacy.views import comprehensive_revenue_analysis
+        from pharmacy.views import simple_revenue_statistics as comprehensive_revenue_analysis
         
         # Create a test request
         factory = RequestFactory()
-        request = factory.get('/pharmacy/revenue/comprehensive/')
+        request = factory.get('/pharmacy/revenue/statistics/')
         
         # Create a test user
         User = get_user_model()
@@ -154,7 +154,7 @@ def check_template_syntax():
     print("\n🔍 Checking Template Syntax...")
     
     try:
-        template_path = 'pharmacy/templates/pharmacy/comprehensive_revenue_analysis.html'
+        template_path = 'pharmacy/templates/pharmacy/simple_revenue_statistics.html'
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as f:
                 content = f.read()

@@ -34,8 +34,10 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{% url 'pharmacy:revenue_analysis' %}" class="btn btn-outline-success btn-block">
-                                <i class="fas fa-dollar-sign"></i> Revenue Analysis
+                            {% load url_helpers %}
+                            {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
+                            <a href="{{ revenue_url }}" class="btn btn-outline-success btn-block">
+                                <i class="fas fa-dollar-sign"></i> Revenue Statistics
                                 <small class="d-block text-muted">Sales performance, profit margins, trends</small>
                             </a>
                         </div>
