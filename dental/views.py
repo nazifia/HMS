@@ -109,7 +109,7 @@ def edit_dental_record(request, record_id):
     if request.method == 'POST':
         form = DentalRecordForm(request.POST, instance=record)
         if form.is_valid():
-            form.save()
+            record = form.save()  # Capture the saved instance
             messages.success(request, 'Dental record updated successfully.')
             return redirect('dental:dental_record_detail', record_id=record.id)
     else:
@@ -196,7 +196,7 @@ def create_prescription_for_dental(request, record_id):
                             )
                     
                     messages.success(request, 'Prescription created successfully!')
-                    return redirect('dental:dental_record_detail', record_id=record.id)
+                    return redirect('dental:dental_record_detail', record_id=record.pk)
                     
             except Exception as e:
                 messages.error(request, f'Error creating prescription: {str(e)}')
@@ -283,7 +283,7 @@ def add_xray_to_dental_record(request, record_id):
             xray.taken_by = request.user
             xray.save()
             messages.success(request, 'X-ray added successfully.')
-            return redirect('dental:dental_record_detail', record_id=record.id)
+            return redirect('dental:dental_record_detail', record_id=record.pk)
     else:
         form = DentalXRayForm()
     
@@ -298,7 +298,7 @@ def add_xray_to_dental_record(request, record_id):
 def delete_xray(request, xray_id):
     """Delete a dental X-ray"""
     xray = get_object_or_404(DentalXRay, id=xray_id)
-    record_id = xray.dental_record.id
+    record_id = xray.dental_record.pk
     
     if request.method == 'POST':
         xray.delete()
@@ -318,7 +318,7 @@ def generate_invoice_for_dental(request, record_id):
     # Check if invoice already exists
     if record.invoice:
         messages.info(request, 'An invoice already exists for this dental record.')
-        return redirect('dental:dental_record_detail', record_id=record.id)
+        return redirect('dental:dental_record_detail', record_id=record.pk)
     
     if request.method == 'POST':
         try:
@@ -342,11 +342,11 @@ def generate_invoice_for_dental(request, record_id):
                     )
                 
                 # Link invoice to dental record
-                record.invoice = invoice
+                record.invoice = invoice  # type: ignore
                 record.save()
                 
                 messages.success(request, 'Invoice generated successfully.')
-                return redirect('dental:dental_record_detail', record_id=record.id)
+                return redirect('dental:dental_record_detail', record_id=record.pk)
                 
         except Exception as e:
             messages.error(request, f'Error generating invoice: {str(e)}')

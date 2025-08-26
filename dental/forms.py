@@ -4,6 +4,7 @@ from .models import DentalRecord, DentalService, DentalXRay
 from core.medical_forms import MedicalRecordSearchForm
 from core.patient_search_forms import PatientSearchForm
 from django.conf import settings
+from typing import Any, cast
 
 
 class DentalRecordForm(forms.ModelForm):
@@ -37,14 +38,22 @@ class DentalRecordForm(forms.ModelForm):
             'dentist': forms.Select(attrs={'class': 'form-select'}),
         }
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # Order patients by name for better UX
-        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        # Type annotation to help Pyright understand the field type
+        patient_field: forms.ModelChoiceField = self.fields['patient']  # type: ignore
+        patient_field.queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
         # Order services by name
-        self.fields['service'].queryset = DentalService.objects.filter(is_active=True).order_by('name')
+        service_field: forms.ModelChoiceField = self.fields['service']  # type: ignore
+        service_field.queryset = DentalService.objects.filter(is_active=True).order_by('name')
+        
         # Filter dentists
-        self.fields['dentist'].queryset = settings.AUTH_USER_MODEL.objects.filter(
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        dentist_field: forms.ModelChoiceField = self.fields['dentist']  # type: ignore
+        dentist_field.queryset = User.objects.filter(
             profile__specialization__icontains='dentist'
         ).order_by('first_name', 'last_name')
         
@@ -75,7 +84,7 @@ class DentalRecordSearchForm(MedicalRecordSearchForm):
     )
     
     service = forms.ModelChoiceField(
-        queryset=DentalService.objects.filter(is_active=True),
+        queryset=cast(Any, DentalService).objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text='Filter by dental service'

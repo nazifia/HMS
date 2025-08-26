@@ -93,7 +93,7 @@ def search_nhia_patients_ajax(request):
             results = []
             for patient in patients:
                 results.append({
-                    'id': patient.id,
+                    'id': patient.pk,
                     'text': f"{patient.get_full_name()} ({patient.patient_id})"
                 })
             

@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from patients.models import Patient
+from typing import TYPE_CHECKING
 
 class AuthorizationCode(models.Model):
     STATUS_CHOICES = (
@@ -34,6 +35,9 @@ class AuthorizationCode(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     used_at = models.DateTimeField(null=True, blank=True)
+    
+    if TYPE_CHECKING:
+        def get_service_type_display(self) -> str: ...
 
     def __str__(self):
         return f"{self.patient} - {self.get_service_type_display()} - {self.status}"

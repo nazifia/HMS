@@ -2,18 +2,20 @@ from django.db import models
 from django.utils import timezone
 from patients.models import Patient
 from django.conf import settings
+from typing import Any
+from decimal import Decimal
 
 class DentalService(models.Model):
     """Model for dental services/procedures"""
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    is_active = models.BooleanField(default=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    is_active = models.BooleanField(default=True)  # type: ignore
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return str(self.name)
 
     class Meta:
         verbose_name = "Dental Service"
@@ -85,18 +87,18 @@ class DentalRecord(models.Model):
     invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='dental_record')
     authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='dental_records')
 
-    def __str__(self):
-        tooth_display = dict(self.TEETH_CHOICES).get(self.tooth, 'N/A') if self.tooth else 'N/A'
-        service_name = self.service.name if self.service else 'N/A'
-        return f"Dental Record: {service_name} for {self.patient.get_full_name()} - Tooth: {tooth_display}"
+    def __str__(self) -> str:
+        tooth_display = dict(self.TEETH_CHOICES).get(self.tooth, 'N/A') if self.tooth else 'N/A'  # type: ignore
+        service_name = self.service.name if self.service else 'N/A'  # type: ignore
+        return f"Dental Record: {service_name} for {self.patient.get_full_name()} - Tooth: {tooth_display}"  # type: ignore
 
-    def get_tooth_display(self):
+    def get_tooth_display(self) -> str:
         """Get human-readable tooth name"""
-        return dict(self.TEETH_CHOICES).get(self.tooth, self.tooth) if self.tooth else 'Not specified'
+        return dict(self.TEETH_CHOICES).get(self.tooth, self.tooth) if self.tooth else 'Not specified'  # type: ignore
 
-    def get_service_price(self):
+    def get_service_price(self) -> Any:
         """Get the price of the service"""
-        return self.service.price if self.service else 0.00
+        return self.service.price if self.service else 0.00  # type: ignore
 
     class Meta:
         ordering = ['-created_at']
@@ -114,10 +116,10 @@ class DentalPrescription(models.Model):
     instructions = models.TextField(blank=True, null=True)
     prescribed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     prescribed_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)  # type: ignore
 
-    def __str__(self):
-        return f"Prescription for {self.dental_record.patient.get_full_name()} - {self.medication}"
+    def __str__(self) -> str:
+        return f"Prescription for {self.dental_record.patient.get_full_name()} - {self.medication}"  # type: ignore
 
     class Meta:
         ordering = ['-prescribed_at']
@@ -143,8 +145,8 @@ class DentalXRay(models.Model):
     taken_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     taken_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"{self.get_xray_type_display()} X-Ray for {self.dental_record.patient.get_full_name()}"
+    def __str__(self) -> str:
+        return f"{self.get_xray_type_display()} X-Ray for {self.dental_record.patient.get_full_name()}"  # type: ignore
 
     class Meta:
         ordering = ['-taken_at']

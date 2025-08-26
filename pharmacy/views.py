@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q, Sum, F
+from django.db.models import Q, Sum, F, Count
 from django.db import models
 from django.core.paginator import Paginator
 from django.http import JsonResponse
@@ -206,12 +206,30 @@ def manage_categories(request):
     context = {
         'categories': categories,
         'form': form,
-        'page_title': 'Manage Categories',
-        'active_nav': 'pharmacy',
     }
     
     return render(request, 'pharmacy/manage_categories.html', context)
 
+
+@login_required
+def create_procurement_request(request, medication_id):
+    """View for creating a procurement request"""
+    medication = get_object_or_404(Medication, id=medication_id)
+    
+    # Get suppliers who have supplied this medication before
+    suppliers = Supplier.objects.filter(
+        purchases__items__medication=medication,
+        is_active=True
+    ).distinct()
+    
+    context = {
+        'medication': medication,
+        'suppliers': suppliers,
+        'page_title': f'Procurement Request - {medication.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/create_procurement_request.html', context)
 
 @login_required
 def edit_category(request, category_id):
@@ -376,10 +394,40 @@ def delete_supplier(request, supplier_id):
 
 @login_required
 def quick_procurement(request, supplier_id):
+    """View for deleting a supplier"""
+    supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
+    context = {
+        'supplier': supplier,
+        'page_title': f'Delete Supplier - {supplier.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/delete_supplier.html', context)
+
+
+@login_required
+def quick_procurement(request, supplier_id):
     """View for quick procurement from a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
-    # Implementation for quick procurement
-    pass
+    
+    # Get frequently ordered medications from this supplier
+    frequently_ordered = PurchaseItem.objects.filter(
+        purchase__supplier=supplier
+    ).values(
+        'medication_id', 'medication__name'
+    ).annotate(
+        order_count=Count('id'),
+        total_quantity=Sum('quantity')
+    ).order_by('-order_count')[:10]
+    
+    context = {
+        'supplier': supplier,
+        'frequently_ordered': frequently_ordered,
+        'page_title': f'Quick Procurement - {supplier.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/quick_procurement.html', context)
 
 
 @login_required
@@ -403,22 +451,75 @@ def procurement_dashboard(request):
     }
     
     return render(request, 'pharmacy/procurement_dashboard.html', context)
-import csv
-from django.contrib.auth.decorators import login_required
-
 
 @login_required
 def procurement_analytics(request):
     """View for procurement analytics"""
     # Implementation for procurement analytics
-    pass
+
+    # Get purchase data for analytics
+    purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')[:50]
+    
+    # Calculate procurement statistics
+    total_purchases = Purchase.objects.count()
+    total_purchase_value = Purchase.objects.aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    
+    # Get supplier-wise purchase data
+    supplier_stats = Purchase.objects.values(
+        'supplier__name'
+    ).annotate(
+        total_purchases=Count('id'),
+        total_value=Sum('total_amount')
+    ).order_by('-total_value')[:10]
+    
+    context = {
+        'purchases': purchases,
+        'total_purchases': total_purchases,
+        'total_purchase_value': total_purchase_value,
+        'supplier_stats': supplier_stats,
+        'page_title': 'Procurement Analytics',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/procurement_analytics.html', context)
 
 
 @login_required
 def automated_reorder_suggestions(request):
     """View for automated reorder suggestions"""
     # Implementation for automated reorder suggestions
-    pass
+    # Get medications that are below reorder level
+    low_stock_items = ActiveStoreInventory.objects.filter(
+        stock_quantity__lte=F('reorder_level')
+    ).select_related('medication', 'active_store__dispensary')
+    
+    # Get items that need reordering based on usage patterns
+    # This is a simplified implementation - in a real system, you might use more complex algorithms
+    reorder_suggestions = []
+    for item in low_stock_items:
+        # Calculate average monthly usage (simplified)
+        avg_monthly_usage = item.stock_quantity * 0.3  # Placeholder calculation
+        suggested_order_qty = max(
+            item.reorder_level,  # Using reorder_level instead of reorder_quantity
+            (avg_monthly_usage * 3) - item.stock_quantity  # 3 months supply minus current stock
+        )
+        
+        reorder_suggestions.append({
+            'inventory_item': item,
+            'current_stock': item.stock_quantity,
+            'reorder_level': item.reorder_level,
+            'suggested_quantity': suggested_order_qty,
+        })
+    
+    context = {
+        'reorder_suggestions': reorder_suggestions,
+        'page_title': 'Reorder Suggestions',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/reorder_suggestions.html', context)
 
 
 @login_required
@@ -441,7 +542,30 @@ def revenue_analysis(request):
 def expense_analysis(request):
     """View for expense analysis"""
     # Implementation for expense analysis
-    pass
+    # Get expense data
+    purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')[:50]
+    
+    # Calculate expense statistics
+    total_expenses = Purchase.objects.aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    
+    # Get category-wise expense data
+    category_expenses = PurchaseItem.objects.values(
+        'medication__category__name'
+    ).annotate(
+        total_value=Sum(F('quantity') * F('unit_price'))
+    ).order_by('-total_value')[:10]
+    
+    context = {
+        'purchases': purchases,
+        'total_expenses': total_expenses,
+        'category_expenses': category_expenses,
+        'page_title': 'Expense Analysis',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/expense_analysis.html', context)
 import json
 from datetime import datetime
 from django.utils import timezone
@@ -769,13 +893,6 @@ def comprehensive_revenue_analysis_debug(request):
         return redirect(f"{target}?{query}")
     return redirect(target)
 @login_required
-def expense_analysis(request):
-    """View for expense analysis"""
-    # Implementation for expense analysis
-    pass
-
-
-@login_required
 def create_procurement_request(request, medication_id):
     """View for creating a procurement request"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -786,8 +903,8 @@ def create_procurement_request(request, medication_id):
 @login_required
 def api_suppliers(request):
     """API endpoint for suppliers"""
-    # Implementation for API suppliers
-    pass
+    suppliers = Supplier.objects.filter(is_active=True).values('id', 'name')
+    return JsonResponse(list(suppliers), safe=False)
 
 
 @login_required
@@ -808,7 +925,21 @@ def bulk_store_dashboard(request):
 @login_required
 def request_medication_transfer(request):
     """View for requesting medication transfer"""
-    # Implementation for requesting medication transfer
+    # Get active dispensaries
+    dispensaries = Dispensary.objects.filter(is_active=True)
+    
+    # Get active stores
+    active_stores = ActiveStore.objects.filter(is_active=True).select_related('dispensary')
+    
+    context = {
+        'dispensaries': dispensaries,
+        'active_stores': active_stores,
+        'page_title': 'Request Medication Transfer',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/request_medication_transfer.html', context)
+
     pass
 
 
@@ -816,16 +947,27 @@ def request_medication_transfer(request):
 def approve_medication_transfer(request, transfer_id):
     """View for approving medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
-    # Implementation for approving medication transfer
-    pass
-
+    
+    context = {
+        'transfer': transfer,
+        'page_title': f'Approve Transfer Request #{transfer.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/approve_medication_transfer.html', context)
 
 @login_required
 def execute_medication_transfer(request, transfer_id):
     """View for executing medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
-    # Implementation for executing medication transfer
-    pass
+    
+    context = {
+        'transfer': transfer,
+        'page_title': f'Execute Transfer #{transfer.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/execute_medication_transfer.html', context)
 
 
 @login_required

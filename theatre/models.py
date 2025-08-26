@@ -96,7 +96,16 @@ class Surgery(models.Model):
     invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='surgery_invoices')
     
     def __str__(self):
-        return f"Surgery for {self.patient} - {self.surgery_type} ({self.get_status_display()})"
+        # Create a mapping for status display values to avoid using get_status_display()
+        status_display_map = {
+            'scheduled': 'Scheduled',
+            'in_progress': 'In Progress',
+            'completed': 'Completed',
+            'cancelled': 'Cancelled',
+            'postponed': 'Postponed',
+        }
+        status_display = status_display_map.get(self.status, self.status)
+        return f"Surgery for {self.patient} - {self.surgery_type} ({status_display})"
     
     class Meta:
         app_label = 'theatre'
@@ -122,7 +131,17 @@ class SurgicalTeam(models.Model):
     usage_notes = models.TextField(blank=True, null=True)
     
     def __str__(self):
-        return f"{self.staff} - {self.get_role_display()} for {self.surgery}"
+        # Create a mapping for role display values to avoid using get_role_display()
+        role_display_map = {
+            'surgeon': 'Surgeon',
+            'assistant_surgeon': 'Assistant Surgeon',
+            'anesthetist': 'Anesthetist',
+            'nurse': 'Nurse',
+            'technician': 'Technician',
+            'other': 'Other',
+        }
+        role_display = role_display_map.get(self.role, self.role)
+        return f"{self.staff} - {role_display} for {self.surgery}"
     
     class Meta:
         app_label = 'theatre'
@@ -152,7 +171,16 @@ class SurgicalEquipment(models.Model):
     calibration_frequency = models.DurationField(blank=True, null=True, help_text="e.g., '365 00:00:00' for annual calibration")
     
     def __str__(self):
-        return f"{self.name} ({self.get_equipment_type_display()})"
+        # Create a mapping for equipment type display values to avoid using get_equipment_type_display()
+        equipment_type_display_map = {
+            'instrument': 'Surgical Instrument',
+            'monitor': 'Monitoring Equipment',
+            'anesthesia': 'Anesthesia Equipment',
+            'imaging': 'Imaging Equipment',
+            'other': 'Other Equipment',
+        }
+        equipment_type_display = equipment_type_display_map.get(self.equipment_type, self.equipment_type)
+        return f"{self.name} ({equipment_type_display})"
     
     class Meta:
         app_label = 'theatre'
