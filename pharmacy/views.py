@@ -442,6 +442,9 @@ def expense_analysis(request):
     """View for expense analysis"""
     # Implementation for expense analysis
     pass
+import json
+from datetime import datetime
+from django.utils import timezone
 
 
 def test_revenue_charts_public(request):
@@ -610,11 +613,55 @@ def simple_revenue_statistics(request):
     """Simple revenue statistics view showing department-wise revenue in a table and chart"""
     from .revenue_service import RevenueAggregationService, MonthFilterHelper
     import json
+    from datetime import datetime
+    from django.utils import timezone
 
-    # Get current month date range
-    start_date, end_date = MonthFilterHelper.get_current_month()
+    # Handle search parameters
+    search_query = request.GET.get('search', '').strip().lower()
     
-    # Initialize revenue aggregation service
+    # Handle date range parameters
+    start_date_str = request.GET.get('start_date', '')
+    end_date_str = request.GET.get('end_date', '')
+    
+    # Parse dates if provided, otherwise use current month
+    try:
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        else:
+            # Get first day of current month
+            today = timezone.now().date()
+            start_date = today.replace(day=1)
+    except ValueError:
+        # Fallback to current month if invalid date
+        today = timezone.now().date()
+        start_date = today.replace(day=1)
+    
+    try:
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        else:
+            # Get last day of current month
+            today = timezone.now().date()
+            if today.month == 12:
+                end_date = today.replace(day=31, month=12)
+            else:
+                # Get the last day of the current month
+                next_month = today.replace(day=28) + timezone.timedelta(days=4)
+                end_date = next_month - timezone.timedelta(days=next_month.day)
+    except ValueError:
+        # Fallback to last day of current month if invalid date
+        today = timezone.now().date()
+        if today.month == 12:
+            end_date = today.replace(day=31, month=12)
+        else:
+            next_month = today.replace(day=28) + timezone.timedelta(days=4)
+            end_date = next_month - timezone.timedelta(days=next_month.day)
+    
+    # Ensure start_date is not after end_date
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+    
+    # Initialize revenue aggregation service with the specified date range
     revenue_service = RevenueAggregationService(start_date, end_date)
     
     # Get comprehensive revenue data
@@ -641,7 +688,7 @@ def simple_revenue_statistics(request):
     }
     
     # Revenue sources for table
-    revenue_sources = [
+    all_revenue_sources = [
         {'name': 'Pharmacy', 'revenue': comprehensive_data['pharmacy_revenue']['total_revenue'], 'icon': 'fas fa-pills', 'color': 'primary', 'transactions': comprehensive_data['pharmacy_revenue']['total_payments']},
         {'name': 'Laboratory', 'revenue': comprehensive_data['laboratory_revenue']['total_revenue'], 'icon': 'fas fa-microscope', 'color': 'success', 'transactions': comprehensive_data['laboratory_revenue']['total_payments']},
         {'name': 'Consultations', 'revenue': comprehensive_data['consultation_revenue']['total_revenue'], 'icon': 'fas fa-stethoscope', 'color': 'info', 'transactions': comprehensive_data['consultation_revenue']['total_payments']},
@@ -650,6 +697,17 @@ def simple_revenue_statistics(request):
         {'name': 'General & Others', 'revenue': comprehensive_data['general_revenue']['total_revenue'], 'icon': 'fas fa-receipt', 'color': 'secondary', 'transactions': comprehensive_data['general_revenue']['total_payments']},
         {'name': 'Wallet', 'revenue': comprehensive_data['wallet_revenue']['total_revenue'], 'icon': 'fas fa-wallet', 'color': 'dark', 'transactions': comprehensive_data['wallet_revenue']['total_transactions']},
     ]
+    
+    # Filter revenue sources based on search query
+    if search_query:
+        revenue_sources = [source for source in all_revenue_sources 
+                          if search_query in source['name'].lower()]
+    else:
+        revenue_sources = all_revenue_sources
+    
+    # Recalculate total revenue based on filtered sources
+    if search_query:
+        total_revenue = sum(source['revenue'] for source in revenue_sources)
     
     # Performance metrics
     performance_metrics = {
@@ -684,6 +742,9 @@ def simple_revenue_statistics(request):
         'performance_metrics': performance_metrics,
         'page_title': 'Revenue Statistics',
         'active_nav': 'pharmacy',
+        'search_query': search_query,  # Add search query to context
+        'start_date_str': start_date_str,  # Add date strings to context
+        'end_date_str': end_date_str,
         
         # Individual department data for backward compatibility with template
         'pharmacy_revenue': comprehensive_data['pharmacy_revenue'],
