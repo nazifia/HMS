@@ -1,0 +1,27 @@
+{% extends 'dental/base.html' %}
+
+{% block page_title %}Delete X-Ray{% endblock %}
+
+{% block dental_content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Delete X-Ray</h5>
+            </div>
+            <div class="card-body">
+                <p>Are you sure you want to delete the <strong>{{ xray.get_xray_type_display }}</strong> X-ray?</p>
+                <p>This action cannot be undone.</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'dental:dental_record_detail' xray.dental_record.id %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

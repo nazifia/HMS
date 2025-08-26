@@ -1,0 +1,57 @@
+{% extends 'dental/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block dental_content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{ title }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'dental:dental_records' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for patient selection
+    $('.select2').select2({
+        theme: 'bootstrap-5',
+        width: '100%'
+    });
+    
+    // Patient search functionality
+    $('.patient-search').on('input', function() {
+        var searchTerm = $(this).val();
+        if (searchTerm.length >= 2) {
+            $.ajax({
+                url: '{% url "dental:search_dental_patients" %}',
+                data: { 'term': searchTerm },
+                success: function(data) {
+                    var select = $('.patient-select');
+                    select.empty();
+                    select.append(new Option('', ''));
+                    $.each(data, function(index, patient) {
+                        select.append(new Option(patient.text, patient.id));
+                    });
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

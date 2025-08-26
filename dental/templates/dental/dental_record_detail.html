@@ -1,0 +1,193 @@
+{% extends 'dental/base.html' %}
+
+{% block page_title %}Dental Record Details{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'dental:edit_dental_record' record.id %}" class="btn btn-sm btn-outline-warning">
+    <i class="fas fa-edit"></i> Edit
+</a>
+<a href="{% url 'dental:dental_records' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-arrow-left"></i> Back
+</a>
+{% endblock %}
+
+{% block dental_content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Dental Record Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Patient Information</h6>
+                        <p><strong>Name:</strong> {{ record.patient.get_full_name }}</p>
+                        <p><strong>ID:</strong> {{ record.patient.patient_id }}</p>
+                        <p><strong>Age:</strong> {{ record.patient.get_age }} years</p>
+                        <p><strong>Gender:</strong> {{ record.patient.get_gender_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Record Information</h6>
+                        <p><strong>Service:</strong> 
+                            {% if record.service %}
+                                {{ record.service.name }}
+                            {% else %}
+                                <span class="text-muted">Not specified</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Tooth:</strong> {{ record.get_tooth_display }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge bg-{{ record.treatment_status|yesno:'success,warning,secondary' }}">
+                                {{ record.get_treatment_status_display }}
+                            </span>
+                        </p>
+                        <p><strong>Dentist:</strong> 
+                            {% if record.dentist %}
+                                {{ record.dentist.get_full_name }}
+                            {% else %}
+                                <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Diagnosis</h6>
+                        <p>{{ record.diagnosis|linebreaks }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Treatment Procedure</h6>
+                        <p>{{ record.treatment_procedure|linebreaks }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Appointment Information</h6>
+                        <p><strong>Date:</strong> {{ record.appointment_date|date:"M d, Y H:i" }}</p>
+                        {% if record.next_appointment_date %}
+                        <p><strong>Next Appointment:</strong> {{ record.next_appointment_date|date:"M d, Y H:i" }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Billing Information</h6>
+                        <p><strong>Price:</strong> ${{ record.get_service_price }}</p>
+                        <p><strong>Invoice:</strong> 
+                            {% if record.invoice %}
+                                <a href="#" class="btn btn-sm btn-outline-primary">View Invoice</a>
+                            {% else %}
+                                <a href="{% url 'dental:generate_invoice_for_dental' record.id %}" class="btn btn-sm btn-outline-success">Generate Invoice</a>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                {% if record.notes %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Notes</h6>
+                        <p>{{ record.notes|linebreaks }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- X-Rays Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">X-Rays</h5>
+                <a href="{% url 'dental:add_xray_to_dental_record' record.id %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i> Add X-Ray
+                </a>
+            </div>
+            <div class="card-body">
+                {% if xrays %}
+                <div class="row">
+                    {% for xray in xrays %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ xray.get_xray_type_display }}</h6>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        Taken on {{ xray.taken_at|date:"M d, Y H:i" }} by {{ xray.taken_by.get_full_name }}
+                                    </small>
+                                </p>
+                                {% if xray.image %}
+                                <img src="{{ xray.image.url }}" class="img-fluid mb-2" alt="X-Ray">
+                                {% endif %}
+                                {% if xray.notes %}
+                                <p class="card-text">{{ xray.notes }}</p>
+                                {% endif %}
+                                <a href="{% url 'dental:delete_xray' xray.id %}" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No X-rays available for this record.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Prescriptions Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Prescriptions</h5>
+                <a href="{% url 'dental:create_prescription_for_dental' record.id %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i> New Prescription
+                </a>
+            </div>
+            <div class="card-body">
+                {% if prescriptions %}
+                <div class="list-group">
+                    {% for prescription in prescriptions %}
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Prescription #{{ prescription.id }}</h6>
+                            <small>{{ prescription.prescription_date|date:"M d, Y" }}</small>
+                        </div>
+                        <p class="mb-1">{{ prescription.diagnosis }}</p>
+                        <small class="text-muted">{{ prescription.doctor.get_full_name }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No prescriptions available for this patient.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Actions Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'dental:create_prescription_for_dental' record.id %}" class="btn btn-primary">
+                        <i class="fas fa-prescription"></i> Create Prescription
+                    </a>
+                    <a href="{% url 'dental:generate_invoice_for_dental' record.id %}" class="btn btn-success">
+                        <i class="fas fa-file-invoice"></i> Generate Invoice
+                    </a>
+                    <a href="{% url 'dental:add_xray_to_dental_record' record.id %}" class="btn btn-info">
+                        <i class="fas fa-x-ray"></i> Add X-Ray
+                    </a>
+                    <a href="{% url 'dental:delete_dental_record' record.id %}" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete Record
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

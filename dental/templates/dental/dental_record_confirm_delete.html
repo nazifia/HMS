@@ -1,0 +1,35 @@
+{% extends 'dental/base.html' %}
+
+{% block page_title %}Delete Dental Record{% endblock %}
+
+{% block dental_content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Delete Dental Record</h5>
+            </div>
+            <div class="card-body">
+                <p>Are you sure you want to delete the dental record for <strong>{{ record.patient.get_full_name }}</strong>?</p>
+                <p><strong>Service:</strong> 
+                    {% if record.service %}
+                        {{ record.service.name }}
+                    {% else %}
+                        Not specified
+                    {% endif %}
+                </p>
+                <p><strong>Date:</strong> {{ record.created_at|date:"M d, Y" }}</p>
+                <p>This action cannot be undone.</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'dental:dental_record_detail' record.id %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

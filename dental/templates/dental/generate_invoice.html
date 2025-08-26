@@ -1,0 +1,52 @@
+{% extends 'dental/base.html' %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block dental_content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{ title }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Patient: {{ record.patient.get_full_name }}</h6>
+                    <p class="text-muted">Record ID: {{ record.id }}</p>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Service Details</h6>
+                        {% if record.service %}
+                        <p><strong>Name:</strong> {{ record.service.name }}</p>
+                        <p><strong>Description:</strong> {{ record.service.description }}</p>
+                        <p><strong>Price:</strong> ${{ record.service.price }}</p>
+                        {% else %}
+                        <p class="text-muted">No service specified for this record.</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Record Information</h6>
+                        <p><strong>Tooth:</strong> {{ record.get_tooth_display }}</p>
+                        <p><strong>Status:</strong> {{ record.get_treatment_status_display }}</p>
+                        <p><strong>Date:</strong> {{ record.created_at|date:"M d, Y" }}</p>
+                    </div>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="alert alert-info">
+                        <p>This will generate an invoice for the dental service with a total amount of <strong>${{ record.get_service_price }}</strong>.</p>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'dental:dental_record_detail' record.id %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-success">Generate Invoice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

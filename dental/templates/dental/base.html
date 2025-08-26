@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Dental Module - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse show">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_records' %}active{% endif %}" 
+                           href="{% url 'dental:dental_records' %}">
+                            <i class="fas fa-tooth me-2"></i>Dental Records
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'create_dental_record' %}active{% endif %}" 
+                           href="{% url 'dental:create_dental_record' %}">
+                            <i class="fas fa-plus-circle me-2"></i>Create Record
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_services' %}active{% endif %}" 
+                           href="{% url 'dental:dental_services' %}">
+                            <i class="fas fa-cogs me-2"></i>Services
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    {% block page_title %}
+                        Dental Module
+                    {% endblock %}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    {% block page_actions %}
+                        <!-- Page-specific actions can be added here -->
+                    {% endblock %}
+                </div>
+            </div>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            {% block dental_content %}
+                <!-- Main content goes here -->
+            {% endblock %}
+        </main>
+    </div>
+</div>
+{% endblock %}

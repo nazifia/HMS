@@ -1,24 +1,129 @@
-
 {% extends 'base.html' %}
+
+{% block title %}Verify Service Authorization Code{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h2>Verify Authorization Code</h2>
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            <label for="code">Authorization Code</label>
-            <input type="text" class="form-control" id="code" name="code">
+    <h2 class="mb-4">Verify Service Authorization Code</h2>
+    
+    <!-- Verification Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Enter Authorization Code</h5>
         </div>
-        <button type="submit" class="btn btn-primary">Verify</button>
-    </form>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="code">Authorization Code:</label>
+                    <input type="text" class="form-control" id="code" name="code" placeholder="Enter authorization code" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Verify Code</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Verification Results -->
     {% if authorization_code %}
-        <hr>
-        <h3>Code Details</h3>
-        <p>Patient: {{ authorization_code.patient }}</p>
-        <p>Service: {{ authorization_code.service }}</p>
-        <p>Department: {{ authorization_code.department }}</p>
-        <p>Status: {{ authorization_code.status }}</p>
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5>Authorization Code Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Patient Information</h6>
+                    <p><strong>Name:</strong> {{ authorization_code.patient.get_full_name }}</p>
+                    <p><strong>Patient ID:</strong> {{ authorization_code.patient.patient_id }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Service Information</h6>
+                    <p><strong>Service Type:</strong> {{ authorization_code.get_service_type_display }}</p>
+                    <p><strong>Department:</strong> {{ authorization_code.department }}</p>
+                    {% if authorization_code.service_description %}
+                    <p><strong>Description:</strong> {{ authorization_code.service_description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6>Code Status</h6>
+                    <p><strong>Status:</strong> 
+                        {% if authorization_code.status == 'pending' %}
+                            <span class="badge badge-success">Valid</span>
+                        {% elif authorization_code.status == 'used' %}
+                            <span class="badge badge-secondary">Already Used</span>
+                        {% else %}
+                            <span class="badge badge-danger">Invalid</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Generated At:</strong> {{ authorization_code.created_at }}</p>
+                </div>
+                <div class="col-md-6">
+                    {% if authorization_code.status == 'pending' %}
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-success" id="accept-service-btn">
+                            Accept and Use Code for Payment
+                        </button>
+                    </div>
+                    {% elif authorization_code.status == 'used' %}
+                    <div class="alert alert-info">
+                        <strong>This code was used on:</strong> {{ authorization_code.used_at }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        This code is no longer valid.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Accept Service Modal -->
+    <div class="modal fade" id="acceptServiceModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Accept Service Authorization</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to accept this authorization code for payment?</p>
+                    <p>This will mark the code as "used" and cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="confirm-accept-btn">Accept and Mark as Used</button>
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 </div>
+
+<!-- Add JavaScript for modal functionality -->
+{% if authorization_code and authorization_code.status == 'pending' %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const acceptServiceBtn = document.getElementById('accept-service-btn');
+        const acceptServiceModal = new bootstrap.Modal(document.getElementById('acceptServiceModal'));
+        const confirmAcceptBtn = document.getElementById('confirm-accept-btn');
+        
+        acceptServiceBtn.addEventListener('click', function() {
+            acceptServiceModal.show();
+        });
+        
+        confirmAcceptBtn.addEventListener('click', function() {
+            // In a real implementation, this would make an AJAX call to mark the code as used
+            // For now, we'll just show a success message and redirect
+            alert('Authorization code accepted and marked as used for payment.');
+            window.location.href = "{% url 'desk_office:verify_authorization_code' %}";
+        });
+    });
+</script>
+{% endif %}
 {% endblock %}

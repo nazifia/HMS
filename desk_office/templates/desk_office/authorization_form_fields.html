@@ -1,0 +1,33 @@
+<!-- This partial template contains the authorization form fields -->
+<div id="authorization-form-fields">
+    <div class="form-group">
+        <label for="id_service_type">Service Type:</label>
+        <select name="service_type" class="form-control" id="id_service_type" required>
+            <option value="">---------</option>
+            <option value="laboratory">Laboratory</option>
+            <option value="radiology">Radiology</option>
+            <option value="theatre">Theatre/Surgery</option>
+            <option value="inpatient">Inpatient</option>
+            <option value="dental">Dental</option>
+            <option value="opthalmic">Ophthalmic</option>
+            <option value="ent">ENT</option>
+            <option value="oncology">Oncology</option>
+            <option value="gynae_emergency">Gynae Emergency</option>
+            <option value="labor">Labor & Delivery</option>
+            <option value="scbu">SCBU</option>
+            <option value="icu">ICU</option>
+            <option value="general">General Consultation</option>
+            <option value="other">Other Services</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="id_service_description">Service Description:</label>
+        <textarea name="service_description" class="form-control" id="id_service_description" rows="3" placeholder="Describe the specific service requested (e.g., CBC, X-Ray, Surgery, etc.)"></textarea>
+    </div>
+    
+    <div class="form-group">
+        <label for="id_department">Department:</label>
+        <input type="text" name="department" class="form-control" id="id_department" placeholder="Department where service will be delivered" required>
+    </div>
+</div>
