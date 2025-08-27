@@ -4,10 +4,10 @@ from datetime import timedelta
 def pharmacy_context(request):
     """
     Context processor for pharmacy app
-    Adds today's date and expiry warning date (30 days from now)
+    Adds today's date and expiry warning date (90 days from now)
     """
     today = timezone.now().date()
-    expiry_warning = today + timedelta(days=30)
+    expiry_warning = today + timedelta(days=90)
     
     return {
         'today': today,

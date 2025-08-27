@@ -21,10 +21,10 @@ class Command(BaseCommand):
             expiry_date__lte=timezone.now().date()
         ).select_related('medication', 'active_store__dispensary')
 
-        # Get items expiring within 30 days
+        # Get items expiring within 90 days (changed from 30 days)
         near_expiry_items = ActiveStoreInventory.objects.filter(
             expiry_date__gt=timezone.now().date(),
-            expiry_date__lte=timezone.now().date() + timedelta(days=30)
+            expiry_date__lte=timezone.now().date() + timedelta(days=90)
         ).select_related('medication', 'active_store__dispensary')
 
         # Prepare alert message
@@ -51,7 +51,7 @@ class Command(BaseCommand):
 "
 
         if near_expiry_items:
-            alert_message += "Items Expiring Within 30 Days:
+            alert_message += "Items Expiring Within 90 Days:
 "
             for item in near_expiry_items:
                 alert_message += f"- {item.medication.name} ({item.medication.strength}) at {item.active_store.dispensary.name}: Expires on {item.expiry_date} ({item.days_until_expiry()} days)

@@ -1735,9 +1735,9 @@ def expiring_medications_report(request):
     from django.utils import timezone
     from datetime import timedelta
     
-    # Get medications expiring within 30 days
+    # Get medications expiring within 90 days (changed from 30 days)
     expiring_soon = ActiveStoreInventory.objects.filter(
-        expiry_date__lte=timezone.now().date() + timedelta(days=30),
+        expiry_date__lte=timezone.now().date() + timedelta(days=90),
         expiry_date__gte=timezone.now().date()
     ).select_related('medication', 'active_store__dispensary').order_by('expiry_date')
     
@@ -2266,11 +2266,11 @@ def low_stock_alerts(request):
         expiry_date__lte=timezone.now().date()
     ).select_related('medication', 'active_store__dispensary')
     
-    # Get medications expiring within 30 days
+    # Get medications expiring within 90 days (changed from 30 days)
     from datetime import timedelta
     near_expiry_items = ActiveStoreInventory.objects.filter(
         expiry_date__gt=timezone.now().date(),
-        expiry_date__lte=timezone.now().date() + timedelta(days=30)
+        expiry_date__lte=timezone.now().date() + timedelta(days=90)
     ).select_related('medication', 'active_store__dispensary')
     
     context = {

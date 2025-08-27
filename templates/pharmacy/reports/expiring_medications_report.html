@@ -49,7 +49,7 @@
     <!-- Expiring Soon Medications Section -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-warning">Expiring Soon (Within 30 Days)</h6>
+            <h6 class="m-0 font-weight-bold text-warning">Expiring Soon (Within 90 Days)</h6>
         </div>
         <div class="card-body">
             {% if expiring_soon %}
@@ -80,7 +80,7 @@
                 </table>
             </div>
             {% else %}
-            <p>No medications expiring within 30 days.</p>
+            <p>No medications expiring within 90 days.</p>
             {% endif %}
         </div>
     </div>
