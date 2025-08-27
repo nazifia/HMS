@@ -65,7 +65,8 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',    # Third-party apps
+    'django.contrib.staticfiles',
+    # Third-party apps
     'widget_tweaks',
     'crispy_forms',
     'crispy_bootstrap5',
@@ -99,6 +100,7 @@ INSTALLED_APPS = [
     'icu',
     'family_planning',
     'gynae_emergency',
+    'pharmacy_billing.apps.PharmacyBillingConfig',  # Added to resolve RuntimeError
 
 ]
 

@@ -1,0 +1,1 @@
+default_app_config = 'pharmacy_billing.apps.PharmacyBillingConfig'
