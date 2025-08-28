@@ -192,13 +192,17 @@
                 <select id="dispensary-select" class="form-select" required>
                     <option value="">Choose dispensary...</option>
                     {% for dispensary in dispensaries %}
-                        <option value="{{ dispensary.id }}">{{ dispensary.name }}</option>
+                        <option value="{{ dispensary.id }}" {% if selected_dispensary and selected_dispensary.id == dispensary.id %}selected{% endif %}>{{ dispensary.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-6">
                 <div id="dispensary-status" class="text-muted">
-                    <small>Please select a dispensary to view stock levels</small>
+                    {% if selected_dispensary %}
+                        <small>Selected: {{ selected_dispensary.name }}</small>
+                    {% else %}
+                        <small>Please select a dispensary to view stock levels</small>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -318,6 +322,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const itemCheckboxes = document.querySelectorAll('.item-checkbox');
     const quantityInputs = document.querySelectorAll('.quantity-input');
 
+    // Check if a dispensary is already selected on page load
+    if (dispensarySelect.value) {
+        dispensaryIdInput.value = dispensarySelect.value;
+        console.log('Dispensary pre-selected:', dispensarySelect.value);
+        
+        // Show items as loading and fetch stock quantities for pre-selected dispensary
+        showItemsAsLoading();
+        fetchStockQuantities(dispensarySelect.value);
+    }
+
     // Handle dispensary selection
     dispensarySelect.addEventListener('change', function() {
         const dispensaryId = this.value;
@@ -399,206 +413,66 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Error fetching stock:', error);
             dispensaryStatus.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Error loading stock information: ' + error.message;
-            resetStockDisplay();
-
-            // Show items even if stock loading failed
-            enableItemsWithoutStock();
         });
     }
-    
-    // Update stock display
+
+    // Update stock display with data from AJAX response
     function updateStockDisplay(stockData) {
         console.log('Updating stock display with data:', stockData);
-        const stockCells = document.querySelectorAll('[data-stock-cell]');
-        console.log('Found stock cells:', stockCells.length);
-
-        stockCells.forEach((cell, index) => {
-            const row = cell.closest('tr');
-            const itemId = row.dataset.itemId;
-            const checkbox = row.querySelector('.item-checkbox');
-            const quantityInput = row.querySelector('.quantity-input');
-            const stock = stockData[itemId] || 0;
-
-            console.log(`Item ${itemId}: stock = ${stock}`);
-
-            // Update stock display
-            if (stock > 10) {
-                cell.className = 'stock-status stock-available';
-                cell.innerHTML = `<i class="fas fa-check-circle"></i> ${stock} available`;
-            } else if (stock > 0) {
-                cell.className = 'stock-status stock-low';
-                cell.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${stock} available (Low)`;
-            } else {
-                cell.className = 'stock-status stock-out';
-                cell.innerHTML = `<i class="fas fa-times-circle"></i> Out of stock`;
-            }
-
-            // Always enable controls, but adjust max quantity based on stock
-            checkbox.disabled = false;
-            quantityInput.disabled = false;
-
-            if (stock > 0) {
-                // Set max quantity based on stock
-                quantityInput.max = Math.min(stock, parseInt(quantityInput.max));
-                quantityInput.value = Math.min(parseInt(quantityInput.value), stock);
-                console.log(`Enabled controls for item ${itemId} with ${stock} stock`);
-            } else {
-                // Even with no stock, keep controls enabled but show warning
-                console.log(`Warning: No stock for item ${itemId}, but keeping controls enabled`);
-                cell.innerHTML += ' <span class="text-danger">(Warning: No stock available)</span>';
+        
+        // Reset all stock displays first
+        resetStockDisplay();
+        
+        // Update each item's stock display
+        stockData.forEach(item => {
+            const row = document.querySelector(`tr[data-item-id="${item.prescription_item_id}"]`);
+            if (row) {
+                const stockCell = row.querySelector('[data-stock-cell]');
+                if (stockCell) {
+                    // Determine stock status class
+                    let stockClass = 'stock-out';
+                    let stockText = 'Out of Stock';
+                    
+                    if (item.stock_quantity > 0) {
+                        stockClass = item.stock_quantity >= item.remaining_to_dispense ? 'stock-available' : 'stock-low';
+                        stockText = `${item.stock_quantity} in stock`;
+                    }
+                    
+                    stockCell.className = `stock-status ${stockClass}`;
+                    stockCell.innerHTML = stockText;
+                    
+                    // Update quantity input max value
+                    const quantityInput = row.querySelector('.quantity-input');
+                    if (quantityInput) {
+                        quantityInput.max = Math.min(item.remaining_to_dispense, item.stock_quantity);
+                        // If current value exceeds max, adjust it
+                        if (parseInt(quantityInput.value) > parseInt(quantityInput.max)) {
+                            quantityInput.value = quantityInput.max;
+                        }
+                    }
+                }
             }
         });
-
+        
+        // Enable controls after stock data is loaded
         enableGlobalControls();
-        updateDispenseButton();
-        console.log('Stock display update completed');
     }
-    
-    // Reset stock display
+
+    // Reset stock display to default state
     function resetStockDisplay() {
-        console.log('Resetting stock display but keeping items visible');
         const stockCells = document.querySelectorAll('[data-stock-cell]');
         stockCells.forEach(cell => {
             cell.className = 'stock-status stock-loading';
             cell.innerHTML = '<i class="fas fa-info-circle"></i> Select dispensary to check stock';
-
-            // Keep the row visible and enabled
-            const row = cell.closest('tr');
-            if (row) {
-                const checkbox = row.querySelector('.item-checkbox');
-                const quantityInput = row.querySelector('.quantity-input');
-
-                if (checkbox) checkbox.disabled = false;
-                if (quantityInput) quantityInput.disabled = false;
-
-                console.log('Keeping row visible for item:', row.dataset.itemId);
-            }
         });
+    }
 
-        // Keep global controls enabled
-        enableGlobalControls();
-    }
-    
-    // Disable all controls
-    function disableAllControls() {
-        itemCheckboxes.forEach(cb => {
-            cb.disabled = true;
-            cb.checked = false;
-        });
-        quantityInputs.forEach(input => input.disabled = true);
-        dispenseBtn.disabled = true;
-    }
-    
     // Enable global controls
     function enableGlobalControls() {
-        console.log('Enabling global controls');
         if (dispenseBtn) dispenseBtn.disabled = false;
-
-        // Also enable all item controls
-        itemCheckboxes.forEach(cb => {
-            if (cb) cb.disabled = false;
-        });
-        quantityInputs.forEach(input => {
-            if (input) input.disabled = false;
-        });
+        itemCheckboxes.forEach(checkbox => checkbox.disabled = false);
+        quantityInputs.forEach(input => input.disabled = false);
     }
-
-
-    
-    // Handle individual checkbox changes
-    itemCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateDispenseButton();
-        });
-    });
-
-
-    // Update dispense button state and selected count
-    function updateDispenseButton() {
-        const checkedBoxes = Array.from(itemCheckboxes).filter(cb => cb.checked);
-        const selectedCount = checkedBoxes.length;
-
-        // Update dispense button
-        dispenseBtn.disabled = selectedCount === 0;
-
-        // Update selected count display
-        const selectedCountElement = document.getElementById('selected-count');
-        if (selectedCountElement) {
-            selectedCountElement.textContent = `${selectedCount} item${selectedCount !== 1 ? 's' : ''} selected`;
-            selectedCountElement.className = selectedCount > 0 ? 'text-primary fw-bold' : 'text-muted';
-        }
-    }
-    
-    // Form submission validation
-    document.getElementById('dispense-form').addEventListener('submit', function(e) {
-        // Check payment verification first
-        {% if not prescription.is_payment_verified %}
-        e.preventDefault();
-        alert('Payment must be completed before dispensing medications.');
-        return;
-        {% endif %}
-
-        const checkedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
-
-        if (checkedItems.length === 0) {
-            e.preventDefault();
-            alert('Please select at least one item to dispense.');
-            return;
-        }
-        
-        if (!dispensarySelect.value) {
-            // For now, allow dispensing without dispensary selection for testing
-            console.warn('No dispensary selected, but allowing dispensing for testing');
-            // e.preventDefault();
-            // alert('Please select a dispensary.');
-            // return;
-        }
-        
-        // Validate quantities
-        let hasInvalidQuantity = false;
-        checkedItems.forEach(checkbox => {
-            const row = checkbox.closest('tr');
-            const quantityInput = row.querySelector('.quantity-input');
-            const quantity = parseInt(quantityInput.value);
-            
-            if (!quantity || quantity <= 0) {
-                hasInvalidQuantity = true;
-            }
-        });
-        
-        if (hasInvalidQuantity) {
-            e.preventDefault();
-            alert('Please enter valid quantities for all selected items.');
-            return;
-        }
-        
-        // Confirm dispensing
-        if (!confirm(`Are you sure you want to dispense ${checkedItems.length} item(s)?`)) {
-            e.preventDefault();
-        }
-    });
-    
-    // Initialize - enable all controls by default
-    console.log('Page loaded, enabling all controls');
-    enableGlobalControls();
-
-    // Make sure all items are visible and enabled
-    const stockCells = document.querySelectorAll('[data-stock-cell]');
-    stockCells.forEach((cell) => {
-        const row = cell.closest('tr');
-        if (row) {
-            const checkbox = row.querySelector('.item-checkbox');
-            const quantityInput = row.querySelector('.quantity-input');
-
-            if (checkbox) checkbox.disabled = false;
-            if (quantityInput) quantityInput.disabled = false;
-
-            console.log('Enabled item on page load:', row.dataset.itemId);
-        }
-    });
-
-    // Initialize dispense button
-    updateDispenseButton();
 });
 </script>
 {% endblock %}

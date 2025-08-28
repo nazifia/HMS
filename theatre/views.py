@@ -1017,7 +1017,7 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
     """Helper function to add pack costs to surgery invoice"""
     # Get or create invoice for surgery
     if not surgery.invoice:
-        # Create invoice if it doesn't exist
+        # Create invoice for surgery
         invoice = Invoice.objects.create(
             patient=surgery.patient,
             invoice_date=surgery.scheduled_date.date(),
@@ -1051,12 +1051,18 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
         }
     )
     
-    # Add invoice item for the pack
+    # Calculate pack cost with NHIA discount if applicable
     pack_cost = pack_order.pack.get_total_cost()
+    
+    # Apply 10% payment for NHIA patients (they pay 10%, NHIA covers 90%)
+    if surgery.patient.patient_type == 'nhia':
+        pack_cost = pack_cost * Decimal('0.10')  # NHIA patients pay 10%
+    
+    # Add invoice item for the pack
     invoice_item = InvoiceItem.objects.create(
         invoice=invoice,
         service=service,
-        description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id})",
+        description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id}){' - NHIA Patient (10% payment)' if surgery.patient.patient_type == 'nhia' else ''}",
         quantity=1,
         unit_price=pack_cost,
         tax_percentage=Decimal('0.00'),

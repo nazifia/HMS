@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
-from .models import Patient, MedicalHistory, Vitals
-from .forms import PatientForm, MedicalHistoryForm, VitalsForm
+from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction
+from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm
 from .utils import get_safe_vitals_for_patient
 from appointments.models import Appointment
 from consultations.models import Consultation
@@ -443,8 +443,39 @@ def wallet_dashboard(request, patient_id):
 def add_funds_to_wallet(request, patient_id):
     """View for adding funds to patient wallet"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for adding funds to wallet
-    pass
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        form = AddFundsForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            description = form.cleaned_data['description'] or 'Funds added to wallet'
+            payment_method = form.cleaned_data['payment_method']
+            
+            # Credit the wallet
+            wallet.credit(
+                amount=amount,
+                description=f"{description} (Payment method: {payment_method})",
+                transaction_type='deposit',
+                user=request.user
+            )
+            
+            messages.success(request, f'Successfully added ₦{amount} to {patient.get_full_name()}\'s wallet.')
+            return redirect('patients:wallet_dashboard', patient_id=patient.id)
+    else:
+        form = AddFundsForm()
+    
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'form': form,
+        'page_title': f'Add Funds - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_add_funds.html', context)
 
 
 @login_required
@@ -473,32 +504,172 @@ def wallet_transactions(request, patient_id):
 def wallet_withdrawal(request, patient_id):
     """View for patient wallet withdrawal"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for wallet withdrawal
-    pass
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        form = WalletWithdrawalForm(request.POST, wallet=wallet)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            description = form.cleaned_data['description'] or 'Wallet withdrawal'
+            withdrawal_method = form.cleaned_data['withdrawal_method']
+            
+            # Debit the wallet
+            wallet.debit(
+                amount=amount,
+                description=f"{description} (Withdrawal method: {withdrawal_method})",
+                transaction_type='withdrawal',
+                user=request.user
+            )
+            
+            messages.success(request, f'Successfully withdrew ₦{amount} from {patient.get_full_name()}\'s wallet.')
+            return redirect('patients:wallet_dashboard', patient_id=patient.id)
+    else:
+        form = WalletWithdrawalForm(wallet=wallet)
+    
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'form': form,
+        'page_title': f'Withdraw Funds - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_withdrawal.html', context)
 
 
 @login_required
 def wallet_transfer(request, patient_id):
     """View for patient wallet transfer"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for wallet transfer
-    pass
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        form = WalletTransferForm(request.POST, wallet=wallet)
+        if form.is_valid():
+            recipient_patient = form.cleaned_data['recipient_patient']
+            amount = form.cleaned_data['amount']
+            description = form.cleaned_data['description'] or 'Wallet transfer'
+            
+            # Get or create wallet for recipient
+            recipient_wallet, created = PatientWallet.objects.get_or_create(patient=recipient_patient)
+            
+            try:
+                # Transfer funds between wallets
+                wallet.transfer_to(
+                    recipient_wallet=recipient_wallet,
+                    amount=amount,
+                    description=description,
+                    user=request.user
+                )
+                
+                messages.success(request, f'Successfully transferred ₦{amount} from {patient.get_full_name()}\'s wallet to {recipient_patient.get_full_name()}\'s wallet.')
+                return redirect('patients:wallet_dashboard', patient_id=patient.id)
+            except ValueError as e:
+                messages.error(request, str(e))
+    else:
+        form = WalletTransferForm(wallet=wallet)
+    
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'form': form,
+        'page_title': f'Transfer Funds - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_transfer.html', context)
 
 
 @login_required
 def wallet_refund(request, patient_id):
     """View for patient wallet refund"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for wallet refund
-    pass
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        form = WalletRefundForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            reason = form.cleaned_data['reason']
+            reference_invoice = form.cleaned_data['reference_invoice']
+            
+            # Credit the wallet (refund)
+            wallet.credit(
+                amount=amount,
+                description=f"Refund: {reason}" + (f" (Invoice: {reference_invoice})" if reference_invoice else ""),
+                transaction_type='refund',
+                user=request.user
+            )
+            
+            messages.success(request, f'Successfully refunded ₦{amount} to {patient.get_full_name()}\'s wallet.')
+            return redirect('patients:wallet_dashboard', patient_id=patient.id)
+    else:
+        form = WalletRefundForm()
+    
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'form': form,
+        'page_title': f'Process Refund - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_refund.html', context)
 
 
 @login_required
 def wallet_adjustment(request, patient_id):
     """View for patient wallet adjustment"""
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for wallet adjustment
-    pass
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        form = WalletAdjustmentForm(request.POST)
+        if form.is_valid():
+            adjustment_type = form.cleaned_data['adjustment_type']
+            amount = form.cleaned_data['amount']
+            reason = form.cleaned_data['reason']
+            
+            if adjustment_type == 'credit':
+                # Credit the wallet
+                wallet.credit(
+                    amount=amount,
+                    description=f"Adjustment (Credit): {reason}",
+                    transaction_type='adjustment',
+                    user=request.user
+                )
+                messages.success(request, f'Successfully credited ₦{amount} to {patient.get_full_name()}\'s wallet.')
+            else:  # debit
+                # Debit the wallet
+                wallet.debit(
+                    amount=amount,
+                    description=f"Adjustment (Debit): {reason}",
+                    transaction_type='adjustment',
+                    user=request.user
+                )
+                messages.success(request, f'Successfully debited ₦{amount} from {patient.get_full_name()}\'s wallet.')
+            
+            return redirect('patients:wallet_dashboard', patient_id=patient.id)
+    else:
+        form = WalletAdjustmentForm()
+    
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'form': form,
+        'page_title': f'Wallet Adjustment - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_adjustment.html', context)
 
 
 @login_required

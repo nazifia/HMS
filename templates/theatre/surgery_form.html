@@ -144,7 +144,7 @@ Create Surgery
 
 {% block content %}
 <div class="container mt-4">
-    <div class="card">
+    < <div class="card">
         <div class="card-header">
             <h2 class="card-title">{% if form.instance.pk %}Edit Surgery{% else %}Create Surgery{% endif %}</h2>
         </div>
@@ -358,13 +358,13 @@ Create Surgery
                         </div>
                         
                         <!-- Display validation warnings if any -->
-                        {% if form._warnings %}
+                        {% if form.get_warnings %}
                         <div class="alert alert-warning mt-3">
                             <h6 class="alert-heading">
                                 <i class="fas fa-exclamation-triangle"></i> Scheduling Warnings
                             </h6>
                             <ul class="mb-0">
-                                {% for warning in form._warnings %}
+                                {% for warning in form.get_warnings %}
                                 <li>{{ warning }}</li>
                                 {% endfor %}
                             </ul>

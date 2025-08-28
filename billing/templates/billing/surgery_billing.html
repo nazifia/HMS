@@ -29,66 +29,93 @@
                             <p><strong>Patient:</strong> {{ surgery.patient.get_full_name }}</p>
                             <p><strong>Patient ID:</strong> {{ surgery.patient.patient_id }}</p>
                             <p><strong>Surgery Type:</strong> {{ surgery.surgery_type.name }}</p>
-                            <p><strong>Surgeon:</strong> {{ surgery.primary_surgeon.get_full_name|default:"Not assigned" }}</p>
+                            {% if is_nhia_patient %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-shield-alt"></i> <strong>NHIA Patient</strong> - 90% discount applied
+                            </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Scheduled Date:</strong> {{ surgery.scheduled_date|date:"M d, Y H:i" }}</p>
+                            <p><strong>Scheduled Date:</strong> {{ surgery.scheduled_date|date:"M d, Y" }}</p>
+                            <p><strong>Surgeon:</strong> {{ surgery.surgeon.get_full_name }}</p>
                             <p><strong>Status:</strong> 
-                                <span class="badge badge-{% if surgery.status == 'scheduled' %}primary{% elif surgery.status == 'completed' %}success{% elif surgery.status == 'cancelled' %}danger{% else %}warning{% endif %}">
-                                    {{ surgery.get_status_display }}
-                                </span>
+                                <span class="badge badge-{{ surgery.get_status_display|lower }}">{{ surgery.get_status_display }}</span>
                             </p>
-                            <p><strong>Theatre:</strong> {{ surgery.theatre.name|default:"Not assigned" }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Medical Pack Costs -->
+            <!-- Medical Packs -->
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Medical Pack Costs</h6>
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Medical Packs</h6>
+                    <a href="{% url 'theatre:order_medical_pack_for_surgery' surgery.id %}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus"></i> Add Pack
+                    </a>
                 </div>
                 <div class="card-body">
-                    {% if pack_costs %}
+                    {% if pack_orders %}
                         <div class="table-responsive">
                             <table class="table table-bordered">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>Pack Name</th>
-                                        <th>Order Date</th>
+                                        <th>Medical Pack</th>
+                                        <th>Items</th>
+                                        <th class="text-right">Original Cost</th>
+                                        {% if is_nhia_patient %}
+                                        <th class="text-right">Patient Portion (10%)</th>
+                                        {% else %}
+                                        <th class="text-right">Cost</th>
+                                        {% endif %}
                                         <th>Status</th>
-                                        <th>Cost</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for pack_cost in pack_costs %}
                                     <tr>
                                         <td>
-                                            <strong>{{ pack_cost.pack_order.pack.name }}</strong><br>
+                                            <a href="{% url 'pharmacy:medical_pack_detail' pack_cost.pack_order.pack.id %}">
+                                                {{ pack_cost.pack_order.pack.name }}
+                                            </a>
+                                            <br>
                                             <small class="text-muted">{{ pack_cost.pack_order.pack.get_pack_type_display }}</small>
                                         </td>
-                                        <td>{{ pack_cost.pack_order.order_date|date:"M d, Y H:i" }}</td>
-                                        <td>
-                                            {% if pack_cost.pack_order.status == 'pending' %}
-                                                <span class="badge badge-warning">Pending</span>
-                                            {% elif pack_cost.pack_order.status == 'approved' %}
-                                                <span class="badge badge-info">Approved</span>
-                                            {% elif pack_cost.pack_order.status == 'dispensed' %}
-                                                <span class="badge badge-success">Dispensed</span>
-                                            {% else %}
-                                                <span class="badge badge-secondary">{{ pack_cost.pack_order.get_status_display }}</span>
-                                            {% endif %}
-                                        </td>
+                                        <td>{{ pack_cost.pack_order.pack.get_items_count }} items</td>
+                                        <td class="text-right">₦{{ pack_cost.original_cost|floatformat:2 }}</td>
+                                        {% if is_nhia_patient %}
                                         <td class="text-right">₦{{ pack_cost.cost|floatformat:2 }}</td>
+                                        {% else %}
+                                        <td class="text-right">₦{{ pack_cost.cost|floatformat:2 }}</td>
+                                        {% endif %}
+                                        <td>
+                                            <span class="badge badge-{{ pack_cost.pack_order.get_status_display|lower }}">
+                                                {{ pack_cost.pack_order.get_status_display }}
+                                            </span>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
-                                <tfoot class="table-light">
+                                <tfoot class="thead-light">
                                     <tr>
-                                        <th colspan="3" class="text-right">Total Pack Costs:</th>
+                                        <th colspan="3" class="text-right">Total:</th>
+                                        <th class="text-right">₦{{ total_original_cost|floatformat:2 }}</th>
+                                        {% if is_nhia_patient %}
+                                        <th class="text-right">₦{{ total_pack_cost|floatformat:2 }}</th>
+                                        {% else %}
+                                        <th class="text-right">₦{{ total_pack_cost|floatformat:2 }}</th>
+                                        {% endif %}
+                                    </tr>
+                                    {% if is_nhia_patient %}
+                                    <tr>
+                                        <th colspan="4" class="text-right">NHIA Discount (90%):</th>
+                                        <th class="text-right text-success">-₦{{ nhia_discount_amount|floatformat:2 }}</th>
+                                    </tr>
+                                    <tr class="table-success font-weight-bold">
+                                        <th colspan="4" class="text-right">Patient to Pay:</th>
                                         <th class="text-right">₦{{ total_pack_cost|floatformat:2 }}</th>
                                     </tr>
+                                    {% endif %}
                                 </tfoot>
                             </table>
                         </div>
@@ -118,7 +145,7 @@
                                         <th>Date</th>
                                         <th>Amount</th>
                                         <th>Method</th>
-                                        <th>Received By</th>
+                                        <th>Recorded By</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -127,7 +154,7 @@
                                         <td>{{ payment.payment_date|date:"M d, Y" }}</td>
                                         <td>₦{{ payment.amount|floatformat:2 }}</td>
                                         <td>{{ payment.get_payment_method_display }}</td>
-                                        <td>{{ payment.received_by.get_full_name|default:"System" }}</td>
+                                        <td>{{ payment.received_by.get_full_name }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -140,7 +167,7 @@
             </div>
         </div>
 
-        <!-- Payment Processing -->
+        <!-- Payment Section -->
         <div class="col-lg-4">
             <!-- Invoice Summary -->
             <div class="card shadow mb-4">
@@ -148,34 +175,49 @@
                     <h6 class="m-0 font-weight-bold text-primary">Invoice Summary</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row mb-2">
-                        <div class="col-8">Total Amount:</div>
-                        <div class="col-4 text-right">₦{{ invoice.total_amount|floatformat:2 }}</div>
+                    <div class="table-responsive">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Invoice #:</strong></td>
+                                <td class="text-right">{{ invoice.invoice_number }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Invoice Date:</strong></td>
+                <td class="text-right">{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Due Date:</strong></td>
+                                <td class="text-right">{{ invoice.due_date|date:"M d, Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td class="text-right">
+                                    <span class="badge badge-{{ invoice.get_status_display|lower }}">
+                                        {{ invoice.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr class="border-top">
+                                <td><strong>Total Amount:</strong></td>
+                                <td class="text-right">₦{{ invoice.total_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Amount Paid:</strong></td>
+                                <td class="text-right text-success">₦{{ invoice.amount_paid|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="border-top">
+                                <td><strong>Balance Due:</strong></td>
+                                <td class="text-right {% if invoice.get_balance > 0 %}text-danger font-weight-bold{% else %}text-success{% endif %}">
+                                    ₦{{ invoice.get_balance|floatformat:2 }}
+                                </td>
+                            </tr>
+                        </table>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-8">Amount Paid:</div>
-                        <div class="col-4 text-right">₦{{ invoice.amount_paid|floatformat:2 }}</div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-8"><strong>Balance Due:</strong></div>
-                        <div class="col-4 text-right">
-                            <strong class="{% if remaining_balance > 0 %}text-danger{% else %}text-success{% endif %}">
-                                ₦{{ remaining_balance|floatformat:2 }}
-                            </strong>
-                        </div>
-                    </div>
-
-                    {% if remaining_balance <= 0 %}
-                        <div class="alert alert-success mt-3 mb-0">
-                            <i class="fas fa-check-circle"></i> Invoice fully paid
-                        </div>
-                    {% endif %}
                 </div>
             </div>
 
-            <!-- Payment Form -->
-            {% if remaining_balance > 0 %}
+            <!-- Record Payment -->
+            {% if invoice.get_balance > 0 %}
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">Record Payment</h6>
@@ -183,50 +225,50 @@
                 <div class="card-body">
                     <form method="post">
                         {% csrf_token %}
-                        
                         <div class="mb-3">
-                            <label class="form-label">Amount</label>
-                            {{ form.amount }}
+                            <label for="{{ form.amount.id_for_label }}" class="form-label">Payment Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₦</span>
+                                {{ form.amount }}
+                            </div>
+                            {% if form.amount.errors %}
+                                <div class="text-danger">{{ form.amount.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted">Remaining balance: ₦{{ invoice.get_balance|floatformat:2 }}</small>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Payment Source</label>
-                            {{ form.payment_source }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Payment Method</label>
+                            <label for="{{ form.payment_method.id_for_label }}" class="form-label">Payment Method</label>
                             {{ form.payment_method }}
+                            {% if form.payment_method.errors %}
+                                <div class="text-danger">{{ form.payment_method.errors }}</div>
+                            {% endif %}
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Payment Date</label>
-                            {{ form.payment_date }}
+                            <label for="{{ form.payment_source.id_for_label }}" class="form-label">Payment Source</label>
+                            {{ form.payment_source }}
+                            {% if form.payment_source.errors %}
+                                <div class="text-danger">{{ form.payment_source.errors }}</div>
+                            {% endif %}
                         </div>
 
+                        {% if patient_wallet %}
                         <div class="mb-3">
-                            <label class="form-label">Transaction ID (Optional)</label>
-                            {{ form.transaction_id }}
+                            <label class="form-label">Patient Wallet Balance</label>
+                            <div class="alert alert-{% if patient_wallet.balance >= invoice.get_balance %}success{% else %}warning{% endif %}">
+                                <strong>₦{{ patient_wallet.balance|floatformat:2 }}</strong>
+                                {% if patient_wallet.balance < invoice.get_balance %}
+                                    <small class="d-block">Insufficient balance for full payment</small>
+                                {% endif %}
+                            </div>
                         </div>
+                        {% endif %}
 
-                        <div class="mb-3">
-                            <label class="form-label">Notes (Optional)</label>
-                            {{ form.notes }}
-                        </div>
-
-                        <button type="submit" class="btn btn-success btn-block">
-                            <i class="fas fa-money-bill-wave"></i> Record Payment
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-credit-card"></i> Record Payment
                         </button>
                     </form>
-
-                    {% if patient_wallet.balance > 0 %}
-                    <hr>
-                    <div class="text-center">
-                        <small class="text-muted">
-                            Patient Wallet Balance: ₦{{ patient_wallet.balance|floatformat:2 }}
-                        </small>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}

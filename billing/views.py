@@ -513,6 +513,7 @@ def surgery_billing(request, surgery_id):
     from theatre.models import Surgery
     from patients.models import PatientWallet
     from .forms import PaymentForm
+    from decimal import Decimal
     
     surgery = get_object_or_404(Surgery, id=surgery_id)
     
@@ -537,13 +538,25 @@ def surgery_billing(request, surgery_id):
     # Get pack orders for this surgery
     pack_orders = surgery.pack_orders.all().select_related('pack')
     
-    # Calculate pack costs breakdown
+    # Calculate pack costs breakdown with NHIA pricing
     pack_costs = []
     total_pack_cost = Decimal('0.00')
+    total_original_cost = Decimal('0.00')
+    is_nhia_patient = surgery.patient.patient_type == 'nhia'
+    
     for pack_order in pack_orders:
-        pack_cost = pack_order.pack.get_total_cost()
+        original_cost = pack_order.pack.get_total_cost()
+        total_original_cost += original_cost
+        
+        # Apply 10% payment for NHIA patients
+        if is_nhia_patient:
+            pack_cost = original_cost * Decimal('0.10')  # NHIA patients pay 10%
+        else:
+            pack_cost = original_cost
+            
         pack_costs.append({
             'pack_order': pack_order,
+            'original_cost': original_cost,
             'cost': pack_cost
         })
         total_pack_cost += pack_cost
@@ -603,6 +616,9 @@ def surgery_billing(request, surgery_id):
         'pack_orders': pack_orders,
         'pack_costs': pack_costs,
         'total_pack_cost': total_pack_cost,
+        'total_original_cost': total_original_cost,
+        'is_nhia_patient': is_nhia_patient,
+        'nhia_discount_amount': total_original_cost - total_pack_cost if is_nhia_patient else Decimal('0.00'),
         'form': form,
         'patient_wallet': patient_wallet,
         'payments': payments,

@@ -1204,11 +1204,11 @@ def dispense_prescription(request, prescription_id):
     # Selected dispensary handling (optional pre-selection)
     selected_dispensary = None
     if request.method == 'POST':
-        dispensary_id = request.POST.get('dispensary_select') or request.POST.get('selected_dispensary')
+        dispensary_id = request.POST.get('dispensary_select') or request.POST.get('dispensary_id') or request.POST.get('selected_dispensary')
         if dispensary_id:
             try:
                 selected_dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
-            except Dispensary.DoesNotExist:
+            except (Dispensary.DoesNotExist, ValueError):
                 selected_dispensary = None
 
         # Prepare POST data copy so we can inject the selected dispensary into each form
@@ -1259,12 +1259,26 @@ def dispense_prescription(request, prescription_id):
                         med_inventory = MedicationInventory.objects.get(medication=medication, dispensary=dispensary)
                     except MedicationInventory.DoesNotExist:
                         messages.error(request, f'No inventory record for {medication.name} at {dispensary.name}.')
-                        return redirect('pharmacy:dispense_prescription', prescription_id=prescription.id)
+                        context = {
+                            'prescription': prescription,
+                            'page_title': f'Dispense Prescription - #{prescription.id}',
+                            'dispensaries': Dispensary.objects.filter(is_active=True),
+                            'formset': formset,
+                            'selected_dispensary': selected_dispensary,
+                        }
+                        return render(request, 'pharmacy/dispense_prescription.html', context)
 
                     # Ensure enough stock
                     if med_inventory.stock_quantity < qty:
                         messages.error(request, f'Not enough stock for {medication.name} at {dispensary.name}.')
-                        return redirect('pharmacy:dispense_prescription', prescription_id=prescription.id)
+                        context = {
+                            'prescription': prescription,
+                            'page_title': f'Dispense Prescription - #{prescription.id}',
+                            'dispensaries': Dispensary.objects.filter(is_active=True),
+                            'formset': formset,
+                            'selected_dispensary': selected_dispensary,
+                        }
+                        return render(request, 'pharmacy/dispense_prescription.html', context)
 
                     # Create dispensing log
                     unit_price = medication.price or Decimal('0.00')
@@ -1318,6 +1332,16 @@ def dispense_prescription(request, prescription_id):
             messages.error(request, 'Please correct the errors in the form.')
             for err in form_errors:
                 messages.error(request, str(err))
+
+            # Make sure to pass the selected dispensary to the context when there are form errors
+            context = {
+                'prescription': prescription,
+                'page_title': f'Dispense Prescription - #{prescription.id}',
+                'dispensaries': Dispensary.objects.filter(is_active=True),
+                'formset': formset,
+                'selected_dispensary': selected_dispensary,
+            }
+            return render(request, 'pharmacy/dispense_prescription.html', context)
 
     else:
         # GET request - build empty formset with initial data bound to prescription items
@@ -2212,7 +2236,7 @@ def get_stock_quantities(request, prescription_id):
     dispensary_id = request.GET.get('dispensary_id') or request.POST.get('dispensary_id')
     response = {
         'success': False,
-        'items': [],
+        'stock_quantities': [],
         'dispensary': None,
         'message': ''
     }
@@ -2228,7 +2252,7 @@ def get_stock_quantities(request, prescription_id):
         return JsonResponse(response, status=404)
 
     # Build stock info for each prescription item
-    items = []
+    stock_quantities = []
     for p_item in prescription.items.select_related('medication'):
         try:
             med_inv = MedicationInventory.objects.get(medication=p_item.medication, dispensary=dispensary)
@@ -2236,7 +2260,7 @@ def get_stock_quantities(request, prescription_id):
         except MedicationInventory.DoesNotExist:
             stock_qty = 0
 
-        items.append({
+        stock_quantities.append({
             'prescription_item_id': p_item.id,
             'medication_id': p_item.medication.id,
             'medication_name': p_item.medication.name,
@@ -2247,7 +2271,7 @@ def get_stock_quantities(request, prescription_id):
         })
 
     response['success'] = True
-    response['items'] = items
+    response['stock_quantities'] = stock_quantities
     response['dispensary'] = {'id': dispensary.id, 'name': dispensary.name}
     return JsonResponse(response)
 
