@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -126,6 +125,21 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+    
+    .form-error {
+        color: #dc3545;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+    
+    .formset-form {
+        border-bottom: 1px solid #dee2e6;
+        padding: 15px 0;
+    }
+    
+    .formset-form:last-child {
+        border-bottom: none;
+    }
 </style>
 {% endblock %}
 
@@ -172,6 +186,15 @@
         {% endfor %}
     {% endif %}
 
+    <!-- Form errors -->
+    {% if formset.non_form_errors %}
+        <div class="alert alert-danger">
+            {% for error in formset.non_form_errors %}
+                <p class="mb-0">{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <!-- Debug Information -->
     <div class="alert alert-info">
         <strong>Debug Info:</strong>
@@ -184,98 +207,127 @@
         {% endif %}
     </div>
 
-    <!-- Dispensary Selection -->
-    <div class="dispensary-selection">
-        <h5 class="mb-3">Select Dispensary</h5>
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <select id="dispensary-select" class="form-select" required>
-                    <option value="">Choose dispensary...</option>
-                    {% for dispensary in dispensaries %}
-                        <option value="{{ dispensary.id }}" {% if selected_dispensary and selected_dispensary.id == dispensary.id %}selected{% endif %}>{{ dispensary.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-6">
-                <div id="dispensary-status" class="text-muted">
-                    {% if selected_dispensary %}
-                        <small>Selected: {{ selected_dispensary.name }}</small>
-                    {% else %}
-                        <small>Please select a dispensary to view stock levels</small>
-                    {% endif %}
+    <!-- Dispensing Form -->
+    <div class="items-table">
+        <form id="dispense-form" method="post" {% if not prescription.is_payment_verified %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
+            {% csrf_token %}
+            
+            <!-- Hidden dispensary ID field for retention -->
+            <input type="hidden" id="dispensary-id-input" name="dispensary_id" value="{% if selected_dispensary %}{{ selected_dispensary.id }}{% elif dispensary_id %}{{ dispensary_id }}{% endif %}">
+            
+            <!-- Dispensary Selection -->
+            <div class="dispensary-selection">
+                <h5 class="mb-3">Select Dispensary</h5>
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <select id="dispensary-select" name="dispensary_select" class="form-select" required>
+                            <option value="">Choose dispensary...</option>
+                            {% for dispensary in dispensaries %}
+                                <option value="{{ dispensary.id }}" {% if selected_dispensary and selected_dispensary.id == dispensary.id %}selected{% endif %}{% if dispensary_id and dispensary_id == dispensary.id|stringformat:"s" %}selected{% endif %}>{{ dispensary.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="dispensary-status" class="text-muted">
+                            {% if selected_dispensary %}
+                                <small>Selected: {{ selected_dispensary.name }}</small>
+                            {% elif dispensary_id %}
+                                {% for dispensary in dispensaries %}
+                                    {% if dispensary_id == dispensary.id|stringformat:"s" %}
+                                        <small>Selected: {{ dispensary.name }}</small>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <small>Please select a dispensary to view stock levels</small>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Payment Verification Alert -->
-    {% if not prescription.is_payment_verified %}
-    <div class="alert alert-warning" role="alert">
-        <h5 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Payment Required</h5>
-        <p>This prescription cannot be dispensed until payment is completed.</p>
-        {% if prescription.invoice %}
-            <hr>
-            <p class="mb-0">
-                <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-warning">
-                    <i class="fas fa-credit-card"></i> Complete Payment
-                </a>
-            </p>
-        {% endif %}
-    </div>
-    {% endif %}
+            <!-- Payment Verification Alert -->
+            {% if not prescription.is_payment_verified %}
+            <div class="alert alert-warning" role="alert">
+                <h5 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Payment Required</h5>
+                <p>This prescription cannot be dispensed until payment is completed.</p>
+                {% if prescription.invoice %}
+                    <hr>
+                    <p class="mb-0">
+                        <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-warning">
+                            <i class="fas fa-credit-card"></i> Complete Payment
+                        </a>
+                    </p>
+                {% endif %}
+            </div>
+            {% endif %}
 
-    <!-- Prescription Items -->
-    <div class="items-table">
-        <div class="table-responsive">
-            <form id="dispense-form" method="post" {% if not prescription.is_payment_verified %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
-                {% csrf_token %}
-                <input type="hidden" id="dispensary-id-input" name="dispensary_id" value="">
-                
+            <!-- Formset Management Fields -->
+            {{ formset.management_form }}
+            
+            <!-- Prescription Items Formset -->
+            <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th width="10%" class="text-center">
-                                Select
-                            </th>
+                            <th width="5%" class="text-center">Select</th>
                             <th>Medication</th>
-                            <th>Prescribed Qty</th>
-                            <th>Dispensed</th>
-                            <th>Remaining</th>
-                            <th>Stock Status</th>
-                            <th>Dispense Qty</th>
+                            <th width="10%">Prescribed Qty</th>
+                            <th width="10%">Dispensed</th>
+                            <th width="10%">Remaining</th>
+                            <th width="15%">Stock Status</th>
+                            <th width="15%">Dispense Qty</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in prescription.items.all %}
-                            {% if not item.is_dispensed %}
-                            <tr data-item-id="{{ item.id }}">
-                                <td>
-                                    <input type="checkbox"
-                                           name="dispense_item_{{ item.id }}"
-                                           class="form-check-input item-checkbox">
-                                </td>
-                                <td>
-                                    <strong>{{ item.medication.name }}</strong>
-                                    <br><small class="text-muted">{{ item.medication.generic_name }}</small>
-                                </td>
-                                <td>{{ item.quantity }}</td>
-                                <td>{{ item.quantity_dispensed_so_far }}</td>
-                                <td>{{ item.remaining_quantity_to_dispense }}</td>
-                                <td>
-                                    <span class="stock-status stock-loading" data-stock-cell>
-                                        <i class="fas fa-info-circle"></i> Select dispensary to check stock
-                                    </span>
-                                </td>
-                                <td>
-                                    <input type="number"
-                                           name="quantity_{{ item.id }}"
-                                           class="form-control quantity-input"
-                                           min="1"
-                                           max="{{ item.remaining_quantity_to_dispense }}"
-                                           value="{{ item.remaining_quantity_to_dispense }}">
-                                </td>
-                            </tr>
-                            {% endif %}
+                        {% for form in formset %}
+                            {% with p_item=form.p_item %}
+                                {% if p_item and not p_item.is_dispensed %}
+                                    <tr class="formset-form">
+                                        <td class="text-center">
+                                            {% if form.non_field_errors %}
+                                                <div class="alert alert-danger p-1 mb-1">
+                                                    {% for error in form.non_field_errors %}
+                                                        <small>{{ error }}</small>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            {{ form.id }}
+                                            {{ form.item_id }}
+                                            {{ form.dispense_this_item }}
+                                        </td>
+                                        <td>
+                                            <strong>{{ p_item.medication.name }}</strong>
+                                            <br><small class="text-muted">{{ p_item.medication.generic_name }}</small>
+                                            {% if form.dispensary.errors %}
+                                                <div class="form-error">{{ form.dispensary.errors }}</div>
+                                            {% endif %}
+                                            {{ form.dispensary }}
+                                        </td>
+                                        <td>{{ p_item.quantity }}</td>
+                                        <td>{{ p_item.quantity_dispensed_so_far }}</td>
+                                        <td>{{ p_item.remaining_quantity_to_dispense }}</td>
+                                        <td>
+                                            {% if form.stock_quantity_display.value %}
+                                                <span class="stock-status 
+                                                    {% if 'in stock' in form.stock_quantity_display.value and not '0 in stock' in form.stock_quantity_display.value %}stock-available
+                                                    {% elif '0 in stock' in form.stock_quantity_display.value or 'Out of Stock' in form.stock_quantity_display.value %}stock-out
+                                                    {% elif 'Select a dispensary' in form.stock_quantity_display.value %}stock-loading
+                                                    {% else %}stock-low{% endif %}">
+                                                    {{ form.stock_quantity_display.value }}
+                                                </span>
+                                            {% else %}
+                                                <span class="stock-status stock-loading">Select dispensary</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if form.quantity_to_dispense.errors %}
+                                                <div class="form-error">{{ form.quantity_to_dispense.errors }}</div>
+                                            {% endif %}
+                                            {{ form.quantity_to_dispense }}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endwith %}
                         {% empty %}
                             <tr>
                                 <td colspan="7" class="text-center py-4">
@@ -288,26 +340,23 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                
-                {% if prescription.items.all %}
-                    <div class="p-3 border-top bg-light">
-                        <div class="row align-items-center">
-                            <div class="col-md-6">
-                                <small class="text-muted">Select individual items to dispense</small>
-                            </div>
-                            <div class="col-md-6 text-md-end">
-                                <button type="submit" id="dispense-btn" class="btn btn-dispense">
-                                    <i class="fas fa-pills"></i> Dispense Selected Items
-                                </button>
-                                <div class="mt-1">
-                                    <small class="text-muted" id="selected-count">0 items selected</small>
-                                </div>
-                            </div>
+            </div>
+            
+            {% if formset.forms %}
+                <div class="p-3 border-top bg-light">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <small class="text-muted">Select individual items to dispense</small>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <button type="submit" id="dispense-btn" class="btn btn-dispense">
+                                <i class="fas fa-pills"></i> Dispense Selected Items
+                            </button>
                         </div>
                     </div>
-                {% endif %}
-            </form>
-        </div>
+                </div>
+            {% endif %}
+        </form>
     </div>
 </div>
 {% endblock %}
@@ -318,161 +367,61 @@ document.addEventListener('DOMContentLoaded', function() {
     const dispensarySelect = document.getElementById('dispensary-select');
     const dispensaryIdInput = document.getElementById('dispensary-id-input');
     const dispensaryStatus = document.getElementById('dispensary-status');
-    const dispenseBtn = document.getElementById('dispense-btn');
-    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
-    const quantityInputs = document.querySelectorAll('.quantity-input');
-
-    // Check if a dispensary is already selected on page load
-    if (dispensarySelect.value) {
-        dispensaryIdInput.value = dispensarySelect.value;
-        console.log('Dispensary pre-selected:', dispensarySelect.value);
-        
-        // Show items as loading and fetch stock quantities for pre-selected dispensary
-        showItemsAsLoading();
-        fetchStockQuantities(dispensarySelect.value);
-    }
-
+    const dispenseForm = document.getElementById('dispense-form');
+    
     // Handle dispensary selection
     dispensarySelect.addEventListener('change', function() {
         const dispensaryId = this.value;
         dispensaryIdInput.value = dispensaryId;
-
+        
+        // Update all hidden dispensary fields in the formset
+        const dispensaryInputs = document.querySelectorAll('select[name$="-dispensary"]');
+        dispensaryInputs.forEach(function(input) {
+            input.value = dispensaryId;
+        });
+        
         if (dispensaryId) {
             console.log('Dispensary selected:', dispensaryId);
-
-            // Show items as loading and fetch stock quantities
-            showItemsAsLoading();
-            fetchStockQuantities(dispensaryId);
+            dispensaryStatus.innerHTML = '<span class="loading-spinner"></span> Loading stock information...';
+            
+            // Submit form to refresh with selected dispensary
+            // But only if we're not already submitting for dispensing
+            if (!dispenseForm.querySelector('button[type="submit"]:focus')) {
+                // Create a temporary submit button to trigger form refresh
+                const refreshBtn = document.createElement('button');
+                refreshBtn.type = 'submit';
+                refreshBtn.name = 'refresh_form';
+                refreshBtn.value = '1';
+                refreshBtn.style.display = 'none';
+                dispenseForm.appendChild(refreshBtn);
+                refreshBtn.click();
+                dispenseForm.removeChild(refreshBtn);
+            }
         } else {
-            // Even when no dispensary is selected, keep items visible
-            resetStockDisplay();
-            // Don't disable controls - keep items visible
-            console.log('No dispensary selected, but keeping items visible');
+            dispensaryStatus.innerHTML = '<small>Please select a dispensary to view stock levels</small>';
         }
     });
-
-    // Show items as loading immediately when dispensary is selected
-    function showItemsAsLoading() {
-        console.log('Showing items as loading...');
-        const stockCells = document.querySelectorAll('[data-stock-cell]');
-
-        stockCells.forEach((cell) => {
-            cell.className = 'stock-status stock-loading';
-            cell.innerHTML = '<span class="loading-spinner"></span> Loading...';
-
-            // Make sure the row is visible and enabled
-            const row = cell.closest('tr');
-            if (row) {
-                const checkbox = row.querySelector('.item-checkbox');
-                const quantityInput = row.querySelector('.quantity-input');
-
-                if (checkbox) checkbox.disabled = false;
-                if (quantityInput) quantityInput.disabled = false;
-
-                console.log('Enabled row for item:', row.dataset.itemId);
-            }
-        });
-
-        // Enable all controls
-        enableGlobalControls();
-
-        // Make sure the dispense button is enabled
-        if (dispenseBtn) dispenseBtn.disabled = false;
-    }
     
-    // Fetch stock quantities via AJAX
-    function fetchStockQuantities(dispensaryId) {
-        console.log('Fetching stock quantities for dispensary:', dispensaryId);
-        dispensaryStatus.innerHTML = '<span class="loading-spinner"></span> Loading stock information...';
-
-        // Use the correct URL with the prescription ID
-        const url = `/pharmacy/prescriptions/{{ prescription.id }}/stock-quantities/`;
-        console.log('AJAX URL:', url);
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: `dispensary_id=${dispensaryId}`
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Response data:', data);
-            if (data.success) {
-                updateStockDisplay(data.stock_quantities);
-                dispensaryStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i> Stock information loaded';
-            } else {
-                throw new Error(data.error || 'Failed to load stock information');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching stock:', error);
-            dispensaryStatus.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Error loading stock information: ' + error.message;
-        });
-    }
-
-    // Update stock display with data from AJAX response
-    function updateStockDisplay(stockData) {
-        console.log('Updating stock display with data:', stockData);
-        
-        // Reset all stock displays first
-        resetStockDisplay();
-        
-        // Update each item's stock display
-        stockData.forEach(item => {
-            const row = document.querySelector(`tr[data-item-id="${item.prescription_item_id}"]`);
-            if (row) {
-                const stockCell = row.querySelector('[data-stock-cell]');
-                if (stockCell) {
-                    // Determine stock status class
-                    let stockClass = 'stock-out';
-                    let stockText = 'Out of Stock';
-                    
-                    if (item.stock_quantity > 0) {
-                        stockClass = item.stock_quantity >= item.remaining_to_dispense ? 'stock-available' : 'stock-low';
-                        stockText = `${item.stock_quantity} in stock`;
-                    }
-                    
-                    stockCell.className = `stock-status ${stockClass}`;
-                    stockCell.innerHTML = stockText;
-                    
-                    // Update quantity input max value
-                    const quantityInput = row.querySelector('.quantity-input');
-                    if (quantityInput) {
-                        quantityInput.max = Math.min(item.remaining_to_dispense, item.stock_quantity);
-                        // If current value exceeds max, adjust it
-                        if (parseInt(quantityInput.value) > parseInt(quantityInput.max)) {
-                            quantityInput.value = quantityInput.max;
-                        }
+    // Handle checkbox changes to update quantity inputs
+    document.addEventListener('change', function(e) {
+        if (e.target.type === 'checkbox' && e.target.name.includes('dispense_this_item')) {
+            const formIndex = e.target.name.match(/form-(\d+)-dispense_this_item/);
+            if (formIndex) {
+                const index = formIndex[1];
+                const quantityInput = document.querySelector(`input[name="form-${index}-quantity_to_dispense"]`);
+                if (quantityInput) {
+                    if (e.target.checked) {
+                        // Enable and set to max available
+                        quantityInput.disabled = false;
+                    } else {
+                        // Disable and set to 0
+                        quantityInput.disabled = true;
+                        quantityInput.value = 0;
                     }
                 }
             }
-        });
-        
-        // Enable controls after stock data is loaded
-        enableGlobalControls();
-    }
-
-    // Reset stock display to default state
-    function resetStockDisplay() {
-        const stockCells = document.querySelectorAll('[data-stock-cell]');
-        stockCells.forEach(cell => {
-            cell.className = 'stock-status stock-loading';
-            cell.innerHTML = '<i class="fas fa-info-circle"></i> Select dispensary to check stock';
-        });
-    }
-
-    // Enable global controls
-    function enableGlobalControls() {
-        if (dispenseBtn) dispenseBtn.disabled = false;
-        itemCheckboxes.forEach(checkbox => checkbox.disabled = false);
-        quantityInputs.forEach(input => input.disabled = false);
-    }
+        }
+    });
 });
 </script>
 {% endblock %}

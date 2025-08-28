@@ -1203,6 +1203,9 @@ def dispense_prescription(request, prescription_id):
 
     # Selected dispensary handling (optional pre-selection)
     selected_dispensary = None
+    dispensary_id = None
+    
+    # Check if a dispensary was selected
     if request.method == 'POST':
         dispensary_id = request.POST.get('dispensary_select') or request.POST.get('dispensary_id') or request.POST.get('selected_dispensary')
         if dispensary_id:
@@ -1210,16 +1213,43 @@ def dispense_prescription(request, prescription_id):
                 selected_dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
             except (Dispensary.DoesNotExist, ValueError):
                 selected_dispensary = None
+    else:
+        # Check GET parameters for dispensary_id
+        dispensary_id = request.GET.get('dispensary_id')
+        if dispensary_id:
+            try:
+                selected_dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
+            except (Dispensary.DoesNotExist, ValueError):
+                selected_dispensary = None
 
-        # Prepare POST data copy so we can inject the selected dispensary into each form
-        post_data = request.POST.copy()
-        if selected_dispensary:
-            # Inject a hidden dispensary value for each form so bound forms receive it
-            for i in range(len(prescription_items)):
-                post_data[f'form-{i}-dispensary'] = str(selected_dispensary.id)
+    # Check if this is just a form refresh (not a dispense action)
+    if request.method == 'POST' and 'refresh_form' in request.POST:
+        # Just refresh the form with the selected dispensary
+        initial_data = []
+        for p_item in prescription_items:
+            initial_data.append({
+                'item_id': p_item.id,
+                'dispense_this_item': False,
+                'quantity_to_dispense': 0,
+                'dispensary': selected_dispensary.id if selected_dispensary else None,
+                'stock_quantity_display': ''
+            })
 
-        # Instantiate formset with modified POST data and bind prescription items
-        formset = DispenseFormSet(post_data, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
+        formset = DispenseFormSet(initial=initial_data, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
+        
+        context = {
+            'prescription': prescription,
+            'page_title': f'Dispense Prescription - #{prescription.id}',
+            'dispensaries': Dispensary.objects.filter(is_active=True),
+            'formset': formset,
+            'selected_dispensary': selected_dispensary,
+            'dispensary_id': dispensary_id,
+        }
+        return render(request, 'pharmacy/dispense_prescription.html', context)
+
+    if request.method == 'POST':
+        # Instantiate formset with POST data and bind prescription items
+        formset = DispenseFormSet(request.POST, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
 
         # If user attempted to dispense items but didn't pick a dispensary, show a clear message
         any_checked = any(request.POST.get(f'form-{i}-dispense_this_item') in ['on', 'True', 'true', '1'] for i in range(len(prescription_items)))
@@ -1231,6 +1261,7 @@ def dispense_prescription(request, prescription_id):
                 'dispensaries': Dispensary.objects.filter(is_active=True),
                 'formset': formset,
                 'selected_dispensary': selected_dispensary,
+                'dispensary_id': dispensary_id,
             }
             return render(request, 'pharmacy/dispense_prescription.html', context)
 
@@ -1254,22 +1285,43 @@ def dispense_prescription(request, prescription_id):
                         skipped_items.append(prescription_item)
                         continue
 
-                    # Get or create inventory record at dispensary
+                    # Get or create inventory record at dispensary (check both inventory models)
+                    med_inventory = None
                     try:
+                        # First try to get from MedicationInventory (legacy)
                         med_inventory = MedicationInventory.objects.get(medication=medication, dispensary=dispensary)
                     except MedicationInventory.DoesNotExist:
-                        messages.error(request, f'No inventory record for {medication.name} at {dispensary.name}.')
-                        context = {
-                            'prescription': prescription,
-                            'page_title': f'Dispense Prescription - #{prescription.id}',
-                            'dispensaries': Dispensary.objects.filter(is_active=True),
-                            'formset': formset,
-                            'selected_dispensary': selected_dispensary,
-                        }
-                        return render(request, 'pharmacy/dispense_prescription.html', context)
+                        # If not found in legacy, try ActiveStoreInventory (new)
+                        try:
+                            active_store = getattr(dispensary, 'active_store', None)
+                            if active_store:
+                                med_inventory = ActiveStoreInventory.objects.get(medication=medication, active_store=active_store)
+                            else:
+                                messages.error(request, f'No active store found for {dispensary.name}.')
+                                context = {
+                                    'prescription': prescription,
+                                    'page_title': f'Dispense Prescription - #{prescription.id}',
+                                    'dispensaries': Dispensary.objects.filter(is_active=True),
+                                    'formset': formset,
+                                    'selected_dispensary': selected_dispensary,
+                                    'dispensary_id': dispensary_id,
+                                }
+                                return render(request, 'pharmacy/dispense_prescription.html', context)
+                        except ActiveStoreInventory.DoesNotExist:
+                            messages.error(request, f'No inventory record for {medication.name} at {dispensary.name}.')
+                            context = {
+                                'prescription': prescription,
+                                'page_title': f'Dispense Prescription - #{prescription.id}',
+                                'dispensaries': Dispensary.objects.filter(is_active=True),
+                                'formset': formset,
+                                'selected_dispensary': selected_dispensary,
+                                'dispensary_id': dispensary_id,
+                            }
+                            return render(request, 'pharmacy/dispense_prescription.html', context)
 
                     # Ensure enough stock
-                    if med_inventory.stock_quantity < qty:
+                    stock_quantity = getattr(med_inventory, 'stock_quantity', 0)
+                    if stock_quantity < qty:
                         messages.error(request, f'Not enough stock for {medication.name} at {dispensary.name}.')
                         context = {
                             'prescription': prescription,
@@ -1277,6 +1329,7 @@ def dispense_prescription(request, prescription_id):
                             'dispensaries': Dispensary.objects.filter(is_active=True),
                             'formset': formset,
                             'selected_dispensary': selected_dispensary,
+                            'dispensary_id': dispensary_id,
                         }
                         return render(request, 'pharmacy/dispense_prescription.html', context)
 
@@ -1340,6 +1393,7 @@ def dispense_prescription(request, prescription_id):
                 'dispensaries': Dispensary.objects.filter(is_active=True),
                 'formset': formset,
                 'selected_dispensary': selected_dispensary,
+                'dispensary_id': dispensary_id,
             }
             return render(request, 'pharmacy/dispense_prescription.html', context)
 
@@ -1351,11 +1405,11 @@ def dispense_prescription(request, prescription_id):
                 'item_id': p_item.id,
                 'dispense_this_item': False,
                 'quantity_to_dispense': 0,
-                'dispensary': None,
+                'dispensary': selected_dispensary.id if selected_dispensary else None,
                 'stock_quantity_display': ''
             })
 
-        formset = DispenseFormSet(initial=initial_data, prefix='form', prescription_items_qs=prescription_items)
+        formset = DispenseFormSet(initial=initial_data, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
 
     context = {
         'prescription': prescription,
@@ -1363,6 +1417,7 @@ def dispense_prescription(request, prescription_id):
         'dispensaries': Dispensary.objects.filter(is_active=True),
         'formset': formset,
         'selected_dispensary': selected_dispensary,
+        'dispensary_id': dispensary_id,
     }
     return render(request, 'pharmacy/dispense_prescription.html', context)
 
@@ -1379,8 +1434,48 @@ def dispense_prescription_original(request, prescription_id):
 def debug_dispense_prescription(request, prescription_id):
     """View for debugging prescription dispensing"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    # Implementation for debugging prescription dispensing
-    pass
+    
+    # Get all dispensaries
+    dispensaries = Dispensary.objects.filter(is_active=True)
+    
+    # Check inventory for each dispensary
+    inventory_info = []
+    for dispensary in dispensaries:
+        dispensary_info = {
+            'dispensary': dispensary,
+            'medications': []
+        }
+        
+        # Check inventory for each medication in the prescription
+        for item in prescription.items.all():
+            try:
+                inventory = MedicationInventory.objects.get(
+                    medication=item.medication,
+                    dispensary=dispensary
+                )
+                dispensary_info['medications'].append({
+                    'medication': item.medication,
+                    'in_inventory': True,
+                    'stock_quantity': inventory.stock_quantity,
+                    'reorder_level': inventory.reorder_level
+                })
+            except MedicationInventory.DoesNotExist:
+                dispensary_info['medications'].append({
+                    'medication': item.medication,
+                    'in_inventory': False,
+                    'stock_quantity': 0,
+                    'reorder_level': 0
+                })
+        
+        inventory_info.append(dispensary_info)
+    
+    context = {
+        'prescription': prescription,
+        'inventory_info': inventory_info,
+        'page_title': f'Debug Dispense Prescription - #{prescription.id}'
+    }
+    
+    return render(request, 'pharmacy/debug_dispense_prescription.html', context)
 
 
 @login_required
@@ -2213,8 +2308,6 @@ def add_medication_stock(request):
     """View for adding medication stock"""
     # Implementation for adding medication stock
     pass
-
-
 @login_required
 def quick_add_stock(request):
     """View for quick adding stock"""
@@ -2231,7 +2324,7 @@ def medication_autocomplete(request):
 
 @login_required
 def get_stock_quantities(request, prescription_id):
-    """API endpoint for getting stock quantities"""
+    """AJAX endpoint to get stock quantities for prescription items at a given dispensary"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
     dispensary_id = request.GET.get('dispensary_id') or request.POST.get('dispensary_id')
     response = {
@@ -2254,11 +2347,21 @@ def get_stock_quantities(request, prescription_id):
     # Build stock info for each prescription item
     stock_quantities = []
     for p_item in prescription.items.select_related('medication'):
+        # Check both inventory models
+        stock_qty = 0
         try:
+            # First try MedicationInventory (legacy)
             med_inv = MedicationInventory.objects.get(medication=p_item.medication, dispensary=dispensary)
             stock_qty = med_inv.stock_quantity
         except MedicationInventory.DoesNotExist:
-            stock_qty = 0
+            # If not found, try ActiveStoreInventory (new)
+            try:
+                active_store = getattr(dispensary, 'active_store', None)
+                if active_store:
+                    med_inv = ActiveStoreInventory.objects.get(medication=p_item.medication, active_store=active_store)
+                    stock_qty = med_inv.stock_quantity
+            except ActiveStoreInventory.DoesNotExist:
+                stock_qty = 0
 
         stock_quantities.append({
             'prescription_item_id': p_item.id,

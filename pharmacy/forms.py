@@ -227,13 +227,13 @@ import logging
 class DispenseItemForm(forms.Form):
     """Form for a single item in the dispensing process."""
     item_id = forms.IntegerField(widget=forms.HiddenInput())
-    dispense_this_item = forms.BooleanField(required=False, label="Dispense")
+    dispense_this_item = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
     quantity_to_dispense = forms.IntegerField(min_value=0, required=False, widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width: 70px;'}))
     dispensary = forms.ModelChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         required=False,
         empty_label="Select Dispensary",
-        widget=forms.Select(attrs={'class': 'form-control form-control-sm'})
+        widget=forms.Select(attrs={'class': 'form-control form-control-sm d-none'})  # Hidden since we have global selection
     )
     stock_quantity_display = forms.CharField(required=False, widget=forms.TextInput(attrs={'readonly': 'readonly', 'class': 'form-control-plaintext'}))
 
@@ -252,10 +252,11 @@ class DispenseItemForm(forms.Form):
             
             is_fully_dispensed = self.prescription_item.is_dispensed # Based on new logic (qty_dispensed_so_far >= quantity)
             
-            # Get available stock from MedicationInventory for the selected dispensary
+            # Get available stock from both inventory models for the selected dispensary
             available_stock = 0
             if self.selected_dispensary:
                 try:
+                    # First try MedicationInventory (legacy)
                     med_inventory = MedicationInventory.objects.get(
                         medication=self.prescription_item.medication,
                         dispensary=self.selected_dispensary
@@ -263,42 +264,69 @@ class DispenseItemForm(forms.Form):
                     available_stock = med_inventory.stock_quantity
                     logging.debug(f"  Available stock at selected dispensary ({self.selected_dispensary.name}): {available_stock}")
                 except MedicationInventory.DoesNotExist:
-                    available_stock = 0 # No inventory for this medication at this dispensary
-                    logging.debug(f"  No inventory found for {self.prescription_item.medication.name} at {self.selected_dispensary.name}")
+                    # If not found, try ActiveStoreInventory (new)
+                    try:
+                        active_store = getattr(self.selected_dispensary, 'active_store', None)
+                        if active_store:
+                            med_inventory = ActiveStoreInventory.objects.get(
+                                medication=self.prescription_item.medication,
+                                active_store=active_store
+                            )
+                            available_stock = med_inventory.stock_quantity
+                            logging.debug(f"  Available stock at selected dispensary ({self.selected_dispensary.name}): {available_stock}")
+                        else:
+                            available_stock = 0
+                            logging.debug(f"  No active store found for {self.selected_dispensary.name}")
+                    except ActiveStoreInventory.DoesNotExist:
+                        available_stock = 0 # No inventory for this medication at this dispensary
+                        logging.debug(f"  No inventory found for {self.prescription_item.medication.name} at {self.selected_dispensary.name}")
 
             # Store available stock as instance variable for template access
             self.available_stock = available_stock
             
-            can_be_dispensed = remaining_qty > 0 and available_stock > 0 and not is_fully_dispensed
+            can_be_dispensed = remaining_qty > 0 and not is_fully_dispensed
             logging.debug(f"  Can be dispensed: {can_be_dispensed}")
 
             if not can_be_dispensed:
-                self.fields['dispense_this_item'].widget.attrs['disabled'] = True
-                self.fields['quantity_to_dispense'].widget.attrs['disabled'] = True
-                self.fields['quantity_to_dispense'].initial = 0
-                if is_fully_dispensed:
-                    self.fields['dispense_this_item'].label = "Fully Dispensed"
-                elif available_stock == 0:
-                     self.fields['dispense_this_item'].label = "Out of Stock"
+                # Only disable if we have a dispensary selected and stock is actually 0
+                # If no dispensary is selected, we should allow the form to be submitted
+                # so that stock can be checked after dispensary selection
+                if self.selected_dispensary and available_stock == 0:
+                    self.fields['dispense_this_item'].widget.attrs['disabled'] = True
+                    self.fields['quantity_to_dispense'].widget.attrs['disabled'] = True
+                    self.fields['quantity_to_dispense'].initial = 0
+                    if is_fully_dispensed:
+                        self.fields['dispense_this_item'].label = "Fully Dispensed"
+                    elif available_stock == 0:
+                         self.fields['dispense_this_item'].label = "Out of Stock"
+                elif not self.selected_dispensary:
+                    # No dispensary selected yet, allow form submission
+                    self.fields['dispense_this_item'].initial = False
             else:
-                # Default to remaining quantity, capped by current stock
-                initial_qty_to_dispense = min(remaining_qty, available_stock)
+                # Default to remaining quantity, capped by current stock if dispensary is selected
+                initial_qty_to_dispense = remaining_qty
+                if self.selected_dispensary and available_stock > 0:
+                    initial_qty_to_dispense = min(remaining_qty, available_stock)
                 self.fields['quantity_to_dispense'].initial = initial_qty_to_dispense
-                self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, available_stock)
+                if self.selected_dispensary and available_stock is not None:
+                    self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, available_stock)
                 self.fields['quantity_to_dispense'].widget.attrs['min'] = 0 # Allow 0 if user unchecks
                 # Pre-select items that are eligible for dispensing only if a dispensary was provided
-                if self.selected_dispensary:
+                if self.selected_dispensary and available_stock > 0:
                     self.fields['dispense_this_item'].initial = True
 
             # Set initial value for dispensary field if selected_dispensary is provided
             if self.selected_dispensary:
                 self.fields['dispensary'].initial = self.selected_dispensary
-                self.fields['dispensary'].widget = forms.HiddenInput()
-                self.fields['dispensary'].required = True # Make it required if pre-selected
+                # Make it required if pre-selected
+                self.fields['dispensary'].required = True
             
             # Set the stock quantity display field
             if self.selected_dispensary:
-                self.fields['stock_quantity_display'].initial = f"{available_stock} in stock"
+                if available_stock > 0:
+                    self.fields['stock_quantity_display'].initial = f"{available_stock} in stock"
+                else:
+                    self.fields['stock_quantity_display'].initial = "Out of Stock"
             else:
                 self.fields['stock_quantity_display'].initial = "Select a dispensary"
 
@@ -334,17 +362,30 @@ class DispenseItemForm(forms.Form):
         remaining_qty = self.prescription_item.remaining_quantity_to_dispense
         is_fully_dispensed = self.prescription_item.is_dispensed
 
-        # Get available stock from MedicationInventory for the selected dispensary
+        # Get available stock from both inventory models for the selected dispensary
         available_stock = 0
         if dispensary:
             try:
+                # First try MedicationInventory (legacy)
                 med_inventory = MedicationInventory.objects.get(
                     medication=self.prescription_item.medication,
                     dispensary=dispensary
                 )
                 available_stock = med_inventory.stock_quantity
             except MedicationInventory.DoesNotExist:
-                available_stock = 0
+                # If not found, try ActiveStoreInventory (new)
+                try:
+                    active_store = getattr(dispensary, 'active_store', None)
+                    if active_store:
+                        med_inventory = ActiveStoreInventory.objects.get(
+                            medication=self.prescription_item.medication,
+                            active_store=active_store
+                        )
+                        available_stock = med_inventory.stock_quantity
+                    else:
+                        available_stock = 0
+                except ActiveStoreInventory.DoesNotExist:
+                    available_stock = 0
         else:
             # No dispensary selected yet; skip stock validation until dispensary provided
             available_stock = None
@@ -428,14 +469,34 @@ class BaseDispenseItemFormSet(BaseFormSet):
         if any(self.errors):
             # Don't bother validating the formset unless each form is valid on its own
             return
-        
-        selected_items_count = 0
+            
+        # Check if any items were selected for dispensing
+        any_selected = False
         for form in self.forms:
-            if form.cleaned_data.get('dispense_this_item') and form.cleaned_data.get('quantity_to_dispense', 0) > 0:
-                selected_items_count += 1
+            if form.cleaned_data and form.cleaned_data.get('dispense_this_item'):
+                any_selected = True
+                break
         
-        if selected_items_count == 0:
-            raise forms.ValidationError("You must select at least one item and specify a quantity greater than 0 to dispense.")
+        # If items were selected but no dispensary was provided, add a formset-level error
+        if any_selected:
+            # Check if all forms have a dispensary selected
+            all_have_dispensary = True
+            for form in self.forms:
+                if form.cleaned_data and form.cleaned_data.get('dispense_this_item'):
+                    dispensary = form.cleaned_data.get('dispensary')
+                    # If form doesn't have dispensary but we have a selected dispensary from form kwargs, it's OK
+                    if not dispensary:
+                        # Check if we have a global selected dispensary
+                        selected_dispensary = self.form_kwargs.get('selected_dispensary') if self.form_kwargs else None
+                        if not selected_dispensary:
+                            all_have_dispensary = False
+                            break
+            
+            if not all_have_dispensary:
+                raise forms.ValidationError("Please select a dispensary for all items to be dispensed.")
+        
+        return
+
 
 class MedicationSearchForm(forms.Form):
     """Form for searching medications"""
@@ -794,6 +855,8 @@ class MedicationInventoryForm(forms.ModelForm):
             'reorder_level': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
+
+        
 
 class ActiveStoreInventoryForm(forms.ModelForm):
     """Form for managing ActiveStoreInventory (active store per dispensary)"""

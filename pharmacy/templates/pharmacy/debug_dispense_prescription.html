@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Debug Prescription #{{ prescription.id }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Patient Information</h5>
+                            <p><strong>Name:</strong> {{ prescription.patient.get_full_name }}</p>
+                            <p><strong>ID:</strong> {{ prescription.patient.patient_id }}</p>
+                            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Doctor Information</h5>
+                            <p><strong>Name:</strong> {{ prescription.doctor.get_full_name }}</p>
+                            <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Prescription Items</h5>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Prescribed Qty</th>
+                                        <th>Dispensed So Far</th>
+                                        <th>Remaining</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in prescription.items.all %}
+                                    <tr>
+                                        <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>{{ item.quantity_dispensed_so_far }}</td>
+                                        <td>{{ item.remaining_quantity_to_dispense }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Inventory Status by Dispensary</h5>
+                            {% for info in inventory_info %}
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6>{{ info.dispensary.name }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Medication</th>
+                                                <th>In Inventory</th>
+                                                <th>Stock Quantity</th>
+                                                <th>Reorder Level</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for med_info in info.medications %}
+                                            <tr>
+                                                <td>{{ med_info.medication.name }}</td>
+                                                <td>
+                                                    {% if med_info.in_inventory %}
+                                                        <span class="badge bg-success">Yes</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">No</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ med_info.stock_quantity }}</td>
+                                                <td>{{ med_info.reorder_level }}</td>
+                                                <td>
+                                                    {% if med_info.in_inventory %}
+                                                        {% if med_info.stock_quantity == 0 %}
+                                                            <span class="badge bg-danger">Out of Stock</span>
+                                                        {% elif med_info.stock_quantity <= med_info.reorder_level %}
+                                                            <span class="badge bg-warning">Low Stock</span>
+                                                        {% else %}
+                                                            <span class="badge bg-success">In Stock</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Not Available</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
