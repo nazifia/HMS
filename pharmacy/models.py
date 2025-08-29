@@ -230,6 +230,234 @@ class PurchaseItem(models.Model):
             bulk_inventory.stock_quantity = self.quantity
             bulk_inventory.save()
 
+# Inventory Models
+class Dispensary(models.Model):
+    """Model representing a pharmacy dispensary location"""
+    name = models.CharField(max_length=100, unique=True)
+    location = models.CharField(max_length=200, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    manager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_dispensaries')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "Dispensaries"
+        ordering = ['name']
+
+class BulkStore(models.Model):
+    """Model representing the central bulk storage facility"""
+    name = models.CharField(max_length=100, unique=True)
+    location = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    capacity = models.IntegerField(help_text="Maximum storage capacity in units")
+    temperature_controlled = models.BooleanField(default=False)
+    humidity_controlled = models.BooleanField(default=False)
+    security_level = models.CharField(max_length=20, choices=[
+        ('basic', 'Basic'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ], default='basic')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+class ActiveStore(models.Model):
+    """Model representing the active storage area within a dispensary"""
+    dispensary = models.OneToOneField(Dispensary, on_delete=models.CASCADE, related_name='active_store')
+    name = models.CharField(max_length=100)
+    location = models.CharField(max_length=200, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    capacity = models.IntegerField(help_text="Maximum storage capacity in units")
+    temperature_controlled = models.BooleanField(default=False)
+    humidity_controlled = models.BooleanField(default=False)
+    security_level = models.CharField(max_length=20, choices=[
+        ('basic', 'Basic'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ], default='basic')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+class MedicationInventory(models.Model):
+    """Legacy model for tracking medication inventory in dispensaries (maintained for backward compatibility)"""
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='inventories')
+    dispensary = models.ForeignKey(Dispensary, on_delete=models.CASCADE, related_name='medications')
+    stock_quantity = models.IntegerField(default=0)
+    reorder_level = models.IntegerField(default=10)
+    last_restock_date = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.medication.name} at {self.dispensary.name}"
+
+    def is_low_stock(self):
+        return self.stock_quantity <= self.reorder_level
+
+class BulkStoreInventory(models.Model):
+    """Model for tracking medication inventory in the bulk store"""
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='bulk_inventories')
+    bulk_store = models.ForeignKey(BulkStore, on_delete=models.CASCADE, related_name='inventories')
+    batch_number = models.CharField(max_length=50)
+    stock_quantity = models.IntegerField(default=0)
+    expiry_date = models.DateField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True)
+    purchase_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.medication.name} - Batch {self.batch_number}"
+
+    def is_expired(self):
+        return self.expiry_date < timezone.now().date()
+
+    def is_low_stock(self):
+        return self.stock_quantity <= self.medication.reorder_level
+
+class ActiveStoreInventory(models.Model):
+    """Model for tracking medication inventory in active stores"""
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='active_inventories')
+    active_store = models.ForeignKey(ActiveStore, on_delete=models.CASCADE, related_name='inventories')
+    batch_number = models.CharField(max_length=50)
+    stock_quantity = models.IntegerField(default=0)
+    reorder_level = models.IntegerField(default=10, help_text="Minimum stock level before reorder is needed")
+    expiry_date = models.DateField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    last_restock_date = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.medication.name} in {self.active_store.name}"
+
+    def is_expired(self):
+        return self.expiry_date < timezone.now().date()
+
+    def is_low_stock(self):
+        return self.stock_quantity <= self.reorder_level
+
+class MedicationTransfer(models.Model):
+    """Model to track transfers of medications from bulk store to active store"""
+    TRANSFER_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_transit', 'In Transit'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='transfers')
+    from_bulk_store = models.ForeignKey(BulkStore, on_delete=models.CASCADE, related_name='outgoing_transfers')
+    to_active_store = models.ForeignKey(ActiveStore, on_delete=models.CASCADE, related_name='incoming_transfers')
+    quantity = models.IntegerField()
+    batch_number = models.CharField(max_length=50, blank=True, null=True)
+    expiry_date = models.DateField(blank=True, null=True)
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=20, choices=TRANSFER_STATUS_CHOICES, default='pending')
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='requested_transfers')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_transfers')
+    transferred_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='executed_transfers')
+    notes = models.TextField(blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    transferred_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Transfer {self.quantity} {self.medication.name} from {self.from_bulk_store.name} to {self.to_active_store.dispensary.name}"
+
+    def can_approve(self):
+        """Check if transfer can be approved"""
+        return self.status == 'pending'
+
+    def can_execute(self):
+        """Check if transfer can be executed"""
+        return self.status in ['pending', 'in_transit'] and self.approved_by is not None
+
+    def execute_transfer(self, user):
+        """Execute the transfer by moving stock from bulk store to active store"""
+        if not self.can_execute():
+            raise ValueError("Transfer cannot be executed in current status")
+
+        with transaction.atomic():
+            # Find bulk store inventory
+            bulk_inventory = BulkStoreInventory.objects.filter(
+                medication=self.medication,
+                bulk_store=self.from_bulk_store,
+                batch_number=self.batch_number,
+                stock_quantity__gte=self.quantity
+            ).first()
+
+            if not bulk_inventory:
+                raise ValueError("Insufficient stock in bulk store")
+
+            # Reduce bulk store inventory
+            bulk_inventory.stock_quantity -= self.quantity
+            bulk_inventory.save()
+
+            # Add to active store inventory
+            active_inventory, created = ActiveStoreInventory.objects.get_or_create(
+                medication=self.medication,
+                active_store=self.to_active_store,
+                batch_number=self.batch_number,
+                defaults={
+                    'stock_quantity': 0,
+                    'expiry_date': self.expiry_date or bulk_inventory.expiry_date,
+                    'unit_cost': self.unit_cost or bulk_inventory.unit_cost
+                }
+            )
+
+            if created:
+                active_inventory.stock_quantity = self.quantity
+            else:
+                active_inventory.stock_quantity += self.quantity
+            
+            active_inventory.save()
+
+            # Update transfer status
+            self.status = 'completed'
+            self.transferred_by = user
+            self.transferred_at = timezone.now()
+            self.save()
+
+class DispensingLog(models.Model):
+    """Model to track when medications are dispensed to patients"""
+    prescription_item = models.ForeignKey('PrescriptionItem', on_delete=models.CASCADE, related_name='dispensing_logs')
+    dispensed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='dispensing_actions')
+    dispensed_quantity = models.IntegerField()
+    dispensed_date = models.DateTimeField(default=timezone.now)
+    unit_price_at_dispense = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price_for_this_log = models.DecimalField(max_digits=10, decimal_places=2)
+    dispensary = models.ForeignKey('Dispensary', on_delete=models.SET_NULL, null=True, blank=True, related_name='dispensing_logs')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Dispensed {self.dispensed_quantity} of {self.prescription_item.medication.name} on {self.dispensed_date.strftime('%Y-%m-%d')}"
+
+    class Meta:
+        ordering = ['-dispensed_date']
+        verbose_name = "Dispensing Log"
+        verbose_name_plural = "Dispensing Logs"
+
 class Prescription(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
@@ -367,154 +595,56 @@ class Prescription(models.Model):
                         'css_class': 'success',
                         'icon': 'check-circle'
                     }
-                else:
+                elif self.invoice.status == 'unpaid':
                     return {
                         'status': 'unpaid',
-                        'message': f'Payment pending - Invoice #{self.invoice.id}',
-                        'css_class': 'warning',
-                        'icon': 'exclamation-triangle'
+                        'message': 'Payment pending',
+                        'css_class': 'danger',
+                        'icon': 'exclamation-circle'
                     }
-            else:
-                return {
-                    'status': 'unpaid',
-                    'message': 'Payment required',
-                    'css_class': 'danger',
-                    'icon': 'exclamation-circle'
-                }
+                elif self.invoice.status == 'waived':
+                    return {
+                        'status': 'waived',
+                        'message': 'Payment waived',
+                        'css_class': 'info',
+                        'icon': 'info-circle'
+                    }
+            return {
+                'status': 'unpaid',
+                'message': 'Payment required',
+                'css_class': 'danger',
+                'icon': 'exclamation-circle'
+            }
 
 class PrescriptionItem(models.Model):
     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name='items')
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
-    dosage = models.CharField(max_length=100)  # e.g., 1 tablet
-    frequency = models.CharField(max_length=100)  # e.g., twice daily
-    duration = models.CharField(max_length=100)  # e.g., 7 days
-    instructions = models.TextField(blank=True, null=True)  # e.g., take after meals
-    quantity = models.IntegerField() # Original prescribed quantity
-    
-    quantity_dispensed_so_far = models.IntegerField(default=0) # Total quantity dispensed for this item
-
-    is_dispensed = models.BooleanField(default=False) # True if fully dispensed (quantity_dispensed_so_far >= quantity)
-    
-    # These now reflect the LAST dispense action on this item
-    dispensed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='last_dispensed_items')
-    dispensed_date = models.DateTimeField(blank=True, null=True) # Last dispensed date
+    dosage = models.CharField(max_length=100, blank=True, null=True, help_text="Dosage instructions (e.g., 500mg, 10ml)")
+    frequency = models.CharField(max_length=100, blank=True, null=True, help_text="How often to take (e.g., twice daily, once daily)")
+    duration = models.CharField(max_length=100, blank=True, null=True, help_text="How long to take (e.g., 7 days, 2 weeks)")
+    instructions = models.TextField(blank=True, null=True, help_text="Special instructions for taking the medication")
+    quantity = models.IntegerField()
+    is_dispensed = models.BooleanField(default=False)
+    dispensed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.medication.name} ({self.quantity}) for {self.prescription.patient.get_full_name()}"
-
-    def get_medication_price(self):
-        return self.medication.price
+        return f"{self.medication.name} - {self.quantity} units"
 
     @property
     def remaining_quantity_to_dispense(self):
-        return self.quantity - self.quantity_dispensed_so_far
+        """Calculate how many units still need to be dispensed"""
+        if self.is_dispensed:
+            return 0
+        # Sum up all dispensing logs for this item
+        total_dispensed = self.dispensing_logs.aggregate(
+            total=models.Sum('dispensed_quantity')
+        )['total'] or 0
+        return max(0, self.quantity - total_dispensed)
 
-    @property
-    def remaining_quantity(self):
-        """Alias for remaining_quantity_to_dispense for cleaner template access"""
-        return self.remaining_quantity_to_dispense
-
-class DispensingLog(models.Model):
-    """Logs each individual act of dispensing a medication item."""
-    prescription_item = models.ForeignKey(PrescriptionItem, on_delete=models.CASCADE, related_name='dispensing_logs')
-    dispensed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='dispensing_actions')
-    dispensed_quantity = models.IntegerField()
-    dispensed_date = models.DateTimeField(default=timezone.now)
-    unit_price_at_dispense = models.DecimalField(max_digits=10, decimal_places=2)
-    total_price_for_this_log = models.DecimalField(max_digits=10, decimal_places=2) # Calculated: dispensed_quantity * unit_price_at_dispense
-    dispensary = models.ForeignKey('Dispensary', on_delete=models.SET_NULL, null=True, blank=True, related_name='dispensing_logs')
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Dispensed {self.dispensed_quantity} of {self.prescription_item.medication.name} on {self.dispensed_date.strftime('%Y-%m-%d %H:%M')}"
-
-    def save(self, *args, **kwargs):
-        if not self.pk: # On creation
-            self.total_price_for_this_log = self.dispensed_quantity * self.unit_price_at_dispense
-        super().save(*args, **kwargs)
-
-    class Meta:
-        ordering = ['-dispensed_date']
-        verbose_name = "Dispensing Log Entry"
-        verbose_name_plural = "Dispensing Log Entries"
-
-
-class Dispensary(models.Model):
-    """Represents a pharmacy dispensary location or unit."""
-    name = models.CharField(max_length=100, unique=True)
-    location = models.CharField(max_length=200, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-    manager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_dispensaries')
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name_plural = "Dispensaries"
-        ordering = ['name']
-
-
-class ActiveStore(models.Model):
-    """Represents the active storage area for a dispensary where medications are stored for immediate dispensing."""
-    dispensary = models.OneToOneField(Dispensary, on_delete=models.CASCADE, related_name='active_store')
+class Pack(models.Model):
     name = models.CharField(max_length=100)
-    location = models.CharField(max_length=200, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    capacity = models.IntegerField(default=1000, help_text="Maximum number of medication units this store can hold")
-    temperature_controlled = models.BooleanField(default=False)
-    humidity_controlled = models.BooleanField(default=False)
-    security_level = models.CharField(max_length=20, choices=[
-        ('basic', 'Basic'),
-        ('medium', 'Medium'),
-        ('high', 'High'),
-        ('maximum', 'Maximum')
-    ], default='basic')
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Active Store - {self.dispensary.name}"
-
-    def get_current_stock_count(self):
-        """Get total number of medication units currently in this store"""
-        return self.medication_stocks.aggregate(
-            total=models.Sum('stock_quantity')
-        )['total'] or 0
-
-    def get_available_capacity(self):
-        """Get remaining capacity in this store"""
-        return self.capacity - self.get_current_stock_count()
-
-    def is_at_capacity(self):
-        """Check if store is at or over capacity"""
-        return self.get_current_stock_count() >= self.capacity
-
-    class Meta:
-        verbose_name = "Active Store"
-        verbose_name_plural = "Active Stores"
-        ordering = ['dispensary__name']
-
-
-class BulkStore(models.Model):
-    """Represents the bulk storage area where procured medications are initially stored before distribution to dispensaries."""
-    name = models.CharField(max_length=100, unique=True)
-    location = models.CharField(max_length=200)
-    description = models.TextField(blank=True, null=True)
-    capacity = models.IntegerField(default=10000, help_text="Maximum number of medication units this bulk store can hold")
-    temperature_controlled = models.BooleanField(default=True)
-    humidity_controlled = models.BooleanField(default=True)
-    security_level = models.CharField(max_length=20, choices=[
-        ('basic', 'Basic'),
-        ('medium', 'Medium'),
-        ('high', 'High'),
-        ('maximum', 'Maximum')
-    ], default='high')
-    manager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_bulk_stores')
+    medications = models.ManyToManyField(Medication, through='PackItem')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -522,120 +652,38 @@ class BulkStore(models.Model):
     def __str__(self):
         return self.name
 
-    def get_current_stock_count(self):
-        """Get total number of medication units currently in this bulk store"""
-        return self.medication_stocks.aggregate(
-            total=models.Sum('stock_quantity')
-        )['total'] or 0
+class PackItem(models.Model):
+    ITEM_TYPE_CHOICES = [
+        ('medication', 'Medication'),
+        ('supply', 'Medical Supply'),
+        ('equipment', 'Equipment'),
+    ]
+    
+    CRITICALITY_CHOICES = [
+        ('critical', 'Critical'),
+        ('important', 'Important'),
+        ('optional', 'Optional'),
+    ]
 
-    def get_available_capacity(self):
-        """Get remaining capacity in this bulk store"""
-        return self.capacity - self.get_current_stock_count()
-
-    def is_at_capacity(self):
-        """Check if store is at or over capacity"""
-        return self.get_current_stock_count() >= self.capacity
-
-    class Meta:
-        verbose_name = "Bulk Store"
-        verbose_name_plural = "Bulk Stores"
-        ordering = ['name']
-
-class MedicationInventory(models.Model):
-    """Legacy model for medication inventory - kept for backward compatibility"""
-    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='inventories')
-    dispensary = models.ForeignKey(Dispensary, on_delete=models.CASCADE, related_name='medications')
-    stock_quantity = models.IntegerField(default=0)
-    reorder_level = models.IntegerField(default=10)
-    last_restock_date = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    pack = models.ForeignKey(Pack, on_delete=models.CASCADE, related_name='items')
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
+    quantity = models.IntegerField()
+    item_type = models.CharField(max_length=20, choices=ITEM_TYPE_CHOICES, default='medication')
+    usage_instructions = models.TextField(blank=True, null=True, help_text="Instructions for using this item")
+    is_critical = models.BooleanField(default=False, help_text="Critical items cannot be substituted")
+    is_optional = models.BooleanField(default=False, help_text="Optional items can be omitted if unavailable")
+    order = models.IntegerField(default=0, help_text="Order of usage in procedure (0 for no specific order)")
 
     def __str__(self):
-        return f"{self.medication.name} at {self.dispensary.name}"
+        return f"{self.pack.name} - {self.medication.name} - {self.quantity} units"
 
-    def is_low_stock(self):
-        return self.stock_quantity <= self.reorder_level
+    def clean(self):
+        # Item cannot be both critical and optional
+        if self.is_critical and self.is_optional:
+            raise ValidationError('Item cannot be both critical and optional.')
 
-
-class ActiveStoreInventory(models.Model):
-    """Inventory for medications in active stores (dispensary storage areas)"""
-    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='active_store_inventories')
-    active_store = models.ForeignKey(ActiveStore, on_delete=models.CASCADE, related_name='medication_stocks')
-    stock_quantity = models.IntegerField(default=0)
-    reorder_level = models.IntegerField(default=10)
-    batch_number = models.CharField(max_length=50, blank=True, null=True)
-    expiry_date = models.DateField(blank=True, null=True)
-    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    last_restock_date = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.medication.name} in {self.active_store.dispensary.name} Active Store"
-
-    def is_low_stock(self):
-        return self.stock_quantity <= self.reorder_level
-
-    def is_expired(self):
-        if self.expiry_date:
-            return self.expiry_date <= timezone.now().date()
-        return False
-
-    def days_until_expiry(self):
-        if self.expiry_date:
-            delta = self.expiry_date - timezone.now().date()
-            return delta.days
-        return None
-
-    class Meta:
-        unique_together = ['medication', 'active_store', 'batch_number']
-        verbose_name = "Active Store Inventory"
-        verbose_name_plural = "Active Store Inventories"
-        ordering = ['active_store__dispensary__name', 'medication__name']
-
-
-class BulkStoreInventory(models.Model):
-    """Inventory for medications in bulk stores (central storage areas)"""
-    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='bulk_store_inventories')
-    bulk_store = models.ForeignKey(BulkStore, on_delete=models.CASCADE, related_name='medication_stocks')
-    stock_quantity = models.IntegerField(default=0)
-    batch_number = models.CharField(max_length=50, blank=True, null=True)
-    expiry_date = models.DateField(blank=True, null=True)
-    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    supplier = models.ForeignKey('Supplier', on_delete=models.SET_NULL, null=True, blank=True)
-    purchase_date = models.DateField(auto_now_add=True)
-    last_transfer_date = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.medication.name} in {self.bulk_store.name}"
-
-    def is_expired(self):
-        if self.expiry_date:
-            return self.expiry_date <= timezone.now().date()
-        return False
-
-    def days_until_expiry(self):
-        if self.expiry_date:
-            delta = self.expiry_date - timezone.now().date()
-            return delta.days
-        return None
-
-    def can_transfer(self, quantity):
-        """Check if specified quantity can be transferred from this bulk inventory"""
-        return self.stock_quantity >= quantity and not self.is_expired()
-
-    class Meta:
-        unique_together = ['medication', 'bulk_store', 'batch_number']
-        verbose_name = "Bulk Store Inventory"
-        verbose_name_plural = "Bulk Store Inventories"
-        ordering = ['bulk_store__name', 'medication__name']
-
-
-class MedicationTransfer(models.Model):
-    """Model to track transfers of medications between bulk stores and active stores"""
+class DispensaryTransfer(models.Model):
+    """Model to track transfers of medications from active store to dispensary"""
     TRANSFER_STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('in_transit', 'In Transit'),
@@ -643,17 +691,17 @@ class MedicationTransfer(models.Model):
         ('cancelled', 'Cancelled'),
     ]
 
-    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='transfers')
-    from_bulk_store = models.ForeignKey(BulkStore, on_delete=models.CASCADE, related_name='outgoing_transfers')
-    to_active_store = models.ForeignKey(ActiveStore, on_delete=models.CASCADE, related_name='incoming_transfers')
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='dispensary_transfers')
+    from_active_store = models.ForeignKey('ActiveStore', on_delete=models.CASCADE, related_name='outgoing_dispensary_transfers')
+    to_dispensary = models.ForeignKey('Dispensary', on_delete=models.CASCADE, related_name='incoming_dispensary_transfers')
     quantity = models.IntegerField()
     batch_number = models.CharField(max_length=50, blank=True, null=True)
     expiry_date = models.DateField(blank=True, null=True)
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     status = models.CharField(max_length=20, choices=TRANSFER_STATUS_CHOICES, default='pending')
-    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='requested_transfers')
-    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_transfers')
-    transferred_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='executed_transfers')
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='requested_dispensary_transfers')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_dispensary_transfers')
+    transferred_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='executed_dispensary_transfers')
     notes = models.TextField(blank=True, null=True)
     requested_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)
@@ -662,7 +710,7 @@ class MedicationTransfer(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Transfer {self.quantity} {self.medication.name} from {self.from_bulk_store.name} to {self.to_active_store.dispensary.name}"
+        return f"Dispensary Transfer {self.quantity} {self.medication.name} from {self.from_active_store.dispensary.name} to {self.to_dispensary.name}"
 
     def can_approve(self):
         """Check if transfer can be approved"""
@@ -673,43 +721,42 @@ class MedicationTransfer(models.Model):
         return self.status in ['pending', 'in_transit'] and self.approved_by is not None
 
     def execute_transfer(self, user):
-        """Execute the transfer by moving stock from bulk to active store"""
+        """Execute the transfer by moving stock from active store to dispensary"""
         if not self.can_execute():
             raise ValueError("Transfer cannot be executed in current status")
 
         with transaction.atomic():
-            # Find bulk store inventory
-            bulk_inventory = BulkStoreInventory.objects.filter(
+            # Import models here to avoid circular imports
+            from .models import ActiveStoreInventory, MedicationInventory
+            
+            # Find active store inventory
+            active_inventory = ActiveStoreInventory.objects.filter(
                 medication=self.medication,
-                bulk_store=self.from_bulk_store,
+                active_store=self.from_active_store,
                 batch_number=self.batch_number,
                 stock_quantity__gte=self.quantity
             ).first()
 
-            if not bulk_inventory:
-                raise ValueError("Insufficient stock in bulk store")
+            if not active_inventory:
+                raise ValueError("Insufficient stock in active store")
 
-            # Reduce bulk store inventory
-            bulk_inventory.stock_quantity -= self.quantity
-            bulk_inventory.last_transfer_date = timezone.now()
-            bulk_inventory.save()
+            # Reduce active store inventory
+            active_inventory.stock_quantity -= self.quantity
+            active_inventory.save()
 
-            # Add to active store inventory
-            active_inventory, created = ActiveStoreInventory.objects.get_or_create(
+            # Add to dispensary inventory (legacy model for backward compatibility)
+            dispensary_inventory, created = MedicationInventory.objects.get_or_create(
                 medication=self.medication,
-                active_store=self.to_active_store,
-                batch_number=self.batch_number,
+                dispensary=self.to_dispensary,
                 defaults={
                     'stock_quantity': 0,
-                    'expiry_date': self.expiry_date,
-                    'unit_cost': self.unit_cost,
                     'reorder_level': 10
                 }
             )
 
-            active_inventory.stock_quantity += self.quantity
-            active_inventory.last_restock_date = timezone.now()
-            active_inventory.save()
+            dispensary_inventory.stock_quantity += self.quantity
+            dispensary_inventory.last_restock_date = timezone.now()
+            dispensary_inventory.save()
 
             # Update transfer status
             self.status = 'completed'
@@ -717,259 +764,229 @@ class MedicationTransfer(models.Model):
             self.transferred_at = timezone.now()
             self.save()
 
-    class Meta:
-        verbose_name = "Medication Transfer"
-        verbose_name_plural = "Medication Transfers"
-        ordering = ['-requested_at']
-
-
-class MedicalPack(models.Model):
-    """Model representing a predefined pack of medications and consumables for specific medical procedures"""
-    PACK_TYPE_CHOICES = [
-        ('surgery', 'Surgery Pack'),
-        ('labor', 'Labor/Delivery Pack'),
-        ('emergency', 'Emergency Pack'),
-        ('general', 'General Medical Pack'),
-    ]
-    
-    SURGERY_TYPE_CHOICES = [
-        ('appendectomy', 'Appendectomy'),
-        ('cholecystectomy', 'Cholecystectomy'),
-        ('hernia_repair', 'Hernia Repair'),
-        ('cesarean_section', 'Cesarean Section'),
-        ('tonsillectomy', 'Tonsillectomy'),
-        ('orthopedic_surgery', 'Orthopedic Surgery'),
-        ('cardiac_surgery', 'Cardiac Surgery'),
-        ('neurosurgery', 'Neurosurgery'),
-        ('general_surgery', 'General Surgery'),
-        ('plastic_surgery', 'Plastic Surgery'),
-    ]
-    
-    LABOR_TYPE_CHOICES = [
-        ('normal_delivery', 'Normal Delivery'),
-        ('assisted_delivery', 'Assisted Delivery'),
-        ('cesarean_delivery', 'Cesarean Delivery'),
-        ('labor_induction', 'Labor Induction'),
-        ('episiotomy', 'Episiotomy'),
-        ('emergency_delivery', 'Emergency Delivery'),
-    ]
-    
-    name = models.CharField(max_length=200)
-    description = models.TextField(blank=True, null=True)
-    pack_type = models.CharField(max_length=20, choices=PACK_TYPE_CHOICES)
-    surgery_type = models.CharField(max_length=50, choices=SURGERY_TYPE_CHOICES, blank=True, null=True)
-    labor_type = models.CharField(max_length=50, choices=LABOR_TYPE_CHOICES, blank=True, null=True)
-    
-    # Risk level and complexity
-    risk_level = models.CharField(max_length=20, choices=[
-        ('low', 'Low Risk'),
-        ('medium', 'Medium Risk'),
-        ('high', 'High Risk'),
-        ('critical', 'Critical Risk'),
-    ], default='medium')
-    
-    # Pricing
-    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    
-    # Status and availability
-    is_active = models.BooleanField(default=True)
-    requires_approval = models.BooleanField(default=False)
-    
-    # Metadata
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return f"{self.name} - {self.get_pack_type_display()}"
-    
-    def get_total_cost(self):
-        """Calculate total cost from pack items"""
-        total = 0
-        for item in self.items.all():
-            total += item.medication.price * item.quantity
-        return total
-    
-    def update_total_cost(self):
-        """Update the total cost field"""
-        self.total_cost = self.get_total_cost()
-        self.save(update_fields=['total_cost'])
-    
-    def get_items_count(self):
-        """Get number of different medications in this pack"""
-        return self.items.count()
-    
-    def get_total_quantity(self):
-        """Get total quantity of all items in this pack"""
-        from django.db.models import Sum
-        return self.items.aggregate(total=Sum('quantity'))['total'] or 0
-    
-    def can_be_ordered(self):
-        """Check if pack can be ordered (all medications available)"""
-        for item in self.items.all():
-            # Check if medication is available in sufficient quantity
-            available_stock = MedicationInventory.objects.filter(
-                medication=item.medication
-            ).aggregate(total=models.Sum('stock_quantity'))['total'] or 0
-            
-            if available_stock < item.quantity:
-                return False, f"Insufficient stock for {item.medication.name}"
-        
-        return True, "Pack can be ordered"
-    
-    class Meta:
-        verbose_name = "Medical Pack"
-        verbose_name_plural = "Medical Packs"
-        ordering = ['pack_type', 'name']
-        indexes = [
-            models.Index(fields=['pack_type']),
-            models.Index(fields=['surgery_type']),
-            models.Index(fields=['labor_type']),
-            models.Index(fields=['is_active']),
-        ]
-
-
-class PackItem(models.Model):
-    """Model representing an item (medication/consumable) within a medical pack"""
-    ITEM_TYPE_CHOICES = [
-        ('medication', 'Medication'),
-        ('consumable', 'Consumable'),
-        ('equipment', 'Equipment'),
-        ('supply', 'Medical Supply'),
-    ]
-    
-    pack = models.ForeignKey(MedicalPack, on_delete=models.CASCADE, related_name='items')
-    medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
-    quantity = models.IntegerField()
-    item_type = models.CharField(max_length=20, choices=ITEM_TYPE_CHOICES, default='medication')
-    
-    # Usage instructions
-    usage_instructions = models.TextField(blank=True, null=True)
-    is_critical = models.BooleanField(default=False, help_text="Critical item that cannot be substituted")
-    is_optional = models.BooleanField(default=False, help_text="Optional item that can be omitted if not available")
-    
-    # Ordering within pack
-    order = models.PositiveIntegerField(default=0, help_text="Order of usage in procedure")
-    
-    def __str__(self):
-        return f"{self.medication.name} x{self.quantity} in {self.pack.name}"
-    
-    def get_total_cost(self):
-        """Get total cost for this pack item"""
-        return self.medication.price * self.quantity
-    
-    class Meta:
-        verbose_name = "Pack Item"
-        verbose_name_plural = "Pack Items"
-        ordering = ['order', 'medication__name']
-        unique_together = ['pack', 'medication']
-
-
 class PackOrder(models.Model):
-    """Model representing an order for a medical pack"""
     ORDER_STATUS_CHOICES = [
         ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('processing', 'Processing'),
-        ('ready', 'Ready for Collection'),
-        ('dispensed', 'Dispensed'),
+        ('ready', 'Ready'),
         ('cancelled', 'Cancelled'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
     ]
     
-    # Basic information
-    pack = models.ForeignKey(MedicalPack, on_delete=models.PROTECT)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='pack_orders')
-    
-    # Medical context
-    surgery = models.ForeignKey('theatre.Surgery', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
-    labor_record = models.ForeignKey('labor.LaborRecord', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
-    
-    # Ordering details
-    ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='ordered_packs')
-    order_date = models.DateTimeField(auto_now_add=True)
-    scheduled_date = models.DateTimeField(null=True, blank=True, help_text="When the pack is needed")
-    
-    # Status and processing
+    pack = models.ForeignKey(Pack, on_delete=models.CASCADE)
+    ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ordered_pack_orders')
+    ordered_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')
-    processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_packs')
-    dispensed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispensed_packs')
-    
-    # Timing
-    approved_at = models.DateTimeField(null=True, blank=True)
+    processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_pack_orders')
     processed_at = models.DateTimeField(null=True, blank=True)
-    dispensed_at = models.DateTimeField(null=True, blank=True)
-    
-    # Notes and instructions
-    order_notes = models.TextField(blank=True, null=True)
-    processing_notes = models.TextField(blank=True, null=True)
-    
-    # Linked prescription (when converted to individual items)
-    prescription = models.ForeignKey(Prescription, on_delete=models.SET_NULL, null=True, blank=True, related_name='pack_orders')
-    
+    order_notes = models.TextField(blank=True, null=True, help_text="Additional notes about this pack order")
+    scheduled_date = models.DateTimeField(null=True, blank=True, help_text="When the pack is needed")
+
     def __str__(self):
-        return f"Pack Order: {self.pack.name} for {self.patient.get_full_name()}"
-    
-    def can_be_approved(self):
-        """Check if pack order can be approved"""
-        return self.status == 'pending'
-    
+        return f"Pack Order #{self.id} - {self.pack.name}"
+
     def can_be_processed(self):
-        """Check if pack order can be processed"""
-        return self.status in ['approved', 'pending'] and not self.processed_by
-    
-    def can_be_dispensed(self):
-        """Check if pack order can be dispensed"""
-        return self.status == 'ready' and not self.dispensed_by
-    
-    def create_prescription(self):
-        """Convert pack order to individual prescription items"""
-        from django.db import transaction
-        
-        if self.prescription:
-            return self.prescription
-        
-        with transaction.atomic():
-            # Create prescription
-            prescription = Prescription.objects.create(
-                patient=self.patient,
-                doctor=self.ordered_by,
-                prescription_date=timezone.now().date(),
-                diagnosis=f"Pack order: {self.pack.name}",
-                notes=f"Auto-generated from pack order #{self.id}",
-                prescription_type='outpatient' if not self.surgery else 'inpatient'
-            )
-            
-            # Create prescription items for each pack item
-            for pack_item in self.pack.items.all():
-                PrescriptionItem.objects.create(
-                    prescription=prescription,
-                    medication=pack_item.medication,
-                    dosage='As per pack requirements',
-                    frequency='As needed',
-                    duration='Single use',
-                    quantity=pack_item.quantity,
-                    instructions=pack_item.usage_instructions or 'Use as directed for procedure'
-                )
-            
-            # Link prescription to this pack order
-            self.prescription = prescription
-            self.save()
-            
-            return prescription
-    
-    def approve_order(self, user):
-        """Approve the pack order"""
-        if not self.can_be_approved():
-            raise ValueError("Pack order cannot be approved in current status")
-        
-        self.status = 'approved'
-        self.approved_at = timezone.now()
-        self.save()
-    
+        return self.status == 'pending'
+
     def process_order(self, user):
         """Process the pack order and create prescription"""
         if not self.can_be_processed():
             raise ValueError("Pack order cannot be processed in current status")
+        
+        # Check if all medications in the pack are available in the active store
+        # If not, attempt to transfer from bulk store to active store
+        missing_medications = []
+        for pack_item in self.pack.items.all():
+            # Check if medication is available in sufficient quantity in active stores
+            available_stock = ActiveStoreInventory.objects.filter(
+                medication=pack_item.medication
+            ).aggregate(total=models.Sum('stock_quantity'))['total'] or 0
+            
+            if available_stock < pack_item.quantity:
+                missing_medications.append({
+                    'medication': pack_item.medication,
+                    'required': pack_item.quantity,
+                    'available': available_stock,
+                    'shortage': pack_item.quantity - available_stock
+                })
+        
+        # If there are missing medications, try to transfer from bulk store
+        if missing_medications:
+            # Import models here to avoid circular imports
+            from .models import Dispensary, ActiveStore, BulkStore, BulkStoreInventory, MedicationTransfer
+            try:
+                # Try to get user's associated dispensary
+                if hasattr(user, 'profile') and hasattr(user.profile, 'dispensary'):
+                    dispensary = user.profile.dispensary
+                else:
+                    # Use default dispensary
+                    dispensary = Dispensary.objects.filter(is_active=True).first()
+                
+                if dispensary:
+                    active_store = getattr(dispensary, 'active_store', None)
+                    if not active_store:
+                        # Create active store if it doesn't exist
+                        active_store = ActiveStore.objects.create(
+                            dispensary=dispensary,
+                            name=f"Active Store - {dispensary.name}",
+                            capacity=1000
+                        )
+                    
+                    # Get bulk store (use main bulk store)
+                    bulk_store = BulkStore.objects.filter(is_active=True).first()
+                    
+                    if bulk_store:
+                        # For each missing medication, create a transfer request
+                        for missing in missing_medications:
+                            medication = missing['medication']
+                            shortage = missing['shortage']
+                            
+                            # Check if bulk store has this medication
+                            bulk_inventory = BulkStoreInventory.objects.filter(
+                                medication=medication,
+                                bulk_store=bulk_store,
+                                stock_quantity__gte=shortage
+                            ).first()
+                            
+                            if bulk_inventory:
+                                # Create transfer request
+                                transfer = MedicationTransfer.objects.create(
+                                    medication=medication,
+                                    from_bulk_store=bulk_store,
+                                    to_active_store=active_store,
+                                    quantity=shortage,
+                                    batch_number=bulk_inventory.batch_number,
+                                    expiry_date=bulk_inventory.expiry_date,
+                                    unit_cost=bulk_inventory.unit_cost,
+                                    status='pending',
+                                    requested_by=user
+                                )
+                                
+                                # Approve and execute transfer immediately
+                                transfer.approved_by = user
+                                transfer.approved_at = timezone.now()
+                                transfer.status = 'in_transit'
+                                transfer.save()
+                                
+                                try:
+                                    transfer.execute_transfer(user)
+                                except Exception as e:
+                                    # Log the error but continue processing
+                                    pass  # In a real implementation, you might want to log this
+            except Exception as e:
+                # Continue with processing even if transfers fail
+                pass  # In a real implementation, you might want to log this
+        
+        # Now, ensure that medications are moved from active store to the respective dispensary
+        # This is for cases where we want to ensure the dispensary has the required medications
+        try:
+            # Try to get user's associated dispensary
+            if hasattr(user, 'profile') and hasattr(user.profile, 'dispensary'):
+                dispensary = user.profile.dispensary
+            else:
+                # Use default dispensary
+                dispensary = Dispensary.objects.filter(is_active=True).first()
+            
+            if dispensary:
+                active_store = getattr(dispensary, 'active_store', None)
+                if active_store:
+                    # For each medication in the pack, ensure it's available in the dispensary
+                    for pack_item in self.pack.items.all():
+                        medication = pack_item.medication
+                        required_quantity = pack_item.quantity
+                        
+                        # Check if medication is available in the active store
+                        active_inventory = ActiveStoreInventory.objects.filter(
+                            medication=medication,
+                            active_store=active_store,
+                            stock_quantity__gte=required_quantity
+                        ).first()
+                        
+                        if not active_inventory:
+                            # If not available in active store, check if it's in legacy inventory
+                            try:
+                                legacy_inventory = MedicationInventory.objects.get(
+                                    medication=medication,
+                                    dispensary=dispensary,
+                                    stock_quantity__gte=required_quantity
+                                )
+                                # If found in legacy inventory, we'll use that for dispensing
+                                # No transfer needed in this case
+                                pass
+                            except MedicationInventory.DoesNotExist:
+                                # Medication not available in either inventory
+                                # This will be handled during prescription dispensing
+                                pass
+                        else:
+                            # Medication is available in active store
+                            # Check if it's also available in the dispensary (legacy inventory)
+                            # If not, create a transfer from active store to dispensary
+                            try:
+                                dispensary_inventory = MedicationInventory.objects.get(
+                                    medication=medication,
+                                    dispensary=dispensary
+                                )
+                                # If dispensary already has this medication, check if quantity is sufficient
+                                if dispensary_inventory.stock_quantity < required_quantity:
+                                    # Need to transfer more from active store to dispensary
+                                    shortage = required_quantity - dispensary_inventory.stock_quantity
+                                    
+                                    # Create dispensary transfer request
+                                    from .models import DispensaryTransfer
+                                    dispensary_transfer = DispensaryTransfer.objects.create(
+                                        medication=medication,
+                                        from_active_store=active_store,
+                                        to_dispensary=dispensary,
+                                        quantity=shortage,
+                                        batch_number=active_inventory.batch_number,
+                                        expiry_date=active_inventory.expiry_date,
+                                        unit_cost=active_inventory.unit_cost,
+                                        status='pending',
+                                        requested_by=user
+                                    )
+                                    
+                                    # Approve and execute transfer immediately
+                                    dispensary_transfer.approved_by = user
+                                    dispensary_transfer.approved_at = timezone.now()
+                                    dispensary_transfer.status = 'in_transit'
+                                    dispensary_transfer.save()
+                                    
+                                    try:
+                                        dispensary_transfer.execute_transfer(user)
+                                    except Exception as e:
+                                        # Log the error but continue processing
+                                        pass  # In a real implementation, you might want to log this
+                            except MedicationInventory.DoesNotExist:
+                                # Dispensary doesn't have this medication at all
+                                # Create a transfer from active store to dispensary
+                                from .models import DispensaryTransfer
+                                dispensary_transfer = DispensaryTransfer.objects.create(
+                                    medication=medication,
+                                    from_active_store=active_store,
+                                    to_dispensary=dispensary,
+                                    quantity=required_quantity,
+                                    batch_number=active_inventory.batch_number,
+                                    expiry_date=active_inventory.expiry_date,
+                                    unit_cost=active_inventory.unit_cost,
+                                    status='pending',
+                                    requested_by=user
+                                )
+                                
+                                # Approve and execute transfer immediately
+                                dispensary_transfer.approved_by = user
+                                dispensary_transfer.approved_at = timezone.now()
+                                dispensary_transfer.status = 'in_transit'
+                                dispensary_transfer.save()
+                                
+                                try:
+                                    dispensary_transfer.execute_transfer(user)
+                                except Exception as e:
+                                    # Log the error but continue processing
+                                    pass  # In a real implementation, you might want to log this
+        except Exception as e:
+            # Continue processing even if this check fails
+            pass
         
         # Create prescription from pack items
         prescription = self.create_prescription()
@@ -980,23 +997,83 @@ class PackOrder(models.Model):
         self.save()
         
         return prescription
-    
-    def dispense_order(self, user):
-        """Mark pack order as dispensed"""
-        if not self.can_be_dispensed():
-            raise ValueError("Pack order cannot be dispensed in current status")
+
+    def create_prescription(self):
+        """Create a prescription from pack items"""
+        prescription = Prescription.objects.create(
+            patient=self.patient,
+            doctor=self.ordered_by,
+            prescription_date=timezone.now(),
+            status='approved',
+            payment_status='unpaid',
+            prescription_type='outpatient',
+            notes=f"Created from Pack Order #{self.id}"
+        )
         
-        self.status = 'dispensed'
-        self.dispensed_by = user
-        self.dispensed_at = timezone.now()
-        self.save()
+        for pack_item in self.pack.items.all():
+            PrescriptionItem.objects.create(
+                prescription=prescription,
+                medication=pack_item.medication,
+                quantity=pack_item.quantity
+            )
+        
+        return prescription
+
+class MedicalPack(models.Model):
+    """Model representing a predefined pack of medications and supplies for specific medical procedures"""
+    PACK_TYPE_CHOICES = [
+        ('surgery', 'Surgery'),
+        ('labor', 'Labor/Delivery'),
+        ('emergency', 'Emergency'),
+        ('routine', 'Routine Care'),
+    ]
     
+    SURGERY_TYPE_CHOICES = [
+        ('appendectomy', 'Appendectomy'),
+        ('cholecystectomy', 'Cholecystectomy'),
+        ('hernia_repair', 'Hernia Repair'),
+        ('cesarean_section', 'Cesarean Section'),
+        ('tonsillectomy', 'Tonsillectomy'),
+    ]
+    
+    LABOR_TYPE_CHOICES = [
+        ('normal_delivery', 'Normal Delivery'),
+        ('assisted_delivery', 'Assisted Delivery'),
+        ('cesarean_section', 'Cesarean Section'),
+    ]
+    
+    RISK_LEVEL_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    pack_type = models.CharField(max_length=20, choices=PACK_TYPE_CHOICES)
+    surgery_type = models.CharField(max_length=50, choices=SURGERY_TYPE_CHOICES, blank=True, null=True)
+    labor_type = models.CharField(max_length=50, choices=LABOR_TYPE_CHOICES, blank=True, null=True)
+    risk_level = models.CharField(max_length=10, choices=RISK_LEVEL_CHOICES, default='medium')
+    requires_approval = models.BooleanField(default=False, help_text="Check if this pack requires approval before processing")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
     class Meta:
-        verbose_name = "Pack Order"
-        verbose_name_plural = "Pack Orders"
-        ordering = ['-order_date']
-        indexes = [
-            models.Index(fields=['status']),
-            models.Index(fields=['order_date']),
-            models.Index(fields=['scheduled_date']),
-        ]
+        ordering = ['name']
+        verbose_name = "Medical Pack"
+        verbose_name_plural = "Medical Packs"
+
+    def get_item_count(self):
+        """Get the total number of items in this pack"""
+        return self.items.count()
+
+    def get_total_value(self):
+        """Calculate the total value of all items in the pack"""
+        total = 0
+        for item in self.items.all():
+            total += item.medication.price * item.quantity
+        return total

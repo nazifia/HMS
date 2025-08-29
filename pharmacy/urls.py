@@ -108,6 +108,11 @@ urlpatterns = [
     path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/delete/', views.delete_dispensary_inventory_item, name='delete_dispensary_inventory_item'),
     # Active Store Detail
     path('dispensaries/<int:dispensary_id>/active-store/', views.active_store_detail, name='active_store_detail'),
+    path('dispensaries/<int:dispensary_id>/transfer-to-dispensary/', views.transfer_to_dispensary, name='transfer_to_dispensary'),
+    
+    # Transfer Management
+    path('transfers/manage/', views.manage_transfers, name='manage_transfers'),
+    path('dispensaries/<int:dispensary_id>/active-store-inventory/', views.active_store_inventory_ajax, name='active_store_inventory_ajax'),
 
     # Medication Inventory Management
     path('inventory/stock/add/', views.add_medication_stock, name='add_medication_stock'),

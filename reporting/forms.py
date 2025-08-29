@@ -3,7 +3,6 @@ from django.utils import timezone
 from .models import Report, Dashboard, DashboardWidget, ReportExecution
 from doctors.models import Doctor
 from appointments.models import Appointment
-from patients.models import Patient
 from billing.models import Invoice
 from laboratory.models import Test
 from radiology.models import RadiologyTest
@@ -13,6 +12,12 @@ class PatientReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     gender = forms.ChoiceField(choices=[('', 'All'), ('male', 'Male'), ('female', 'Female')], required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lazy load the Patient queryset to avoid circular imports
+        from patients.models import Patient
+        # Note: This form doesn't actually use Patient in fields, but keeping for consistency
 
 class AppointmentReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
@@ -23,21 +28,33 @@ class AppointmentReportForm(forms.Form):
 class BillingReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
     payment_status = forms.ChoiceField(
         choices=[('', 'All'), ('paid', 'Paid'), ('pending', 'Pending'), ('partially_paid', 'Partially Paid'), ('overdue', 'Overdue'), ('cancelled', 'Cancelled')],
         required=False
     )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lazy load the Patient queryset to avoid circular imports
+        from patients.models import Patient
+        self.fields['patient'].queryset = Patient.objects.all()
 
 class PharmacySalesReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lazy load the Patient queryset to avoid circular imports
+        from patients.models import Patient
+        self.fields['patient'].queryset = Patient.objects.all()
 
 class LaboratoryReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
     test_type = forms.ModelChoiceField(queryset=Test.objects.all(), required=False)
     status = forms.ChoiceField(
         choices=[
@@ -47,17 +64,35 @@ class LaboratoryReportForm(forms.Form):
         ],
         required=False
     )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lazy load the Patient queryset to avoid circular imports
+        from patients.models import Patient
+        self.fields['patient'].queryset = Patient.objects.all()
 
 class RadiologyReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
     test_type = forms.ModelChoiceField(queryset=RadiologyTest.objects.all(), required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lazy load the Patient queryset to avoid circular imports
+        from patients.models import Patient
+        self.fields['patient'].queryset = Patient.objects.all()
 
 class InpatientReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False)
+    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lazy load the Patient queryset to avoid circular imports
+        from patients.models import Patient
+        self.fields['patient'].queryset = Patient.objects.all()
 
 class HRReportForm(forms.Form):
     department = forms.ModelChoiceField(queryset=Department.objects.all(), required=False)

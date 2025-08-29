@@ -1,5 +1,15 @@
 from django.contrib import admin
-from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem, Dispensary, MedicationInventory
+
+# Try to import models, but handle ImportError gracefully
+try:
+    from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem, Dispensary, MedicationInventory
+    DISPENSARY_AVAILABLE = True
+    MEDICATION_INVENTORY_AVAILABLE = True
+except ImportError:
+    # If some models are not available, import only the available ones
+    from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem
+    DISPENSARY_AVAILABLE = False
+    MEDICATION_INVENTORY_AVAILABLE = False
 
 class PurchaseItemInline(admin.TabularInline):
     model = PurchaseItem
@@ -62,19 +72,22 @@ class PrescriptionAdmin(admin.ModelAdmin):
 @admin.register(PrescriptionItem)
 class PrescriptionItemAdmin(admin.ModelAdmin):
     list_display = ('prescription', 'medication', 'dosage', 'frequency', 'quantity', 'is_dispensed')
-    list_filter = ('is_dispensed', 'dispensed_date')
+    list_filter = ('is_dispensed', 'dispensed_at')
     search_fields = ('prescription__patient__first_name', 'prescription__patient__last_name', 'medication__name')
 
-@admin.register(Dispensary)
-class DispensaryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'location', 'is_active', 'created_at')
-    list_filter = ('is_active',)
-    search_fields = ('name', 'location')
-    date_hierarchy = 'created_at'
+# Only register Dispensary and MedicationInventory if they exist
+if DISPENSARY_AVAILABLE:
+    @admin.register(Dispensary)
+    class DispensaryAdmin(admin.ModelAdmin):
+        list_display = ('name', 'location', 'is_active', 'created_at')
+        list_filter = ('is_active',)
+        search_fields = ('name', 'location')
+        date_hierarchy = 'created_at'
 
-@admin.register(MedicationInventory)
-class MedicationInventoryAdmin(admin.ModelAdmin):
-    list_display = ('medication', 'dispensary', 'stock_quantity', 'reorder_level', 'last_restock_date')
-    list_filter = ('dispensary', 'last_restock_date')
-    search_fields = ('medication__name', 'dispensary__name')
-    date_hierarchy = 'last_restock_date'
+if MEDICATION_INVENTORY_AVAILABLE:
+    @admin.register(MedicationInventory)
+    class MedicationInventoryAdmin(admin.ModelAdmin):
+        list_display = ('medication', 'dispensary', 'stock_quantity', 'reorder_level', 'last_restock_date')
+        list_filter = ('dispensary', 'last_restock_date')
+        search_fields = ('medication__name', 'dispensary__name')
+        date_hierarchy = 'last_restock_date'

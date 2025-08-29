@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Execute Medication Transfer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Execute Medication Transfer</h1>
+        <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-secondary btn-sm">Back to Bulk Store</a>
+    </div>
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Transfer Details</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Transfer Information</h5>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item"><strong>Transfer ID:</strong> #{{ transfer.id }}</li>
+                        <li class="list-group-item"><strong>Medication:</strong> {{ transfer.medication.name }} ({{ transfer.medication.strength }})</li>
+                        <li class="list-group-item"><strong>Quantity:</strong> {{ transfer.quantity }}</li>
+                        <li class="list-group-item"><strong>Batch Number:</strong> {{ transfer.batch_number|default:"N/A" }}</li>
+                        <li class="list-group-item"><strong>Expiry Date:</strong> {{ transfer.expiry_date|date:"Y-m-d"|default:"N/A" }}</li>
+                        <li class="list-group-item"><strong>Unit Cost:</strong> {{ transfer.unit_cost }}</li>
+                        <li class="list-group-item"><strong>Status:</strong> 
+                            <span class="badge {% if transfer.status == 'pending' %}bg-warning{% elif transfer.status == 'in_transit' %}bg-info{% elif transfer.status == 'completed' %}bg-success{% elif transfer.status == 'cancelled' %}bg-danger{% endif %}">
+                                {{ transfer.get_status_display }}
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5>Transfer Path</h5>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item"><strong>From:</strong> {{ transfer.from_bulk_store.name }}</li>
+                        <li class="list-group-item"><strong>To:</strong> {{ transfer.to_active_store.name }} ({{ transfer.to_active_store.dispensary.name }})</li>
+                        <li class="list-group-item"><strong>Requested By:</strong> {{ transfer.requested_by.get_full_name }} on {{ transfer.requested_at|date:"Y-m-d H:i" }}</li>
+                        {% if transfer.approved_by %}
+                        <li class="list-group-item"><strong>Approved By:</strong> {{ transfer.approved_by.get_full_name }} on {{ transfer.approved_at|date:"Y-m-d H:i" }}</li>
+                        {% endif %}
+                        {% if transfer.transferred_by %}
+                        <li class="list-group-item"><strong>Executed By:</strong> {{ transfer.transferred_by.get_full_name }} on {{ transfer.transferred_at|date:"Y-m-d H:i" }}</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            
+            {% if transfer.can_execute %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="alert alert-warning">
+                    <h5>Confirm Transfer Execution</h5>
+                    <p>Are you sure you want to execute this transfer? This will move {{ transfer.quantity }} units of {{ transfer.medication.name }} from {{ transfer.from_bulk_store.name }} to {{ transfer.to_active_store.name }}.</p>
+                </div>
+                <button type="submit" class="btn btn-success">Execute Transfer</button>
+                <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-secondary">Cancel</a>
+            </form>
+            {% else %}
+            <div class="alert alert-info">
+                This transfer cannot be executed in its current status. Please ensure it has been approved.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

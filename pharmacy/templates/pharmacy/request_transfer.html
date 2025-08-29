@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Request Medication Transfer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Request Medication Transfer</h1>
+        <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-secondary btn-sm">Back to Bulk Store</a>
+    </div>
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Transfer Request Form</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="medication">Medication</label>
+                            <select name="medication" id="medication" class="form-control" required>
+                                <option value="">Select Medication</option>
+                                {% for medication in medications %}
+                                <option value="{{ medication.id }}">{{ medication.name }} ({{ medication.strength }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="quantity">Quantity</label>
+                            <input type="number" name="quantity" id="quantity" class="form-control" min="1" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="bulk_store">From Bulk Store</label>
+                            <select name="bulk_store" id="bulk_store" class="form-control" required>
+                                <option value="">Select Bulk Store</option>
+                                {% for store in bulk_stores %}
+                                <option value="{{ store.id }}">{{ store.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="active_store">To Active Store</label>
+                            <select name="active_store" id="active_store" class="form-control" required>
+                                <option value="">Select Active Store</option>
+                                {% for store in active_stores %}
+                                <option value="{{ store.id }}">{{ store.name }} ({{ store.dispensary.name }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="batch_number">Batch Number</label>
+                    <input type="text" name="batch_number" id="batch_number" class="form-control" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Request Transfer</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

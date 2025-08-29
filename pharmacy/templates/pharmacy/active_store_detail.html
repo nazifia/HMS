@@ -8,23 +8,52 @@
         <h1 class="h3 mb-0 text-gray-800">Active Store: {{ active_store.name }}</h1>
         <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-secondary btn-sm">Back to Dispensaries</a>
     </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Store Details</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item"><strong>Name:</strong> {{ active_store.name }}</li>
+                        <li class="list-group-item"><strong>Location:</strong> {{ active_store.location|default:"N/A" }}</li>
+                        <li class="list-group-item"><strong>Description:</strong> {{ active_store.description|default:"N/A" }}</li>
+                        <li class="list-group-item"><strong>Capacity:</strong> {{ active_store.capacity }}</li>
+                        <li class="list-group-item"><strong>Security Level:</strong> {{ active_store.security_level|title }}</li>
+                        <li class="list-group-item"><strong>Temperature Controlled:</strong> {{ active_store.temperature_controlled|yesno:"Yes,No" }}</li>
+                        <li class="list-group-item"><strong>Humidity Controlled:</strong> {{ active_store.humidity_controlled|yesno:"Yes,No" }}</li>
+                        <li class="list-group-item"><strong>Status:</strong> {% if active_store.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer to Dispensary</h6>
+                </div>
+                <div class="card-body">
+                    <p>Transfer medications from this active store to the associated dispensary inventory.</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
+                        Initiate Transfer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Store Details</h6>
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Current Stock</h6>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
+                <i class="fas fa-exchange-alt"></i> Transfer Stock
+            </button>
         </div>
         <div class="card-body">
-            <ul class="list-group mb-3">
-                <li class="list-group-item"><strong>Name:</strong> {{ active_store.name }}</li>
-                <li class="list-group-item"><strong>Location:</strong> {{ active_store.location|default:"N/A" }}</li>
-                <li class="list-group-item"><strong>Description:</strong> {{ active_store.description|default:"N/A" }}</li>
-                <li class="list-group-item"><strong>Capacity:</strong> {{ active_store.capacity }}</li>
-                <li class="list-group-item"><strong>Security Level:</strong> {{ active_store.security_level|title }}</li>
-                <li class="list-group-item"><strong>Temperature Controlled:</strong> {{ active_store.temperature_controlled|yesno:"Yes,No" }}</li>
-                <li class="list-group-item"><strong>Humidity Controlled:</strong> {{ active_store.humidity_controlled|yesno:"Yes,No" }}</li>
-                <li class="list-group-item"><strong>Status:</strong> {% if active_store.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</li>
-            </ul>
-            <h5 class="mt-4">Current Stock</h5>
-            {% if active_store.medication_stocks.exists %}
+            {% if inventory_items %}
             <div class="table-responsive">
                 <table class="table table-bordered">
                     <thead>
@@ -34,16 +63,27 @@
                             <th>Expiry Date</th>
                             <th>Stock Quantity</th>
                             <th>Unit Cost</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for stock in active_store.medication_stocks.all %}
+                        {% for stock in inventory_items %}
                         <tr>
                             <td>{{ stock.medication.name }}</td>
                             <td>{{ stock.batch_number|default:"N/A" }}</td>
                             <td>{{ stock.expiry_date|date:"Y-m-d"|default:"N/A" }}</td>
                             <td>{{ stock.stock_quantity }}</td>
                             <td>{{ stock.unit_cost }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-primary transfer-btn" 
+                                        data-medication="{{ stock.medication.id }}"
+                                        data-medication-name="{{ stock.medication.name }}"
+                                        data-batch="{{ stock.batch_number }}"
+                                        data-quantity="{{ stock.stock_quantity }}"
+                                        data-bs-toggle="modal" data-bs-target="#transferModal">
+                                    Transfer
+                                </button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -55,4 +95,93 @@
         </div>
     </div>
 </div>
+
+<!-- Transfer Modal -->
+<div class="modal fade" id="transferModal" tabindex="-1" role="dialog" aria-labelledby="transferModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transferModalLabel">Transfer Medication to Dispensary</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:transfer_to_dispensary' dispensary_id=dispensary.id %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" id="medicationId" name="medication_id">
+                    <input type="hidden" id="batchNumber" name="batch_number">
+                    
+                    <div class="form-group mb-3">
+                        <label for="medicationName">Medication</label>
+                        <input type="text" class="form-control" id="medicationName" readonly>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="availableQuantity">Available Quantity</label>
+                        <input type="number" class="form-control" id="availableQuantity" readonly>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="transferQuantity">Transfer Quantity</label>
+                        <input type="number" class="form-control" id="transferQuantity" name="quantity" min="1" required>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="dispensary">To Dispensary</label>
+                        <input type="text" class="form-control" id="dispensary" value="{{ dispensary.name }}" readonly>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
+<!-- JavaScript for handling transfers -->
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        console.log("Document ready - transfer script loaded");
+        
+        // Handle transfer button clicks
+        $(document).on('click', '.transfer-btn', function() {
+            console.log("Transfer button clicked");
+            var medicationId = $(this).data('medication');
+            var medicationName = $(this).data('medicationName');  // Note: kebab-case becomes camelCase
+            var batchNumber = $(this).data('batch');
+            var availableQuantity = $(this).data('quantity');
+            
+            console.log("Medication ID:", medicationId);
+            console.log("Medication Name:", medicationName);
+            console.log("Batch Number:", batchNumber);
+            console.log("Available Quantity:", availableQuantity);
+            
+            // Check if elements exist
+            if ($('#medicationId').length === 0) {
+                console.log("ERROR: #medicationId element not found");
+            }
+            if ($('#medicationName').length === 0) {
+                console.log("ERROR: #medicationName element not found");
+            }
+            if ($('#batchNumber').length === 0) {
+                console.log("ERROR: #batchNumber element not found");
+            }
+            if ($('#availableQuantity').length === 0) {
+                console.log("ERROR: #availableQuantity element not found");
+            }
+            
+            $('#medicationId').val(medicationId);
+            $('#medicationName').val(medicationName);
+            $('#batchNumber').val(batchNumber);
+            $('#availableQuantity').val(availableQuantity);
+            $('#transferQuantity').attr('max', availableQuantity);
+            
+            console.log("Form fields updated");
+        });
+    });
+</script>
+{% endblock %}
+</div>

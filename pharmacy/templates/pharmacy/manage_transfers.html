@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Transfers{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Manage Transfers</h1>
+        <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+    </div>
+    
+    <!-- Transfer Tabs -->
+    <ul class="nav nav-tabs" id="transferTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="bulk-to-active-tab" data-toggle="tab" href="#bulkToActive" role="tab">Bulk Store to Active Store</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="active-to-dispensary-tab" data-toggle="tab" href="#activeToDispensary" role="tab">Active Store to Dispensary</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="transfer-history-tab" data-toggle="tab" href="#transferHistory" role="tab">Transfer History</a>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="transferTabsContent">
+        <!-- Bulk Store to Active Store Transfer -->
+        <div class="tab-pane fade show active" id="bulkToActive" role="tabpanel">
+            <div class="card shadow mb-4 mt-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Request Transfer from Bulk Store to Active Store</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'pharmacy:request_medication_transfer' %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="bulkMedication">Medication</label>
+                                    <select name="medication" id="bulkMedication" class="form-control" required>
+                                        <option value="">Select Medication</option>
+                                        {% for medication in medications %}
+                                        <option value="{{ medication.id }}">{{ medication.name }} ({{ medication.strength }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="bulkQuantity">Quantity</label>
+                                    <input type="number" name="quantity" id="bulkQuantity" class="form-control" min="1" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="fromBulkStore">From Bulk Store</label>
+                                    <select name="bulk_store" id="fromBulkStore" class="form-control" required>
+                                        <option value="">Select Bulk Store</option>
+                                        {% for store in bulk_stores %}
+                                        <option value="{{ store.id }}">{{ store.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="toActiveStore">To Active Store</label>
+                                    <select name="active_store" id="toActiveStore" class="form-control" required>
+                                        <option value="">Select Active Store</option>
+                                        {% for store in active_stores %}
+                                        <option value="{{ store.id }}">{{ store.name }} ({{ store.dispensary.name }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="batchNumber">Batch Number</label>
+                            <input type="text" name="batch_number" id="batchNumber" class="form-control" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Request Transfer</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Pending Bulk to Active Transfers -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Pending Transfers (Bulk to Active)</h6>
+                </div>
+                <div class="card-body">
+                    {% if pending_bulk_transfers %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Transfer ID</th>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Requested By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in pending_bulk_transfers %}
+                                <tr>
+                                    <td>#{{ transfer.id }}</td>
+                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>{{ transfer.quantity }}</td>
+                                    <td>{{ transfer.from_bulk_store.name }}</td>
+                                    <td>{{ transfer.to_active_store.name }} ({{ transfer.to_active_store.dispensary.name }})</td>
+                                    <td>{{ transfer.requested_by.get_full_name }} on {{ transfer.requested_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'pharmacy:approve_medication_transfer' transfer_id=transfer.id %}" class="btn btn-sm btn-success">Approve</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p>No pending transfers from bulk store to active store.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Store to Dispensary Transfer -->
+        <div class="tab-pane fade" id="activeToDispensary" role="tabpanel">
+            <div class="card shadow mb-4 mt-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer from Active Store to Dispensary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="selectDispensary">Select Dispensary</label>
+                                <select id="selectDispensary" class="form-control">
+                                    <option value="">Select Dispensary</option>
+                                    {% for dispensary in dispensaries %}
+                                    <option value="{{ dispensary.id }}">{{ dispensary.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="activeStoreInventory" style="display: none;">
+                        <h5>Active Store Inventory</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Batch Number</th>
+                                        <th>Expiry Date</th>
+                                        <th>Available Quantity</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTableBody">
+                                    <!-- Inventory items will be loaded here via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Transfer History -->
+        <div class="tab-pane fade" id="transferHistory" role="tabpanel">
+            <div class="card shadow mb-4 mt-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer History</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Transfer ID</th>
+                                    <th>Type</th>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in all_transfers %}
+                                <tr>
+                                    <td>#{{ transfer.id }}</td>
+                                    <td>
+                                        {% if transfer.from_bulk_store %}
+                                            Bulk to Active
+                                        {% else %}
+                                            Active to Dispensary
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>{{ transfer.quantity }}</td>
+                                    <td>
+                                        {% if transfer.from_bulk_store %}
+                                            {{ transfer.from_bulk_store.name }}
+                                        {% else %}
+                                            {{ transfer.from_active_store.name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transfer.to_active_store %}
+                                            {{ transfer.to_active_store.name }}
+                                        {% else %}
+                                            {{ transfer.to_dispensary.name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if transfer.status == 'pending' %}bg-warning{% elif transfer.status == 'in_transit' %}bg-info{% elif transfer.status == 'completed' %}bg-success{% elif transfer.status == 'cancelled' %}bg-danger{% endif %}">
+                                            {{ transfer.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if transfer.transferred_at %}
+                                            {{ transfer.transferred_at|date:"Y-m-d H:i" }}
+                                        {% elif transfer.approved_at %}
+                                            {{ transfer.approved_at|date:"Y-m-d H:i" }}
+                                        {% else %}
+                                            {{ transfer.requested_at|date:"Y-m-d H:i" }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transfer Modal for Active to Dispensary -->
+<div class="modal fade" id="transferToDispensaryModal" tabindex="-1" role="dialog" aria-labelledby="transferToDispensaryModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transferToDispensaryModalLabel">Transfer to Dispensary</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="transferToDispensaryForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="transferMedicationId" name="medication_id">
+                    <input type="hidden" id="transferBatchNumber" name="batch_number">
+                    <input type="hidden" id="transferDispensaryId" name="dispensary_id">
+                    
+                    <div class="form-group">
+                        <label for="transferMedicationName">Medication</label>
+                        <input type="text" class="form-control" id="transferMedicationName" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transferAvailableQuantity">Available Quantity</label>
+                        <input type="number" class="form-control" id="transferAvailableQuantity" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transferQuantity">Transfer Quantity</label>
+                        <input type="number" class="form-control" id="transferQuantity" name="quantity" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitTransferToDispensary">Transfer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Handle dispensary selection
+        $('#selectDispensary').change(function() {
+            var dispensaryId = $(this).val();
+            if (dispensaryId) {
+                // Load active store inventory for selected dispensary
+                $.ajax({
+                    url: '/pharmacy/dispensaries/' + dispensaryId + '/active-store-inventory/',
+                    method: 'GET',
+                    success: function(data) {
+                        if (data.success) {
+                            var inventoryHtml = '';
+                            $.each(data.inventory, function(index, item) {
+                                inventoryHtml += '<tr>' +
+                                    '<td>' + item.medication_name + '</td>' +
+                                    '<td>' + item.batch_number + '</td>' +
+                                    '<td>' + item.expiry_date + '</td>' +
+                                    '<td>' + item.stock_quantity + '</td>' +
+                                    '<td><button type="button" class="btn btn-sm btn-primary transfer-to-dispensary-btn" ' +
+                                    'data-medication-id="' + item.medication_id + '" ' +
+                                    'data-medication-name="' + item.medication_name + '" ' +
+                                    'data-batch-number="' + item.batch_number + '" ' +
+                                    'data-available-quantity="' + item.stock_quantity + '" ' +
+                                    'data-dispensary-id="' + dispensaryId + '">Transfer</button></td>' +
+                                    '</tr>';
+                            });
+                            $('#inventoryTableBody').html(inventoryHtml);
+                            $('#activeStoreInventory').show();
+                        } else {
+                            alert('Error loading inventory: ' + data.error);
+                        }
+                    },
+                    error: function() {
+                        alert('Error loading inventory.');
+                    }
+                });
+            } else {
+                $('#activeStoreInventory').hide();
+            }
+        });
+        
+        // Handle transfer to dispensary button clicks
+        $(document).on('click', '.transfer-to-dispensary-btn', function() {
+            var medicationId = $(this).data('medication-id');
+            var medicationName = $(this).data('medication-name');
+            var batchNumber = $(this).data('batch-number');
+            var availableQuantity = $(this).data('available-quantity');
+            var dispensaryId = $(this).data('dispensary-id');
+            
+            $('#transferMedicationId').val(medicationId);
+            $('#transferMedicationName').val(medicationName);
+            $('#transferBatchNumber').val(batchNumber);
+            $('#transferDispensaryId').val(dispensaryId);
+            $('#transferAvailableQuantity').val(availableQuantity);
+            $('#transferQuantity').attr('max', availableQuantity);
+            
+            $('#transferToDispensaryModal').modal('show');
+        });
+        
+        // Handle transfer submission
+        $('#submitTransferToDispensary').click(function() {
+            var formData = $('#transferToDispensaryForm').serialize();
+            var dispensaryId = $('#transferDispensaryId').val();
+            
+            $.ajax({
+                url: '/pharmacy/dispensaries/' + dispensaryId + '/transfer-to-dispensary/',
+                method: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert('Transfer successful!');
+                        $('#transferToDispensaryModal').modal('hide');
+                        // Reload the inventory
+                        $('#selectDispensary').trigger('change');
+                    } else {
+                        alert('Transfer failed: ' + response.error);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while processing the transfer.');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

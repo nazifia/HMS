@@ -1,239 +1,47 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Pharmacy Dashboard{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
-        <div>
-            <a href="{% url 'pharmacy:features_showcase' %}" class="btn btn-info">
-                <i class="fas fa-star"></i> View New Features
-            </a>
-        </div>
+        <h1 class="h3 mb-0 text-gray-800">Pharmacy Dashboard</h1>
+        <a href="{% url 'pharmacy:features_showcase' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-info-circle fa-sm text-white-50"></i> Features Showcase
+        </a>
     </div>
 
-    <!-- Search Section -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">
-                <i class="fas fa-search"></i> Pharmacy Search
-            </h6>
-        </div>
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    {{ search_form.search_query.label_tag }}
-                    {{ search_form.search_query }}
+    <!-- Transfer Management Card -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Transfer Management</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">Manage Transfers</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-2">
-                    {{ search_form.search_type.label_tag }}
-                    {{ search_form.search_type }}
-                </div>
-                <div class="col-md-2">
-                    {{ search_form.medication_category.label_tag }}
-                    {{ search_form.medication_category }}
-                </div>
-                <div class="col-md-2">
-                    {{ search_form.stock_status.label_tag }}
-                    {{ search_form.stock_status }}
-                </div>
-                <div class="col-md-2">
-                    {{ search_form.prescription_status.label_tag }}
-                    {{ search_form.prescription_status }}
-                </div>
-                <div class="col-md-3">
-                    {{ search_form.date_from.label_tag }}
-                    {{ search_form.date_from }}
-                </div>
-                <div class="col-md-3">
-                    {{ search_form.date_to.label_tag }}
-                    {{ search_form.date_to }}
-                </div>
-                <div class="col-md-6 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary me-2">
-                        <i class="fas fa-search"></i> Search
-                    </button>
-                    <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Clear
+                <div class="card-footer">
+                    <a href="{% url 'pharmacy:manage_transfers' %}" class="btn btn-info btn-sm btn-block">
+                        <i class="fas fa-exchange-alt fa-sm text-white-50"></i> Manage Transfers
                     </a>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
-
-    <!-- Search Results -->
-    {% if search_results %}
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-success">
-                <i class="fas fa-search-plus"></i> Search Results
-            </h6>
-        </div>
-        <div class="card-body">
-            {% if search_results.medications %}
-            <h6 class="text-primary">Medications ({{ search_results.medications|length }})</h6>
-            <div class="table-responsive mb-3">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Price</th>
-                            <th>Stock Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for medication in search_results.medications %}
-                        <tr>
-                            <td>{{ medication.name }}</td>
-                            <td>{{ medication.category.name|default:"N/A" }}</td>
-                            <td>₦{{ medication.price }}</td>
-                            <td>
-                                {% for inventory in medication.inventories.all %}
-                                    <span class="badge {% if inventory.is_low_stock %}bg-warning{% elif inventory.stock_quantity > 0 %}bg-success{% else %}bg-danger{% endif %}">
-                                        {{ inventory.dispensary.name }}: {{ inventory.stock_quantity }}
-                                    </span>
-                                {% empty %}
-                                    <span class="badge bg-secondary">No inventory</span>
-                                {% endfor %}
-                            </td>
-                            <td>
-                                <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-outline-primary">View</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-
-            {% if search_results.prescriptions %}
-            <h6 class="text-primary">Prescriptions ({{ search_results.prescriptions|length }})</h6>
-            <div class="table-responsive mb-3">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Patient</th>
-                            <th>Doctor</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for prescription in search_results.prescriptions %}
-                        <tr>
-                            <td>{{ prescription.patient.get_full_name }}</td>
-                            <td>{{ prescription.doctor.get_full_name }}</td>
-                            <td>{{ prescription.created_at|date:"M d, Y" }}</td>
-                            <td>
-                                <span class="badge {% if prescription.is_fully_dispensed %}bg-success{% elif prescription.is_partially_dispensed %}bg-warning{% else %}bg-secondary{% endif %}">
-                                    {% if prescription.is_fully_dispensed %}Dispensed{% elif prescription.is_partially_dispensed %}Partial{% else %}Pending{% endif %}
-                                </span>
-                            </td>
-                            <td>
-                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-outline-primary">View</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-
-            {% if search_results.patients %}
-            <h6 class="text-primary">Patients ({{ search_results.patients|length }})</h6>
-            <div class="table-responsive mb-3">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Patient ID</th>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for patient in search_results.patients %}
-                        <tr>
-                            <td>{{ patient.patient_id }}</td>
-                            <td>{{ patient.get_full_name }}</td>
-                            <td>{{ patient.phone_number }}</td>
-                            <td>
-                                <a href="{% url 'patients:patient_detail' patient.id %}" class="btn btn-sm btn-outline-primary">View</a>
-                                <a href="{% url 'pharmacy:create_prescription' %}?patient={{ patient.id }}" class="btn btn-sm btn-outline-success">Prescribe</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-
-            {% if search_results.suppliers %}
-            <h6 class="text-primary">Suppliers ({{ search_results.suppliers|length }})</h6>
-            <div class="table-responsive mb-3">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Contact Person</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for supplier in search_results.suppliers %}
-                        <tr>
-                            <td>{{ supplier.name }}</td>
-                            <td>{{ supplier.contact_person }}</td>
-                            <td>{{ supplier.email }}</td>
-                            <td>{{ supplier.phone_number }}</td>
-                            <td>
-                                <a href="{% url 'pharmacy:supplier_detail' supplier.id %}" class="btn btn-sm btn-outline-primary">View</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Statistics Cards -->
-    <div class="row">
-        <!-- Total Prescriptions Card -->
+        
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Prescriptions</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prescriptions|default:0 }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-file-prescription fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Medications in Stock Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Medications in Stock</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ medications_in_stock|default:0 }}</div>
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Medications</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_medications }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-pills fa-2x text-gray-300"></i>
@@ -243,40 +51,32 @@
             </div>
         </div>
 
-        <!-- Low Stock Alerts Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
+            <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Low Stock Alerts
-                            </div>
-                            <div class="row no-gutters align-items-center">
-                                <div class="col-auto">
-                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ low_stock_count|default:0 }}</div>
-                                </div>
-                            </div>
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Suppliers</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_suppliers }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                            <i class="fas fa-truck fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Expiring Soon Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Expiring Soon</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ expiring_soon|default:0 }}</div>
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Dispensaries</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_dispensaries }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                            <i class="fas fa-clinic-medical fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -284,46 +84,39 @@
         </div>
     </div>
 
-    <!-- Recent Activity and Top Medications -->
+    <!-- Content Row -->
     <div class="row">
         <div class="col-lg-6 mb-4">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-clock"></i> Recent Dispensing Activity
-                    </h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Low Stock Items</h6>
                 </div>
                 <div class="card-body">
-                    {% if recent_dispensing %}
+                    {% if low_stock_items %}
                     <div class="table-responsive">
-                        <table class="table table-sm">
+                        <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Patient</th>
                                     <th>Medication</th>
+                                    <th>Dispensary</th>
                                     <th>Quantity</th>
-                                    <th>Date</th>
+                                    <th>Reorder Level</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for log in recent_dispensing %}
+                                {% for item in low_stock_items %}
                                 <tr>
-                                    <td>{{ log.prescription_item.prescription.patient.get_full_name|truncatechars:20 }}</td>
-                                    <td>{{ log.prescription_item.medication.name|truncatechars:25 }}</td>
-                                    <td>{{ log.quantity_dispensed }}</td>
-                                    <td>{{ log.dispensed_at|date:"M d" }}</td>
+                                    <td>{{ item.medication.name }}</td>
+                                    <td>{{ item.active_store.dispensary.name }}</td>
+                                    <td>{{ item.stock_quantity }}</td>
+                                    <td>{{ item.reorder_level }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <div class="text-center mt-3">
-                        <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-sm btn-outline-primary">
-                            View All Activity
-                        </a>
-                    </div>
                     {% else %}
-                    <p class="text-muted text-center">No recent dispensing activity.</p>
+                    <p>No low stock items.</p>
                     {% endif %}
                 </div>
             </div>
@@ -332,32 +125,30 @@
         <div class="col-lg-6 mb-4">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-chart-bar"></i> Top Dispensed Medications (Last 30 Days)
-                    </h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Prescriptions</h6>
                 </div>
                 <div class="card-body">
-                    {% if top_medications %}
+                    {% if recent_prescriptions %}
                     <div class="table-responsive">
-                        <table class="table table-sm">
+                        <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Medication</th>
-                                    <th>Total Dispensed</th>
-                                    <th>Progress</th>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for med in top_medications %}
+                                {% for prescription in recent_prescriptions %}
                                 <tr>
-                                    <td>{{ med.prescription_item__medication__name|truncatechars:30 }}</td>
-                                    <td>{{ med.total_dispensed }}</td>
+                                    <td>{{ prescription.patient.get_full_name }}</td>
+                                    <td>{{ prescription.doctor.get_full_name }}</td>
+                                    <td>{{ prescription.prescription_date|date:"Y-m-d" }}</td>
                                     <td>
-                                        <div class="progress" style="height: 20px;">
-                                            <div class="progress-bar bg-primary" role="progressbar"
-                                                 style="width: {% widthratio med.total_dispensed top_medications.0.total_dispensed 100 %}%">
-                                            </div>
-                                        </div>
+                                        <span class="badge {% if prescription.status == 'pending' %}bg-warning{% elif prescription.status == 'approved' %}bg-info{% elif prescription.status == 'dispensed' %}bg-success{% elif prescription.status == 'cancelled' %}bg-danger{% endif %}">
+                                            {{ prescription.get_status_display }}
+                                        </span>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -365,79 +156,11 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted text-center">No dispensing data available for the last 30 days.</p>
+                    <p>No recent prescriptions.</p>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Quick Actions -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-bolt"></i> Quick Actions
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:create_prescription' %}" class="btn btn-success btn-block">
-                                <i class="fas fa-plus"></i> New Prescription (Doctor)
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:pharmacy_create_prescription' %}" class="btn btn-primary btn-block">
-                                <i class="fas fa-pills"></i> Pharmacy Prescription
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:prescription_list' %}" class="btn btn-primary btn-block">
-                                <i class="fas fa-list"></i> View Prescriptions
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:inventory_list' %}" class="btn btn-info btn-block">
-                                <i class="fas fa-boxes"></i> Manage Inventory
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:supplier_list' %}" class="btn btn-warning btn-block">
-                                <i class="fas fa-truck"></i> Suppliers
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary btn-block">
-                                <i class="fas fa-shopping-cart"></i> Procurement
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:inventory' %}" class="btn btn-primary btn-block">
-                                <i class="fas fa-pills"></i> Enhanced Inventory
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-info btn-block">
-                                <i class="fas fa-exchange-alt"></i> Referral Tracking
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'laboratory:create_test_request' %}" class="btn btn-warning btn-block">
-                                <i class="fas fa-vial"></i> Enhanced Test Requests
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{% url 'pharmacy:features_showcase' %}" class="btn btn-success btn-block">
-                                <i class="fas fa-star"></i> Features Showcase
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </div>
 {% endblock %}
