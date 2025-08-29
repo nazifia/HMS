@@ -624,6 +624,7 @@ class PrescriptionItem(models.Model):
     duration = models.CharField(max_length=100, blank=True, null=True, help_text="How long to take (e.g., 7 days, 2 weeks)")
     instructions = models.TextField(blank=True, null=True, help_text="Special instructions for taking the medication")
     quantity = models.IntegerField()
+    quantity_dispensed_so_far = models.IntegerField(default=0)  # Added back to fix IntegrityError
     is_dispensed = models.BooleanField(default=False)
     dispensed_at = models.DateTimeField(null=True, blank=True)
 

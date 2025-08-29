@@ -13,10 +13,13 @@ from .models import (
     BulkStore, BulkStoreInventory, MedicationTransfer, DispensingLog,
     MedicalPack, PackItem, PackOrder
 )
+from accounts.models import CustomUser
+from patients.models import Patient
 from .forms import (
     MedicationForm, MedicationCategoryForm, SupplierForm, PurchaseForm, PurchaseItemForm,
     PrescriptionForm, PrescriptionItemForm, DispensaryForm,
-    MedicationInventoryForm, ActiveStoreInventoryForm
+    MedicationInventoryForm, ActiveStoreInventoryForm, PrescriptionSearchForm,
+    MedicationSearchForm  # Add this import
 )
 from reporting.forms import PharmacySalesReportForm
 from django.forms import formset_factory
@@ -70,6 +73,9 @@ def inventory_list(request):
     # Get all medications
     medications = Medication.objects.filter(is_active=True).select_related('category')
     
+    # Initialize the search form
+    form = MedicationSearchForm(request.GET or None)
+    
     # Search functionality
     search_query = request.GET.get('search', '')
     if search_query:
@@ -84,6 +90,13 @@ def inventory_list(request):
     if category_id:
         medications = medications.filter(category_id=category_id)
     
+    # Filter by active status
+    is_active = request.GET.get('is_active', '')
+    if is_active == 'active':
+        medications = medications.filter(is_active=True)
+    elif is_active == 'inactive':
+        medications = medications.filter(is_active=False)
+    
     # Pagination
     paginator = Paginator(medications, 10)
     page_number = request.GET.get('page')
@@ -95,6 +108,7 @@ def inventory_list(request):
     context = {
         'page_obj': page_obj,
         'categories': categories,
+        'form': form,  # Pass the form to the template
         'search_query': search_query,
         'category_id': category_id,
         'page_title': 'Pharmacy Inventory',
@@ -120,9 +134,10 @@ def add_medication(request):
         'form': form,
         'page_title': 'Add Medication',
         'active_nav': 'pharmacy',
+        'title': 'Add Medication'  # Add title for the template
     }
     
-    return render(request, 'pharmacy/add_medication.html', context)
+    return render(request, 'pharmacy/add_edit_medication.html', context)
 
 
 @login_required
@@ -164,9 +179,10 @@ def edit_medication(request, medication_id):
         'medication': medication,
         'page_title': f'Edit Medication - {medication.name}',
         'active_nav': 'pharmacy',
+        'title': f'Edit Medication - {medication.name}'  # Add title for the template
     }
     
-    return render(request, 'pharmacy/edit_medication.html', context)
+    return render(request, 'pharmacy/add_edit_medication.html', context)
 
 
 @login_required
@@ -212,6 +228,89 @@ def manage_categories(request):
 
 
 @login_required
+def patient_prescriptions(request, patient_id):
+    """View for listing prescriptions for a patient"""
+    # Get the patient
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get prescriptions for this patient
+    prescriptions = Prescription.objects.filter(patient=patient).select_related('doctor').order_by('-prescription_date')
+    
+    # Pagination
+    paginator = Paginator(prescriptions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'patient': patient,
+        'page_obj': page_obj,
+        'page_title': f'Prescriptions for {patient.get_full_name()}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/prescription_list.html', context)
+
+
+@login_required
+def create_prescription(request, patient_id=None):
+    """View for creating a prescription"""
+    if request.method == 'POST':
+        form = PrescriptionForm(request.POST, request=request)
+        if form.is_valid():
+            prescription = form.save()
+            messages.success(request, f'Prescription #{prescription.id} created successfully.')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    else:
+        # Preselect patient if patient_id is provided
+        preselected_patient = None
+        if patient_id:
+            try:
+                preselected_patient = Patient.objects.get(id=patient_id)
+            except Patient.DoesNotExist:
+                preselected_patient = None
+        
+        form = PrescriptionForm(request=request, preselected_patient=preselected_patient)
+    
+    context = {
+        'form': form,
+        'title': 'Create Prescription',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/prescription_form.html', context)
+
+
+@login_required
+def pharmacy_create_prescription(request, patient_id=None):
+    """View for pharmacy creating a prescription"""
+    # This is the same as create_prescription but might have different permissions or workflow
+    if request.method == 'POST':
+        form = PrescriptionForm(request.POST, request=request)
+        if form.is_valid():
+            prescription = form.save()
+            messages.success(request, f'Prescription #{prescription.id} created successfully.')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    else:
+        # Preselect patient if patient_id is provided
+        preselected_patient = None
+        if patient_id:
+            try:
+                preselected_patient = Patient.objects.get(id=patient_id)
+            except Patient.DoesNotExist:
+                preselected_patient = None
+        
+        form = PrescriptionForm(request=request, preselected_patient=preselected_patient)
+    
+    context = {
+        'form': form,
+        'title': 'Create Prescription (Pharmacy)',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/prescription_form.html', context)
+
+
+@login_required
 def create_procurement_request(request, medication_id):
     """View for creating a procurement request"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -250,9 +349,10 @@ def edit_category(request, category_id):
         'category': category,
         'page_title': f'Edit Category - {category.name}',
         'active_nav': 'pharmacy',
+        'title': f'Edit Category - {category.name}'  # Add title for the template
     }
     
-    return render(request, 'pharmacy/edit_category.html', context)
+    return render(request, 'pharmacy/add_edit_category.html', context)
 
 
 @login_required
@@ -269,9 +369,10 @@ def delete_category(request, category_id):
         'category': category,
         'page_title': f'Delete Category - {category.name}',
         'active_nav': 'pharmacy',
+        'title': f'Delete Category - {category.name}'  # Add title for the template
     }
     
-    return render(request, 'pharmacy/delete_category.html', context)
+    return render(request, 'pharmacy/confirm_delete_category.html', context)
 
 
 @login_required
@@ -1343,35 +1444,81 @@ def reject_purchase(request, purchase_id):
 
 @login_required
 def prescription_list(request):
-    """View for listing prescriptions"""
+    """View for listing prescriptions with enhanced search and filtering"""
     # Get all prescriptions
     prescriptions = Prescription.objects.select_related('patient', 'doctor').order_by('-prescription_date')
     
-    # Search functionality
-    search_query = request.GET.get('search', '')
-    if search_query:
-        prescriptions = prescriptions.filter(
-            Q(patient__first_name__icontains=search_query) |
-            Q(patient__last_name__icontains=search_query) |
-            Q(doctor__first_name__icontains=search_query) |
-            Q(doctor__last_name__icontains=search_query) |
-            Q(diagnosis__icontains=search_query)
-        )
+    # Initialize the search form
+    search_form = PrescriptionSearchForm(request.GET)
     
-    # Filter by status
-    status = request.GET.get('status', '')
-    if status:
-        prescriptions = prescriptions.filter(status=status)
+    # Apply filters if form is valid
+    if search_form.is_valid():
+        # Get cleaned data from form
+        search_query = search_form.cleaned_data.get('search')
+        patient_number = search_form.cleaned_data.get('patient_number')
+        medication_name = search_form.cleaned_data.get('medication_name')
+        status = search_form.cleaned_data.get('status')
+        payment_status = search_form.cleaned_data.get('payment_status')
+        doctor = search_form.cleaned_data.get('doctor')
+        date_from = search_form.cleaned_data.get('date_from')
+        date_to = search_form.cleaned_data.get('date_to')
+        
+        # Apply search filter
+        if search_query:
+            prescriptions = prescriptions.filter(
+                Q(patient__first_name__icontains=search_query) |
+                Q(patient__last_name__icontains=search_query) |
+                Q(patient__patient_id__icontains=search_query) |
+                Q(patient__phone_number__icontains=search_query) |
+                Q(doctor__first_name__icontains=search_query) |
+                Q(doctor__last_name__icontains=search_query) |
+                Q(diagnosis__icontains=search_query)
+            )
+        
+        # Apply patient number filter
+        if patient_number:
+            prescriptions = prescriptions.filter(patient__patient_id__icontains=patient_number)
+        
+        # Apply medication name filter
+        if medication_name:
+            prescriptions = prescriptions.filter(items__medication__name__icontains=medication_name)
+        
+        # Apply status filter
+        if status:
+            prescriptions = prescriptions.filter(status=status)
+        
+        # Apply payment status filter
+        if payment_status:
+            prescriptions = prescriptions.filter(payment_status=payment_status)
+        
+        # Apply doctor filter
+        if doctor:
+            prescriptions = prescriptions.filter(doctor=doctor)
+        
+        # Apply date range filters
+        if date_from:
+            prescriptions = prescriptions.filter(prescription_date__gte=date_from)
+        if date_to:
+            prescriptions = prescriptions.filter(prescription_date__lte=date_to)
+    
+    # Get statistics for the dashboard cards
+    total_prescriptions = prescriptions.count()
+    pending_count = prescriptions.filter(status='pending').count()
+    processing_count = prescriptions.filter(status__in=['approved', 'partially_dispensed']).count()
+    completed_count = prescriptions.filter(status='dispensed').count()
     
     # Pagination
-    paginator = Paginator(prescriptions, 10)
+    paginator = Paginator(prescriptions.distinct(), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
     context = {
         'page_obj': page_obj,
-        'search_query': search_query,
-        'status': status,
+        'form': search_form,
+        'total_prescriptions': total_prescriptions,
+        'pending_count': pending_count,
+        'processing_count': processing_count,
+        'completed_count': completed_count,
         'page_title': 'Prescription List',
         'active_nav': 'pharmacy',
     }
@@ -1382,22 +1529,76 @@ def prescription_list(request):
 @login_required
 def patient_prescriptions(request, patient_id):
     """View for listing prescriptions for a patient"""
-    # Implementation for patient prescriptions
-    pass
+    # Get the patient
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get prescriptions for this patient
+    prescriptions = Prescription.objects.filter(patient=patient).select_related('doctor').order_by('-prescription_date')
+    
+    # Pagination
+    paginator = Paginator(prescriptions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'patient': patient,
+        'page_obj': page_obj,
+        'page_title': f'Prescriptions for {patient.get_full_name()}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/prescription_list.html', context)
 
 
 @login_required
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
-    # Implementation for creating prescription
-    pass
+    if request.method == 'POST':
+        form = PrescriptionForm(request.POST, request=request)
+        if form.is_valid():
+            prescription = form.save()
+            messages.success(request, f'Prescription #{prescription.id} created successfully.')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    else:
+        # Preselect patient if patient_id is provided
+        initial_data = {}
+        if patient_id:
+            initial_data['patient'] = patient_id
+        form = PrescriptionForm(request=request, initial=initial_data)
+    
+    context = {
+        'form': form,
+        'title': 'Create Prescription',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/prescription_form.html', context)
 
 
 @login_required
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
-    # Implementation for pharmacy creating prescription
-    pass
+    # This is the same as create_prescription but might have different permissions or workflow
+    if request.method == 'POST':
+        form = PrescriptionForm(request.POST, request=request)
+        if form.is_valid():
+            prescription = form.save()
+            messages.success(request, f'Prescription #{prescription.id} created successfully.')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    else:
+        # Preselect patient if patient_id is provided
+        initial_data = {}
+        if patient_id:
+            initial_data['patient'] = patient_id
+        form = PrescriptionForm(request=request, initial=initial_data)
+    
+    context = {
+        'form': form,
+        'title': 'Create Prescription (Pharmacy)',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/prescription_form.html', context)
 
 
 @login_required
@@ -1425,16 +1626,48 @@ def prescription_detail(request, prescription_id):
 def print_prescription(request, prescription_id):
     """View for printing a prescription"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    # Implementation for printing prescription
-    pass
+    
+    # Get prescription items
+    prescription_items = prescription.items.select_related('medication')
+    
+    context = {
+        'prescription': prescription,
+        'prescription_items': prescription_items,
+        'page_title': f'Print Prescription #{prescription.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/print_prescription.html', context)
 
 
 @login_required
 def update_prescription_status(request, prescription_id):
     """View for updating prescription status"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    # Implementation for updating prescription status
-    pass
+    
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+        # Validate status
+        valid_statuses = dict(Prescription.STATUS_CHOICES).keys()
+        if new_status in valid_statuses:
+            prescription.status = new_status
+            prescription.save()
+            messages.success(request, f'Prescription status updated to {prescription.get_status_display()}.')
+        else:
+            messages.error(request, 'Invalid status.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    # For GET requests, show the update form
+    status_choices = Prescription.STATUS_CHOICES
+    
+    context = {
+        'prescription': prescription,
+        'status_choices': status_choices,
+        'title': f'Update Status for Prescription #{prescription.id}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/update_prescription_status.html', context)
 
 
 @login_required
@@ -1761,6 +1994,10 @@ def add_prescription_item(request, prescription_id):
             item = form.save(commit=False)
             # Associate with the prescription
             item.prescription = prescription
+            # Initialize quantity_dispensed_so_far to 0 for new items
+            # This field may not be in the model but is expected by the database
+            if hasattr(item, 'quantity_dispensed_so_far'):
+                item.quantity_dispensed_so_far = 0
             item.save()
             messages.success(request, 'Medication added to prescription.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
