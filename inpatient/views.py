@@ -498,7 +498,7 @@ def create_admission(request):
     if patient_id:
         try:
             patient = Patient.objects.get(id=patient_id)
-            initial_data['patient'] = patient
+            initial_data['patient'] = patient.id  # Pass patient ID, not patient object
         except Patient.DoesNotExist:
             pass
 

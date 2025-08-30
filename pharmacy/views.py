@@ -3,7 +3,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, F, Count
-from django.db import models
+from django.db import models, transaction
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
@@ -2548,46 +2548,86 @@ def dispensary_list(request):
 
 @login_required
 def edit_dispensary(request, dispensary_id):
-    """View for editing a dispensary"""
+    """View for editing a dispensary and its associated active store"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
-    
+
+    # Get or create the associated active store
+    active_store = getattr(dispensary, 'active_store', None)
+
     if request.method == 'POST':
         form = DispensaryForm(request.POST, instance=dispensary)
         if form.is_valid():
-            dispensary = form.save()
-            messages.success(request, f'Dispensary {dispensary.name} updated successfully.')
-            return redirect('pharmacy:dispensary_list')
+            with transaction.atomic():
+                # Save dispensary
+                dispensary = form.save()
+
+                # Create or update active store based on dispensary changes
+                if not active_store:
+                    # Create new active store if it doesn't exist
+                    active_store = ActiveStore.objects.create(
+                        dispensary=dispensary,
+                        name=f"Active Store - {dispensary.name}",
+                        location=dispensary.location or "Same as dispensary",
+                        description=f"Active storage area for {dispensary.name}",
+                        capacity=1000,  # Default capacity
+                        is_active=dispensary.is_active
+                    )
+                    messages.success(request, f'Created active store for {dispensary.name}.')
+                else:
+                    # Update existing active store to match dispensary
+                    active_store.name = f"Active Store - {dispensary.name}"
+                    active_store.location = dispensary.location or active_store.location
+                    active_store.is_active = dispensary.is_active
+                    active_store.save()
+                    messages.success(request, f'Updated active store for {dispensary.name}.')
+
+                messages.success(request, f'Dispensary {dispensary.name} updated successfully.')
+                return redirect('pharmacy:dispensary_list')
     else:
         form = DispensaryForm(instance=dispensary)
-    
+
     context = {
         'form': form,
         'dispensary': dispensary,
+        'active_store': active_store,
         'page_title': f'Edit Dispensary - {dispensary.name}',
         'active_nav': 'pharmacy',
     }
-    
+
     return render(request, 'pharmacy/edit_dispensary.html', context)
 
 
 @login_required
 def add_dispensary(request):
-    """View for adding a new dispensary"""
+    """View for adding a new dispensary with automatic active store creation"""
     if request.method == 'POST':
         form = DispensaryForm(request.POST)
         if form.is_valid():
-            dispensary = form.save()
-            messages.success(request, f'Dispensary {dispensary.name} created successfully.')
-            return redirect('pharmacy:dispensary_list')
+            with transaction.atomic():
+                # Save dispensary
+                dispensary = form.save()
+
+                # Automatically create associated active store
+                active_store = ActiveStore.objects.create(
+                    dispensary=dispensary,
+                    name=f"Active Store - {dispensary.name}",
+                    location=dispensary.location or "Same as dispensary",
+                    description=f"Active storage area for {dispensary.name}",
+                    capacity=1000,  # Default capacity
+                    is_active=dispensary.is_active
+                )
+
+                messages.success(request, f'Dispensary {dispensary.name} created successfully with active store.')
+                return redirect('pharmacy:dispensary_list')
     else:
         form = DispensaryForm()
-    
+
     context = {
         'form': form,
         'page_title': 'Add Dispensary',
         'active_nav': 'pharmacy',
     }
-    
+
     return render(request, 'pharmacy/add_dispensary.html', context)
 
 

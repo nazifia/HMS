@@ -93,31 +93,43 @@ class AdmissionForm(forms.ModelForm):
             self.initial['admission_date'] = timezone.now().strftime('%Y-%m-%dT%H:%M')
             
         # Set authorization code queryset based on patient
+        # Import AuthorizationCode at the beginning to avoid UnboundLocalError
+        try:
+            from nhia.models import AuthorizationCode
+        except ImportError:
+            AuthorizationCode = None
+
         patient_id = self.initial.get('patient') or self.data.get('patient')
         if patient_id:
             try:
                 patient_instance = Patient.objects.get(id=patient_id)
-                if patient_instance.patient_type == 'nhia':
-                    # Import inside block to avoid import-time dependency issues
-                    try:
-                        from nhia.models import AuthorizationCode
-                    except Exception:
-                        AuthorizationCode = None
-                    if AuthorizationCode:
-                        self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
-                            patient=patient_instance,
-                            status='active'
-                        ).order_by('-generated_at')
-                    else:
-                        self.fields['authorization_code'].queryset = []
+                if patient_instance.patient_type == 'nhia' and AuthorizationCode:
+                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                        patient=patient_instance,
+                        status='active'
+                    ).order_by('-generated_at')
                 else:
-                    # Not an NHIA patient: no authorization codes
-                    self.fields['authorization_code'].queryset = []
+                    # Not an NHIA patient or AuthorizationCode not available
+                    if AuthorizationCode:
+                        self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+                    else:
+                        # If NHIA app is not available, disable the field
+                        self.fields['authorization_code'].widget.attrs['disabled'] = True
+                        self.fields['authorization_code'].required = False
             except Patient.DoesNotExist:
                 # If patient not found, ensure queryset is empty
-                self.fields['authorization_code'].queryset = []
+                if AuthorizationCode:
+                    self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+                else:
+                    self.fields['authorization_code'].widget.attrs['disabled'] = True
+                    self.fields['authorization_code'].required = False
         else:
-            self.fields['authorization_code'].queryset = []
+            # No patient selected
+            if AuthorizationCode:
+                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+            else:
+                self.fields['authorization_code'].widget.attrs['disabled'] = True
+                self.fields['authorization_code'].required = False
 
 class DischargeForm(forms.ModelForm):
     class Meta:

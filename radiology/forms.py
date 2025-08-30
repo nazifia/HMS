@@ -48,14 +48,24 @@ class RadiologyOrderForm(forms.ModelForm):
         self.fields['referring_doctor'].required = False
         
         # Set authorization code queryset based on patient
-        if patient_instance and patient_instance.patient_type == 'nhia':
+        try:
             from nhia.models import AuthorizationCode
+        except ImportError:
+            AuthorizationCode = None
+
+        if patient_instance and patient_instance.patient_type == 'nhia' and AuthorizationCode:
             self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
                 patient=patient_instance,
                 status='active'
             ).order_by('-generated_at')
         else:
-            self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+            # Use empty queryset if AuthorizationCode is not available or patient is not NHIA
+            if AuthorizationCode:
+                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+            else:
+                # If NHIA app is not available, disable the field
+                self.fields['authorization_code'].widget.attrs['disabled'] = True
+                self.fields['authorization_code'].required = False
             
         # If editing an existing record, populate the search field
         if self.instance and self.instance.pk and self.instance.patient:
