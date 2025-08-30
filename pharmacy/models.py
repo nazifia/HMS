@@ -743,7 +743,19 @@ class DispensaryTransfer(models.Model):
 
             # Reduce active store inventory
             active_inventory.stock_quantity -= self.quantity
-            active_inventory.save()
+
+            # If quantity reaches zero, handle according to business logic
+            if active_inventory.stock_quantity == 0:
+                # Option 1: Keep record with zero stock for audit trail
+                active_inventory.save()
+                # Log that item is now out of stock
+                print(f"Item {self.medication.name} is now out of stock in {self.from_active_store.name}")
+
+                # Option 2: Remove the record entirely (uncomment if preferred)
+                # active_inventory.delete()
+                # print(f"Removed {self.medication.name} from {self.from_active_store.name} (quantity reached zero)")
+            else:
+                active_inventory.save()
 
             # Add to dispensary inventory (legacy model for backward compatibility)
             dispensary_inventory, created = MedicationInventory.objects.get_or_create(
@@ -764,6 +776,47 @@ class DispensaryTransfer(models.Model):
             self.transferred_by = user
             self.transferred_at = timezone.now()
             self.save()
+
+            # Create audit log for the transfer
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=user,
+                    action="DISPENSARY_TRANSFER_EXECUTED",
+                    details=f"Transferred {self.quantity} units of {self.medication.name} from {self.from_active_store.name} to {self.to_dispensary.name}"
+                )
+            except ImportError:
+                # AuditLog not available, skip logging
+                pass
+
+    @classmethod
+    def create_transfer(cls, medication, from_active_store, to_dispensary, quantity, requested_by, **kwargs):
+        """Create a new dispensary transfer with validation"""
+        # Check if sufficient stock exists
+        active_inventory = ActiveStoreInventory.objects.filter(
+            medication=medication,
+            active_store=from_active_store,
+            stock_quantity__gte=quantity
+        ).first()
+
+        if not active_inventory:
+            raise ValueError(f"Insufficient stock in {from_active_store.name}. Required: {quantity}")
+
+        # Create the transfer
+        transfer = cls.objects.create(
+            medication=medication,
+            from_active_store=from_active_store,
+            to_dispensary=to_dispensary,
+            quantity=quantity,
+            requested_by=requested_by,
+            batch_number=kwargs.get('batch_number', active_inventory.batch_number),
+            expiry_date=kwargs.get('expiry_date', active_inventory.expiry_date),
+            unit_cost=kwargs.get('unit_cost', active_inventory.unit_cost),
+            notes=kwargs.get('notes', ''),
+            status='pending'
+        )
+
+        return transfer
 
 class PackOrder(models.Model):
     ORDER_STATUS_CHOICES = [
@@ -1068,13 +1121,67 @@ class MedicalPack(models.Model):
         verbose_name = "Medical Pack"
         verbose_name_plural = "Medical Packs"
 
-    def get_item_count(self):
-        """Get the total number of items in this pack"""
-        return self.items.count()
+    # This method is now defined below after the MedicalPackItem model
 
     def get_total_value(self):
         """Calculate the total value of all items in the pack"""
         total = 0
-        for item in self.items.all():
-            total += item.medication.price * item.quantity
+        try:
+            for item in self.medicalpackitem_set.all():
+                total += item.medication.price * item.quantity
+        except AttributeError:
+            # Fallback if no items relationship exists
+            total = 0
         return total
+
+    def get_item_count(self):
+        """Get the total number of items in this pack"""
+        try:
+            return self.medicalpackitem_set.count()
+        except AttributeError:
+            return 0
+
+
+class MedicalPackItem(models.Model):
+    """Model representing items in a medical pack"""
+    ITEM_TYPE_CHOICES = [
+        ('medication', 'Medication'),
+        ('supply', 'Medical Supply'),
+        ('equipment', 'Equipment'),
+    ]
+
+    CRITICALITY_CHOICES = [
+        ('critical', 'Critical'),
+        ('important', 'Important'),
+        ('optional', 'Optional'),
+    ]
+
+    pack = models.ForeignKey(MedicalPack, on_delete=models.CASCADE, related_name='items')
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
+    quantity = models.IntegerField()
+    item_type = models.CharField(max_length=20, choices=ITEM_TYPE_CHOICES, default='medication')
+    usage_instructions = models.TextField(blank=True, null=True, help_text="Instructions for using this item")
+    is_critical = models.BooleanField(default=False, help_text="Critical items cannot be substituted")
+    is_optional = models.BooleanField(default=False, help_text="Optional items can be omitted if unavailable")
+    order = models.IntegerField(default=0, help_text="Order of usage in procedure (0 for no specific order)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['pack', 'medication']
+        ordering = ['order', 'medication__name']
+        verbose_name = 'Medical Pack Item'
+        verbose_name_plural = 'Medical Pack Items'
+
+    def __str__(self):
+        return f"{self.pack.name} - {self.medication.name} - {self.quantity} units"
+
+    def get_total_cost(self):
+        """Calculate total cost for this item"""
+        return self.medication.price * self.quantity
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Item cannot be both critical and optional
+        if self.is_critical and self.is_optional:
+            raise ValidationError('Item cannot be both critical and optional.')

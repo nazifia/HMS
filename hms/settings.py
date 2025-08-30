@@ -27,33 +27,44 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# In production, this should be set as an environment variable
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-9$g3qq3fdk*djhhk6b5*#qo%(954is#jkw_!1xuf!u=(tgwe2x')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('DEBUG', 'False') == 'True':
+        SECRET_KEY = 'django-dev-key-change-in-production-make-it-very-long-and-random-at-least-50-chars'
+    else:
+        raise ValueError("SECRET_KEY environment variable must be set in production")
+
+# Validate SECRET_KEY strength
+if len(SECRET_KEY) < 50:
+    import warnings
+    warnings.warn("SECRET_KEY should be at least 50 characters long for security")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
 
-# Security settings for production
-if not DEBUG:
-    # HTTPS settings
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
+# Security settings - Apply based on environment variables or DEBUG setting
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False' if DEBUG else 'True') == 'True'
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'False' if DEBUG else 'True') == 'True'
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False' if DEBUG else 'True') == 'True'
 
-    # HSTS settings
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+# HSTS settings
+SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0' if DEBUG else '31536000'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False' if DEBUG else 'True') == 'True'
+SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'False' if DEBUG else 'True') == 'True'
 
-    # Content security
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_BROWSER_XSS_FILTER = True
-    X_FRAME_OPTIONS = 'DENY'
+# Content security
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# Additional security headers
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 # Encryption key for sensitive data
-ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'your-32-byte-encryption-key-here').encode()
+ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'dev-32-byte-encryption-key-here').encode()
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
@@ -146,37 +157,41 @@ WSGI_APPLICATION = 'hms.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Database Configuration
-# Uses environment variables for production settings
-import os
+DB_ENGINE = os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3')
 
-# Development Database (SQLite)
-if DEBUG:
+if DB_ENGINE == 'django.db.backends.sqlite3':
+    # SQLite Configuration (Development)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': DB_ENGINE,
+            'NAME': BASE_DIR / os.environ.get('DB_NAME', 'db.sqlite3'),
+            'OPTIONS': {
+                'timeout': 20,
+            }
         }
     }
-# Production Database (MySQL)
 else:
+    # MySQL/PostgreSQL Configuration (Production)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.mysql',
+            'ENGINE': DB_ENGINE,
             'NAME': os.environ.get('DB_NAME', 'hms_db'),
             'USER': os.environ.get('DB_USER', 'hms_user'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'hms_password'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', '3306'),
+            'PORT': os.environ.get('DB_PORT', '3306' if 'mysql' in DB_ENGINE else '5432'),
             'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'" if 'mysql' in DB_ENGINE else {},
+                'charset': 'utf8mb4' if 'mysql' in DB_ENGINE else 'utf8',
             },
+            'CONN_MAX_AGE': 60,  # Connection pooling
+            'CONN_HEALTH_CHECKS': True,
         }
     }
 
-# Database connection pooling for production
-if not DEBUG:
-    CONN_MAX_AGE = 60  # Keep database connections open for 60 seconds
+    # Validate required database settings for production
+    if not DEBUG and not os.environ.get('DB_PASSWORD'):
+        raise ValueError("DB_PASSWORD environment variable must be set for production database")
 
 
 # Password validation
@@ -215,8 +230,16 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# Email settings for development (console backend)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Email Configuration
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@hospital.com')
+SERVER_EMAIL = os.environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
@@ -283,6 +306,9 @@ REST_FRAMEWORK = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Logging configuration
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG' if DEBUG else 'INFO')
+LOG_FILE = os.environ.get('LOG_FILE', None)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -292,20 +318,24 @@ LOGGING = {
             'style': '{',
         },
         'simple': {
-            'format': '{levelname} {message}',
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+        'detailed': {
+            'format': '{levelname} {asctime} {name} {module} {funcName} {lineno} {message}',
             'style': '{',
         },
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': LOG_LEVEL,
             'class': 'logging.StreamHandler',
             'formatter': 'simple'
         },
     },
     'root': {
         'handlers': ['console'],
-        'level': 'DEBUG',
+        'level': LOG_LEVEL,
     },
     'loggers': {
         'django': {
@@ -313,20 +343,64 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
         'pharmacy': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'hms': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
             'propagate': False,
         },
     },
 }
 
+# Add file logging if LOG_FILE is specified
+if LOG_FILE:
+    LOGGING['handlers']['file'] = {
+        'level': LOG_LEVEL,
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': LOG_FILE,
+        'maxBytes': 1024*1024*10,  # 10MB
+        'backupCount': 5,
+        'formatter': 'detailed'
+    }
+    # Add file handler to all loggers
+    for logger_config in LOGGING['loggers'].values():
+        logger_config['handlers'].append('file')
+    LOGGING['root']['handlers'].append('file')
+
 
 # Hospital Information
-HOSPITAL_NAME = 'City General Hospital'
-HOSPITAL_ADDRESS = '123 Medical Center Blvd, City, State 12345'
-HOSPITAL_PHONE = '(555) 123-4567'
-HOSPITAL_EMAIL = 'info@citygeneralhospital.com'
+HOSPITAL_NAME = os.environ.get('HOSPITAL_NAME', 'City General Hospital')
+HOSPITAL_ADDRESS = os.environ.get('HOSPITAL_ADDRESS', '123 Medical Center Blvd, City, State 12345')
+HOSPITAL_PHONE = os.environ.get('HOSPITAL_PHONE', '(555) 123-4567')
+HOSPITAL_EMAIL = os.environ.get('HOSPITAL_EMAIL', 'info@citygeneralhospital.com')
+
+# Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': os.environ.get('CACHE_BACKEND', 'django.core.cache.backends.locmem.LocMemCache'),
+        'LOCATION': os.environ.get('CACHE_LOCATION', 'unique-snowflake'),
+        'TIMEOUT': int(os.environ.get('CACHE_TIMEOUT', '300')),  # 5 minutes default
+        'OPTIONS': {
+            'MAX_ENTRIES': int(os.environ.get('CACHE_MAX_ENTRIES', '1000')),
+        }
+    }
+}
+
+# Session Configuration
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', '3600'))  # 1 hour default
+SESSION_COOKIE_NAME = 'hms_sessionid'
+SESSION_SAVE_EVERY_REQUEST = True
 
 # Crispy Forms Configuration
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

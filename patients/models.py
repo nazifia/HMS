@@ -72,28 +72,61 @@ class Patient(models.Model):
     # Additional Information
     occupation = models.CharField(max_length=100, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
-    profile_picture = models.ImageField(upload_to='patients/', blank=True, null=True)
-    is_active = models.BooleanField(default=True)
+    # Consolidated profile image field (removed duplicate profile_picture)
     photo = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     id_document = models.FileField(upload_to='id_documents/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def save(self, *args, **kwargs):
+        # Generate patient ID if not exists
         if not self.patient_id:
+            self.patient_id = self._generate_patient_id()
+
+        # Validate required fields
+        self.clean()
+
+        super().save(*args, **kwargs)
+
+    def _generate_patient_id(self):
+        """Generate a unique patient ID based on patient type"""
+        max_attempts = 100  # Prevent infinite loops
+        attempts = 0
+
+        while attempts < max_attempts:
             if self.patient_type == 'nhia':
-                while True:
-                    # NHIA patient ID: 10 digits, starting with 4
-                    new_id = '4' + ''.join([str(random.randint(0, 9)) for _ in range(9)])
-                    if not Patient.objects.filter(patient_id=new_id).exists():
-                        self.patient_id = new_id
-                        break
+                # NHIA patient ID: 10 digits, starting with 4
+                new_id = '4' + ''.join([str(random.randint(0, 9)) for _ in range(9)])
             else:
                 # Regular patient ID: 10 digits, starting with 0
-                while True:
-                    new_id = '0' + ''.join([str(random.randint(0, 9)) for _ in range(9)])
-                    if not Patient.objects.filter(patient_id=new_id).exists():
-                        self.patient_id = new_id
-                        break
-        super().save(*args, **kwargs)
+                new_id = '0' + ''.join([str(random.randint(0, 9)) for _ in range(9)])
+
+            if not Patient.objects.filter(patient_id=new_id).exists():
+                return new_id
+
+            attempts += 1
+
+        # If we can't generate a unique ID after max_attempts, raise an error
+        raise ValueError(f"Unable to generate unique patient ID after {max_attempts} attempts")
+
+    def clean(self):
+        """Validate model data"""
+        from django.core.exceptions import ValidationError
+
+        # Validate date of birth is not in the future
+        if self.date_of_birth and self.date_of_birth > timezone.now().date():
+            raise ValidationError("Date of birth cannot be in the future")
+
+        # Validate age is reasonable (not over 150 years)
+        if self.date_of_birth:
+            age = self.get_age()
+            if age > 150:
+                raise ValidationError("Patient age cannot exceed 150 years")
+            if age < 0:
+                raise ValidationError("Patient age cannot be negative")
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.patient_id})"
@@ -113,33 +146,41 @@ class Patient(models.Model):
 
     def get_profile_image(self):
         """
-        Get the best available profile image for the patient.
-        Prioritizes 'photo' field over 'profile_picture' field.
+        Get the profile image for the patient.
         Returns the image field object or None if no image is available.
         """
-        if self.photo:
-            return self.photo
-        elif self.profile_picture:
-            return self.profile_picture
-        return None
+        return self.photo if self.photo else None
 
     def get_profile_image_url(self):
         """
-        Get the URL of the best available profile image.
+        Get the URL of the profile image.
         Returns the image URL or None if no image is available.
         """
-        image = self.get_profile_image()
-        return image.url if image else None
+        return self.photo.url if self.photo else None
 
     def has_profile_image(self):
         """
-        Check if the patient has any profile image available.
-        Returns True if either photo or profile_picture is available.
+        Check if the patient has a profile image available.
+        Returns True if photo is available.
         """
-        return bool(self.photo or self.profile_picture)
+        return bool(self.photo)
 
     def get_patient_type_display(self):
         return dict(self.PATIENT_TYPE_CHOICES).get(self.patient_type, self.patient_type)
+
+    class Meta:
+        db_table = 'patients_patient'
+        verbose_name = 'Patient'
+        verbose_name_plural = 'Patients'
+        ordering = ['-created_at', 'last_name', 'first_name']
+        indexes = [
+            models.Index(fields=['patient_id'], name='idx_patient_id'),
+            models.Index(fields=['phone_number'], name='idx_patient_phone'),
+            models.Index(fields=['email'], name='idx_patient_email'),
+            models.Index(fields=['patient_type'], name='idx_patient_type'),
+            models.Index(fields=['is_active'], name='idx_patient_active'),
+            models.Index(fields=['created_at'], name='idx_patient_created'),
+        ]
 
 class MedicalHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_histories')

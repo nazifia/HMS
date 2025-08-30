@@ -161,6 +161,8 @@
                                             <tr id="item-row-{{ forloop.counter0 }}" data-item-id="{{ item.id }}" data-unit-price="{{ item.medication.price }}">
                                                 <td>
                                                     {{ form.item_id }}
+                                                    {{ form.dispensary }}
+                                                    {{ form.stock_quantity_display }}
                                                     <input type="hidden" name="form-{{ forloop.counter0 }}-dispense_this_item" value="off">
                                                     <input type="checkbox" class="dispense-checkbox item-checkbox" name="form-{{ forloop.counter0 }}-dispense_this_item" value="on" {% if form.dispense_this_item.value %}checked{% endif %}>
                                                     {% if form.dispense_this_item.errors %}<div class="text-danger small">{{ form.dispense_this_item.errors|join:", " }}</div>{% endif %}
@@ -263,10 +265,13 @@
             dispensarySelect.addEventListener('change', function() {
                 const selectedDispensaryId = this.value;
                 if (selectedDispensaryId) {
+                    // Update all dispensary hidden fields immediately
+                    updateDispensaryFields(selectedDispensaryId);
                     // Update stock quantities via AJAX instead of page reload
                     updateStockQuantities(selectedDispensaryId);
                 } else {
-                    // Clear stock quantities if no dispensary selected
+                    // Clear dispensary fields and stock quantities if no dispensary selected
+                    updateDispensaryFields('');
                     clearStockQuantities();
                 }
             });
@@ -365,6 +370,15 @@
         });
     }
 
+    // Function to update dispensary fields for all forms
+    function updateDispensaryFields(dispensaryId) {
+        // Update all dispensary hidden fields
+        const dispensaryFields = document.querySelectorAll('select[name$="-dispensary"]');
+        dispensaryFields.forEach(function(field) {
+            field.value = dispensaryId;
+        });
+    }
+
     // Function to update form hidden fields
     function updateFormFields(formData) {
         formData.forEach((fieldData, index) => {
@@ -373,9 +387,9 @@
             if (stockField) {
                 stockField.value = fieldData.stock_quantity_display || '';
             }
-            
+
             // Update dispensary field
-            const dispensaryField = document.querySelector(`input[name="form-${index}-dispensary"]`);
+            const dispensaryField = document.querySelector(`select[name="form-${index}-dispensary"]`);
             if (dispensaryField) {
                 dispensaryField.value = fieldData.dispensary || '';
             }
@@ -387,16 +401,21 @@
         document.querySelectorAll('.stock-status').forEach(cell => {
             cell.innerHTML = '<span class="badge bg-secondary">Select Dispensary</span>';
         });
-        
+
         document.querySelectorAll('.dispense-checkbox').forEach(checkbox => {
             checkbox.disabled = true;
             checkbox.checked = false;
         });
-        
+
         document.querySelectorAll('.quantity-input').forEach(input => {
             input.disabled = true;
             input.value = 0;
             input.removeAttribute('max');
+        });
+
+        // Clear stock quantity display fields
+        document.querySelectorAll('input[name$="-stock_quantity_display"]').forEach(input => {
+            input.value = 'Select a dispensary';
         });
     }
 

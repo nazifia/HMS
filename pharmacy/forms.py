@@ -353,6 +353,7 @@ class DispenseItemForm(forms.Form):
 
         logging.debug(f"DispenseItemForm clean: Item ID {self.prescription_item.id if self.prescription_item else 'None'}")
         logging.debug(f"  dispense_this_item: {dispense_this_item}, quantity_to_dispense: {quantity_to_dispense}, dispensary: {dispensary}")
+        logging.debug(f"  selected_dispensary: {self.selected_dispensary}")
 
         if not self.prescription_item:
             self.add_error(None, "Form not initialized with a prescription item.")
@@ -363,19 +364,21 @@ class DispenseItemForm(forms.Form):
         is_fully_dispensed = self.prescription_item.is_dispensed
 
         # Get available stock from both inventory models for the selected dispensary
+        # Use effective dispensary (form dispensary OR selected_dispensary)
+        effective_dispensary_for_stock = dispensary or self.selected_dispensary
         available_stock = 0
-        if dispensary:
+        if effective_dispensary_for_stock:
             try:
                 # First try MedicationInventory (legacy)
                 med_inventory = MedicationInventory.objects.get(
                     medication=self.prescription_item.medication,
-                    dispensary=dispensary
+                    dispensary=effective_dispensary_for_stock
                 )
                 available_stock = med_inventory.stock_quantity
             except MedicationInventory.DoesNotExist:
                 # If not found, try ActiveStoreInventory (new)
                 try:
-                    active_store = getattr(dispensary, 'active_store', None)
+                    active_store = getattr(effective_dispensary_for_stock, 'active_store', None)
                     if active_store:
                         med_inventory = ActiveStoreInventory.objects.get(
                             medication=self.prescription_item.medication,
@@ -418,7 +421,10 @@ class DispenseItemForm(forms.Form):
                 raise forms.ValidationError(error_message)
 
         if dispense_this_item:
-            if not dispensary:
+            # Check if we have a dispensary from the form or from the selected_dispensary
+            effective_dispensary = dispensary or self.selected_dispensary
+
+            if not effective_dispensary:
                 self.add_error('dispensary', 'Please select a dispensary for this item.')
                 logging.warning(f"  Validation Error: Dispensary not selected for item {self.prescription_item.id}.")
             if quantity_to_dispense is None or quantity_to_dispense <= 0:
@@ -442,24 +448,21 @@ class BaseDispenseItemFormSet(BaseFormSet):
         # prescription_items_qs: queryset/list of PrescriptionItem objects to bind to each form
         self.prescription_items_qs = kwargs.pop('prescription_items_qs', None)
         # form_kwargs may include things like 'selected_dispensary' that individual forms need
-        self.form_kwargs = kwargs.pop('form_kwargs', None)
+        # Store with a different name to avoid conflicts with Django's BaseFormSet
+        self.custom_form_kwargs = kwargs.pop('form_kwargs', None)
         super().__init__(*args, **kwargs)
 
     def add_fields(self, form, index):
         super().add_fields(form, index)
         if self.prescription_items_qs and index < len(self.prescription_items_qs):
             form.prescription_item = self.prescription_items_qs[index]
-            # Re-initialize the form with the prescription_item and selected_dispensary
-            if hasattr(self, 'form_kwargs') and self.form_kwargs:
-                selected_dispensary = self.form_kwargs.get('selected_dispensary')
-                form.__init__(
-                    data=form.data if form.is_bound else None,
-                    files=form.files if form.is_bound else None,
-                    initial=form.initial,
-                    prefix=form.prefix,
-                    prescription_item=form.prescription_item,
-                    selected_dispensary=selected_dispensary
-                )
+            # Set the selected_dispensary directly instead of re-initializing
+            if hasattr(self, 'custom_form_kwargs') and self.custom_form_kwargs:
+                selected_dispensary = self.custom_form_kwargs.get('selected_dispensary')
+                form.selected_dispensary = selected_dispensary
+                # Also update the initial value for the dispensary field if we have a selected dispensary
+                if selected_dispensary and 'dispensary' in form.fields:
+                    form.fields['dispensary'].initial = selected_dispensary
         else:
             # Handle the case where prescription_items_qs is not provided
             # This might indicate an error or a different use case for the formset
@@ -473,7 +476,8 @@ class BaseDispenseItemFormSet(BaseFormSet):
         # Check if any items were selected for dispensing
         any_selected = False
         for form in self.forms:
-            if form.cleaned_data and form.cleaned_data.get('dispense_this_item'):
+            # Check if form has cleaned_data attribute before accessing it
+            if hasattr(form, 'cleaned_data') and form.cleaned_data and form.cleaned_data.get('dispense_this_item'):
                 any_selected = True
                 break
         
@@ -481,17 +485,22 @@ class BaseDispenseItemFormSet(BaseFormSet):
         if any_selected:
             # Check if all forms have a dispensary selected
             all_have_dispensary = True
+            global_selected_dispensary = self.custom_form_kwargs.get('selected_dispensary') if self.custom_form_kwargs else None
+
             for form in self.forms:
-                if form.cleaned_data and form.cleaned_data.get('dispense_this_item'):
+                # Check if form has cleaned_data attribute before accessing it
+                if hasattr(form, 'cleaned_data') and form.cleaned_data and form.cleaned_data.get('dispense_this_item'):
                     dispensary = form.cleaned_data.get('dispensary')
-                    # If form doesn't have dispensary but we have a selected dispensary from form kwargs, it's OK
-                    if not dispensary:
-                        # Check if we have a global selected dispensary
-                        selected_dispensary = self.form_kwargs.get('selected_dispensary') if self.form_kwargs else None
-                        if not selected_dispensary:
-                            all_have_dispensary = False
-                            break
-            
+                    # If form doesn't have dispensary but we have a global selected dispensary, use that
+                    effective_dispensary = dispensary or global_selected_dispensary
+
+                    if not effective_dispensary:
+                        all_have_dispensary = False
+                        break
+                    else:
+                        # Set the effective dispensary back to the form's cleaned_data
+                        form.cleaned_data['dispensary'] = effective_dispensary
+
             if not all_have_dispensary:
                 raise forms.ValidationError("Please select a dispensary for all items to be dispensed.")
         

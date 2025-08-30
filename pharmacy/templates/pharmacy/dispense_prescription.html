@@ -378,6 +378,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const dispensaryInputs = document.querySelectorAll('select[name$="-dispensary"]');
         dispensaryInputs.forEach(function(input) {
             input.value = dispensaryId;
+            // Also trigger change event to ensure any listeners are notified
+            input.dispatchEvent(new Event('change'));
+        });
+
+        // Also update any hidden dispensary inputs
+        const hiddenDispensaryInputs = document.querySelectorAll('input[name$="-dispensary"]');
+        hiddenDispensaryInputs.forEach(function(input) {
+            input.value = dispensaryId;
         });
         
         if (dispensaryId) {

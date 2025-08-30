@@ -1744,17 +1744,28 @@ def dispense_prescription(request, prescription_id):
             }
             return render(request, 'pharmacy/dispense_prescription.html', context)
 
+        # The selected dispensary will be handled in form validation
+        # No need to modify form data here as it can cause AttributeError
+
         if formset.is_valid():
             # Process each selected form
             any_dispensed = False
             skipped_items = []
             for form in formset:
-                if not form.cleaned_data:
+                # Check if form has cleaned_data attribute before accessing it
+                if not hasattr(form, 'cleaned_data') or not form.cleaned_data:
                     continue
                 dispense = form.cleaned_data.get('dispense_this_item')
                 qty = form.cleaned_data.get('quantity_to_dispense') or 0
                 dispensary = form.cleaned_data.get('dispensary') or selected_dispensary
-                if dispense and qty > 0 and dispensary:
+
+                # Ensure we have a dispensary for dispensing
+                if dispense and qty > 0:
+                    if not dispensary:
+                        messages.error(request, f'No dispensary selected for medication item.')
+                        continue
+
+                    # Continue with dispensing logic
                     prescription_item = form.prescription_item
                     medication = prescription_item.medication
 
@@ -1766,7 +1777,8 @@ def dispense_prescription(request, prescription_id):
 
                     # Get the medication and quantity to dispense
                     medication = prescription_item.medication
-                    qty = form.cleaned_data['quantity_to_dispense']
+                    # Use .get() method instead of direct dictionary access to avoid KeyError
+                    qty = form.cleaned_data.get('quantity_to_dispense', 0)
 
                     # Validate quantity
                     if qty <= 0:
@@ -2077,9 +2089,10 @@ def prescription_payment(request, prescription_id):
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    amount = form.cleaned_data['amount']
-                    payment_method = form.cleaned_data['payment_method']
-                    payment_source = form.cleaned_data['payment_source']
+                    # Use .get() method instead of direct dictionary access to avoid KeyError
+                    amount = form.cleaned_data.get('amount', 0)
+                    payment_method = form.cleaned_data.get('payment_method', '')
+                    payment_source = form.cleaned_data.get('payment_source', '')
                     transaction_id = form.cleaned_data.get('transaction_id', '')
                     notes = form.cleaned_data.get('notes', '')
                     
@@ -2889,7 +2902,12 @@ def medical_pack_list(request):
     from .forms import PackFilterForm
     
     form = PackFilterForm(request.GET)
-    packs = MedicalPack.objects.select_related().prefetch_related('items__medication')
+    # Use proper prefetch for performance with the correct relationship
+    try:
+        packs = MedicalPack.objects.prefetch_related('items__medication')
+    except Exception as e:
+        messages.error(request, f'Error loading medical packs: {str(e)}')
+        packs = MedicalPack.objects.none()
     
     # Apply filters
     if form.is_valid():
@@ -3170,7 +3188,12 @@ def pack_order_list(request):
     from .forms import PackOrderFilterForm
     
     form = PackOrderFilterForm(request.GET)
-    orders = PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by').order_by('-order_date')
+
+    try:
+        orders = PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by').order_by('-ordered_at')
+    except Exception as e:
+        messages.error(request, f'Error loading pack orders: {str(e)}')
+        orders = PackOrder.objects.none()
     
     # Apply filters
     if form.is_valid():
@@ -3374,3 +3397,98 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy')
     invoice.save()
     
     return invoice_item
+
+
+@login_required
+def create_dispensary_transfer(request):
+    """Create a new dispensary transfer"""
+    if request.method == 'POST':
+        try:
+            from pharmacy.models import DispensaryTransfer, Medication, ActiveStore, Dispensary
+
+            medication_id = request.POST.get('medication_id')
+            from_store_id = request.POST.get('from_store_id')
+            to_dispensary_id = request.POST.get('to_dispensary_id')
+            quantity = int(request.POST.get('quantity', 0))
+            notes = request.POST.get('notes', '')
+
+            # Validate inputs
+            if not all([medication_id, from_store_id, to_dispensary_id, quantity > 0]):
+                messages.error(request, 'All fields are required and quantity must be greater than 0')
+                return redirect('pharmacy:active_store_list')
+
+            # Get objects
+            medication = Medication.objects.get(id=medication_id)
+            from_store = ActiveStore.objects.get(id=from_store_id)
+            to_dispensary = Dispensary.objects.get(id=to_dispensary_id)
+
+            # Create transfer
+            transfer = DispensaryTransfer.create_transfer(
+                medication=medication,
+                from_active_store=from_store,
+                to_dispensary=to_dispensary,
+                quantity=quantity,
+                requested_by=request.user,
+                notes=notes
+            )
+
+            messages.success(request, f'Transfer created successfully: {quantity} units of {medication.name}')
+
+            # Execute the transfer immediately for now
+            transfer.execute_transfer(request.user)
+            messages.success(request, f'Transfer executed: {quantity} units moved from {from_store.name} to {to_dispensary.name}')
+
+            return redirect('pharmacy:active_store_list')
+
+        except Exception as e:
+            messages.error(request, f'Error creating transfer: {str(e)}')
+            return redirect('pharmacy:active_store_list')
+
+    # This should not be reached as transfers are created via AJAX/POST
+    return redirect('pharmacy:active_store_list')
+
+
+@login_required
+def transfer_medication_to_dispensary(request):
+    """AJAX endpoint to transfer medication from active store to dispensary"""
+    if request.method == 'POST':
+        try:
+            import json
+            from pharmacy.models import DispensaryTransfer, Medication, ActiveStore, Dispensary
+
+            data = json.loads(request.body)
+            medication_id = data.get('medication_id')
+            from_store_id = data.get('from_store_id')
+            to_dispensary_id = data.get('to_dispensary_id')
+            quantity = int(data.get('quantity', 0))
+
+            # Validate inputs
+            if not all([medication_id, from_store_id, to_dispensary_id, quantity > 0]):
+                return JsonResponse({'success': False, 'error': 'Invalid input data'})
+
+            # Get objects
+            medication = Medication.objects.get(id=medication_id)
+            from_store = ActiveStore.objects.get(id=from_store_id)
+            to_dispensary = Dispensary.objects.get(id=to_dispensary_id)
+
+            # Create and execute transfer
+            transfer = DispensaryTransfer.create_transfer(
+                medication=medication,
+                from_active_store=from_store,
+                to_dispensary=to_dispensary,
+                quantity=quantity,
+                requested_by=request.user
+            )
+
+            # Execute immediately
+            transfer.execute_transfer(request.user)
+
+            return JsonResponse({
+                'success': True,
+                'message': f'Successfully transferred {quantity} units of {medication.name} from {from_store.name} to {to_dispensary.name}'
+            })
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
