@@ -85,7 +85,7 @@
             <i class="fas fa-shopping-cart"></i> Medical Pack Orders
         </div>
         <div class="card-body">
-            {% if object.pack_orders.all %}
+            {% if pack_orders %}
                 <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>
@@ -98,24 +98,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for pack_order in object.pack_orders.all %}
+                            {% for pack_order in pack_orders %}
                             <tr>
                                 <td>
                                     <strong>{{ pack_order.pack.name }}</strong><br>
                                     <small class="text-muted">{{ pack_order.pack.get_pack_type_display }}</small>
                                 </td>
-                                <td>{{ pack_order.order_date|date:"M d, Y H:i" }}</td>
+                                <td>{{ pack_order.ordered_at|date:"M d, Y H:i" }}</td>
                                 <td>
                                     {% if pack_order.status == 'pending' %}
                                         <span class="badge bg-warning text-dark">Pending</span>
                                     {% elif pack_order.status == 'approved' %}
                                         <span class="badge bg-info">Approved</span>
-                                    {% elif pack_order.status == 'processing' %}
+                                    {% elif pack_order.status == 'in_progress' %}
                                         <span class="badge bg-primary">Processing</span>
                                     {% elif pack_order.status == 'ready' %}
                                         <span class="badge bg-success">Ready</span>
-                                    {% elif pack_order.status == 'dispensed' %}
-                                        <span class="badge bg-secondary">Dispensed</span>
+                                    {% elif pack_order.status == 'completed' %}
+                                        <span class="badge bg-secondary">Completed</span>
                                     {% elif pack_order.status == 'cancelled' %}
                                         <span class="badge bg-danger">Cancelled</span>
                                     {% endif %}

@@ -1,16 +1,22 @@
-import sqlite3
-import datetime
+import os
+import sys
+import django
+from django.conf import settings
 
-# Connect to the database
-conn = sqlite3.connect('db.sqlite3')
-cursor = conn.cursor()
+# Add the project directory to the Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Insert the migration record
+# Set up Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hms.settings')
+django.setup()
+
+from django.db import connection
+from datetime import datetime
+
+# Mark the migration as applied
+cursor = connection.cursor()
 cursor.execute(
-    "INSERT INTO django_migrations (app, name, applied) VALUES (?, ?, ?)",
-    ('pharmacy', '0012_pack_alter_packitem_options_alter_packorder_options_and_more', datetime.datetime.now())
+    "INSERT INTO django_migrations (app, name, applied) VALUES (%s, %s, %s)",
+    ('pharmacy', '0018_add_surgery_field_to_packorder', datetime.now())
 )
-
-conn.commit()
-conn.close()
-print('Migration 0012 marked as applied')
+print('Migration marked as applied')

@@ -836,6 +836,7 @@ class PackOrder(models.Model):
     processed_at = models.DateTimeField(null=True, blank=True)
     order_notes = models.TextField(blank=True, null=True, help_text="Additional notes about this pack order")
     scheduled_date = models.DateTimeField(null=True, blank=True, help_text="When the pack is needed")
+    surgery = models.ForeignKey('theatre.Surgery', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
 
     def __str__(self):
         return f"Pack Order #{self.id} - {self.pack.name}"

@@ -149,8 +149,12 @@ class SurgeryDetailView(LoginRequiredMixin, DetailView):
         except PreOperativeChecklist.DoesNotExist:
             context['checklist_form'] = PreOperativeChecklistForm()
         
-        # Add pack orders for this surgery
-        context['pack_orders'] = surgery.pack_orders.all().order_by('-order_date')
+        # Add pack orders for this surgery, handling the case where the relationship might not exist
+        try:
+            context['pack_orders'] = surgery.pack_orders.all().order_by('-ordered_at')
+        except AttributeError:
+            # If pack_orders relationship doesn't exist, provide an empty queryset
+            context['pack_orders'] = []
 
         return context
 
