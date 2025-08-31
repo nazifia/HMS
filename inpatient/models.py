@@ -111,7 +111,14 @@ class Admission(models.Model):
     def get_total_cost(self):
         """Calculate the total cost of the admission based on duration and bed charges"""
         # Check if patient is NHIA - NHIA patients are exempt from admission fees
-        if hasattr(self.patient, 'nhia_info') and self.patient.nhia_info.is_active:
+        try:
+            is_nhia_patient = (hasattr(self.patient, 'nhia_info') and
+                             self.patient.nhia_info and
+                             self.patient.nhia_info.is_active)
+        except:
+            is_nhia_patient = False
+
+        if is_nhia_patient:
             return 0  # NHIA patients don't pay admission fees
 
         duration = self.get_duration()
@@ -122,6 +129,29 @@ class Admission(models.Model):
             daily_charge = self.bed.ward.charge_per_day
             return daily_charge * duration  # Return as a positive value
         return 0
+
+    def get_actual_charges_from_wallet(self):
+        """Get the actual charges deducted from patient wallet for this admission"""
+        from patients.models import WalletTransaction
+
+        # Get admission fee
+        admission_fee = WalletTransaction.objects.filter(
+            wallet__patient=self.patient,
+            transaction_type='admission_fee',
+            created_at__gte=self.admission_date
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+
+        # Get daily charges for this admission period
+        admission_date = self.admission_date.date()
+        end_date = self.discharge_date.date() if self.discharge_date else timezone.now().date()
+
+        daily_charges = WalletTransaction.objects.filter(
+            wallet__patient=self.patient,
+            transaction_type='daily_admission_charge',
+            created_at__date__range=[admission_date, end_date]
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+
+        return admission_fee + daily_charges
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None

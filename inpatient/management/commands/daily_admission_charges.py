@@ -118,10 +118,34 @@ class Command(BaseCommand):
         Process daily charge for a single admission.
         Returns the charge amount if successful, None if skipped.
         """
+        # Check if patient is NHIA - NHIA patients are exempt from admission fees
+        try:
+            is_nhia_patient = (hasattr(admission.patient, 'nhia_info') and
+                             admission.patient.nhia_info and
+                             admission.patient.nhia_info.is_active)
+        except:
+            is_nhia_patient = False
+
+        if is_nhia_patient:
+            logger.info(f'Patient {admission.patient.get_full_name()} is NHIA - no daily charges applied.')
+            return None
+
+        # Check if admission was active on the charge date
+        admission_date = admission.admission_date.date()
+        discharge_date = admission.discharge_date.date() if admission.discharge_date else None
+
+        # Skip if charge date is before admission
+        if charge_date < admission_date:
+            return None
+
+        # Skip if charge date is after discharge (if discharged)
+        if discharge_date and charge_date > discharge_date:
+            return None
+
         # Calculate daily charge
         if not admission.bed or not admission.bed.ward:
             return None
-            
+
         daily_charge = admission.bed.ward.charge_per_day
         if daily_charge <= 0:
             return None
@@ -134,6 +158,19 @@ class Command(BaseCommand):
 
         if created and not dry_run:
             logger.info(f'Created wallet for patient {admission.patient.get_full_name()}')
+
+        # Check if daily charge already exists for this date to prevent double deduction
+        from patients.models import WalletTransaction
+        existing_charge = WalletTransaction.objects.filter(
+            wallet=wallet,
+            transaction_type='daily_admission_charge',
+            created_at__date=charge_date,
+            description__icontains=f'Daily admission charge for {charge_date}'
+        ).exists()
+
+        if existing_charge and not dry_run:
+            logger.info(f'Daily charge already exists for {admission.patient.get_full_name()} on {charge_date} - skipping.')
+            return None
 
         if dry_run:
             return daily_charge

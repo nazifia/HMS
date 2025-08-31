@@ -33,7 +33,7 @@
                             <tbody>
                                 {% for transaction in transactions %}
                                 <tr>
-                                    <td>{{ transaction.timestamp|date:"Y-m-d H:i" }}</td>
+                                    <td>{{ transaction.created_at|date:"Y-m-d H:i" }}</td>
                                     <td>
                                         {% if transaction.transaction_type == 'credit' %}
                                         <span class="badge bg-success">Credit</span>

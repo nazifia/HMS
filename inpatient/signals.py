@@ -13,7 +13,14 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
     if created:
         try:
             # Check if patient is NHIA - NHIA patients are exempt from admission fees
-            is_nhia_patient = hasattr(instance.patient, 'nhia_info') and instance.patient.nhia_info.is_active
+            is_nhia_patient = False
+            try:
+                is_nhia_patient = (hasattr(instance.patient, 'nhia_info') and
+                                 instance.patient.nhia_info and
+                                 instance.patient.nhia_info.is_active)
+            except:
+                # If NHIA app is not available or any error, treat as non-NHIA
+                is_nhia_patient = False
 
             if is_nhia_patient:
                 logger.info(f'Patient {instance.patient.get_full_name()} is NHIA - no admission fee charged.')
@@ -23,6 +30,18 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
 
             if admission_cost <= 0:
                 logger.info(f'No admission cost for admission {instance.id} - no invoice created.')
+                return
+
+            # Check if admission fee has already been deducted to prevent double deduction
+            from patients.models import WalletTransaction
+            existing_admission_fee = WalletTransaction.objects.filter(
+                wallet__patient=instance.patient,
+                transaction_type='admission_fee',
+                description__icontains=f'Admission fee for {instance.patient.get_full_name()}'
+            ).exists()
+
+            if existing_admission_fee:
+                logger.info(f'Admission fee already deducted for patient {instance.patient.get_full_name()} - skipping.')
                 return
 
             # Get the service for admission

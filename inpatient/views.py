@@ -11,6 +11,7 @@ from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from datetime import timedelta
 from django.views.decorators.http import require_http_methods
 from django.db import models
 from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord, BedTransfer, WardTransfer
