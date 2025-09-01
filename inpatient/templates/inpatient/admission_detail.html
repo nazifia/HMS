@@ -10,10 +10,26 @@
         <div class="card-body">
             <p><strong>Patient:</strong> {{ admission.patient.get_full_name }}</p>
             <p><strong>Admission Date:</strong> {{ admission.admission_date }}</p>
+            {% if admission.discharge_date %}
+            <p><strong>Discharge Date:</strong> {{ admission.discharge_date }}</p>
+            {% endif %}
+            <p><strong>Days on Admission:</strong> {{ admission.get_duration }} days</p>
             <p><strong>Ward:</strong> {{ admission.bed.ward.name }}</p>
             <p><strong>Bed:</strong> {{ admission.bed.bed_number }}</p>
             <p><strong>Attending Doctor:</strong> {{ admission.attending_doctor.get_full_name }}</p>
             <p><strong>Diagnosis:</strong> {{ admission.diagnosis }}</p>
+            <p><strong>Status:</strong>
+                {% if admission.status == 'admitted' %}
+                    <span class="badge bg-success">Admitted</span>
+                {% elif admission.status == 'discharged' %}
+                    <span class="badge bg-info">Discharged</span>
+                {% elif admission.status == 'transferred' %}
+                    <span class="badge bg-warning">Transferred</span>
+                {% elif admission.status == 'deceased' %}
+                    <span class="badge bg-danger">Deceased</span>
+                {% endif %}
+            </p>
+            <p><strong>Total Admission Cost:</strong> ₦{{ admission.get_total_cost|floatformat:2 }}</p>
             {% if patient_wallet %}
             <p><strong>Wallet Balance:</strong> ₦{{ patient_wallet.balance }}</p>
             <p><a href="{% url 'patients:wallet_dashboard' admission.patient.id %}" class="btn btn-info btn-sm">View Wallet Dashboard</a></p>

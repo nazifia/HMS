@@ -2108,18 +2108,13 @@ def prescription_payment(request, prescription_id):
                     
                     # Handle wallet payment
                     if payment_source == 'patient_wallet':
-                        # Create wallet transaction for negative balance support
-                        from patients.models import WalletTransaction
-                        WalletTransaction.objects.create(
-                            wallet=patient_wallet,
-                            transaction_type='pharmacy_payment',
-                            amount=-amount,  # Negative for deduction
+                        # Use wallet's debit method to ensure proper transaction creation
+                        patient_wallet.debit(
+                            amount=amount,
                             description=f'Payment for prescription #{prescription.id}',
-                            created_by=request.user
+                            transaction_type='pharmacy_payment',
+                            user=request.user
                         )
-                        # Update wallet balance
-                        patient_wallet.balance -= amount
-                        patient_wallet.save()
                     
                     # Update invoice
                     pharmacy_invoice.amount_paid += amount
@@ -2253,18 +2248,13 @@ def billing_office_medication_payment(request, prescription_id):
                 
                 # Handle wallet payment
                 if payment_source == 'patient_wallet':
-                    # Create wallet transaction for negative balance support
-                    from patients.models import WalletTransaction
-                    WalletTransaction.objects.create(
-                        wallet=patient_wallet,
-                        transaction_type='pharmacy_payment',
-                        amount=-amount,  # Negative for deduction
+                    # Use wallet's debit method to ensure proper transaction creation
+                    patient_wallet.debit(
+                        amount=amount,
                         description=f'Payment for prescription #{prescription.id} (Billing office)',
-                        created_by=request.user
+                        transaction_type='pharmacy_payment',
+                        user=request.user
                     )
-                    # Update wallet balance
-                    patient_wallet.balance -= amount
-                    patient_wallet.save()
                 
                 # Update invoice
                 pharmacy_invoice.amount_paid += amount
