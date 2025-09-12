@@ -430,8 +430,29 @@ def wallet_dashboard(request, patient_id):
     """View for patient wallet dashboard"""
     patient = get_object_or_404(Patient, id=patient_id)
     
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    # Calculate hospital services total (admission fees and daily charges)
+    hospital_services_stats = wallet.get_transaction_statistics().get('by_category', {}).get('hospital_services', {})
+    hospital_services_total = hospital_services_stats.get('total', 0)
+    
+    # Get current admission if any
+    current_admission = None
+    try:
+        from inpatient.models import Admission
+        current_admission = Admission.objects.filter(
+            patient=patient,
+            status='admitted'
+        ).first()
+    except:
+        pass
+    
     context = {
         'patient': patient,
+        'hospital_services_total': hospital_services_total,
+        'current_admission': current_admission,
+        'wallet': wallet,
         'page_title': f'Wallet - {patient.get_full_name()}',
         'active_nav': 'patients',
     }
@@ -486,13 +507,41 @@ def wallet_transactions(request, patient_id):
     # Get wallet transactions
     try:
         transactions = patient.wallet.transactions.all().order_by('-created_at')
+        
+        # Filter by admission if specified
+        admission_id = request.GET.get('admission')
+        if admission_id:
+            try:
+                from inpatient.models import Admission
+                admission = Admission.objects.get(id=admission_id, patient=patient)
+                transactions = transactions.filter(admission=admission)
+            except:
+                pass
+        
+        # Filter by transaction type if specified
+        transaction_type = request.GET.get('type')
+        if transaction_type:
+            transactions = transactions.filter(transaction_type=transaction_type)
+                
     except AttributeError:
         # If patient doesn't have a wallet yet
         transactions = []
     
+    # Get current admission if any
+    current_admission = None
+    try:
+        from inpatient.models import Admission
+        current_admission = Admission.objects.filter(
+            patient=patient,
+            status='admitted'
+        ).first()
+    except:
+        pass
+
     context = {
         'patient': patient,
         'transactions': transactions,
+        'current_admission': current_admission,
         'page_title': f'Wallet Transactions - {patient.get_full_name()}',
         'active_nav': 'patients',
     }

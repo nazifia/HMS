@@ -134,6 +134,16 @@ class Admission(models.Model):
         """Get the actual charges deducted from patient wallet for this admission"""
         from patients.models import WalletTransaction
 
+        # Try to use direct admission FK relationship first (more accurate)
+        direct_charges = WalletTransaction.objects.filter(
+            admission=self,
+            transaction_type__in=['admission_fee', 'daily_admission_charge']
+        ).aggregate(total=models.Sum('amount'))['total']
+        
+        if direct_charges is not None:
+            return direct_charges
+        
+        # Fallback to date-range method for backward compatibility
         # Get admission fee
         admission_fee = WalletTransaction.objects.filter(
             wallet__patient=self.patient,
@@ -152,6 +162,21 @@ class Admission(models.Model):
         ).aggregate(total=models.Sum('amount'))['total'] or 0
 
         return admission_fee + daily_charges
+
+    def get_outstanding_admission_cost(self):
+        """Get the unpaid admission cost that would impact wallet balance"""
+        total_cost = self.get_total_cost()
+        paid_amount = self.get_actual_charges_from_wallet()
+        return max(0, total_cost - paid_amount)
+
+    def get_total_wallet_impact(self):
+        """Get total impact on wallet: current balance + outstanding admission costs"""
+        try:
+            current_balance = self.patient.wallet.balance
+            outstanding_cost = self.get_outstanding_admission_cost()
+            return current_balance - outstanding_cost  # Subtract because cost makes balance more negative
+        except:
+            return 0
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None

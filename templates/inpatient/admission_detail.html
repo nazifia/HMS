@@ -28,15 +28,30 @@
                 {% elif admission.status == 'deceased' %}
                     <span class="badge bg-danger">Deceased</span>
                 {% endif %}
+            </p>            <p><strong>Total Admission Cost:</strong> ₦{{ admission.get_total_cost|floatformat:2 }}</p>
+            <p><strong>Wallet Charges for this Admission:</strong> ₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</p>
+            <p><strong>Outstanding Admission Cost:</strong> 
+                <span class="{% if admission.get_outstanding_admission_cost > 0 %}text-warning{% else %}text-success{% endif %}">
+                    ₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}
+                </span>
+            </p>
+            <p><strong>Current Patient Wallet Balance:</strong> 
+                <span class="{% if admission.patient.wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                    ₦{{ admission.patient.wallet.balance|floatformat:2 }}
+                </span>
+            </p>
+            <p><strong>Total Wallet Impact (with outstanding costs):</strong> 
+                <span class="{% if admission.get_total_wallet_impact < 0 %}text-danger{% else %}text-success{% endif %}">
+                    ₦{{ admission.get_total_wallet_impact|floatformat:2 }}
+                </span>
             </p>
-            <p><strong>Total Admission Cost:</strong> ₦{{ admission.get_total_cost|floatformat:2 }}</p>
-            <p><strong>Patient Wallet Balance:</strong> ₦{{ admission.patient.wallet.balance|floatformat:2 }}</p>
         </div>
         <div class="card-footer">
             <a href="{% url 'inpatient:edit_admission' admission.id %}" class="btn btn-primary">Edit Admission</a>
             <a href="{% url 'inpatient:discharge_patient' admission.id %}" class="btn btn-danger">Discharge Patient</a>
             <a href="{% url 'inpatient:transfer_patient' admission.id %}" class="btn btn-warning">Transfer Patient</a>
-            <a href="{% url 'patients:wallet_dashboard' admission.patient.id %}" class="btn btn-info">View Wallet</a>
+            <a href="{% url 'patients:wallet_dashboard' admission.patient.id %}" class="btn btn-info">View Wallet</a>
+            <a href="{% url 'patients:wallet_transactions' admission.patient.id %}?admission={{ admission.id }}" class="btn btn-outline-info">View Admission Charges</a>
         </div>
     </div>
 

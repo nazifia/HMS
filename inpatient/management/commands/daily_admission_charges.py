@@ -163,9 +163,9 @@ class Command(BaseCommand):
         from patients.models import WalletTransaction
         existing_charge = WalletTransaction.objects.filter(
             wallet=wallet,
+            admission=admission,
             transaction_type='daily_admission_charge',
-            created_at__date=charge_date,
-            description__icontains=f'Daily admission charge for {charge_date}'
+            created_at__date=charge_date
         ).exists()
 
         if existing_charge and not dry_run:
@@ -183,7 +183,8 @@ class Command(BaseCommand):
                     amount=daily_charge,
                     description=f"Daily admission charge for {charge_date} - {admission.bed.ward.name}",
                     transaction_type="daily_admission_charge",
-                    user=admission.attending_doctor
+                    user=admission.attending_doctor,
+                    admission=admission
                 )
 
                 logger.info(

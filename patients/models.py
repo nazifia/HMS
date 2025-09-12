@@ -298,7 +298,7 @@ class PatientWallet(models.Model):
     def __str__(self):
         return f"Wallet for {self.patient.get_full_name()} (₦{self.balance})"
 
-    def credit(self, amount, description="Credit", transaction_type="credit", user=None, invoice=None, payment_instance=None):
+    def credit(self, amount, description="Credit", transaction_type="credit", user=None, invoice=None, payment_instance=None, admission=None):
         """Credit amount to wallet and create transaction record"""
         if amount <= 0:
             raise ValueError("Credit amount must be positive.")
@@ -306,19 +306,20 @@ class PatientWallet(models.Model):
         self.balance += amount
         self.save(update_fields=['balance', 'last_updated'])
 
-        # Create transaction record
-        WalletTransaction.objects.create(
-            wallet=self,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance
+        # Create transaction record
+        WalletTransaction.objects.create(
+            wallet=self,
+            transaction_type=transaction_type,
+            amount=amount,
+            balance_after=self.balance,
+            description=description,
+            created_by=user,
+            invoice=invoice,
+            payment=payment_instance,
+            admission=admission
         )
 
-    def debit(self, amount, description="Debit", transaction_type="debit", user=None, invoice=None, payment_instance=None):
+    def debit(self, amount, description="Debit", transaction_type="debit", user=None, invoice=None, payment_instance=None, admission=None):
         """Debit amount from wallet and create transaction record"""
         if amount <= 0:
             raise ValueError("Debit amount must be positive.")
@@ -329,16 +330,17 @@ class PatientWallet(models.Model):
         self.balance -= amount
         self.save(update_fields=['balance', 'last_updated'])
 
-        # Create transaction record
-        WalletTransaction.objects.create(
-            wallet=self,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance
+        # Create transaction record
+        WalletTransaction.objects.create(
+            wallet=self,
+            transaction_type=transaction_type,
+            amount=amount,
+            balance_after=self.balance,
+            description=description,
+            created_by=user,
+            invoice=invoice,
+            payment=payment_instance,
+            admission=admission
         )
 
     def get_transaction_history(self, limit=None):
@@ -489,12 +491,51 @@ class PatientWallet(models.Model):
             transaction_type='transfer_in'
         ).aggregate(total=models.Sum('amount'))['total'] or 0
 
-    def get_total_transfers_out(self):
-        """Get total amount sent via transfers"""
-        return self.transactions.filter(
-            transaction_type='transfer_out'
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
-
+    def get_total_transfers_out(self):
+        """Get total amount sent via transfers"""
+        return self.transactions.filter(
+            transaction_type='transfer_out'
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+    
+    def get_admission_spend(self, admission):
+        """Get total amount spent on a specific admission"""
+        # Use direct FK relationship if available
+        direct_spend = self.transactions.filter(
+            admission=admission,
+            transaction_type__in=['admission_fee', 'daily_admission_charge']
+        ).aggregate(total=models.Sum('amount'))['total']
+        
+        if direct_spend is not None:
+            return direct_spend        # Fallback to date-range method
+        admission_date = admission.admission_date.date()
+        end_date = admission.discharge_date.date() if admission.discharge_date else timezone.now().date()
+        
+        return self.transactions.filter(
+            transaction_type__in=['admission_fee', 'daily_admission_charge'],
+            created_at__date__range=[admission_date, end_date]
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+    
+    def get_total_wallet_impact_with_admissions(self):
+        """Get total wallet impact including outstanding costs from all active admissions"""
+        try:
+            from inpatient.models import Admission
+            current_balance = self.balance
+            
+            # Get all active admissions for this patient
+            active_admissions = Admission.objects.filter(
+                patient=self.patient,
+                status='admitted'
+            )
+            
+            total_outstanding = sum(
+                admission.get_outstanding_admission_cost() 
+                for admission in active_admissions
+            )
+            
+            return current_balance - total_outstanding
+        except:
+            return self.balance
+
     class Meta:
         verbose_name = "Patient Wallet"
         verbose_name_plural = "Patient Wallets"
@@ -540,9 +581,10 @@ class WalletTransaction(models.Model):
     reference_number = models.CharField(max_length=50, unique=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='completed')
 
-    # Related objects
-    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True)
-    payment = models.ForeignKey('billing.Payment', on_delete=models.SET_NULL, null=True, blank=True)
+    # Related objects
+    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True)
+    payment = models.ForeignKey('billing.Payment', on_delete=models.SET_NULL, null=True, blank=True)
+    admission = models.ForeignKey('inpatient.Admission', on_delete=models.SET_NULL, null=True, blank=True, related_name='wallet_transactions')
 
     # Metadata
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)

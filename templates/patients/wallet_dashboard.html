@@ -27,7 +27,7 @@
                                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                                 Current Balance
                                             </div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <div class="h5 mb-0 font-weight-bold {% if patient.wallet and patient.wallet.balance < 0 %}text-danger{% else %}text-gray-800{% endif %}">
                                                 {% if patient.wallet %}
                                                 ₦{{ patient.wallet.balance|floatformat:2 }}
                                                 {% else %}
@@ -42,6 +42,86 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        {% if hospital_services_total %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-left-danger shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                                Hospital Services
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                ₦{{ hospital_services_total|floatformat:2 }}
+                                            </div>
+                                            <div class="text-xs text-muted">
+                                                Admission fees & daily charges
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-hospital fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if current_admission %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                Current Admission
+                                            </div>
+                                            <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                                {{ current_admission.bed.ward.name }}
+                                            </div>
+                                            <div class="text-xs text-muted">
+                                                Day {{ current_admission.get_duration }} • ₦{{ current_admission.get_actual_charges_from_wallet|floatformat:2 }} spent
+                                            </div>
+                                            {% if current_admission.get_outstanding_admission_cost > 0 %}
+                                            <div class="text-xs text-danger">
+                                                Outstanding: ₦{{ current_admission.get_outstanding_admission_cost|floatformat:2 }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-bed fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if patient.wallet %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-left-{% if patient.wallet.get_total_wallet_impact_with_admissions < 0 %}danger{% else %}success{% endif %} shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-{% if patient.wallet.get_total_wallet_impact_with_admissions < 0 %}danger{% else %}success{% endif %} text-uppercase mb-1">
+                                                Total Impact
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold {% if patient.wallet.get_total_wallet_impact_with_admissions < 0 %}text-danger{% else %}text-success{% endif %}">
+                                                ₦{{ patient.wallet.get_total_wallet_impact_with_admissions|floatformat:2 }}
+                                            </div>
+                                            <div class="text-xs text-muted">
+                                                Current balance + outstanding admission costs
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

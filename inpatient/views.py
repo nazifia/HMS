@@ -603,7 +603,8 @@ def create_admission(request):
                                     description=f'Admission fee for {admission.patient.get_full_name()}',
                                     transaction_type='admission_fee',
                                     user=request.user,
-                                    invoice=invoice
+                                    invoice=invoice,
+                                    admission=admission
                                 )
                                 logger.info(f'Deducted {admission_service.price} from wallet. New balance: {wallet.balance}')
                             
