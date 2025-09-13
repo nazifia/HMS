@@ -1,7 +1,9 @@
 // static/js/pwa.js
+// PWA functionality DISABLED - this file is commented out
 // Register the service worker and handle push subscription and offline UX
 
-document.addEventListener('DOMContentLoaded', () => {
+// document.addEventListener('DOMContentLoaded', () => {
+/*
     // Service Worker Registration
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js')
@@ -28,8 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
     updateOnlineStatus();
-});
+*/
+// });
 
+/*
 function showOfflineBanner() {
     let banner = document.getElementById('offline-banner');
     if (!banner) {
@@ -52,7 +56,10 @@ function hideOfflineBanner() {
     const banner = document.getElementById('offline-banner');
     if (banner) banner.remove();
 }
+*/
 
+/*
+// ALL PWA FUNCTIONALITY BELOW IS DISABLED
 // Push Notification Subscription
 function subscribeForPushNotifications(reg) {
     if (!('PushManager' in window)) return;
@@ -187,3 +194,6 @@ async function syncQueuedForms() {
     };
     db.close();
 }
+*/
+
+// PWA functionality has been disabled for this HMS installation

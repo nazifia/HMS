@@ -1,0 +1,178 @@
+{% load static %}
+
+<!-- Session Timeout Warning Modal -->
+<div class="modal fade" id="sessionTimeoutModal" tabindex="-1" role="dialog" aria-labelledby="sessionTimeoutModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="sessionTimeoutModalLabel">
+                    <i class="fas fa-exclamation-triangle"></i> Session Timeout Warning
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-clock fa-3x text-warning"></i>
+                    </div>
+                    <h5>Your session is about to expire</h5>
+                    <p class="text-muted">Your session will expire in <strong><span id="timeoutCountdown">5:00</span></strong> minutes due to inactivity.</p>
+                    <p>Would you like to extend your session?</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="logoutBtn">Logout Now</button>
+                <button type="button" class="btn btn-primary" id="extendSessionBtn">
+                    <i class="fas fa-refresh"></i> Extend Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Session Timeout JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sessionTimeoutModal = new bootstrap.Modal(document.getElementById('sessionTimeoutModal'));
+    const timeoutCountdown = document.getElementById('timeoutCountdown');
+    const extendSessionBtn = document.getElementById('extendSessionBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    let timeoutWarningTimer;
+    let countdownTimer;
+    let timeRemaining;
+    
+    // Get session info from request context (set by middleware)
+    const sessionInfo = {
+        timeRemaining: {{ request.session_info.time_remaining|default:0 }},
+        warningThreshold: {{ request.session_info.warning_threshold|default:300 }},
+        showWarning: {{ request.session_info.show_warning|yesno:"true,false" }}
+    };
+    
+    // Function to format time as MM:SS
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Function to show timeout warning
+    function showTimeoutWarning() {
+        timeRemaining = sessionInfo.warningThreshold; // 5 minutes warning
+        timeoutCountdown.textContent = formatTime(timeRemaining);
+        sessionTimeoutModal.show();
+        
+        // Start countdown
+        countdownTimer = setInterval(function() {
+            timeRemaining--;
+            timeoutCountdown.textContent = formatTime(timeRemaining);
+            
+            if (timeRemaining <= 0) {
+                clearInterval(countdownTimer);
+                // Auto-logout
+                window.location.href = '/accounts/logout/';
+            }
+        }, 1000);
+    }
+    
+    // Function to extend session via AJAX
+    function extendSession() {
+        fetch('/accounts/extend-session/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                sessionTimeoutModal.hide();
+                clearInterval(countdownTimer);
+                // Reset the warning timer
+                initializeSessionMonitoring();
+            } else {
+                alert('Failed to extend session. Please log in again.');
+                window.location.href = '/accounts/login/';
+            }
+        })
+        .catch(error => {
+            console.error('Error extending session:', error);
+            alert('Error extending session. Please log in again.');
+            window.location.href = '/accounts/login/';
+        });
+    }
+    
+    // Initialize session monitoring
+    function initializeSessionMonitoring() {
+        // Clear any existing timer
+        if (timeoutWarningTimer) {
+            clearTimeout(timeoutWarningTimer);
+        }
+        
+        // Set timer to show warning before session expires
+        const warningTime = Math.max(0, sessionInfo.timeRemaining - sessionInfo.warningThreshold) * 1000;
+        
+        if (warningTime > 0) {
+            timeoutWarningTimer = setTimeout(showTimeoutWarning, warningTime);
+        } else if (sessionInfo.showWarning) {
+            // Show warning immediately if we're already in warning period
+            showTimeoutWarning();
+        }
+    }
+    
+    // Event listeners
+    extendSessionBtn.addEventListener('click', extendSession);
+    logoutBtn.addEventListener('click', function() {
+        window.location.href = '/accounts/logout/';
+    });
+    
+    // Initialize if user is authenticated
+    {% if user.is_authenticated %}
+        initializeSessionMonitoring();
+    {% endif %}
+    
+    // Reset session timeout on user activity
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    let lastActivity = Date.now();
+    
+    activityEvents.forEach(function(eventName) {
+        document.addEventListener(eventName, function() {
+            const now = Date.now();
+            // Only update if it's been more than 30 seconds since last activity
+            if (now - lastActivity > 30000) {
+                lastActivity = now;
+                // Send activity ping to server
+                fetch('/accounts/activity-ping/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                }).catch(function() {
+                    // Ignore errors for activity pings
+                });
+            }
+        }, true);
+    });
+});
+</script>
+
+<style>
+.modal-backdrop.show {
+    opacity: 0.7;
+}
+
+#sessionTimeoutModal .modal-content {
+    border: 2px solid #ffc107;
+}
+
+#sessionTimeoutModal .fa-clock {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+</style>

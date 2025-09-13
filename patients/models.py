@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum, Count
 from django.utils import timezone
 from django.conf import settings
 import random
@@ -306,18 +307,30 @@ class PatientWallet(models.Model):
         self.balance += amount
         self.save(update_fields=['balance', 'last_updated'])
 
-        # Create transaction record
-        WalletTransaction.objects.create(
-            wallet=self,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance,
-            admission=admission
+        # Create transaction record
+        transaction = WalletTransaction.objects.create(
+            wallet=self,
+            transaction_type=transaction_type,
+            amount=amount,
+            balance_after=self.balance,
+            description=description,
+            created_by=user,
+            invoice=invoice,
+            payment=payment_instance,
+            admission=admission
         )
+        
+        # Check if this credit settles an outstanding negative balance
+        # This would be the case when balance goes from negative to positive or zero
+        if self.balance >= 0 and (self.balance - amount) < 0:
+            # The balance just crossed from negative to positive/zero
+            # We could automatically settle here, but for now we'll just add a notification
+            # In a real implementation, you might want to add a setting to control this behavior
+            
+            # For now, we'll just make sure the transaction is properly recorded
+            pass
+
+        return transaction
 
     def debit(self, amount, description="Debit", transaction_type="debit", user=None, invoice=None, payment_instance=None, admission=None):
         """Debit amount from wallet and create transaction record"""
@@ -327,21 +340,98 @@ class PatientWallet(models.Model):
         # if amount > self.balance:
         #     raise ValueError("Insufficient wallet balance.")
 
+        original_balance = self.balance
         self.balance -= amount
         self.save(update_fields=['balance', 'last_updated'])
 
-        # Create transaction record
-        WalletTransaction.objects.create(
-            wallet=self,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance,
-            admission=admission
+        # Create transaction record
+        transaction = WalletTransaction.objects.create(
+            wallet=self,
+            transaction_type=transaction_type,
+            amount=amount,
+            balance_after=self.balance,
+            description=description,
+            created_by=user,
+            invoice=invoice,
+            payment=payment_instance,
+            admission=admission
         )
+        
+        # Check if this debit creates a negative balance
+        # This would be the case when balance goes from positive to negative
+        if self.balance < 0 and original_balance >= 0:
+            # The balance just crossed from positive to negative
+            # We could send a notification here
+            pass
+
+        return transaction
+
+    def settle_outstanding_balance(self, description="Balance settlement", user=None):
+        """
+        Settle outstanding negative balance by converting positive balance to offset it.
+        This function will create appropriate transactions to show the settlement.
+        
+        Returns a dictionary with settlement details.
+        """
+        if self.balance >= 0:
+            return {
+                'settled': False,
+                'message': 'No negative balance to settle',
+                'original_balance': self.balance,
+                'new_balance': self.balance,
+                'amount_settled': 0
+            }
+        
+        # Calculate amount that can be settled (convert negative balance to positive up to 0)
+        amount_to_settle = abs(self.balance)  # This is the absolute value of the negative balance
+        
+        # Validate that we're not settling more than the absolute value of the negative balance
+        if amount_to_settle <= 0:
+            return {
+                'settled': False,
+                'message': 'Invalid balance for settlement',
+                'original_balance': self.balance,
+                'new_balance': self.balance,
+                'amount_settled': 0
+            }
+        
+        # Store original balance for reporting
+        original_balance = self.balance
+        
+        # Directly adjust the balance to zero (settlement)
+        self.balance = 0
+        self.save(update_fields=['balance', 'last_updated'])
+        
+        # Create settlement transactions for audit trail
+        # Credit transaction to show the positive adjustment
+        credit_transaction = WalletTransaction.objects.create(
+            wallet=self,
+            transaction_type='adjustment',
+            amount=amount_to_settle,
+            balance_after=self.balance,
+            description=f"{description} - Positive balance offset",
+            created_by=user
+        )
+        
+        # Debit transaction to show the negative balance reduction
+        debit_transaction = WalletTransaction.objects.create(
+            wallet=self,
+            transaction_type='adjustment',
+            amount=amount_to_settle,
+            balance_after=self.balance,
+            description=f"{description} - Outstanding balance settled",
+            created_by=user
+        )
+        
+        return {
+            'settled': True,
+            'message': f'Successfully settled ₦{amount_to_settle} of outstanding balance',
+            'original_balance': original_balance,
+            'new_balance': self.balance,
+            'amount_settled': amount_to_settle,
+            'credit_transaction': credit_transaction,
+            'debit_transaction': debit_transaction
+        }
 
     def get_transaction_history(self, limit=None):
         """Get wallet transaction history"""
@@ -354,13 +444,13 @@ class PatientWallet(models.Model):
         """Get total amount credited to wallet"""
         return self.transactions.filter(
             transaction_type__in=['credit', 'deposit', 'refund']
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
+        ).aggregate(total=Sum('amount'))['total'] or 0
 
     def get_total_debits(self):
         """Get total amount debited from wallet"""
         return self.transactions.filter(
             transaction_type__in=['debit', 'payment', 'withdrawal']
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
+        ).aggregate(total=Sum('amount'))['total'] or 0
 
     def get_transaction_statistics(self):
         """Get comprehensive transaction statistics"""
@@ -489,53 +579,53 @@ class PatientWallet(models.Model):
         """Get total amount received via transfers"""
         return self.transactions.filter(
             transaction_type='transfer_in'
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
+        ).aggregate(total=Sum('amount'))['total'] or 0
 
-    def get_total_transfers_out(self):
-        """Get total amount sent via transfers"""
-        return self.transactions.filter(
-            transaction_type='transfer_out'
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
-    
-    def get_admission_spend(self, admission):
-        """Get total amount spent on a specific admission"""
-        # Use direct FK relationship if available
-        direct_spend = self.transactions.filter(
-            admission=admission,
-            transaction_type__in=['admission_fee', 'daily_admission_charge']
-        ).aggregate(total=models.Sum('amount'))['total']
-        
-        if direct_spend is not None:
-            return direct_spend        # Fallback to date-range method
-        admission_date = admission.admission_date.date()
-        end_date = admission.discharge_date.date() if admission.discharge_date else timezone.now().date()
-        
-        return self.transactions.filter(
-            transaction_type__in=['admission_fee', 'daily_admission_charge'],
-            created_at__date__range=[admission_date, end_date]
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
-    
-    def get_total_wallet_impact_with_admissions(self):
-        """Get total wallet impact including outstanding costs from all active admissions"""
-        try:
-            from inpatient.models import Admission
-            current_balance = self.balance
-            
-            # Get all active admissions for this patient
-            active_admissions = Admission.objects.filter(
-                patient=self.patient,
-                status='admitted'
-            )
-            
-            total_outstanding = sum(
-                admission.get_outstanding_admission_cost() 
-                for admission in active_admissions
-            )
-            
-            return current_balance - total_outstanding
-        except:
-            return self.balance
-
+    def get_total_transfers_out(self):
+        """Get total amount sent via transfers"""
+        return self.transactions.filter(
+            transaction_type='transfer_out'
+        ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    def get_admission_spend(self, admission):
+        """Get total amount spent on a specific admission"""
+        # Use direct FK relationship if available
+        direct_spend = self.transactions.filter(
+            admission=admission,
+            transaction_type__in=['admission_fee', 'daily_admission_charge']
+        ).aggregate(total=Sum('amount'))['total']
+        
+        if direct_spend is not None:
+            return direct_spend        # Fallback to date-range method
+        admission_date = admission.admission_date.date()
+        end_date = admission.discharge_date.date() if admission.discharge_date else timezone.now().date()
+        
+        return self.transactions.filter(
+            transaction_type__in=['admission_fee', 'daily_admission_charge'],
+            created_at__date__range=[admission_date, end_date]
+        ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    def get_total_wallet_impact_with_admissions(self):
+        """Get total wallet impact including outstanding costs from all active admissions"""
+        try:
+            from inpatient.models import Admission
+            current_balance = self.balance
+            
+            # Get all active admissions for this patient
+            active_admissions = Admission.objects.filter(
+                patient=self.patient,
+                status='admitted'
+            )
+            
+            total_outstanding = sum(
+                admission.get_outstanding_admission_cost() 
+                for admission in active_admissions
+            )
+            
+            return current_balance - total_outstanding
+        except:
+            return self.balance
+
     class Meta:
         verbose_name = "Patient Wallet"
         verbose_name_plural = "Patient Wallets"
@@ -581,9 +671,9 @@ class WalletTransaction(models.Model):
     reference_number = models.CharField(max_length=50, unique=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='completed')
 
-    # Related objects
-    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True)
-    payment = models.ForeignKey('billing.Payment', on_delete=models.SET_NULL, null=True, blank=True)
+    # Related objects
+    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True)
+    payment = models.ForeignKey('billing.Payment', on_delete=models.SET_NULL, null=True, blank=True)
     admission = models.ForeignKey('inpatient.Admission', on_delete=models.SET_NULL, null=True, blank=True, related_name='wallet_transactions')
 
     # Metadata

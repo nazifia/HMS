@@ -121,6 +121,19 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Outstanding Balance Alert -->
+        {% if wallet.balance < 0 %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5><i class="fas fa-exclamation-triangle"></i> Outstanding Balance</h5>
+            <p>This patient has an outstanding negative balance of <strong>₦{{ wallet.balance|floatformat:2|slice:"1:" }}</strong>.</p>
+            <p>You can settle this balance by converting any positive balance to offset it.</p>
+            <a href="{% url 'patients:wallet_settlement' patient.id %}" class="btn btn-danger btn-sm">
+                <i class="fas fa-balance-scale"></i> Settle Outstanding Balance
+            </a>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
     </div>
 
     <div class="col-lg-4">
@@ -146,6 +159,11 @@
                     <a href="{% url 'patients:wallet_adjustment' patient.id %}" class="btn btn-secondary btn-sm">
                         <i class="fas fa-edit"></i> Make Adjustment
                     </a>
+                    {% if wallet.balance < 0 %}
+                    <a href="{% url 'patients:wallet_settlement' patient.id %}" class="btn btn-danger btn-sm">
+                        <i class="fas fa-balance-scale"></i> Settle Balance
+                    </a>
+                    {% endif %}
                     <a href="{% url 'patients:wallet_transactions' patient.id %}" class="btn btn-dark btn-sm">
                         <i class="fas fa-list"></i> View All Transactions
                     </a>

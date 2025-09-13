@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
@@ -305,98 +305,100 @@ def patient_vitals(request, patient_id):
     return render(request, 'patients/patient_vitals.html', context)
 
 
-@login_required
-def pwa_manifest(request):
-    """View for PWA manifest"""
-    from django.http import JsonResponse
-
-    manifest = {
-        "name": "Hospital Management System",
-        "short_name": "HMS",
-        "description": "Comprehensive Hospital Management System",
-        "start_url": "/",
-        "display": "standalone",
-        "background_color": "#ffffff",
-        "theme_color": "#4e73df",
-        "icons": [
-            {
-                "src": "/static/img/icon-192x192.png",
-                "sizes": "192x192",
-                "type": "image/png"
-            },
-            {
-                "src": "/static/img/icon-512x512.png",
-                "sizes": "512x512",
-                "type": "image/png"
-            }
-        ]
-    }
-
-    return JsonResponse(manifest, content_type='application/manifest+json')
-
-
-@login_required
-def service_worker(request):
-    """View for service worker"""
-    from django.http import HttpResponse
-
-    service_worker_js = """
-    const CACHE_NAME = 'hms-cache-v1';
-    const urlsToCache = [
-        '/',
-        '/static/css/sb-admin-2.min.css',
-        '/static/js/sb-admin-2.min.js',
-        '/static/vendor/jquery/jquery.min.js',
-        '/static/vendor/bootstrap/js/bootstrap.bundle.min.js',
-    ];
-
-    self.addEventListener('install', function(event) {
-        event.waitUntil(
-            caches.open(CACHE_NAME)
-                .then(function(cache) {
-                    return cache.addAll(urlsToCache);
-                })
-        );
-    });
-
-    self.addEventListener('fetch', function(event) {
-        event.respondWith(
-            caches.match(event.request)
-                .then(function(response) {
-                    if (response) {
-                        return response;
-                    }
-                    return fetch(event.request);
-                })
-        );
-    });
-    """
-
-    return HttpResponse(service_worker_js, content_type='application/javascript')
+# PWA functionality disabled
+# @login_required
+# def pwa_manifest(request):
+#     """View for PWA manifest"""
+#     from django.http import JsonResponse
+# 
+#     manifest = {
+#         "name": "Hospital Management System",
+#         "short_name": "HMS",
+#         "description": "Comprehensive Hospital Management System",
+#         "start_url": "/",
+#         "display": "standalone",
+#         "background_color": "#ffffff",
+#         "theme_color": "#4e73df",
+#         "icons": [
+#             {
+#                 "src": "/static/img/icon-192x192.png",
+#                 "sizes": "192x192",
+#                 "type": "image/png"
+#             },
+#             {
+#                 "src": "/static/img/icon-512x512.png",
+#                 "sizes": "512x512",
+#                 "type": "image/png"
+#             }
+#         ]
+#     }
+# 
+#     return JsonResponse(manifest, content_type='application/manifest+json')
 
 
-@login_required
-def offline_fallback(request):
-    """View for offline fallback"""
-    context = {
-        'page_title': 'Offline - HMS',
-        'message': 'You are currently offline. Please check your internet connection.',
-    }
-    return render(request, 'patients/offline.html', context)
-
-
-@login_required
-def pwa_demo(request):
-    """View for PWA demo"""
-    # Implementation for PWA demo
-    pass
-
-
-@login_required
-def demo_push_notification(request):
-    """View for demo push notification"""
-    # Implementation for demo push notification
-    pass
+# PWA functionality disabled
+# @login_required
+# def service_worker(request):
+#     """View for service worker"""
+#     from django.http import HttpResponse
+# 
+#     service_worker_js = """
+#     const CACHE_NAME = 'hms-cache-v1';
+#     const urlsToCache = [
+#         '/',
+#         '/static/css/sb-admin-2.min.css',
+#         '/static/js/sb-admin-2.min.js',
+#         '/static/vendor/jquery/jquery.min.js',
+#         '/static/vendor/bootstrap/js/bootstrap.bundle.min.js',
+#     ];
+# 
+#     self.addEventListener('install', function(event) {
+#         event.waitUntil(
+#             caches.open(CACHE_NAME)
+#                 .then(function(cache) {
+#                     return cache.addAll(urlsToCache);
+#                 })
+#         );
+#     });
+# 
+#     self.addEventListener('fetch', function(event) {
+#         event.respondWith(
+#             caches.match(event.request)
+#                 .then(function(response) {
+#                     if (response) {
+#                         return response;
+#                     }
+#                     return fetch(event.request);
+#                 })
+#         );
+#     });
+#     """
+# 
+#     return HttpResponse(service_worker_js, content_type='application/javascript')
+# 
+# 
+# @login_required
+# def offline_fallback(request):
+#     """View for offline fallback"""
+#     context = {
+#         'page_title': 'Offline - HMS',
+#         'message': 'You are currently offline. Please check your internet connection.',
+#     }
+#     return render(request, 'patients/offline.html', context)
+# 
+# 
+# @login_required
+# def pwa_demo(request):
+#     """View for PWA demo"""
+#     # Implementation for PWA demo
+#     pass
+# 
+# 
+# @login_required
+# def demo_push_notification(request):
+#     """View for demo push notification"""
+#     # Implementation for demo push notification
+#     pass
 
 
 @login_required
@@ -433,8 +435,46 @@ def wallet_dashboard(request, patient_id):
     # Get or create wallet for patient
     wallet, created = PatientWallet.objects.get_or_create(patient=patient)
     
+    # Get transaction statistics
+    wallet_stats = wallet.get_transaction_statistics()
+    
+    # Calculate totals
+    total_credits = wallet.get_total_credits()
+    total_debits = wallet.get_total_debits()
+    
+    # Calculate monthly activity
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Get transactions from the last 30 days
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    
+    monthly_transactions = wallet.transactions.filter(
+        created_at__gte=thirty_days_ago
+    )
+    
+    monthly_credits = monthly_transactions.filter(
+        transaction_type__in=['credit', 'deposit', 'refund', 'transfer_in', 'adjustment']
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    monthly_debits = monthly_transactions.filter(
+        transaction_type__in=['debit', 'payment', 'withdrawal', 'transfer_out']
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    # Get recent transactions (last 10)
+    recent_transactions = wallet.get_transaction_history(limit=10)
+    
+    # Get recent admissions (last 5)
+    try:
+        from inpatient.models import Admission
+        recent_admissions = Admission.objects.filter(
+            patient=patient
+        ).order_by('-admission_date')[:5]
+    except:
+        recent_admissions = []
+    
     # Calculate hospital services total (admission fees and daily charges)
-    hospital_services_stats = wallet.get_transaction_statistics().get('by_category', {}).get('hospital_services', {})
+    hospital_services_stats = wallet_stats.get('by_category', {}).get('hospital_services', {})
     hospital_services_total = hospital_services_stats.get('total', 0)
     
     # Get current admission if any
@@ -450,6 +490,13 @@ def wallet_dashboard(request, patient_id):
     
     context = {
         'patient': patient,
+        'wallet_stats': wallet_stats,
+        'total_credits': total_credits,
+        'total_debits': total_debits,
+        'monthly_credits': monthly_credits,
+        'monthly_debits': monthly_debits,
+        'recent_transactions': recent_transactions,
+        'recent_admissions': recent_admissions,
         'hospital_services_total': hospital_services_total,
         'current_admission': current_admission,
         'wallet': wallet,
@@ -719,6 +766,44 @@ def wallet_adjustment(request, patient_id):
     }
     
     return render(request, 'patients/wallet_adjustment.html', context)
+
+
+@login_required
+def wallet_settlement(request, patient_id):
+    """View for settling patient wallet outstanding balance"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        try:
+            # Attempt to settle the outstanding balance
+            settlement_result = wallet.settle_outstanding_balance(
+                description="Outstanding balance settlement",
+                user=request.user
+            )
+            
+            if settlement_result['settled']:
+                messages.success(request, settlement_result['message'])
+            else:
+                messages.info(request, settlement_result['message'])
+                
+        except Exception as e:
+            messages.error(request, f'Error settling wallet balance: {str(e)}')
+        
+        return redirect('patients:wallet_dashboard', patient_id=patient.id)
+    
+    # For GET requests, show confirmation page
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'outstanding_balance': abs(wallet.balance) if wallet.balance < 0 else 0,
+        'page_title': f'Settle Wallet - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_settlement.html', context)
 
 
 @login_required

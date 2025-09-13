@@ -1,6 +1,12 @@
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib import messages
+from django.utils import timezone
+from django.conf import settings
+from django.contrib.auth import logout
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LoginRequiredMiddleware:
     """
@@ -131,3 +137,123 @@ class RoleBasedAccessMiddleware:
 
         # Continue with the request
         return self.get_response(request)
+
+
+class SessionTimeoutMiddleware:
+    """
+    Middleware to handle session timeout and automatic logout.
+    Supports different timeout periods for different user types.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if not request.user.is_authenticated:
+            return self.get_response(request)
+
+        # Skip timeout check for login/logout pages
+        if request.path in [reverse('accounts:login'), reverse('accounts:logout')]:
+            return self.get_response(request)
+
+        # Get current time
+        now = timezone.now()
+        
+        # Get or set session start time
+        if 'session_start_time' not in request.session:
+            request.session['session_start_time'] = now.timestamp()
+        
+        # Get last activity time
+        last_activity = request.session.get('last_activity')
+        if last_activity:
+            last_activity = timezone.datetime.fromtimestamp(last_activity, tz=timezone.get_current_timezone())
+        else:
+            last_activity = now
+            request.session['last_activity'] = now.timestamp()
+
+        # Determine timeout period based on user type
+        timeout_seconds = self.get_timeout_for_user(request.user)
+        
+        # Check if session has expired
+        time_since_last_activity = (now - last_activity).total_seconds()
+        
+        if time_since_last_activity > timeout_seconds:
+            # Session expired - logout user
+            logger.info(f"Session expired for user {request.user.username} after {time_since_last_activity} seconds")
+            logout(request)
+            messages.warning(request, "Your session has expired. Please log in again.")
+            return redirect('accounts:login')
+        
+        # Update last activity time
+        request.session['last_activity'] = now.timestamp()
+        
+        # Add session info to request for templates
+        request.session_info = {
+            'time_remaining': timeout_seconds - time_since_last_activity,
+            'warning_threshold': getattr(settings, 'SESSION_TIMEOUT_WARNING', 300),
+            'show_warning': time_since_last_activity > (timeout_seconds - getattr(settings, 'SESSION_TIMEOUT_WARNING', 300))
+        }
+
+        response = self.get_response(request)
+        return response
+
+    def get_timeout_for_user(self, user):
+        """Get appropriate timeout period based on user type"""
+        # Check if user is a patient (has patient portal access)
+        if hasattr(user, 'patient_profile') or 'patient_portal' in user.groups.values_list('name', flat=True):
+            return getattr(settings, 'PATIENT_SESSION_TIMEOUT', 1200)  # 20 minutes
+        
+        # Staff members get longer sessions
+        return getattr(settings, 'STAFF_SESSION_TIMEOUT', 1200)  # 20 minutes
+
+
+class PatientSessionMiddleware:
+    """
+    Middleware specifically for patient portal sessions.
+    Provides additional security for patient data access.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        
+        # Patient portal URLs that require extra security
+        self.patient_urls = [
+            '/patients/portal/',
+            '/patients/wallet/',
+            '/patients/appointments/',
+            '/patients/medical-history/',
+        ]
+
+    def __call__(self, request):
+        # Check if this is a patient portal request
+        is_patient_request = any(request.path.startswith(url) for url in self.patient_urls)
+        
+        if is_patient_request and request.user.is_authenticated:
+            # Additional security checks for patient portal
+            self.check_patient_access(request)
+            
+            # Log patient portal access
+            logger.info(f"Patient portal access by {request.user.username} to {request.path}")
+        
+        response = self.get_response(request)
+        return response
+
+    def check_patient_access(self, request):
+        """Additional security checks for patient portal access"""
+        # Check for suspicious activity patterns
+        session_requests = request.session.get('patient_requests', [])
+        now = timezone.now().timestamp()
+        
+        # Remove old requests (older than 1 minute)
+        session_requests = [req_time for req_time in session_requests if now - req_time < 60]
+        
+        # Add current request
+        session_requests.append(now)
+        request.session['patient_requests'] = session_requests
+        
+        # Check for too many requests (potential bot/attack)
+        if len(session_requests) > 30:  # More than 30 requests per minute
+            logger.warning(f"Suspicious activity from user {request.user.username}: {len(session_requests)} requests in 1 minute")
+            logout(request)
+            messages.error(request, "Suspicious activity detected. Please log in again.")
+            return redirect('accounts:login')

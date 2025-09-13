@@ -594,26 +594,60 @@ def create_admission(request):
                             
                             # If authorization code is provided, don't deduct from wallet
                             if not authorization_code:
-                                wallet = PatientWallet.objects.get(patient=admission.patient)
-                                logger.info(f'Found wallet for patient {wallet.patient.get_full_name()} with balance {wallet.balance}')
+                                # Get or create wallet for the patient
+                                wallet, wallet_created = PatientWallet.objects.get_or_create(
+                                    patient=admission.patient,
+                                    defaults={'balance': Decimal('0.00'), 'is_active': True}
+                                )
+                                
+                                if wallet_created:
+                                    logger.info(f'Created new wallet for patient {admission.patient.get_full_name()}')
+                                else:
+                                    logger.info(f'Found existing wallet for patient {wallet.patient.get_full_name()} with balance {wallet.balance}')
+                                
                                 logger.info('Proceeding with wallet transaction (negative balance allowed).')
-                                # Deduct from wallet (allowing negative balance)
+                                
+                                # Deduct admission fee from wallet (allowing negative balance)
                                 wallet.debit(
                                     amount=admission_service.price,
-                                    description=f'Admission fee for {admission.patient.get_full_name()}',
+                                    description=f'Admission fee for {admission.patient.get_full_name()} - {bed.ward.name}',
                                     transaction_type='admission_fee',
                                     user=request.user,
                                     invoice=invoice,
                                     admission=admission
                                 )
-                                logger.info(f'Deducted {admission_service.price} from wallet. New balance: {wallet.balance}')
+                                logger.info(f'Deducted ₦{admission_service.price} from wallet. New balance: ₦{wallet.balance}')
+                                
+                                # Check if balance is negative and warn
+                                if wallet.balance < 0:
+                                    messages.warning(
+                                        request,
+                                        f'Patient wallet balance is now negative: ₦{wallet.balance}. '
+                                        f'Please add funds to avoid service interruptions. Daily charges will '
+                                        f'be automatically deducted at 12:00 AM.'
+                                    )
+                                else:
+                                    messages.info(
+                                        request,
+                                        f'Daily admission charges (₦{bed.ward.charge_per_day}) will be '
+                                        f'automatically deducted from the patient wallet at 12:00 AM each day.'
+                                    )
                             
                             # If authorization code was used, mark it as used
                             if authorization_code:
                                 authorization_code.mark_as_used(f"Admission #{admission.id}")
-                                messages.success(request, f'Admission created successfully. Invoice #{invoice.invoice_number} generated and paid via authorization code.')
+                                messages.success(
+                                    request,
+                                    f'Admission created successfully! Invoice #{invoice.invoice_number} '
+                                    f'generated and paid via NHIA authorization code. No daily charges will apply.'
+                                )
                             else:
-                                messages.success(request, f'Admission created successfully. Invoice #{invoice.invoice_number} generated and wallet deducted.')
+                                messages.success(
+                                    request,
+                                    f'Admission created successfully! Invoice #{invoice.invoice_number} '
+                                    f'generated and admission fee deducted from wallet. Daily charges of '
+                                    f'₦{bed.ward.charge_per_day} will be automatically deducted at 12:00 AM.'
+                                )
                             
                             return redirect('inpatient:admission_detail', pk=admission.pk)
 

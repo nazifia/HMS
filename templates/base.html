@@ -253,9 +253,10 @@
                         {% endfor %}
                     {% endif %}
                     {% block content %}
-                        {% if 'bot' not in request.META.HTTP_USER_AGENT|default:''|lower %}
+                        <!-- PWA offline functionality disabled -->
+                        <!-- {% if 'bot' not in request.META.HTTP_USER_AGENT|default:''|lower %}
                             <div id="offline-banner"></div>
-                        {% endif %}
+                        {% endif %} -->
                         <!-- BEGIN: Patient Widget -->
                         {% if patient %}
                         <div class="card mb-4" id="patient-widget">
@@ -830,7 +831,8 @@
                 }
             });
 
-            // Handle network connectivity issues
+            // Network connectivity handling disabled (was part of PWA functionality)
+            /*
             window.addEventListener('online', function() {
                 if (!warningShown) {
                     resetInactivityTimer();
@@ -842,6 +844,7 @@
                 clearTimeout(inactivityTimer);
                 clearTimeout(warningTimer);
             });
+            */
 
         });
     </script>

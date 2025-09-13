@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 from . import views
+from . import session_views
 from .forms import CustomLoginForm, PhoneNumberPasswordResetForm
 
 app_name = 'accounts'
@@ -50,6 +51,11 @@ urlpatterns = [
     path('departments/add/', views.add_department, name='add_department'),
     path('departments/<int:department_id>/edit/', views.edit_department, name='edit_department'),
     path('departments/<int:department_id>/delete/', views.delete_department, name='delete_department'),
+
+    # Session Management URLs
+    path('extend-session/', session_views.extend_session, name='extend_session'),
+    path('activity-ping/', session_views.activity_ping, name='activity_ping'),
+    path('session-status/', session_views.session_status, name='session_status'),
 
     # API Endpoints
     path('api/users/', views.api_users, name='api_users'),

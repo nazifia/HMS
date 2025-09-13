@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from decimal import Decimal
 
 
 
@@ -81,6 +82,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'crispy_forms',
     'crispy_bootstrap5',
+    'django_celery_beat',
 
     # HMS Apps
     'accounts',
@@ -121,6 +123,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.SessionTimeoutMiddleware',  # Session timeout management
+    'core.middleware.PatientSessionMiddleware',  # Patient-specific session security
     'user_isolation_middleware.UserIsolationMiddleware',  # User isolation middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -398,10 +402,40 @@ CACHES = {
 # Session Configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 SESSION_CACHE_ALIAS = 'default'
-SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', '3600'))  # 1 hour default
+SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', '1200'))  # 20 minutes default
 SESSION_COOKIE_NAME = 'hms_sessionid'
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when browser closes
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
+
+# Patient-specific session settings
+PATIENT_SESSION_TIMEOUT = int(os.environ.get('PATIENT_SESSION_TIMEOUT', '1200'))  # 20 minutes for patient portal
+STAFF_SESSION_TIMEOUT = int(os.environ.get('STAFF_SESSION_TIMEOUT', '1200'))  # 20 minutes for staff
+
+# Session security
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_PATH = '/'
+
+# Custom session variables
+SESSION_TIMEOUT_WARNING = int(os.environ.get('SESSION_TIMEOUT_WARNING', '300'))  # 5 minutes warning before timeout
 
 # Crispy Forms Configuration
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+# Celery Configuration
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = USE_TZ
+
+# Celery Beat (Scheduler) Configuration
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Custom settings for wallet and session management
+WALLET_LOW_BALANCE_THRESHOLD = Decimal(os.environ.get('WALLET_LOW_BALANCE_THRESHOLD', '100.00'))
+SESSION_MAX_AGE_DAYS = int(os.environ.get('SESSION_MAX_AGE_DAYS', '30'))
+SESSION_SECURITY_LONG_THRESHOLD = int(os.environ.get('SESSION_SECURITY_LONG_THRESHOLD', '7200'))
