@@ -644,6 +644,7 @@ class WalletTransaction(models.Model):
         ('adjustment', 'Adjustment'),
         ('admission_fee', 'Admission Fee'),
         ('daily_admission_charge', 'Daily Admission Charge'),
+        ('outstanding_admission_recovery', 'Outstanding Admission Recovery'),
         ('lab_test_payment', 'Lab Test Payment'),
         ('pharmacy_payment', 'Pharmacy Payment'),
         ('consultation_fee', 'Consultation Fee'),
