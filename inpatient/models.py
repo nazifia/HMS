@@ -174,7 +174,19 @@ class Admission(models.Model):
         try:
             current_balance = self.patient.wallet.balance
             outstanding_cost = self.get_outstanding_admission_cost()
-            return current_balance - outstanding_cost  # Subtract because cost makes balance more negative
+
+            # Apply wallet balance to outstanding cost: wallet covers outstanding up to its amount
+            if current_balance >= outstanding_cost:
+                # Wallet fully covers outstanding -> no outstanding remains, wallet reduced
+                wallet_after = current_balance - outstanding_cost
+                outstanding_after = 0
+            else:
+                # Wallet not enough -> wallet becomes zero, outstanding reduced
+                wallet_after = Decimal('0.00')
+                outstanding_after = outstanding_cost - current_balance
+
+            # Total wallet impact (positive means wallet remaining, negative means net owed)
+            return wallet_after - outstanding_after
         except:
             return 0
 

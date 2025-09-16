@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.conf import settings
 import random
 import logging
+from decimal import Decimal
 
 
 class Patient(models.Model):
@@ -618,11 +619,20 @@ class PatientWallet(models.Model):
             )
             
             total_outstanding = sum(
-                admission.get_outstanding_admission_cost() 
+                admission.get_outstanding_admission_cost()
                 for admission in active_admissions
             )
-            
-            return current_balance - total_outstanding
+
+            # Apply wallet balance to total outstanding
+            if current_balance >= total_outstanding:
+                wallet_after = current_balance - total_outstanding
+                outstanding_after = 0
+            else:
+                wallet_after = Decimal('0.00')
+                outstanding_after = total_outstanding - current_balance
+
+            # Return net impact: positive = wallet remaining, negative = amount still owed
+            return wallet_after - outstanding_after
         except:
             return self.balance
 
