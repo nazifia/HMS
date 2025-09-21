@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Admission
+            </a>
+        </div>
+    </div>
+
+    <!-- Process Outstanding Payment Alert -->
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Outstanding Payment Processing:</strong> This interface allows you to process outstanding admission payments directly from the patient's wallet.
+    </div>
+
+    <div class="row">
+        <!-- Patient & Admission Information -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user"></i> Patient Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td><strong>Name:</strong></td>
+                            <td>{{ admission.patient.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Patient ID:</strong></td>
+                            <td>{{ admission.patient.patient_id }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phone:</strong></td>
+                            <td>{{ admission.patient.phone_number|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ward:</strong></td>
+                            <td>{{ admission.bed.ward.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bed:</strong></td>
+                            <td>{{ admission.bed.bed_number }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Wallet Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-wallet"></i> Patient Wallet
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <h4 class="text-success">₦{{ patient_wallet.balance|floatformat:2 }}</h4>
+                        <small class="text-muted">Available Balance</small>
+                        {% if patient_wallet.balance >= outstanding_amount %}
+                            <div class="mt-2">
+                                <span class="badge bg-success">Sufficient Funds</span>
+                            </div>
+                        {% else %}
+                            <div class="mt-2">
+                                <span class="badge bg-warning">Insufficient Funds</span>
+                                <small class="d-block text-muted mt-1">
+                                    Short by ₦{{ outstanding_amount|floatformat:2|add:patient_wallet.balance|floatformat:2 }}
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Details -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-credit-card"></i> Outstanding Payment Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <!-- Admission Details -->
+                    <div class="alert alert-light border">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-procedures"></i> Admission Information
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td>Admission ID:</td>
+                                        <td><strong>#{{ admission.id }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Admission Date:</td>
+                                        <td>{{ admission.admission_date|date:"M d, Y" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Duration:</td>
+                                        <td>{{ admission.get_duration }} days</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Status:</td>
+                                        <td>
+                                            <span class="badge bg-{% if admission.status == 'admitted' %}success{% elif admission.status == 'discharged' %}info{% else %}secondary{% endif %}">
+                                                {{ admission.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-center">
+                                    <h3 class="text-primary">₦{{ outstanding_amount|floatformat:2 }}</h3>
+                                    <small class="text-muted">Outstanding Amount</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Confirmation -->
+                    <div class="card border-warning mb-4">
+                        <div class="card-header bg-warning text-white">
+                            <h6 class="m-0">
+                                <i class="fas fa-exclamation-circle"></i> Payment Confirmation
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p>You are about to process an outstanding payment of <strong>₦{{ outstanding_amount|floatformat:2 }}</strong> from the patient's wallet.</p>
+                            
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle"></i> Important Information
+                                </h6>
+                                <ul class="mb-0">
+                                    <li>This action will debit the patient's wallet by ₦{{ outstanding_amount|floatformat:2 }}</li>
+                                    <li>The admission payment status will be updated</li>
+                                    <li>A wallet transaction record will be created for this payment</li>
+                                    <li>This action cannot be undone</li>
+                                </ul>
+                            </div>
+
+                            <form method="post">
+                                {% csrf_token %}
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {% if patient_wallet.balance < outstanding_amount %}
+                                            <div class="text-danger">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <strong>Warning:</strong> Insufficient wallet balance. This will create a negative balance.
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-secondary mr-2">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </a>
+                                        <button type="submit" class="btn btn-warning btn-lg" 
+                                                {% if patient_wallet.balance < outstanding_amount %}onclick="return confirm('Wallet balance is insufficient. This will create a negative balance. Are you sure you want to proceed?')"{% else %}onclick="return confirm('Are you sure you want to process this payment of ₦{{ outstanding_amount|floatformat:2 }} from the patient\'s wallet?')"{% endif %}>
+                                            <i class="fas fa-wallet"></i> Process Payment
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

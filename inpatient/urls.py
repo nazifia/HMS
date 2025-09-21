@@ -29,4 +29,10 @@ urlpatterns = [
     # Inpatient medication payment URLs
     path('admissions/<int:admission_id>/medications/', payment_views.inpatient_medication_list, name='inpatient_medication_list'),
     path('admissions/<int:admission_id>/medications/<int:prescription_id>/payment/', payment_views.inpatient_medication_payment, name='inpatient_medication_payment'),
+    
+    # Inpatient admission payment from wallet
+    path('admissions/<int:admission_id>/payment/process-outstanding/', payment_views.process_outstanding_admission_payment, name='process_outstanding_admission_payment'),
+
+    # AJAX endpoint for processing outstanding admission payment
+    path('admissions/<int:admission_id>/payment/ajax-process-outstanding/', payment_views.ajax_process_outstanding_admission_payment, name='ajax_process_outstanding_admission_payment'),
 ]

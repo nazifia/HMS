@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {{ page_title }} | {{ block.super }}
+{% endblock title %}
+
+{% block page_title %}
+  {{ page_title }}
+{% endblock page_title %}
+
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:detail' patient.id %}">{{ patient.get_full_name }}</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'patients:wallet_dashboard' patient.id %}">Wallet</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Wallet Payment</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="row">
+    <!-- Wallet Balance Card -->
+    <div class="col-md-6">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Current Wallet Balance</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ wallet.balance|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding Amount Card -->
+    <div class="col-md-6">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Total Outstanding</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_outstanding|floatformat:2 }}</div>
+                        <div class="small text-muted">{{ outstanding_invoices.count }} invoices</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-invoice fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Status Alert -->
+{% if wallet.balance > 0 and total_outstanding > 0 %}
+<div class="alert alert-success alert-dismissible fade show mt-4" role="alert">
+    <h5><i class="fas fa-check-circle"></i> Ready to Pay from Wallet</h5>
+    <p class="mb-2">
+        <strong>Wallet Balance:</strong> ₦{{ wallet.balance|floatformat:2 }} | 
+        <strong>Outstanding Amount:</strong> ₦{{ total_outstanding|floatformat:2 }}
+    </p>
+    <p class="mb-0">
+        You can pay outstanding invoices directly from the patient's wallet balance. 
+        The system will automatically allocate payments to invoices in chronological order.
+    </p>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% elif wallet.balance <= 0 and total_outstanding > 0 %}
+<div class="alert alert-warning alert-dismissible fade show mt-4" role="alert">
+    <h5><i class="fas fa-exclamation-triangle"></i> Insufficient Wallet Balance</h5>
+    <p class="mb-2">
+        <strong>Wallet Balance:</strong> ₦{{ wallet.balance|floatformat:2 }} | 
+        <strong>Outstanding Amount:</strong> ₦{{ total_outstanding|floatformat:2 }}
+    </p>
+    <p class="mb-0">
+        The patient's wallet has insufficient balance to pay outstanding invoices. 
+        Please add funds to the wallet first.
+    </p>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% elif total_outstanding <= 0 %}
+<div class="alert alert-info alert-dismissible fade show mt-4" role="alert">
+    <h5><i class="fas fa-info-circle"></i> No Outstanding Invoices</h5>
+    <p class="mb-0">This patient has no outstanding invoices to pay.</p>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<!-- Outstanding Invoices Table -->
+{% if outstanding_invoices %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-file-invoice-dollar"></i> Outstanding Invoices
+                </h6>
+                <div>
+                    <span class="badge bg-warning text-dark">{{ outstanding_invoices.count }} pending</span>
+                    <span class="badge bg-danger">₦{{ total_outstanding|floatformat:2 }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Total Amount</th>
+                                <th>Amount Paid</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in outstanding_invoices %}
+                            <tr>
+                                <td>{{ invoice.invoice_number }}</td>
+                                <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                                <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
+                                <td>₦{{ invoice.amount_paid|floatformat:2 }}</td>
+                                <td>
+                                    <span class="{% if invoice.get_balance > 0 %}text-danger font-weight-bold{% else %}text-success{% endif %}">
+                                        ₦{{ invoice.get_balance|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if invoice.status == 'paid' %}
+                                        <span class="badge bg-success">{{ invoice.get_status_display }}</span>
+                                    {% elif invoice.status == 'partially_paid' %}
+                                        <span class="badge bg-warning">{{ invoice.get_status_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ invoice.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Payment Actions -->
+{% if wallet.balance > 0 and total_outstanding > 0 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="fas fa-credit-card"></i> Pay Outstanding Invoices
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Payment Summary:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Available Balance:</strong> ₦{{ wallet.balance|floatformat:2 }}</li>
+                            <li><strong>Outstanding Amount:</strong> ₦{{ total_outstanding|floatformat:2 }}</li>
+                            <li><strong>Amount to Pay:</strong> 
+                                <span class="text-success">
+                                    ₦{% if wallet.balance >= total_outstanding %}{{ total_outstanding|floatformat:2 }}{% else %}{{ wallet.balance|floatformat:2 }}{% endif %}
+                                </span>
+                            </li>
+                            <li><strong>Remaining Balance After Payment:</strong> 
+                                ₦{% if wallet.balance >= total_outstanding %}{{ wallet.balance|add:total_outstanding|floatformat:2 }}{% else %}0.00{% endif %}
+                            </li>
+                        </ul>
+                        
+                        {% if wallet.balance < total_outstanding %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Partial Payment:</strong> The wallet balance is insufficient to pay all outstanding invoices. 
+                            Only ₦{{ wallet.balance|floatformat:2 }} will be paid, covering the oldest invoices first.
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-grid gap-2">
+                            <form method="post" id="paymentForm">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-lg w-100" id="payButton">
+                                    <i class="fas fa-credit-card"></i> Pay from Wallet
+                                </button>
+                            </form>
+                            <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-secondary w-100">
+                                <i class="fas fa-arrow-left"></i> Back to Wallet
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- How It Works Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="fas fa-info-circle"></i> How Wallet Payment Works
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-success"><i class="fas fa-check-circle"></i> What Happens:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-arrow-right text-success"></i> System finds all outstanding invoices</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Pays invoices in chronological order (oldest first)</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Deducts total amount from wallet balance</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Updates invoice statuses automatically</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Creates detailed transaction records</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-info"><i class="fas fa-lightbulb"></i> Smart Features:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-star text-warning"></i> Only pays what wallet can afford</li>
+                            <li><i class="fas fa-star text-warning"></i> Handles partial payments intelligently</li>
+                            <li><i class="fas fa-star text-warning"></i> Provides detailed payment breakdown</li>
+                            <li><i class="fas fa-star text-warning"></i> Maintains complete audit trail</li>
+                            <li><i class="fas fa-star text-warning"></i> Works with any wallet balance status</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add loading state to payment button
+    const paymentForm = document.getElementById('paymentForm');
+    const payButton = document.getElementById('payButton');
+    
+    if (paymentForm && payButton) {
+        paymentForm.addEventListener('submit', function() {
+            payButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing Payment...';
+            payButton.disabled = true;
+        });
+    }
+    
+    // Add smooth animations
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock extra_js %}

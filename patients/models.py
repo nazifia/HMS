@@ -369,70 +369,160 @@ class PatientWallet(models.Model):
 
     def settle_outstanding_balance(self, description="Balance settlement", user=None):
         """
-        Settle outstanding negative balance by converting positive balance to offset it.
-        This function will create appropriate transactions to show the settlement.
+        Settle outstanding balance by paying from current wallet balance regardless of status.
+        This function will pay outstanding amounts from the current wallet balance,
+        whether the wallet is positive or negative.
         
         Returns a dictionary with settlement details.
         """
-        if self.balance >= 0:
-            return {
-                'settled': False,
-                'message': 'No negative balance to settle',
-                'original_balance': self.balance,
-                'new_balance': self.balance,
-                'amount_settled': 0
-            }
-        
-        # Calculate amount that can be settled (convert negative balance to positive up to 0)
-        amount_to_settle = abs(self.balance)  # This is the absolute value of the negative balance
-        
-        # Validate that we're not settling more than the absolute value of the negative balance
-        if amount_to_settle <= 0:
-            return {
-                'settled': False,
-                'message': 'Invalid balance for settlement',
-                'original_balance': self.balance,
-                'new_balance': self.balance,
-                'amount_settled': 0
-            }
-        
         # Store original balance for reporting
         original_balance = self.balance
         
-        # Directly adjust the balance to zero (settlement)
-        self.balance = 0
-        self.save(update_fields=['balance', 'last_updated'])
+        # If wallet has positive balance, we can use it to pay outstanding amounts
+        if self.balance > 0:
+            # Get all outstanding invoices for this patient
+            from billing.models import Invoice
+            outstanding_invoices = Invoice.objects.filter(
+                patient=self.patient,
+                status__in=['pending', 'partially_paid']
+            ).order_by('created_at')
+            
+            total_outstanding = sum(invoice.get_balance() for invoice in outstanding_invoices)
+            
+            if total_outstanding <= 0:
+                return {
+                    'settled': False,
+                    'message': 'No outstanding invoices to settle',
+                    'original_balance': original_balance,
+                    'new_balance': self.balance,
+                    'amount_settled': 0
+                }
+            
+            # Calculate how much we can pay from current wallet balance
+            amount_to_pay = min(self.balance, total_outstanding)
+            
+            if amount_to_pay <= 0:
+                return {
+                    'settled': False,
+                    'message': 'Insufficient wallet balance to pay outstanding amounts',
+                    'original_balance': original_balance,
+                    'new_balance': self.balance,
+                    'amount_settled': 0
+                }
+            
+            # Pay outstanding invoices using wallet balance
+            remaining_to_pay = amount_to_pay
+            invoices_paid = []
+            
+            for invoice in outstanding_invoices:
+                if remaining_to_pay <= 0:
+                    break
+                    
+                invoice_balance = invoice.get_balance()
+                if invoice_balance <= 0:
+                    continue
+                
+                # Calculate payment amount for this invoice
+                payment_amount = min(remaining_to_pay, invoice_balance)
+                
+                # Create payment record
+                from billing.models import Payment
+                payment = Payment.objects.create(
+                    invoice=invoice,
+                    amount=payment_amount,
+                    payment_method='wallet',
+                    payment_date=timezone.now().date(),
+                    received_by=user,
+                    notes=f'Wallet payment for outstanding balance - {description}'
+                )
+                
+                # Update invoice
+                invoice.amount_paid += payment_amount
+                if invoice.amount_paid >= invoice.total_amount:
+                    invoice.status = 'paid'
+                elif invoice.amount_paid > 0:
+                    invoice.status = 'partially_paid'
+                invoice.save()
+                
+                invoices_paid.append({
+                    'invoice_id': invoice.id,
+                    'invoice_number': invoice.invoice_number,
+                    'amount_paid': payment_amount
+                })
+                
+                remaining_to_pay -= payment_amount
+            
+            # Deduct the total amount paid from wallet
+            self.balance -= amount_to_pay
+            self.save(update_fields=['balance', 'last_updated'])
+            
+            # Create wallet transaction for the payment
+            WalletTransaction.objects.create(
+                wallet=self,
+                transaction_type='payment',
+                amount=amount_to_pay,
+                balance_after=self.balance,
+                description=f"{description} - Paid outstanding invoices",
+                created_by=user
+            )
+            
+            return {
+                'settled': True,
+                'message': f'Successfully paid ₦{amount_to_pay} from wallet balance to settle outstanding invoices',
+                'original_balance': original_balance,
+                'new_balance': self.balance,
+                'amount_settled': amount_to_pay,
+                'invoices_paid': invoices_paid
+            }
         
-        # Create settlement transactions for audit trail
-        # Credit transaction to show the positive adjustment
-        credit_transaction = WalletTransaction.objects.create(
-            wallet=self,
-            transaction_type='adjustment',
-            amount=amount_to_settle,
-            balance_after=self.balance,
-            description=f"{description} - Positive balance offset",
-            created_by=user
-        )
+        # If wallet has negative balance, we can still attempt to settle by adding funds
+        elif self.balance < 0:
+            # Get all outstanding invoices for this patient
+            from billing.models import Invoice
+            outstanding_invoices = Invoice.objects.filter(
+                patient=self.patient,
+                status__in=['pending', 'partially_paid']
+            ).order_by('created_at')
+            
+            total_outstanding = sum(invoice.get_balance() for invoice in outstanding_invoices)
+            
+            if total_outstanding <= 0:
+                return {
+                    'settled': False,
+                    'message': 'No outstanding invoices to settle',
+                    'original_balance': original_balance,
+                    'new_balance': self.balance,
+                    'amount_settled': 0
+                }
+            
+            # For negative balance, we'll create a settlement that shows the outstanding amount
+            # but doesn't actually change the wallet balance (since it's already negative)
+            amount_outstanding = abs(self.balance)
+            
+            return {
+                'settled': False,
+                'message': f'Wallet has negative balance of ₦{amount_outstanding}. Outstanding invoices total ₦{total_outstanding}. Please add funds to wallet first.',
+                'original_balance': original_balance,
+                'new_balance': self.balance,
+                'amount_settled': 0,
+                'outstanding_invoices': [
+                    {
+                        'invoice_id': invoice.id,
+                        'invoice_number': invoice.invoice_number,
+                        'balance': invoice.get_balance()
+                    } for invoice in outstanding_invoices
+                ]
+            }
         
-        # Debit transaction to show the negative balance reduction
-        debit_transaction = WalletTransaction.objects.create(
-            wallet=self,
-            transaction_type='adjustment',
-            amount=amount_to_settle,
-            balance_after=self.balance,
-            description=f"{description} - Outstanding balance settled",
-            created_by=user
-        )
-        
-        return {
-            'settled': True,
-            'message': f'Successfully settled ₦{amount_to_settle} of outstanding balance',
-            'original_balance': original_balance,
-            'new_balance': self.balance,
-            'amount_settled': amount_to_settle,
-            'credit_transaction': credit_transaction,
-            'debit_transaction': debit_transaction
-        }
+        # If wallet balance is exactly zero
+        else:
+            return {
+                'settled': False,
+                'message': 'Wallet balance is zero. No funds available to pay outstanding amounts.',
+                'original_balance': original_balance,
+                'new_balance': self.balance,
+                'amount_settled': 0
+            }
 
     def get_transaction_history(self, limit=None):
         """Get wallet transaction history"""
@@ -607,9 +697,10 @@ class PatientWallet(models.Model):
         ).aggregate(total=Sum('amount'))['total'] or 0
     
     def get_total_wallet_impact_with_admissions(self):
-        """Get total wallet impact including outstanding costs from all active admissions"""
+        """Get total wallet impact including all outstanding costs (admissions + invoices)"""
         try:
             from inpatient.models import Admission
+            from billing.models import Invoice
             current_balance = self.balance
             
             # Get all active admissions for this patient
@@ -618,10 +709,25 @@ class PatientWallet(models.Model):
                 status='admitted'
             )
             
-            total_outstanding = sum(
+            # Calculate outstanding admission costs
+            admission_outstanding = sum(
                 admission.get_outstanding_admission_cost()
                 for admission in active_admissions
             )
+            
+            # Get all outstanding invoices for this patient
+            outstanding_invoices = Invoice.objects.filter(
+                patient=self.patient,
+                status__in=['pending', 'partially_paid']
+            )
+            
+            # Calculate outstanding invoice amounts
+            invoice_outstanding = sum(
+                invoice.get_balance() for invoice in outstanding_invoices
+            )
+            
+            # Total outstanding amount (admissions + invoices)
+            total_outstanding = admission_outstanding + invoice_outstanding
 
             # Apply wallet balance to total outstanding
             if current_balance >= total_outstanding:

@@ -71,20 +71,23 @@
         </div>
     </div>
 
-    <!-- Monthly Activity Card -->
+    <!-- Total Impact Card -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2">
+        <div class="card border-left-{% if wallet.get_total_wallet_impact_with_admissions < 0 %}danger{% else %}success{% endif %} shadow h-100 py-2">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                            Monthly Net</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                            ₦{{ monthly_credits|add:monthly_debits|floatformat:2 }}
+                        <div class="text-xs font-weight-bold text-{% if wallet.get_total_wallet_impact_with_admissions < 0 %}danger{% else %}success{% endif %} text-uppercase mb-1">
+                            Total Impact</div>
+                        <div class="h5 mb-0 font-weight-bold {% if wallet.get_total_wallet_impact_with_admissions < 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₦{{ wallet.get_total_wallet_impact_with_admissions|floatformat:2 }}
+                        </div>
+                        <div class="text-xs text-muted">
+                            Remaining after paying all outstanding
                         </div>
                     </div>
                     <div class="col-auto">
-                        <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        <i class="fas fa-calculator fa-2x text-gray-300"></i>
                     </div>
                 </div>
             </div>
@@ -134,6 +137,152 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endif %}
+
+        <!-- Total Impact Breakdown Section -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="fas fa-chart-pie"></i> Total Impact Breakdown
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center p-3 border rounded">
+                            <h6 class="text-primary">Current Balance</h6>
+                            <h4 class="{% if wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ₦{{ wallet.balance|floatformat:2 }}
+                            </h4>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center p-3 border rounded">
+                            <h6 class="text-warning">Outstanding Invoices</h6>
+                            <h4 class="text-warning">₦{{ total_outstanding|default:0|floatformat:2 }}</h4>
+                            <small class="text-muted">{{ outstanding_invoices.count|default:0 }} invoices</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center p-3 border rounded">
+                            <h6 class="text-info">Net Impact</h6>
+                            <h4 class="{% if wallet.get_total_wallet_impact_with_admissions >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ₦{{ wallet.get_total_wallet_impact_with_admissions|floatformat:2 }}
+                            </h4>
+                            <small class="text-muted">
+                                {% if wallet.get_total_wallet_impact_with_admissions >= 0 %}
+                                    Remaining after payments
+                                {% else %}
+                                    Still owed after payments
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outstanding Invoices Section -->
+        {% if outstanding_invoices %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="fas fa-file-invoice-dollar"></i> Outstanding Invoices
+                </h6>
+                <div>
+                    <span class="badge bg-warning text-dark">{{ outstanding_invoices.count }} pending</span>
+                    <span class="badge bg-danger">₦{{ total_outstanding|floatformat:2 }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Paid</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in outstanding_invoices %}
+                            <tr>
+                                <td>{{ invoice.invoice_number }}</td>
+                                <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                                <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
+                                <td>₦{{ invoice.amount_paid|floatformat:2 }}</td>
+                                <td>
+                                    <span class="{% if invoice.get_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                        ₦{{ invoice.get_balance|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if invoice.status == 'paid' %}
+                                        <span class="badge bg-success">{{ invoice.get_status_display }}</span>
+                                    {% elif invoice.status == 'partially_paid' %}
+                                        <span class="badge bg-warning">{{ invoice.get_status_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ invoice.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Wallet Payment Actions -->
+                {% if wallet.balance > 0 and total_outstanding > 0 %}
+                <div class="mt-3 p-3 bg-light rounded">
+                    <h6 class="text-success">
+                        <i class="fas fa-credit-card"></i> Pay Outstanding Invoices from Wallet
+                    </h6>
+                    <p class="mb-2">
+                        <strong>Wallet Balance:</strong> ₦{{ wallet.balance|floatformat:2 }} | 
+                        <strong>Outstanding:</strong> ₦{{ total_outstanding|floatformat:2 }}
+                    </p>
+                    <p class="text-muted small mb-3">
+                        You can pay outstanding invoices directly from the patient's wallet balance. 
+                        The system will automatically allocate payments to invoices in chronological order.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'patients:wallet_payment' patient.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-credit-card"></i> Pay from Wallet
+                        </a>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#paymentInfoModal">
+                            <i class="fas fa-info-circle"></i> How it works
+                        </button>
+                    </div>
+                </div>
+                {% elif wallet.balance <= 0 and total_outstanding > 0 %}
+                <div class="mt-3 p-3 bg-warning bg-opacity-10 rounded">
+                    <h6 class="text-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Insufficient Wallet Balance
+                    </h6>
+                    <p class="mb-2">
+                        <strong>Wallet Balance:</strong> ₦{{ wallet.balance|floatformat:2 }} | 
+                        <strong>Outstanding:</strong> ₦{{ total_outstanding|floatformat:2 }}
+                    </p>
+                    <p class="text-muted small mb-3">
+                        The patient's wallet has insufficient balance to pay outstanding invoices. 
+                        Please add funds to the wallet first.
+                    </p>
+                    <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-plus"></i> Add Funds to Wallet
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <div class="col-lg-4">
@@ -159,6 +308,11 @@
                     <a href="{% url 'patients:wallet_adjustment' patient.id %}" class="btn btn-secondary btn-sm">
                         <i class="fas fa-edit"></i> Make Adjustment
                     </a>
+                    {% if wallet.balance > 0 and total_outstanding > 0 %}
+                    <a href="{% url 'patients:wallet_payment' patient.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-credit-card"></i> Pay Outstanding
+                    </a>
+                    {% endif %}
                     {% if wallet.balance < 0 %}
                     <a href="{% url 'patients:wallet_settlement' patient.id %}" class="btn btn-danger btn-sm">
                         <i class="fas fa-balance-scale"></i> Settle Balance
@@ -418,6 +572,56 @@
     </div>
 </div>
 
+<!-- Payment Info Modal -->
+<div class="modal fade" id="paymentInfoModal" tabindex="-1" aria-labelledby="paymentInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentInfoModalLabel">
+                    <i class="fas fa-info-circle text-info"></i> How Wallet Payment Works
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-success"><i class="fas fa-check-circle"></i> What Happens When You Pay from Wallet:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-arrow-right text-success"></i> System finds all outstanding invoices</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Pays invoices in chronological order (oldest first)</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Deducts total amount from wallet balance</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Updates invoice statuses automatically</li>
+                            <li><i class="fas fa-arrow-right text-success"></i> Creates detailed transaction records</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-info"><i class="fas fa-lightbulb"></i> Smart Features:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-star text-warning"></i> Only pays what wallet can afford</li>
+                            <li><i class="fas fa-star text-warning"></i> Handles partial payments intelligently</li>
+                            <li><i class="fas fa-star text-warning"></i> Provides detailed payment breakdown</li>
+                            <li><i class="fas fa-star text-warning"></i> Maintains complete audit trail</li>
+                            <li><i class="fas fa-star text-warning"></i> Works with any wallet balance status</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <h6><i class="fas fa-shield-alt"></i> Safety Features:</h6>
+                    <p class="mb-0">The system ensures that payments are processed safely and accurately, with full transaction logging for compliance and tracking purposes.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                {% if wallet.balance > 0 and total_outstanding > 0 %}
+                <a href="{% url 'patients:wallet_payment' patient.id %}" class="btn btn-success">
+                    <i class="fas fa-credit-card"></i> Proceed to Payment
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Back to Patient Detail -->
 <div class="row">
     <div class="col-12">
@@ -427,3 +631,97 @@
     </div>
 </div>
 {% endblock content %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh wallet data every 30 seconds
+setInterval(function() {
+    // Only refresh if no modals are open
+    if (!document.querySelector('.modal.show')) {
+        location.reload();
+    }
+}, 30000);
+
+// Add smooth animations to balance changes
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate balance cards on load
+    const balanceCards = document.querySelectorAll('.card.border-left-primary, .card.border-left-warning, .card.border-left-success, .card.border-left-danger');
+    balanceCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Add click effects to action buttons
+    const actionButtons = document.querySelectorAll('.btn');
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 150);
+        });
+    });
+    
+    // Add dynamic highlighting to total impact
+    const totalImpactCard = document.querySelector('.card.border-left-success, .card.border-left-danger');
+    if (totalImpactCard) {
+        // Add pulsing effect for negative impact
+        if (totalImpactCard.classList.contains('border-left-danger')) {
+            totalImpactCard.style.animation = 'pulse 2s infinite';
+        }
+        
+        // Add hover effect
+        totalImpactCard.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.02)';
+            this.style.transition = 'transform 0.3s ease';
+        });
+        
+        totalImpactCard.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    }
+    
+    // Add real-time updates to breakdown section
+    const breakdownCards = document.querySelectorAll('.text-center.p-3.border.rounded');
+    breakdownCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(-20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateX(0)';
+        }, 200 + (index * 150));
+    });
+});
+
+// Add CSS for pulse animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+    
+    .card.border-left-danger:hover {
+        box-shadow: 0 0.5rem 1rem rgba(220, 53, 69, 0.15) !important;
+    }
+    
+    .card.border-left-success:hover {
+        box-shadow: 0 0.5rem 1rem rgba(40, 167, 69, 0.15) !important;
+    }
+    
+    .text-center.p-3.border.rounded:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock extra_js %}

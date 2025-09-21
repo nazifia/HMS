@@ -1,0 +1,146 @@
+<!-- Payment Modal for Outstanding Admission Payments -->
+<div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="paymentModalLabel">
+                    <i class="fas fa-wallet"></i> Process Outstanding Payment
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading indicator -->
+                <div id="paymentLoading" class="text-center" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="mt-2">Processing payment...</p>
+                </div>
+
+                <!-- Payment form -->
+                <div id="paymentForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-primary">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0"><i class="fas fa-user"></i> Patient Information</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Name:</strong> <span id="modalPatientName">{{ admission.patient.get_full_name }}</span></p>
+                                    <p><strong>Patient ID:</strong> <span id="modalPatientId">{{ admission.patient.patient_id }}</span></p>
+                                    <p><strong>Admission ID:</strong> <span id="modalAdmissionId">#{{ admission.id }}</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0"><i class="fas fa-wallet"></i> Wallet Balance</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h3 class="text-success" id="modalWalletBalance">₦{{ admission.patient.wallet.balance|floatformat:2 }}</h3>
+                                    <p class="text-muted mb-0">Available Balance</p>
+                                    <div id="walletStatus">
+                                        {% if admission.patient.wallet.balance >= admission.get_outstanding_admission_cost %}
+                                            <span class="badge bg-success mt-2">Sufficient Funds</span>
+                                        {% else %}
+                                            <span class="badge bg-warning mt-2">Insufficient Funds</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card border-warning">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0"><i class="fas fa-credit-card"></i> Payment Details</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <table class="table table-sm">
+                                                <tr>
+                                                    <td><strong>Outstanding Amount:</strong></td>
+                                                    <td class="text-danger" id="modalOutstandingAmount">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Duration:</strong></td>
+                                                    <td>{{ admission.get_duration }} days</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Daily Rate:</strong></td>
+                                                    <td>₦{{ admission.bed.ward.charge_per_day|floatformat:2 }}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="alert alert-info">
+                                                <h6 class="alert-heading">
+                                                    <i class="fas fa-info-circle"></i> Payment Impact
+                                                </h6>
+                                                <div id="paymentImpact">
+                                                    {% if admission.patient.wallet.balance >= admission.get_outstanding_admission_cost %}
+                                                        <p class="mb-1">✓ Wallet covers full outstanding amount</p>
+                                                        <p class="mb-1">✓ Balance after payment: <strong>₦{{ admission.patient.wallet.balance|subtract:admission.get_outstanding_admission_cost|floatformat:2 }}</strong></p>
+                                                        <p class="mb-0">✓ Outstanding balance will be cleared</p>
+                                                    {% else %}
+                                                        <p class="mb-1">⚠ Wallet covers partial amount</p>
+                                                        <p class="mb-1">✓ Amount to be paid: <strong>₦{{ admission.patient.wallet.balance|floatformat:2 }}</strong></p>
+                                                        <p class="mb-0">⚠ Remaining outstanding: <strong>₦{{ admission.get_outstanding_admission_cost|subtract:admission.patient.wallet.balance|floatformat:2 }}</strong></p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Warning for insufficient funds -->
+                    <div id="insufficientFundsWarning" class="alert alert-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> The wallet balance is insufficient to cover the full outstanding amount.
+                        This payment will reduce the outstanding balance but will not clear it completely.
+                    </div>
+
+                    <!-- Confirmation checkbox -->
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="confirmPayment" required>
+                        <label class="form-check-label" for="confirmPayment">
+                            I confirm that I want to process this payment of <strong id="confirmAmount">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</strong>
+                            from the patient's wallet. This action cannot be undone.
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Success message -->
+                <div id="paymentSuccess" class="alert alert-success" style="display: none;">
+                    <i class="fas fa-check-circle"></i>
+                    <h5 class="alert-heading">Payment Processed Successfully!</h5>
+                    <p class="mb-0">The outstanding payment has been processed from the patient's wallet.</p>
+                </div>
+
+                <!-- Error message -->
+                <div id="paymentError" class="alert alert-danger" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h5 class="alert-heading">Payment Failed</h5>
+                    <p class="mb-0" id="errorMessage">An error occurred while processing the payment.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="processPaymentBtn" disabled>
+                    <i class="fas fa-wallet"></i> Process Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

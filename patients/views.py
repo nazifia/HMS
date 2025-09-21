@@ -5,6 +5,7 @@ from django.db.models import Q, Sum
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction
 from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm
 from .utils import get_safe_vitals_for_patient
@@ -488,6 +489,19 @@ def wallet_dashboard(request, patient_id):
     except:
         pass
     
+    # Get outstanding invoices for the new functionality
+    outstanding_invoices = []
+    total_outstanding = 0
+    try:
+        from billing.models import Invoice
+        outstanding_invoices = Invoice.objects.filter(
+            patient=patient,
+            status__in=['pending', 'partially_paid']
+        ).order_by('created_at')
+        total_outstanding = sum(invoice.get_balance() for invoice in outstanding_invoices)
+    except:
+        pass
+    
     context = {
         'patient': patient,
         'wallet_stats': wallet_stats,
@@ -499,6 +513,8 @@ def wallet_dashboard(request, patient_id):
         'recent_admissions': recent_admissions,
         'hospital_services_total': hospital_services_total,
         'current_admission': current_admission,
+        'outstanding_invoices': outstanding_invoices,
+        'total_outstanding': total_outstanding,
         'wallet': wallet,
         'page_title': f'Wallet - {patient.get_full_name()}',
         'active_nav': 'patients',
@@ -804,6 +820,67 @@ def wallet_settlement(request, patient_id):
     }
     
     return render(request, 'patients/wallet_settlement.html', context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def wallet_payment(request, patient_id):
+    """View for paying outstanding amounts from patient wallet balance"""
+    from django.http import JsonResponse
+    from billing.models import Invoice
+    
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        try:
+            # Get the settlement result
+            settlement_result = wallet.settle_outstanding_balance(
+                description="Wallet payment for outstanding amounts",
+                user=request.user
+            )
+            
+            if request.headers.get('Content-Type') == 'application/json' or request.headers.get('Accept') == 'application/json':
+                # Return JSON response for AJAX requests
+                return JsonResponse(settlement_result)
+            else:
+                # Return redirect for form submissions
+                if settlement_result['settled']:
+                    messages.success(request, settlement_result['message'])
+                else:
+                    messages.info(request, settlement_result['message'])
+                
+                return redirect('patients:wallet_dashboard', patient_id=patient.id)
+                
+        except Exception as e:
+            error_message = f'Error processing wallet payment: {str(e)}'
+            if request.headers.get('Content-Type') == 'application/json' or request.headers.get('Accept') == 'application/json':
+                return JsonResponse({'error': error_message}, status=400)
+            else:
+                messages.error(request, error_message)
+                return redirect('patients:wallet_dashboard', patient_id=patient.id)
+    
+    # For GET requests, show payment page
+    # Get outstanding invoices
+    outstanding_invoices = Invoice.objects.filter(
+        patient=patient,
+        status__in=['pending', 'partially_paid']
+    ).order_by('created_at')
+    
+    total_outstanding = sum(invoice.get_balance() for invoice in outstanding_invoices)
+    
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'outstanding_invoices': outstanding_invoices,
+        'total_outstanding': total_outstanding,
+        'page_title': f'Wallet Payment - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    
+    return render(request, 'patients/wallet_payment.html', context)
 
 
 @login_required

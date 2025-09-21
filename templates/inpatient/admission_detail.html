@@ -28,30 +28,243 @@
                 {% elif admission.status == 'deceased' %}
                     <span class="badge bg-danger">Deceased</span>
                 {% endif %}
-            </p>            <p><strong>Total Admission Cost:</strong> ₦{{ admission.get_total_cost|floatformat:2 }}</p>
-            <p><strong>Wallet Charges for this Admission:</strong> ₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</p>
-            <p><strong>Outstanding Admission Cost:</strong> 
-                <span class="{% if admission.get_outstanding_admission_cost > 0 %}text-warning{% else %}text-success{% endif %}">
-                    ₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}
-                </span>
-            </p>
-            <p><strong>Current Patient Wallet Balance:</strong> 
-                <span class="{% if admission.patient.wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
-                    ₦{{ admission.patient.wallet.balance|floatformat:2 }}
-                </span>
-            </p>
-            <p><strong>Total Wallet Impact (with outstanding costs):</strong> 
-                <span class="{% if admission.get_total_wallet_impact < 0 %}text-danger{% else %}text-success{% endif %}">
-                    ₦{{ admission.get_total_wallet_impact|floatformat:2 }}
-                </span>
             </p>
         </div>
+    </div>
+
+    <!-- Financial Summary Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-calculator"></i> Financial Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Current Wallet Balance -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card border-left-{% if admission.patient.wallet.balance >= 0 %}success{% else %}danger{% endif %} shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-{% if admission.patient.wallet.balance >= 0 %}success{% else %}danger{% endif %} text-uppercase mb-1">
+                                        Current Wallet Balance
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold {% if admission.patient.wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        <span id="walletBalanceValue">₦{{ admission.patient.wallet.balance|floatformat:2 }}</span>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Admission Charges -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card border-left-info shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Daily Admission Charges
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        ₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}
+                                    </div>
+                                    <div class="text-xs text-muted">
+                                        {{ admission.get_duration }} days × ₦{{ admission.bed.ward.charge_per_day|floatformat:2 }}/day
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Admission Cost -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card border-left-warning shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Total Admission Cost
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        <span id="totalCostValue">₦{{ admission.get_total_cost|floatformat:2 }}</span>
+                                    </div>
+                                    <div class="text-xs text-muted">
+                                        Complete admission cost
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-hospital fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Amount Paid So Far -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card border-left-success shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Total Amount Paid
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        <span id="totalPaidValue">₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</span>
+                                    </div>
+                                    <div class="text-xs text-muted">
+                                        From wallet deductions
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-credit-card fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Outstanding Balance -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div id="outstandingCard" class="card border-left-{% if admission.get_outstanding_admission_cost > 0 %}danger{% else %}success{% endif %} shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-{% if admission.get_outstanding_admission_cost > 0 %}danger{% else %}success{% endif %} text-uppercase mb-1">
+                                        Outstanding Balance
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold {% if admission.get_outstanding_admission_cost > 0 %}text-danger{% else %}text-success{% endif %}">
+                                        <span id="outstandingValue">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</span>
+                                    </div>
+                                    <div class="text-xs text-muted">
+                                        {% if admission.get_outstanding_admission_cost > 0 %}
+                                            Still owed
+                                        {% else %}
+                                            Fully paid
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-{% if admission.get_outstanding_admission_cost > 0 %}exclamation-triangle{% else %}check-circle{% endif %} fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Net Impact -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div id="netImpactCard" class="card border-left-{% if admission.get_total_wallet_impact < 0 %}danger{% else %}success{% endif %} shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-{% if admission.get_total_wallet_impact < 0 %}danger{% else %}success{% endif %} text-uppercase mb-1">
+                                        Net Impact
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold {% if admission.get_total_wallet_impact < 0 %}text-danger{% else %}text-success{% endif %}">
+                                        <span id="netImpactValue">₦{{ admission.get_total_wallet_impact|floatformat:2 }}</span>
+                                    </div>
+                                    <div class="text-xs text-muted">
+                                        {% if admission.get_total_wallet_impact >= 0 %}
+                                            Remaining after payment
+                                        {% else %}
+                                            Still owed after payment
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Status Summary -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div id="paymentStatusAlert" class="alert alert-{% if admission.get_outstanding_admission_cost > 0 %}warning{% else %}success{% endif %} alert-dismissible fade show" role="alert">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-{% if admission.get_outstanding_admission_cost > 0 %}exclamation-triangle{% else %}check-circle{% endif %}"></i>
+                            Payment Status
+                        </h6>
+                        <p class="mb-2">
+                            <strong>Total Cost:</strong> <span id="psTotalCost">₦{{ admission.get_total_cost|floatformat:2 }}</span> |
+                            <strong>Paid:</strong> <span id="psPaid">₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</span> |
+                            <strong>Outstanding:</strong> <span id="psOutstanding">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</span>
+                        </p>
+                        {% if admission.get_outstanding_admission_cost > 0 %}
+                            <p class="mb-0">
+                                This admission has an outstanding balance. The patient's wallet balance of ₦{{ admission.patient.wallet.balance|floatformat:2 }}
+                                {% if admission.patient.wallet.balance > 0 %}
+                                    can partially cover the outstanding amount.
+                                {% else %}
+                                    is insufficient to cover the outstanding amount.
+                                {% endif %}
+                            </p>
+                        {% else %}
+                            <p class="mb-0">This admission has been fully paid through wallet deductions.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons Card -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-cogs"></i> Actions</h5>
+        </div>
+        <div class="card-body">
+        </div>
         <div class="card-footer">
-            <a href="{% url 'inpatient:edit_admission' admission.id %}" class="btn btn-primary">Edit Admission</a>
-            <a href="{% url 'inpatient:discharge_patient' admission.id %}" class="btn btn-danger">Discharge Patient</a>
-            <a href="{% url 'inpatient:transfer_patient' admission.id %}" class="btn btn-warning">Transfer Patient</a>
-            <a href="{% url 'patients:wallet_dashboard' admission.patient.id %}" class="btn btn-info">View Wallet</a>
-            <a href="{% url 'patients:wallet_transactions' admission.patient.id %}?admission={{ admission.id }}" class="btn btn-outline-info">View Admission Charges</a>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Admission Management</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'inpatient:edit_admission' admission.id %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit"></i> Edit Admission
+                        </a>
+                        <a href="{% url 'inpatient:discharge_patient' admission.id %}" class="btn btn-danger btn-sm">
+                            <i class="fas fa-sign-out-alt"></i> Discharge Patient
+                        </a>
+                        <a href="{% url 'inpatient:transfer_patient' admission.id %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-exchange-alt"></i> Transfer Patient
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Financial Management</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'patients:wallet_dashboard' admission.patient.id %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-wallet"></i> View Wallet
+                        </a>
+                        <a href="{% url 'patients:wallet_transactions' admission.patient.id %}?admission={{ admission.id }}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-receipt"></i> View Admission Charges
+                        </a>
+                        {% if admission.get_outstanding_admission_cost > 0 %}
+                        <button type="button" id="processOutstandingBtn" class="btn btn-success btn-sm" data-url="{% url 'inpatient:ajax_process_outstanding_admission_payment' admission.id %}">
+                            <i class="fas fa-wallet"></i> Process Outstanding from Wallet
+                        </button>
+                        {% endif %}
+                        {% if admission.get_outstanding_admission_cost > 0 and admission.patient.wallet.balance > 0 %}
+                        <a href="{% url 'patients:wallet_payment' admission.patient.id %}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-credit-card"></i> Pay Outstanding
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -141,6 +354,53 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
+        // Auto-refresh financial data every 30 seconds
+        setInterval(function() {
+            // Only refresh if no modals are open
+            if (!$('.modal.show').length) {
+                location.reload();
+            }
+        }, 30000);
+
+        // Add smooth animations to financial cards
+        $('.card.border-left-success, .card.border-left-danger, .card.border-left-warning, .card.border-left-info').each(function(index) {
+            $(this).css({
+                'opacity': '0',
+                'transform': 'translateY(20px)'
+            });
+
+            setTimeout(() => {
+                $(this).css({
+                    'transition': 'all 0.5s ease',
+                    'opacity': '1',
+                    'transform': 'translateY(0)'
+                });
+            }, index * 100);
+        });
+
+        // Add hover effects to financial cards
+        $('.card.border-left-success, .card.border-left-danger, .card.border-left-warning, .card.border-left-info').hover(
+            function() {
+                $(this).css('transform', 'translateY(-2px)');
+            },
+            function() {
+                $(this).css('transform', 'translateY(0)');
+            }
+        );
+
+        // Add pulsing effect for outstanding balance if it's positive
+        if ($('.card.border-left-danger').length > 0) {
+            $('.card.border-left-danger').css('animation', 'pulse 2s infinite');
+        }
+
+        // Add click effects to action buttons
+        $('.btn').on('click', function() {
+            $(this).css('transform', 'scale(0.95)');
+            setTimeout(() => {
+                $(this).css('transform', 'scale(1)');
+            }, 150);
+        });
+
         // Specific fixes for admission detail modals
         $('#dailyRoundModal, #nursingNoteModal').on('show.bs.modal', function() {
             // Ensure modal is above everything with new z-index hierarchy
@@ -201,6 +461,126 @@
         $('#dailyRoundModal, #nursingNoteModal').on('show.bs.modal shown.bs.modal hide.bs.modal hidden.bs.modal', function(e) {
             console.log('Modal event:', e.type, 'for modal:', this.id);
         });
+
+        // Dynamic processing for Process Outstanding from Wallet (AJAX)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function parseCurrency(text) {
+            const n = parseFloat(String(text).replace(/[^0-9.-]/g, ''));
+            return isNaN(n) ? 0 : n;
+        }
+
+        function formatCurrency(n) {
+            return '₦' + Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        $(document).on('click', '#processOutstandingBtn', function () {
+            const $btn = $(this);
+            const url = $btn.data('url');
+            if (!url) return;
+
+            $btn.prop('disabled', true);
+            const origHtml = $btn.html();
+            $btn.data('orig', origHtml).html('<span class="spinner-border spinner-border-sm me-1"></span>Processing...');
+
+            $.ajax({
+                url: url,
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                success: function (resp) {
+                    if (!resp || !resp.success) {
+                        alert((resp && resp.message) || 'Failed to process payment.');
+                        return;
+                    }
+                    const d = resp.data || {};
+                    const wallet = Number(d.wallet_balance) || 0;
+                    const outstanding = Number(d.outstanding_amount) || 0;
+
+                    // Numbers already on the page
+                    const totalCost = parseCurrency($('#totalCostValue').text());
+                    const newPaid = Math.max(totalCost - outstanding, 0);
+                    const netImpact = wallet - outstanding;
+
+                    // Update financial cards
+                    $('#walletBalanceValue').text(formatCurrency(wallet));
+                    $('#totalPaidValue').text(formatCurrency(newPaid));
+                    $('#outstandingValue').text(formatCurrency(outstanding));
+                    $('#netImpactValue').text(formatCurrency(netImpact));
+
+                    // Update Payment Status summary numbers
+                    $('#psTotalCost').text(formatCurrency(totalCost));
+                    $('#psPaid').text(formatCurrency(newPaid));
+                    $('#psOutstanding').text(formatCurrency(outstanding));
+
+                    // Toggle alert style
+                    const $alert = $('#paymentStatusAlert');
+                    $alert.removeClass('alert-warning alert-success');
+                    if (outstanding > 0) {
+                        $alert.addClass('alert-warning');
+                    } else {
+                        $alert.addClass('alert-success');
+                    }
+
+                    // Toggle Outstanding card color
+                    const $outCard = $('#outstandingCard');
+                    $outCard.removeClass('border-left-danger border-left-success');
+                    $outCard.addClass(outstanding > 0 ? 'border-left-danger' : 'border-left-success');
+
+                    // Hide the process button if no outstanding remains
+                    if (outstanding <= 0) {
+                        $btn.hide();
+                    }
+                },
+                error: function (xhr) {
+                    const msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Error processing payment.';
+                    alert(msg);
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html($btn.data('orig') || '<i class="fas fa-wallet"></i> Process Outstanding from Wallet');
+                }
+            });
+        });
+
     });
+
+    // Add CSS for pulse animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .card.border-left-danger:hover {
+            box-shadow: 0 0.5rem 1rem rgba(220, 53, 69, 0.15) !important;
+        }
+
+        .card.border-left-success:hover {
+            box-shadow: 0 0.5rem 1rem rgba(40, 167, 69, 0.15) !important;
+        }
+
+        .card.border-left-warning:hover {
+            box-shadow: 0 0.5rem 1rem rgba(255, 193, 7, 0.15) !important;
+        }
+
+        .card.border-left-info:hover {
+            box-shadow: 0 0.5rem 1rem rgba(23, 162, 184, 0.15) !important;
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 {% endblock %}

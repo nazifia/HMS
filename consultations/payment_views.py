@@ -59,9 +59,15 @@ def consultation_payment(request, consultation_id):
                     payment_source = form.cleaned_data['payment_source']
                     if payment_source == 'patient_wallet':
                         payment.payment_method = 'wallet'
-                        # Deduct from wallet
-                        patient_wallet.balance -= payment.amount
-                        patient_wallet.save()
+                        # Deduct from wallet using the enhanced debit method
+                        patient_wallet.debit(
+                            amount=payment.amount,
+                            description=f"Consultation payment for invoice #{invoice.invoice_number}",
+                            transaction_type="consultation_payment",
+                            user=request.user,
+                            invoice=invoice,
+                            payment_instance=payment
+                        )
                     
                     payment.save()
                     

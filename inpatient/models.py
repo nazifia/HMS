@@ -137,12 +137,12 @@ class Admission(models.Model):
         # Try to use direct admission FK relationship first (more accurate)
         direct_charges = WalletTransaction.objects.filter(
             admission=self,
-            transaction_type__in=['admission_fee', 'daily_admission_charge']
+            transaction_type__in=['admission_fee', 'daily_admission_charge', 'admission_payment']
         ).aggregate(total=models.Sum('amount'))['total']
-        
+
         if direct_charges is not None:
             return direct_charges
-        
+
         # Fallback to date-range method for backward compatibility
         # Get admission fee
         admission_fee = WalletTransaction.objects.filter(
@@ -161,7 +161,15 @@ class Admission(models.Model):
             created_at__date__range=[admission_date, end_date]
         ).aggregate(total=models.Sum('amount'))['total'] or 0
 
-        return admission_fee + daily_charges
+        # Also include admission_payment transactions for this admission
+        admission_payments = WalletTransaction.objects.filter(
+            wallet__patient=self.patient,
+            transaction_type='admission_payment',
+            created_at__date__range=[admission_date, end_date],
+            admission=self  # Ensure it's linked to this specific admission
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+
+        return admission_fee + daily_charges + admission_payments
 
     def get_outstanding_admission_cost(self):
         """Get the unpaid admission cost that would impact wallet balance"""

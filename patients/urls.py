@@ -32,6 +32,7 @@ urlpatterns = [
     path('<int:patient_id>/wallet/refund/', views.wallet_refund, name='wallet_refund'),
     path('<int:patient_id>/wallet/adjustment/', views.wallet_adjustment, name='wallet_adjustment'),
     path('<int:patient_id>/wallet/settlement/', views.wallet_settlement, name='wallet_settlement'),
+    path('<int:patient_id>/wallet/payment/', views.wallet_payment, name='wallet_payment'),
     path('<int:patient_id>/nhia/register/', views.register_nhia_patient, name='register_nhia_patient'),
     path('<int:patient_id>/nhia/edit/', views.edit_nhia_patient, name='edit_nhia_patient'),
 ]

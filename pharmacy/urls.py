@@ -84,6 +84,7 @@ urlpatterns = [
     # Payment Management
     path('prescriptions/<int:prescription_id>/payment/', views.prescription_payment, name='prescription_payment'),
     path('prescriptions/<int:prescription_id>/payment/billing-office/', views.billing_office_medication_payment, name='billing_office_medication_payment'),
+    path('prescriptions/<int:prescription_id>/payment/process-outstanding/', views.process_outstanding_wallet_payment, name='process_outstanding_wallet_payment'),
     path('prescriptions/<int:prescription_id>/payment/create-invoice/', views.create_prescription_invoice, name='create_prescription_invoice'),
 
     # API Endpoints

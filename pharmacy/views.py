@@ -1610,34 +1610,25 @@ def prescription_detail(request, prescription_id):
     prescription_items = prescription.items.select_related('medication')
     # Provide an empty form for the "Add Medication" modal
     item_form = PrescriptionItemForm()
+    
+    # Get pharmacy invoice if exists
+    pharmacy_invoice = None
+    try:
+        from pharmacy_billing.models import Invoice as PharmacyInvoice
+        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+    except PharmacyInvoice.DoesNotExist:
+        pharmacy_invoice = None
 
     context = {
         'prescription': prescription,
         'prescription_items': prescription_items,
         'item_form': item_form,
+        'pharmacy_invoice': pharmacy_invoice,
         'page_title': f'Prescription Details - #{prescription.id}',
         'active_nav': 'pharmacy',
     }
     
     return render(request, 'pharmacy/prescription_detail.html', context)
-
-
-@login_required
-def print_prescription(request, prescription_id):
-    """View for printing a prescription"""
-    prescription = get_object_or_404(Prescription, id=prescription_id)
-    
-    # Get prescription items
-    prescription_items = prescription.items.select_related('medication')
-    
-    context = {
-        'prescription': prescription,
-        'prescription_items': prescription_items,
-        'page_title': f'Print Prescription #{prescription.id}',
-        'active_nav': 'pharmacy',
-    }
-    
-    return render(request, 'pharmacy/print_prescription.html', context)
 
 
 @login_required
@@ -2171,6 +2162,125 @@ def prescription_payment(request, prescription_id):
     }
     
     return render(request, 'pharmacy/prescription_payment.html', context)
+
+
+@login_required
+def process_outstanding_wallet_payment(request, prescription_id):
+    """View for processing outstanding payments from patient wallet"""
+    from pharmacy_billing.models import Invoice as PharmacyInvoice
+    from patients.models import PatientWallet
+    from django.db import transaction
+    from core.audit_utils import log_audit_action
+    from core.models import InternalNotification
+    
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+    
+    # Get pharmacy invoice
+    pharmacy_invoice = None
+    try:
+        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+    except PharmacyInvoice.DoesNotExist:
+        messages.error(request, 'No invoice found for this prescription.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    # Get patient wallet
+    patient_wallet = None
+    try:
+        patient_wallet = PatientWallet.objects.get(patient=prescription.patient)
+    except PatientWallet.DoesNotExist:
+        messages.error(request, 'Patient does not have a wallet.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    remaining_amount = pharmacy_invoice.get_balance()
+    
+    if remaining_amount <= 0:
+        messages.info(request, 'This prescription has already been fully paid.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    # Check if user has permission to process wallet payments
+    # Only billing staff and pharmacists should be able to process wallet payments
+    user_roles = request.user.roles.values_list('name', flat=True)
+    if not any(role in ['billing_staff', 'pharmacist', 'admin'] for role in user_roles):
+        messages.error(request, 'You do not have permission to process wallet payments.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Process payment from wallet
+                patient_wallet.debit(
+                    amount=remaining_amount,
+                    description=f'Payment for outstanding prescription #{prescription.id}',
+                    transaction_type='pharmacy_payment',
+                    user=request.user
+                )
+                
+                # Update invoice
+                pharmacy_invoice.amount_paid += remaining_amount
+                pharmacy_invoice.status = 'paid'
+                pharmacy_invoice.save()
+                
+                # Update prescription payment status
+                prescription.payment_status = 'paid'
+                prescription.save(update_fields=['payment_status'])
+                
+                # Audit log
+                log_audit_action(
+                    request.user,
+                    'create',
+                    pharmacy_invoice,
+                    f'Processed outstanding payment of ₦{remaining_amount:.2f} from wallet for prescription #{prescription.id}'
+                )
+                
+                # Notification
+                if prescription.doctor:
+                    InternalNotification.objects.create(
+                        user=prescription.doctor,
+                        message=f'Outstanding payment of ₦{remaining_amount:.2f} processed from wallet for prescription #{prescription.id}'
+                    )
+                
+                messages.success(request, f'Outstanding payment of ₦{remaining_amount:.2f} processed successfully from patient wallet.')
+                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                
+        except Exception as e:
+            messages.error(request, f'Error processing payment: {str(e)}')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    context = {
+        'prescription': prescription,
+        'pharmacy_invoice': pharmacy_invoice,
+        'patient_wallet': patient_wallet,
+        'remaining_amount': remaining_amount,
+        'title': f'Process Outstanding Payment - #{prescription.id}'
+    }
+    
+    return render(request, 'pharmacy/process_outstanding_payment.html', context)
+
+
+@login_required
+def print_prescription(request, prescription_id):
+    """View for printing prescription"""
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+    
+    # Get prescription items
+    prescription_items = prescription.items.select_related('medication')
+    
+    # Get pharmacy invoice if exists
+    pharmacy_invoice = None
+    try:
+        from pharmacy_billing.models import Invoice as PharmacyInvoice
+        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+    except PharmacyInvoice.DoesNotExist:
+        pharmacy_invoice = None
+    
+    context = {
+        'prescription': prescription,
+        'prescription_items': prescription_items,
+        'pharmacy_invoice': pharmacy_invoice,
+        'title': f'Print Prescription - #{prescription.id}'
+    }
+    
+    return render(request, 'pharmacy/print_prescription.html', context)
 
 
 @login_required
