@@ -21,13 +21,20 @@
                     {% endif %}
                     
                     <div class="row">
-                        {% if form.initial.patient or selected_patient or request.GET.patient %}
+                        {% if selected_patient or form.initial.patient %}
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Patient</label>
-                                <input type="hidden" name="patient" value="{{ form.initial.patient|default:selected_patient.id|default:request.GET.patient }}">
-                                <div class="form-control-plaintext">
-                                    {{ selected_patient.get_full_name|default:selected_patient|default:form.initial.patient|default:request.GET.patient }}
-                                </div>
+                                {% if selected_patient %}
+                                    <input type="hidden" name="patient" value="{{ selected_patient.id }}">
+                                    <div class="form-control-plaintext">
+                                        {{ selected_patient.get_full_name }} ({{ selected_patient.patient_id }})
+                                    </div>
+                                {% else %}
+                                    <input type="hidden" name="patient" value="{{ form.initial.patient }}">
+                                    <div class="form-control-plaintext">
+                                        {{ form.initial.patient }}
+                                    </div>
+                                {% endif %}
                             </div>
                         {% else %}
                             <div class="col-md-6 mb-3">
@@ -71,6 +78,7 @@
                             {% endif %}
                         </div>
                         
+                        {% if 'status' in form.fields %}
                         <div class="col-md-4 mb-3">
                             <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
                             {{ form.status|add_class:"form-select" }}
@@ -80,7 +88,8 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+                        {% endif %}
+
                         <div class="col-md-4 mb-3">
                             <label for="{{ form.prescription_type.id_for_label }}" class="form-label">Prescription Type</label>
                             {{ form.prescription_type|add_class:"form-select" }}

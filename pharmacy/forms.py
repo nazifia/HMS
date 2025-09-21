@@ -128,15 +128,23 @@ class PrescriptionForm(forms.ModelForm):
 
         # Priority: preselected_patient > request.GET > initial data
         if preselected_patient:
-            patient_instance = preselected_patient
-            patient_id = preselected_patient.id
+            # Check if preselected_patient is already an integer (patient ID) or a Patient object
+            if isinstance(preselected_patient, int):
+                patient_id = preselected_patient
+            else:
+                patient_instance = preselected_patient
+                patient_id = preselected_patient.id
         elif request:
             patient_id = request.GET.get('patient')
 
         if not patient_id and not patient_instance:
             patient_instance = self.initial.get('patient')
             if patient_instance:
-                patient_id = patient_instance.id
+                # Check if patient_instance is already an integer (patient ID) or a Patient object
+                if isinstance(patient_instance, int):
+                    patient_id = patient_instance
+                else:
+                    patient_id = patient_instance.id
 
         if patient_id and not patient_instance:
             try:
@@ -154,12 +162,14 @@ class PrescriptionForm(forms.ModelForm):
                 'style': 'background-color: #e9ecef; cursor: not-allowed;'
             })
             # Limit queryset to only the selected patient
-            self.fields['patient'].queryset = Patient.objects.filter(id=patient_instance.id)
+            # patient_instance could be an integer ID or Patient object
+            patient_id_for_filter = patient_instance.id if hasattr(patient_instance, 'id') else patient_instance
+            self.fields['patient'].queryset = Patient.objects.filter(id=patient_id_for_filter)
             self.fields['patient'].empty_label = None
 
             # Add a hidden field to ensure the patient is submitted
             self.fields['patient_hidden'] = forms.ModelChoiceField(
-                queryset=Patient.objects.filter(id=patient_instance.id),
+                queryset=Patient.objects.filter(id=patient_id_for_filter),
                 initial=patient_instance,
                 widget=forms.HiddenInput(),
                 required=True

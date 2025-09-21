@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from accounts.models import CustomUser
 from patients.models import Patient
@@ -826,9 +827,9 @@ class PackOrder(models.Model):
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
     ]
-    
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='pack_orders')
-    pack = models.ForeignKey(Pack, on_delete=models.CASCADE)
+    pack = models.ForeignKey('MedicalPack', on_delete=models.CASCADE)
     ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ordered_pack_orders')
     ordered_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')

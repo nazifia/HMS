@@ -10,7 +10,7 @@ from django.utils import timezone
 from .models import (
     Medication, MedicationCategory, Supplier, Purchase, PurchaseItem,
     Prescription, PrescriptionItem, Dispensary, ActiveStore, ActiveStoreInventory, MedicationInventory,
-    BulkStore, BulkStoreInventory, MedicationTransfer, DispensingLog,
+    BulkStore, BulkStoreInventory, MedicationTransfer, DispensaryTransfer, DispensingLog,
     MedicalPack, PackItem, PackOrder
 )
 from accounts.models import CustomUser
@@ -298,16 +298,18 @@ def pharmacy_create_prescription(request, patient_id=None):
                 preselected_patient = Patient.objects.get(id=patient_id)
             except Patient.DoesNotExist:
                 preselected_patient = None
-        
+
         form = PrescriptionForm(request=request, preselected_patient=preselected_patient)
-    
+
     context = {
         'form': form,
         'title': 'Create Prescription (Pharmacy)',
         'active_nav': 'pharmacy',
+        'patient': preselected_patient,  # Add patient to context for template
+        'selected_patient': preselected_patient,  # Also add selected_patient for template compatibility
     }
-    
-    return render(request, 'pharmacy/prescription_form.html', context)
+
+    return render(request, 'pharmacy/pharmacy_create_prescription.html', context)
 
 
 @login_required
@@ -1570,8 +1572,11 @@ def create_prescription(request, patient_id=None):
         'form': form,
         'title': 'Create Prescription',
         'active_nav': 'pharmacy',
+        # Ensure templates have access to the patient when preselected
+        'selected_patient': getattr(form.fields.get('patient'), 'initial', None),
+        'patient': getattr(form.fields.get('patient'), 'initial', None),
     }
-    
+
     return render(request, 'pharmacy/prescription_form.html', context)
 
 
@@ -1588,16 +1593,23 @@ def pharmacy_create_prescription(request, patient_id=None):
     else:
         # Preselect patient if patient_id is provided
         initial_data = {}
+        preselected_patient = None
         if patient_id:
-            initial_data['patient'] = patient_id
-        form = PrescriptionForm(request=request, initial=initial_data)
+            try:
+                preselected_patient = Patient.objects.get(id=patient_id)
+                initial_data['patient'] = preselected_patient
+            except Patient.DoesNotExist:
+                initial_data['patient'] = patient_id
+        form = PrescriptionForm(request=request, initial=initial_data, preselected_patient=preselected_patient)
     
     context = {
         'form': form,
         'title': 'Create Prescription (Pharmacy)',
         'active_nav': 'pharmacy',
+        'selected_patient': preselected_patient,
+        'patient': preselected_patient,
     }
-    
+
     return render(request, 'pharmacy/prescription_form.html', context)
 
 
