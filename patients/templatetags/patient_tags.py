@@ -144,3 +144,99 @@ def patient_image(patient, size='medium', css_class=''):
         'has_image': patient.has_profile_image() if patient else False,
         'image_url': patient.get_profile_image_url() if patient else None,
     }
+
+
+@register.simple_tag(takes_context=True)
+def current_patient_info(context, key=None):
+    """
+    Get current patient information from context
+    Usage: {% current_patient_info 'full_name' %} or {% current_patient_info %}
+    """
+    request = context.get('request')
+    if not request:
+        return None
+
+    current_patient = getattr(request, 'current_patient', None)
+    if not current_patient:
+        return None
+
+    if key:
+        return current_patient.get(key)
+    else:
+        return current_patient
+
+
+@register.simple_tag(takes_context=True)
+def has_current_patient(context):
+    """
+    Check if there's a current patient in context
+    Usage: {% if has_current_patient %}...{% endif %}
+    """
+    request = context.get('request')
+    if not request:
+        return False
+
+    return getattr(request, 'has_current_patient', False)
+
+
+@register.simple_tag(takes_context=True)
+def current_patient_badge(context, show_details=True):
+    """
+    Render a badge showing current patient information
+    Usage: {% current_patient_badge %}
+    """
+    request = context.get('request')
+    if not request:
+        return ''
+
+    current_patient = getattr(request, 'current_patient', None)
+    if not current_patient:
+        return ''
+
+    patient_name = current_patient.get('full_name', 'Unknown Patient')
+    patient_id = current_patient.get('patient_id', '')
+
+    badge_content = f'<span class="badge bg-info">Patient: {patient_name}'
+    if show_details and patient_id:
+        badge_content += f' ({patient_id})'
+    badge_content += '</span>'
+
+    return mark_safe(badge_content)
+
+
+@register.simple_tag(takes_context=True)
+def current_patient_quick_actions(context):
+    """
+    Render quick action buttons for current patient
+    Usage: {% current_patient_quick_actions %}
+    """
+    request = context.get('request')
+    if not request:
+        return ''
+
+    current_patient = getattr(request, 'current_patient', None)
+    if not current_patient:
+        return ''
+
+    patient_id = current_patient.get('id')
+    if not patient_id:
+        return ''
+
+    actions_html = '''
+    <div class="btn-group btn-group-sm" role="group">
+        <a href="/patients/{patient_id}/" class="btn btn-outline-primary" title="View Patient Details">
+            <i class="fas fa-user"></i>
+        </a>
+        <a href="/patients/{patient_id}/edit/" class="btn btn-outline-secondary" title="Edit Patient">
+            <i class="fas fa-edit"></i>
+        </a>
+        <a href="/patients/{patient_id}/medical-history/" class="btn btn-outline-info" title="Medical History">
+            <i class="fas fa-file-medical"></i>
+        </a>
+        <a href="/patients/{patient_id}/vitals/" class="btn btn-outline-success" title="Vitals">
+            <i class="fas fa-heartbeat"></i>
+        </a>
+    </div>
+    '''.format(patient_id=patient_id)
+
+    return mark_safe(actions_html)

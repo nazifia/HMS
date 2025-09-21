@@ -6,6 +6,8 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction
 from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm
 from .utils import get_safe_vitals_for_patient
@@ -103,28 +105,32 @@ def register_patient(request):
 def patient_detail(request, patient_id):
     """View for displaying patient details"""
     patient = get_object_or_404(Patient, id=patient_id)
-    
+
+    # Set patient context in session for cross-page availability
+    request.session['current_patient_id'] = patient.id
+    request.session['current_patient_last_accessed'] = timezone.now().timestamp()
+
     # Calculate patient age
     today = timezone.now().date()
     age = today.year - patient.date_of_birth.year - (
         (today.month, today.day) < (patient.date_of_birth.month, patient.date_of_birth.day)
     )
-    
+
     # Get recent appointments
     recent_appointments = Appointment.objects.filter(
         patient=patient
     ).order_by('-appointment_date')[:5]
-    
+
     # Get recent consultations
     recent_consultations = Consultation.objects.filter(
         patient=patient
     ).order_by('-consultation_date')[:5]
-    
+
     # Get recent prescriptions
     recent_prescriptions = Prescription.objects.filter(
         patient=patient
     ).order_by('-prescription_date')[:5]
-    
+
     context = {
         'patient': patient,
         'age': age,
@@ -134,7 +140,7 @@ def patient_detail(request, patient_id):
         'page_title': f'Patient Details - {patient.get_full_name()}',
         'active_nav': 'patients',
     }
-    
+
     return render(request, 'patients/patient_detail.html', context)
 
 
@@ -974,5 +980,25 @@ def patient_dashboard(request, patient_id):
         'page_title': f'Patient Dashboard - {patient.get_full_name()}',
         'active_nav': 'patients',
     }
-    
+
     return render(request, 'patients/patient_dashboard.html', context)
+
+
+@login_required
+@csrf_exempt
+def clear_patient_context(request):
+    """
+    View for clearing the current patient context from session.
+    Used by the frontend to clear patient context when needed.
+    """
+    if request.method == 'POST':
+        # Clear patient context from session
+        if 'current_patient_id' in request.session:
+            del request.session['current_patient_id']
+
+        if 'current_patient_last_accessed' in request.session:
+            del request.session['current_patient_last_accessed']
+
+        return JsonResponse({'success': True, 'message': 'Patient context cleared successfully'})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)

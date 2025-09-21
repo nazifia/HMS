@@ -35,4 +35,5 @@ urlpatterns = [
     path('<int:patient_id>/wallet/payment/', views.wallet_payment, name='wallet_payment'),
     path('<int:patient_id>/nhia/register/', views.register_nhia_patient, name='register_nhia_patient'),
     path('<int:patient_id>/nhia/edit/', views.edit_nhia_patient, name='edit_nhia_patient'),
+    path('clear-context/', views.clear_patient_context, name='clear_patient_context'),
 ]

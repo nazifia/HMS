@@ -255,28 +255,54 @@ def patient_prescriptions(request, patient_id):
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
     if request.method == 'POST':
-        form = PrescriptionForm(request.POST, request=request)
+        # Handle patient context ID from form submission
+        patient_context_id = request.POST.get('patient_context_id')
+
+        # If patient context ID is provided, use it to preselect patient
+        if patient_context_id:
+            try:
+                preselected_patient = Patient.objects.get(id=patient_context_id)
+                form = PrescriptionForm(request.POST, request=request, preselected_patient=preselected_patient)
+            except Patient.DoesNotExist:
+                form = PrescriptionForm(request.POST, request=request)
+        else:
+            form = PrescriptionForm(request.POST, request=request)
+
         if form.is_valid():
             prescription = form.save()
             messages.success(request, f'Prescription #{prescription.id} created successfully.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
     else:
-        # Preselect patient if patient_id is provided
+        # Preselect patient from multiple sources with priority:
+        # 1. URL parameter (patient_id)
+        # 2. Current patient context from session
+        # 3. None (user will select manually)
         preselected_patient = None
+
+        # First check URL parameter
         if patient_id:
             try:
                 preselected_patient = Patient.objects.get(id=patient_id)
             except Patient.DoesNotExist:
                 preselected_patient = None
-        
+
+        # If no URL parameter, check current patient context from session
+        elif hasattr(request, 'current_patient') and request.current_patient:
+            try:
+                preselected_patient = Patient.objects.get(id=request.current_patient['id'])
+            except (Patient.DoesNotExist, KeyError):
+                preselected_patient = None
+
         form = PrescriptionForm(request=request, preselected_patient=preselected_patient)
-    
+
     context = {
         'form': form,
         'title': 'Create Prescription',
         'active_nav': 'pharmacy',
+        'current_patient': getattr(request, 'current_patient', None),
+        'has_current_patient': hasattr(request, 'has_current_patient') and request.has_current_patient,
     }
-    
+
     return render(request, 'pharmacy/prescription_form.html', context)
 
 
@@ -285,18 +311,42 @@ def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # This is the same as create_prescription but might have different permissions or workflow
     if request.method == 'POST':
-        form = PrescriptionForm(request.POST, request=request)
+        # Handle patient context ID from form submission
+        patient_context_id = request.POST.get('patient_context_id')
+
+        # If patient context ID is provided, use it to preselect patient
+        if patient_context_id:
+            try:
+                preselected_patient = Patient.objects.get(id=patient_context_id)
+                form = PrescriptionForm(request.POST, request=request, preselected_patient=preselected_patient)
+            except Patient.DoesNotExist:
+                form = PrescriptionForm(request.POST, request=request)
+        else:
+            form = PrescriptionForm(request.POST, request=request)
+
         if form.is_valid():
             prescription = form.save()
             messages.success(request, f'Prescription #{prescription.id} created successfully.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
     else:
-        # Preselect patient if patient_id is provided
+        # Preselect patient from multiple sources with priority:
+        # 1. URL parameter (patient_id)
+        # 2. Current patient context from session
+        # 3. None (user will select manually)
         preselected_patient = None
+
+        # First check URL parameter
         if patient_id:
             try:
                 preselected_patient = Patient.objects.get(id=patient_id)
             except Patient.DoesNotExist:
+                preselected_patient = None
+
+        # If no URL parameter, check current patient context from session
+        elif hasattr(request, 'current_patient') and request.current_patient:
+            try:
+                preselected_patient = Patient.objects.get(id=request.current_patient['id'])
+            except (Patient.DoesNotExist, KeyError):
                 preselected_patient = None
 
         form = PrescriptionForm(request=request, preselected_patient=preselected_patient)
@@ -307,6 +357,8 @@ def pharmacy_create_prescription(request, patient_id=None):
         'active_nav': 'pharmacy',
         'patient': preselected_patient,  # Add patient to context for template
         'selected_patient': preselected_patient,  # Also add selected_patient for template compatibility
+        'current_patient': getattr(request, 'current_patient', None),
+        'has_current_patient': hasattr(request, 'has_current_patient') and request.has_current_patient,
     }
 
     return render(request, 'pharmacy/pharmacy_create_prescription.html', context)

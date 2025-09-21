@@ -149,6 +149,7 @@ TEMPLATES = [
                 'django.template.context_processors.static',
                 'pharmacy.context_processors.pharmacy_context',
                 'patients.context_processors.all_patients',
+                'patients.context_processors.current_patient_context',
             ],
         },
     },

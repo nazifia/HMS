@@ -21,6 +21,7 @@
     <!-- Custom CSS -->
     {% load static %}
 {% load form_tags %}
+{% load patient_tags %}
     <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
     <link rel="stylesheet" href="{% static 'css/patient_search.css' %}">
 
@@ -202,6 +203,27 @@
                                     <span class="d-none d-sm-inline" id="sessionText">Active</span>
                                 </span>
                             </li>
+
+                            <!-- Current Patient Context -->
+                            {% if has_current_patient %}
+                            <li class="nav-item">
+                                <div class="nav-link" id="currentPatientContext">
+                                    <i class="fas fa-user-injured text-info me-1"></i>
+                                    <span class="d-none d-sm-inline">
+                                        {{ current_patient.full_name }}
+                                        {% if current_patient.patient_id %}({{ current_patient.patient_id }}){% endif %}
+                                    </span>
+                                    <div class="btn-group btn-group-xs ms-2" role="group">
+                                        <a href="/patients/{{ current_patient.id }}/" class="btn btn-outline-primary btn-xs" title="View Patient">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger btn-xs" title="Clear Patient Context" onclick="clearPatientContext()">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endif %}
                             <li class="nav-item dropdown no-arrow">
                                 <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                     data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -847,6 +869,73 @@
             */
 
         });
+
+        // Patient context management functions
+        function clearPatientContext() {
+            if (confirm('Are you sure you want to clear the current patient context?')) {
+                // Get CSRF token using multiple fallback methods
+                let csrfToken = '';
+
+                // Method 1: Try to get from meta tag
+                const metaToken = document.querySelector('meta[name=csrf-token]');
+                if (metaToken) {
+                    csrfToken = metaToken.getAttribute('content');
+                }
+
+                // Method 2: Try to get from hidden input field
+                if (!csrfToken) {
+                    const inputToken = document.querySelector('input[name=csrfmiddlewaretoken]');
+                    if (inputToken) {
+                        csrfToken = inputToken.value;
+                    }
+                }
+
+                // Method 3: Try to get from cookie (fallback)
+                if (!csrfToken) {
+                    const cookieValue = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('csrftoken='))
+                        ?.split('=')[1];
+                    if (cookieValue) {
+                        csrfToken = cookieValue;
+                    }
+                }
+
+                // If no CSRF token found, show error
+                if (!csrfToken) {
+                    alert('Error: CSRF token not found. Please refresh the page and try again.');
+                    return;
+                }
+
+                fetch('/patients/clear-context/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the patient context from the UI
+                        const patientContextElement = document.getElementById('currentPatientContext');
+                        if (patientContextElement) {
+                            patientContextElement.remove();
+                        }
+                        // Show success message
+                        alert('Patient context cleared successfully.');
+                        // Optionally reload the page to refresh context
+                        location.reload();
+                    } else {
+                        alert('Error clearing patient context: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error clearing patient context. Please try again.');
+                });
+            }
+        }
     </script>
 
     <!-- jQuery -->

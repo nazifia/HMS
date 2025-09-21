@@ -270,11 +270,227 @@ body.sidebar-toggled #content-wrapper {
     min-height: 100vh;
 }
 
-/* Responsive adjustments for smaller screens where sidebar might behave differently */
-@media (max-width: 767.98px) { /* Bootstrap 5 breakpoint for sm */
-    #content-wrapper {
-        margin-left: 0; /* No margin on small screens, sidebar is overlay */
+/* === ENHANCED RESPONSIVE SIDEBAR DESIGN === */
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {
+    .sidebar {
+        width: 220px;
+        min-width: 220px;
+    }
+
+    .content-wrapper {
+        margin-left: 220px;
+    }
+
+    .sidebar .nav a {
+        padding: 10px 20px;
+    }
+
+    .sidebar .sidebar-brand {
+        font-size: 1.3rem;
+    }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+    .sidebar {
+        width: 250px;
+        min-width: 250px;
+    }
+
+    .content-wrapper {
+        margin-left: 250px;
+    }
+
+    .sidebar .nav a {
+        padding: 12px 24px;
+    }
+
+    .sidebar .sidebar-brand {
+        font-size: 1.5rem;
+    }
+
+    .sidebar .nav a span {
+        font-size: 0.9rem;
+    }
+
+    .sidebar .nav a i {
+        font-size: 1rem;
+        margin-right: 0.5rem;
+    }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+    .sidebar {
+        width: 280px;
+        min-width: 280px;
+    }
+
+    .content-wrapper {
+        margin-left: 280px;
+    }
+
+    .sidebar .nav a {
+        padding: 14px 28px;
+    }
+
+    .sidebar .sidebar-brand {
+        font-size: 1.6rem;
+    }
+
+    .sidebar .nav a span {
+        font-size: 1rem;
+    }
+
+    .sidebar .nav a i {
+        font-size: 1.1rem;
+        margin-right: 0.75rem;
+    }
+
+    .sidebar .sidebar-heading {
+        font-size: 0.9rem;
+    }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+    .sidebar {
+        width: 300px;
+        min-width: 300px;
+    }
+
+    .content-wrapper {
+        margin-left: 300px;
+    }
+
+    .sidebar .nav a {
+        padding: 16px 32px;
+    }
+
+    .sidebar .sidebar-brand {
+        font-size: 1.7rem;
+    }
+
+    .sidebar .nav a span {
+        font-size: 1.05rem;
+    }
+
+    .sidebar .nav a i {
+        font-size: 1.2rem;
+        margin-right: 1rem;
+    }
+
+    .sidebar .sidebar-heading {
+        font-size: 0.95rem;
+    }
+}
+
+/* Mobile-specific responsive adjustments */
+@media (max-width: 767px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        min-height: 100vh;
+        width: 280px;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+        background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
+        background-repeat: repeat-y;
+        background-attachment: local;
+        overflow-y: auto;
+        z-index: 1050;
+    }
+
+    .sidebar-open {
+        transform: translateX(0%);
+    }
+
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.3);
+        z-index: 1040;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    .sidebar-toggle-btn {
+        display: inline-block;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #23272b;
+        margin-right: 1rem;
+    }
+
+    body.sidebar-open #content-wrapper {
+        margin-left: 280px;
+    }
+
+    .content-wrapper {
+        margin-left: 0;
         width: 100%;
+    }
+
+    .sidebar .nav a {
+        padding: 12px 20px;
+        font-size: 0.95rem;
+    }
+
+    .sidebar .sidebar-brand {
+        font-size: 1.4rem;
+        padding: 20px 0 12px 0;
+    }
+}
+
+/* Responsive adjustments for smaller screens where sidebar might behave differently */
+@media (max-width: 767.98px) {
+    .content-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .sidebar .nav a {
+        padding: 16px 24px;
+        min-height: 48px;
+    }
+
+    .sidebar .nav a:hover {
+        background: rgba(26, 29, 33, 0.8);
+    }
+
+    .sidebar-toggle-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .sidebar {
+        border-right: 2px solid #fff;
+    }
+
+    .sidebar .nav a {
+        border: 1px solid transparent;
+    }
+
+    .sidebar .nav a:hover,
+    .sidebar .nav a.active {
+        border-color: #00bfff;
     }
 }
 

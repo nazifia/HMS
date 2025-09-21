@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
+{% load patient_tags %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -40,6 +41,54 @@
                             Patient has been automatically selected. You can focus on adding medications and prescription details.
                         </small>
                     </div>
+                    {% elif has_current_patient %}
+                    <!-- Current Patient Context Information Section -->
+                    <div class="alert alert-success">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-user-injured"></i> Creating Prescription for Current Patient
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Patient:</strong> {{ current_patient.full_name }}<br>
+                                <strong>Patient ID:</strong> {{ current_patient.patient_id }}<br>
+                                <strong>Phone:</strong> {{ current_patient.phone_number|default:"N/A" }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Age:</strong> {{ current_patient.age }} years<br>
+                                <strong>Gender:</strong> {{ current_patient.gender }}<br>
+                                {% if current_patient.nhia_reg_number %}
+                                <strong>NHIA:</strong> <span class="badge bg-success">{{ current_patient.nhia_reg_number }}</span>
+                                {% else %}
+                                <strong>NHIA:</strong> <span class="badge bg-secondary">Not Registered</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <hr class="my-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Patient context automatically loaded from current session. You can focus on adding medications and prescription details.
+                        </small>
+                        <div class="mt-2">
+                            <a href="/patients/{{ current_patient.id }}/" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> View Patient Details
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPatientContext()">
+                                <i class="fas fa-times"></i> Clear Patient Context
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- No Patient Selected Notice -->
+                    <div class="alert alert-warning">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle"></i> No Patient Selected
+                        </h5>
+                        <p>Please select a patient to create a prescription. You can:</p>
+                        <ul class="mb-0">
+                            <li>Go to a <a href="{% url 'patients:list' %}" class="alert-link">patient detail page</a> first to automatically populate patient information</li>
+                            <li>Select a patient manually using the dropdown below</li>
+                        </ul>
+                    </div>
                     {% endif %}
 
                     <form method="post" id="prescription-form">
@@ -54,6 +103,15 @@
                                 <label class="form-label">Patient</label>
                                 <input type="text" class="form-control" value="{{ patient.get_full_name }} ({{ patient.patient_id }})" readonly style="background-color: #e9ecef;">
                                 <small class="form-text text-muted">Patient is preselected from patient detail page</small>
+                            </div>
+                        {% elif has_current_patient %}
+                            <!-- Hidden field for current patient context -->
+                            <input type="hidden" name="patient_context_id" value="{{ current_patient.id }}">
+                            <!-- Show patient field as read-only -->
+                            <div class="mb-3">
+                                <label class="form-label">Patient</label>
+                                <input type="text" class="form-control" value="{{ current_patient.full_name }} ({{ current_patient.patient_id }})" readonly style="background-color: #e9ecef;">
+                                <small class="form-text text-muted">Patient automatically loaded from current session context</small>
                             </div>
                         {% else %}
                             {{ prescription_form.patient|as_crispy_field }}

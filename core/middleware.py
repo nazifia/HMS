@@ -210,12 +210,12 @@ class SessionTimeoutMiddleware:
 class PatientSessionMiddleware:
     """
     Middleware specifically for patient portal sessions.
-    Provides additional security for patient data access.
+    Provides additional security for patient data access and manages patient context.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
-        
+
         # Patient portal URLs that require extra security
         self.patient_urls = [
             '/patients/portal/',
@@ -224,33 +224,67 @@ class PatientSessionMiddleware:
             '/patients/medical-history/',
         ]
 
+        # Patient detail and related URLs that should set patient context
+        self.patient_context_urls = [
+            '/patients/',
+        ]
+
     def __call__(self, request):
         # Check if this is a patient portal request
         is_patient_request = any(request.path.startswith(url) for url in self.patient_urls)
-        
+
         if is_patient_request and request.user.is_authenticated:
             # Additional security checks for patient portal
             self.check_patient_access(request)
-            
+
             # Log patient portal access
             logger.info(f"Patient portal access by {request.user.username} to {request.path}")
-        
+
+        # Check if this is a patient detail page that should set context
+        self.set_patient_context(request)
+
         response = self.get_response(request)
         return response
+
+    def set_patient_context(self, request):
+        """
+        Set patient context in session when accessing patient detail pages.
+        This allows patient information to be available across all pages.
+        """
+        # Check if this is a patient detail URL
+        if '/patients/' in request.path and request.user.is_authenticated:
+            # Extract patient ID from URL patterns like /patients/31/ or /patients/31/edit/
+            path_parts = request.path.strip('/').split('/')
+            if len(path_parts) >= 2 and path_parts[0] == 'patients':
+                try:
+                    patient_id = int(path_parts[1])
+                    # Verify the patient exists and is active
+                    from patients.models import Patient
+                    patient = Patient.objects.get(id=patient_id, is_active=True)
+
+                    # Store patient ID in session for context
+                    request.session['current_patient_id'] = patient.id
+                    request.session['current_patient_last_accessed'] = timezone.now().timestamp()
+
+                    logger.info(f"Patient context set for user {request.user.username}: Patient {patient.get_full_name()} (ID: {patient.id})")
+
+                except (ValueError, Patient.DoesNotExist):
+                    # Invalid patient ID or patient not found, don't set context
+                    pass
 
     def check_patient_access(self, request):
         """Additional security checks for patient portal access"""
         # Check for suspicious activity patterns
         session_requests = request.session.get('patient_requests', [])
         now = timezone.now().timestamp()
-        
+
         # Remove old requests (older than 1 minute)
         session_requests = [req_time for req_time in session_requests if now - req_time < 60]
-        
+
         # Add current request
         session_requests.append(now)
         request.session['patient_requests'] = session_requests
-        
+
         # Check for too many requests (potential bot/attack)
         if len(session_requests) > 30:  # More than 30 requests per minute
             logger.warning(f"Suspicious activity from user {request.user.username}: {len(session_requests)} requests in 1 minute")
