@@ -256,10 +256,11 @@ class PatientSessionMiddleware:
             # Extract patient ID from URL patterns like /patients/31/ or /patients/31/edit/
             path_parts = request.path.strip('/').split('/')
             if len(path_parts) >= 2 and path_parts[0] == 'patients':
+                # Import here so the name is available for the except clause
+                from patients.models import Patient
                 try:
                     patient_id = int(path_parts[1])
                     # Verify the patient exists and is active
-                    from patients.models import Patient
                     patient = Patient.objects.get(id=patient_id, is_active=True)
 
                     # Store patient ID in session for context

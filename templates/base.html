@@ -151,7 +151,16 @@
         }
 
         .modal-backdrop.show {
-            opacity: 0.7;
+            opacity: 0.3;
+        }
+
+        /* Global Modal Z-Index Override */
+        #logoutWarningModal, #logoutModal {
+            z-index: 50010 !important;
+        }
+
+        #logoutWarningModal .modal-backdrop, #logoutModal .modal-backdrop {
+            z-index: 50000 !important;
         }
 
         /* Session Status Indicator */

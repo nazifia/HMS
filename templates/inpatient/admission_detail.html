@@ -405,7 +405,7 @@
         $('#dailyRoundModal, #nursingNoteModal').on('show.bs.modal', function() {
             // Ensure modal is above everything with new z-index hierarchy
             $(this).css({
-                'z-index': '2050',
+                'z-index': '50010',
                 'pointer-events': 'auto',
                 'position': 'fixed',
                 'top': '0',
@@ -416,19 +416,19 @@
 
             // Ensure backdrop is properly positioned
             $('.modal-backdrop').css({
-                'z-index': '2040',
-                'background-color': 'rgba(0, 0, 0, 0.5)',
-                'opacity': '0.5'
+                'z-index': '50000',
+                'background-color': 'rgba(0, 0, 0, 0.3)',
+                'opacity': '0.3'
             });
 
             // Ensure modal dialog and content are properly positioned
             $(this).find('.modal-dialog').css({
-                'z-index': '2060',
+                'z-index': '50020',
                 'position': 'relative'
             });
 
             $(this).find('.modal-content').css({
-                'z-index': '2070',
+                'z-index': '50030',
                 'position': 'relative',
                 'background-color': '#fff'
             });

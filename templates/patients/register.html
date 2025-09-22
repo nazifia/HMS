@@ -1,0 +1,10 @@
+{% extends 'patients/patient_form.html' %}
+{% load static %}
+
+{% block title %}Register Patient - Hospital Management System{% endblock %}
+
+{% block content %}
+    {% with title='Register Patient' patient=None %}
+        {{ block.super }}
+    {% endwith %}
+{% endblock %}

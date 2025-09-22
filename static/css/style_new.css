@@ -557,19 +557,19 @@ html, body {
 */
 
 .modal-backdrop {
-    z-index: 2040 !important;
+    z-index: 50000 !important;
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    background-color: rgba(0, 0, 0, 0.5) !important;
-    opacity: 0.5 !important;
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    opacity: 0.3 !important;
     pointer-events: none !important;
 }
 
 .modal {
-    z-index: 2050 !important;
+    z-index: 50010 !important;
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -582,7 +582,7 @@ html, body {
 }
 
 .modal-dialog {
-    z-index: 2060 !important;
+    z-index: 50020 !important;
     position: relative !important;
     pointer-events: auto !important;
     margin: 1.75rem auto !important;
@@ -593,7 +593,7 @@ html, body {
 /* Ensure modal content is clickable and properly positioned */
 .modal-content {
     position: relative !important;
-    z-index: 2070 !important;
+    z-index: 50030 !important;
     background-color: #fff !important;
     border: 1px solid rgba(0,0,0,.2) !important;
     border-radius: 0.375rem !important;
@@ -636,7 +636,7 @@ body.modal-open {
 
 /* Additional modal fixes */
 .modal-backdrop.show {
-    opacity: 0.5 !important;
+    opacity: 0.3 !important;
 }
 
 /* Ensure modal is properly centered and accessible */
@@ -655,7 +655,7 @@ body.modal-open {
 
 /* Ensure dropdown menus in modals work */
 .modal .dropdown-menu {
-    z-index: 1080 !important;
+    z-index: 50070 !important;
     pointer-events: auto !important;
 }
 
@@ -688,34 +688,34 @@ body.modal-open {
 /* Ensure close button works */
 .modal .btn-close {
     pointer-events: auto !important;
-    z-index: 2080 !important;
+    z-index: 50040 !important;
 }
 
 /* ADDITIONAL MODAL FIXES FOR Z-INDEX ISSUES */
 /* Force modals to appear above all other elements */
 .modal.show {
-    z-index: 2050 !important;
+    z-index: 50010 !important;
 }
 
 .modal.show .modal-backdrop {
-    z-index: 2040 !important;
+    z-index: 50000 !important;
 }
 
 .modal.show .modal-dialog {
-    z-index: 2060 !important;
+    z-index: 50020 !important;
 }
 
 .modal.show .modal-content {
-    z-index: 2070 !important;
+    z-index: 50030 !important;
 }
 
 /* Ensure Select2 dropdowns in modals work */
 .select2-container {
-    z-index: 2080 !important;
+    z-index: 50050 !important;
 }
 
 .select2-dropdown {
-    z-index: 2090 !important;
+    z-index: 50060 !important;
 }
 
 /* Force all modal elements to be above sidebar and wrapper */
@@ -725,9 +725,9 @@ body.modal-open {
 
 /* Ensure modal backdrop covers everything */
 .modal-backdrop.show {
-    z-index: 2040 !important;
-    opacity: 0.5 !important;
-    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: 50000 !important;
+    opacity: 0.3 !important;
+    background-color: rgba(0, 0, 0, 0.3) !important;
 }
 
 /* WRAPPER Z-INDEX FIX */
