@@ -564,7 +564,7 @@ html, body {
     width: 100vw !important;
     height: 100vh !important;
     background-color: rgba(0, 0, 0, 0.3) !important;
-    opacity: 0.3 !important;
+    opacity: 0.15 !important;  /* Reduced from 0.3 to 0.15 */
     pointer-events: none !important;
 }
 
@@ -636,7 +636,7 @@ body.modal-open {
 
 /* Additional modal fixes */
 .modal-backdrop.show {
-    opacity: 0.3 !important;
+    opacity: 0.15 !important;  /* Reduced from 0.3 to 0.15 */
 }
 
 /* Ensure modal is properly centered and accessible */
@@ -726,7 +726,7 @@ body.modal-open {
 /* Ensure modal backdrop covers everything */
 .modal-backdrop.show {
     z-index: 50000 !important;
-    opacity: 0.3 !important;
+    opacity: 0.15 !important;  /* Reduced from 0.3 to 0.15 */
     background-color: rgba(0, 0, 0, 0.3) !important;
 }
 

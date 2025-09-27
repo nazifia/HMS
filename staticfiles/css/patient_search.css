@@ -1,0 +1,244 @@
+/* Patient Search Styles */
+
+.patient-search-results {
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.patient-search-results .dropdown-item {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.patient-search-results .dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.patient-search-results .dropdown-item:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.patient-search-results .dropdown-item strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.patient-search-results .dropdown-item .text-muted {
+    font-size: 0.875rem;
+}
+
+.patient-search-container {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.patient-search-container .form-control {
+    border-radius: 0.375rem;
+}
+
+.patient-search-container .form-control:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* === ENHANCED RESPONSIVE PATIENT SEARCH DESIGN === */
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {
+    .patient-search-container {
+        max-width: 400px;
+    }
+
+    .patient-search-results {
+        max-height: 250px;
+        width: 100%;
+    }
+
+    .patient-search-results .dropdown-item {
+        padding: 0.5rem 1rem;
+    }
+
+    .patient-search-results .dropdown-item strong {
+        font-size: 0.95rem;
+    }
+
+    .patient-search-results .dropdown-item .text-muted {
+        font-size: 0.85rem;
+    }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+    .patient-search-container {
+        max-width: 500px;
+    }
+
+    .patient-search-results {
+        max-height: 300px;
+        width: 100%;
+    }
+
+    .patient-search-results .dropdown-item {
+        padding: 0.75rem 1.25rem;
+    }
+
+    .patient-search-results .dropdown-item strong {
+        font-size: 1rem;
+    }
+
+    .patient-search-results .dropdown-item .text-muted {
+        font-size: 0.875rem;
+    }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+    .patient-search-container {
+        max-width: 600px;
+    }
+
+    .patient-search-results {
+        max-height: 350px;
+        width: 100%;
+    }
+
+    .patient-search-results .dropdown-item {
+        padding: 0.875rem 1.5rem;
+    }
+
+    .patient-search-results .dropdown-item strong {
+        font-size: 1.05rem;
+    }
+
+    .patient-search-results .dropdown-item .text-muted {
+        font-size: 0.9rem;
+    }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+    .patient-search-container {
+        max-width: 700px;
+    }
+
+    .patient-search-results {
+        max-height: 400px;
+        width: 100%;
+    }
+
+    .patient-search-results .dropdown-item {
+        padding: 1rem 1.75rem;
+    }
+
+    .patient-search-results .dropdown-item strong {
+        font-size: 1.1rem;
+    }
+
+    .patient-search-results .dropdown-item .text-muted {
+        font-size: 0.95rem;
+    }
+}
+
+/* Mobile-specific responsive adjustments */
+@media (max-width: 767px) {
+    .patient-search-results {
+        max-height: 200px;
+        width: calc(100vw - 2rem);
+        margin: 0 1rem;
+    }
+
+    .patient-search-results .dropdown-item {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .patient-search-results .dropdown-item strong {
+        font-size: 0.9rem;
+        margin-bottom: 0.125rem;
+    }
+
+    .patient-search-results .dropdown-item .text-muted {
+        font-size: 0.75rem;
+    }
+
+    .patient-search-container {
+        margin-bottom: 0.75rem;
+    }
+
+    .patient-search-container .form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .patient-search-results .dropdown-item {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .patient-search-results .dropdown-item strong {
+        line-height: 1.2;
+    }
+
+    .patient-search-results .dropdown-item .text-muted {
+        line-height: 1.1;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .patient-search-results {
+        border: 2px solid #000;
+    }
+
+    .patient-search-results .dropdown-item {
+        border-bottom: 1px solid #000;
+    }
+
+    .patient-search-results .dropdown-item:hover {
+        background-color: #000;
+        color: #fff;
+    }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .patient-search-results {
+        transition: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .patient-search-results {
+        background-color: #2c3034;
+        border-color: #3a3f44;
+    }
+
+    .patient-search-results .dropdown-item {
+        color: #e9ecef;
+        border-bottom-color: #3a3f44;
+    }
+
+    .patient-search-results .dropdown-item:hover {
+        background-color: #3a3f44;
+        color: #fff;
+    }
+
+    .patient-search-results .dropdown-item strong {
+        color: #fff;
+    }
+
+    .patient-search-results .dropdown-item .text-muted {
+        color: #adb5bd !important;
+    }
+}
