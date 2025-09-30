@@ -3,6 +3,11 @@
 {% block content %}
 <div class="container">
     <h2>Consultation Details</h2>
+
+    <!-- Authorization Status/Warning -->
+    {% include 'includes/authorization_status.html' with object=consultation %}
+    {% include 'includes/authorization_warning.html' with patient=consultation.patient consultation=consultation %}
+
     <!-- Analytics Row -->
     <div class="row mb-4">
         <div class="col-md-3">

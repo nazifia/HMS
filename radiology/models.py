@@ -58,6 +58,14 @@ class RadiologyOrder(models.Model):
         ('emergency', 'Emergency'),
     )
 
+    AUTHORIZATION_STATUS_CHOICES = (
+        ('not_required', 'Not Required'),
+        ('required', 'Required'),
+        ('pending', 'Pending Authorization'),
+        ('authorized', 'Authorized'),
+        ('rejected', 'Rejected'),
+    )
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='radiology_orders')
     test = models.ForeignKey(RadiologyTest, on_delete=models.CASCADE, related_name='orders')
     referring_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='radiology_referrals')
@@ -72,12 +80,72 @@ class RadiologyOrder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='radiology_order')
-    
+
     # Authorization code for NHIA patients
     authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='radiology_orders')
 
+    # Link to consultation
+    consultation = models.ForeignKey(
+        'consultations.Consultation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='radiology_orders',
+        help_text="Link to the consultation this radiology order was created from"
+    )
+
+    # NHIA Authorization fields
+    requires_authorization = models.BooleanField(
+        default=False,
+        help_text="True if this NHIA patient radiology order from non-NHIA consultation requires desk office authorization"
+    )
+    authorization_status = models.CharField(
+        max_length=20,
+        choices=AUTHORIZATION_STATUS_CHOICES,
+        default='not_required',
+        help_text="Status of authorization for this radiology order"
+    )
+
     def __str__(self):
         return f"{self.test.name} for {self.patient.get_full_name()} ({self.order_date.strftime('%Y-%m-%d')})"
+
+    def is_nhia_patient(self):
+        """Check if the patient is an NHIA patient"""
+        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None
+
+    def check_authorization_requirement(self):
+        """
+        Check if this radiology order requires authorization.
+        NHIA patients with radiology orders from non-NHIA consultations require authorization.
+        """
+        if self.is_nhia_patient():
+            # Check if linked to a consultation that requires authorization
+            if self.consultation and self.consultation.requires_authorization:
+                self.requires_authorization = True
+                if not self.authorization_code:
+                    self.authorization_status = 'required'
+                else:
+                    self.authorization_status = 'authorized'
+                return True
+
+        self.requires_authorization = False
+        self.authorization_status = 'not_required'
+        return False
+
+    def can_be_processed(self):
+        """Check if radiology order can be processed based on authorization and payment"""
+        # Check authorization requirement for NHIA patients from non-NHIA consultations
+        if self.requires_authorization:
+            if not self.authorization_code:
+                return False, 'Desk office authorization required for NHIA patient from non-NHIA unit. Please obtain authorization code before processing.'
+            elif not self.authorization_code.is_valid():
+                return False, f'Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.'
+
+        # Check if already completed or cancelled
+        if self.status in ['completed', 'cancelled']:
+            return False, f'Radiology order is already {self.status}'
+
+        return True, 'Radiology order can be processed'
 
     class Meta:
         ordering = ['-order_date']

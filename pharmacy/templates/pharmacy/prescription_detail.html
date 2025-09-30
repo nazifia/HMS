@@ -8,6 +8,9 @@
         <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
     </div>
 
+    <!-- NHIA Authorization Warning -->
+    {% include 'includes/authorization_warning.html' with prescription=prescription %}
+
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Prescription Information</h6>
@@ -28,6 +31,9 @@
                     </p>
                     <p><strong>Created At:</strong> {{ prescription.created_at|date:"Y-m-d H:i" }}</p>
                     <p><strong>Last Updated:</strong> {{ prescription.updated_at|date:"Y-m-d H:i" }}</p>
+
+                    <!-- NHIA Authorization Status -->
+                    {% include 'includes/authorization_status.html' with object=prescription %}
                 </div>
             </div>
         </div>

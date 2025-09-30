@@ -374,10 +374,36 @@
 
         <!-- Nav Item - Desk Office -->
         <li class="nav-item {% if '/desk-office/' in request.path %}active{% endif %}">
-            <a class="nav-link" href="{% url 'desk_office:generate_authorization_code' %}">
+            <a class="nav-link {% if not '/desk-office/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDeskOffice" aria-expanded="{% if '/desk-office/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDeskOffice">
                 <i class="fas fa-fw fa-desktop text-white"></i>
                 <span class="text-white">Desk Office</span>
             </a>
+            <div id="collapseDeskOffice" class="collapse {% if '/desk-office/' in request.path %}show{% endif %}" aria-labelledby="headingDeskOffice" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">NHIA Authorization:</h6>
+                    <a class="collapse-item {% if 'authorization-dashboard' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_dashboard' %}">
+                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    </a>
+                    <a class="collapse-item {% if 'pending-consultations' in request.path %}active{% endif %}" href="{% url 'desk_office:pending_consultations' %}">
+                        <i class="fas fa-stethoscope me-1"></i> Pending Consultations
+                    </a>
+                    <a class="collapse-item {% if 'pending-referrals' in request.path %}active{% endif %}" href="{% url 'desk_office:pending_referrals' %}">
+                        <i class="fas fa-exchange-alt me-1"></i> Pending Referrals
+                    </a>
+                    <a class="collapse-item {% if 'authorization-codes' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_code_list' %}">
+                        <i class="fas fa-key me-1"></i> Authorization Codes
+                    </a>
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Legacy:</h6>
+                    <a class="collapse-item {% if 'generate-code' in request.path %}active{% endif %}" href="{% url 'desk_office:generate_authorization_code' %}">
+                        <i class="fas fa-plus-circle me-1"></i> Generate Code (Old)
+                    </a>
+                    <a class="collapse-item {% if 'verify-code' in request.path %}active{% endif %}" href="{% url 'desk_office:verify_authorization_code' %}">
+                        <i class="fas fa-check-circle me-1"></i> Verify Code
+                    </a>
+                </div>
+            </div>
         </li>
 
         <!-- Nav Item - Notifications -->

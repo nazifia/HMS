@@ -93,8 +93,13 @@
                                 </div>
                             {% endif %}
                         </div>
+
+                        <!-- NHIA Authorization Code Input -->
+                        <div class="col-md-12 mb-3">
+                            {% include 'includes/authorization_code_input.html' with form=form %}
+                        </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between mt-4">
                         <a href="{% url 'laboratory:test_requests' %}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Back to Test Requests

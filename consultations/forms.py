@@ -63,7 +63,17 @@ class WaitingListForm(forms.ModelForm):
 
 class ReferralForm(forms.ModelForm):
     """Form for creating referrals"""
-    
+
+    authorization_code_input = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter authorization code (if required)'
+        }),
+        help_text="Required for NHIA patients referred from NHIA to non-NHIA units"
+    )
+
     class Meta:
         model = Referral
         fields = ['patient', 'referred_to', 'reason', 'notes']
@@ -73,23 +83,58 @@ class ReferralForm(forms.ModelForm):
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         self.fields['referred_to'].queryset = CustomUser.objects.filter(
-            is_active=True, 
+            is_active=True,
             profile__role='doctor'
         ).order_by('first_name', 'last_name')
-        
+
         # Set empty labels
         self.fields['referred_to'].empty_label = "Select Referred Doctor"
+
+    def clean_authorization_code_input(self):
+        """Validate authorization code if provided"""
+        code_str = self.cleaned_data.get('authorization_code_input', '').strip()
+        if not code_str:
+            return None
+
+        from nhia.models import AuthorizationCode
+        try:
+            auth_code = AuthorizationCode.objects.get(code=code_str)
+            if not auth_code.is_valid():
+                raise forms.ValidationError(f"Authorization code is {auth_code.status}")
+            return auth_code
+        except AuthorizationCode.DoesNotExist:
+            raise forms.ValidationError("Invalid authorization code")
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        auth_code = self.cleaned_data.get('authorization_code_input')
+        if auth_code:
+            instance.authorization_code = auth_code
+            instance.authorization_status = 'authorized'
+        if commit:
+            instance.save()
+        return instance
 
 
 class ConsultationForm(forms.ModelForm):
     """Form for creating and editing consultations"""
-    
+
+    authorization_code_input = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter authorization code (if required)'
+        }),
+        help_text="Required for NHIA patients in non-NHIA consulting rooms"
+    )
+
     class Meta:
         model = Consultation
         fields = ['patient', 'doctor', 'vitals', 'chief_complaint', 'symptoms', 'diagnosis', 'consultation_notes']
@@ -102,20 +147,45 @@ class ConsultationForm(forms.ModelForm):
             'diagnosis': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'consultation_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         self.fields['doctor'].queryset = CustomUser.objects.filter(
-            is_active=True, 
+            is_active=True,
             profile__role='doctor'
         ).order_by('first_name', 'last_name')
         self.fields['vitals'].queryset = Vitals.objects.all().order_by('-date_time')
-        
+
         # Set empty labels
         self.fields['doctor'].empty_label = "Select Doctor (Optional)"
         self.fields['vitals'].empty_label = "Select Vitals (Optional)"
+
+    def clean_authorization_code_input(self):
+        """Validate authorization code if provided"""
+        code_str = self.cleaned_data.get('authorization_code_input', '').strip()
+        if not code_str:
+            return None
+
+        from nhia.models import AuthorizationCode
+        try:
+            auth_code = AuthorizationCode.objects.get(code=code_str)
+            if not auth_code.is_valid():
+                raise forms.ValidationError(f"Authorization code is {auth_code.status}")
+            return auth_code
+        except AuthorizationCode.DoesNotExist:
+            raise forms.ValidationError("Invalid authorization code")
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        auth_code = self.cleaned_data.get('authorization_code_input')
+        if auth_code:
+            instance.authorization_code = auth_code
+            instance.authorization_status = 'authorized'
+        if commit:
+            instance.save()
+        return instance
 
 
 class VitalsSelectionForm(forms.Form):

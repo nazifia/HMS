@@ -17,12 +17,15 @@ class RadiologyOrderForm(forms.ModelForm):
         help_text='Search for a patient by name, ID, or phone number'
     )
     
-    # Authorization code field
-    authorization_code = forms.ModelChoiceField(
-        queryset=None,  # Will be set in __init__
+    # Authorization code input field
+    authorization_code_input = forms.CharField(
+        max_length=50,
         required=False,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        empty_label="Select Authorization Code (Optional)"
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter authorization code (if required)'
+        }),
+        help_text="Required for NHIA patients from non-NHIA consultations"
     )
     
     def __init__(self, *args, **kwargs):
@@ -46,31 +49,36 @@ class RadiologyOrderForm(forms.ModelForm):
         self.fields['test'].queryset = RadiologyTest.objects.filter(is_active=True)
         # Make referring_doctor not required in the form (set in view)
         self.fields['referring_doctor'].required = False
-        
-        # Set authorization code queryset based on patient
-        try:
-            from nhia.models import AuthorizationCode
-        except ImportError:
-            AuthorizationCode = None
 
-        if patient_instance and patient_instance.patient_type == 'nhia' and AuthorizationCode:
-            self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
-                patient=patient_instance,
-                status='active'
-            ).order_by('-generated_at')
-        else:
-            # Use empty queryset if AuthorizationCode is not available or patient is not NHIA
-            if AuthorizationCode:
-                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
-            else:
-                # If NHIA app is not available, disable the field
-                self.fields['authorization_code'].widget.attrs['disabled'] = True
-                self.fields['authorization_code'].required = False
-            
         # If editing an existing record, populate the search field
         if self.instance and self.instance.pk and self.instance.patient:
             patient = self.instance.patient
             self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
+
+    def clean_authorization_code_input(self):
+        """Validate authorization code if provided"""
+        code_str = self.cleaned_data.get('authorization_code_input', '').strip()
+        if not code_str:
+            return None
+
+        from nhia.models import AuthorizationCode
+        try:
+            auth_code = AuthorizationCode.objects.get(code=code_str)
+            if not auth_code.is_valid():
+                raise forms.ValidationError(f"Authorization code is {auth_code.status}")
+            return auth_code
+        except AuthorizationCode.DoesNotExist:
+            raise forms.ValidationError("Invalid authorization code")
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        auth_code = self.cleaned_data.get('authorization_code_input')
+        if auth_code:
+            instance.authorization_code = auth_code
+            instance.authorization_status = 'authorized'
+        if commit:
+            instance.save()
+        return instance
 
     class Meta:
         model = RadiologyOrder

@@ -1,7 +1,7 @@
 # NHIA Service Authorization Implementation Summary
 
 ## Overview
-This document summarizes the implementation of the enhanced desk office functionality for generating and managing service authorization codes for NHIA patients at the URL `http://127.0.0.1:8000/desk-office/generate-code/`.
+This document summarizes the implementation of the enhanced desk office functionality for generating and managing service authorization codes for NHIA patients at the URL `http://127.0.0.1:8000/desk-office/authorization-dashboard/`.
 
 ## Features Implemented
 
@@ -61,20 +61,23 @@ The `AuthorizationCode` model was enhanced with:
 - `authorization_form_fields.html`: Partial template for form fields
 
 ### URLs
-- `/desk-office/generate-code/`: Generate authorization codes
-- `/desk-office/verify-code/`: Verify authorization codes
-- `/desk-office/search-nhia-patients/`: AJAX endpoint for patient search
+- `/desk-office/authorization-dashboard/`: Main authorization dashboard
+- `/desk-office/pending-consultations/`: View pending consultations
+- `/desk-office/pending-referrals/`: View pending referrals
+- `/desk-office/authorize-consultation/<id>/`: Authorize specific consultation
+- `/desk-office/authorize-referral/<id>/`: Authorize specific referral
+- `/desk-office/authorization-codes/`: View all authorization codes
 
 ## Workflow
 
 ### Generating Authorization Codes
-1. Navigate to `/desk-office/generate-code/`
-2. Search for NHIA patient by name or ID
-3. Select the patient from search results
-4. Fill in service details:
-   - Service type
-   - Service description
-   - Department
+1. Navigate to `/desk-office/authorization-dashboard/`
+2. View pending consultations and referrals requiring authorization
+3. Click "Authorize" button for the item
+4. Fill in authorization details:
+   - Amount covered
+   - Validity period
+   - Notes
 5. Generate the authorization code
 6. Provide the code to the patient
 

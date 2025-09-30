@@ -18,6 +18,10 @@
         </div>
     </div>
 
+    <!-- Authorization Status/Warning -->
+    {% include 'includes/authorization_status.html' with object=referral %}
+    {% include 'includes/authorization_warning.html' with patient=referral.patient referral=referral %}
+
     <div class="row">
         <!-- Referral Information -->
         <div class="col-lg-8">

@@ -117,6 +117,17 @@ class PrescriptionForm(forms.ModelForm):
         widget=forms.DateInput(attrs={'type': 'date'})
     )
 
+    # Authorization code input field
+    authorization_code_input = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter authorization code (if required)'
+        }),
+        help_text="Required for NHIA patients from non-NHIA consultations"
+    )
+
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)
         preselected_patient = kwargs.pop('preselected_patient', None)
@@ -178,6 +189,21 @@ class PrescriptionForm(forms.ModelForm):
             # Ensure all patients are available for selection when not preselected
             self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
 
+    def clean_authorization_code_input(self):
+        """Validate authorization code if provided"""
+        code_str = self.cleaned_data.get('authorization_code_input', '').strip()
+        if not code_str:
+            return None
+
+        from nhia.models import AuthorizationCode
+        try:
+            auth_code = AuthorizationCode.objects.get(code=code_str)
+            if not auth_code.is_valid():
+                raise forms.ValidationError(f"Authorization code is {auth_code.status}")
+            return auth_code
+        except AuthorizationCode.DoesNotExist:
+            raise forms.ValidationError("Invalid authorization code")
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -186,6 +212,16 @@ class PrescriptionForm(forms.ModelForm):
             cleaned_data['patient'] = cleaned_data.get('patient_hidden')
 
         return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        auth_code = self.cleaned_data.get('authorization_code_input')
+        if auth_code:
+            instance.authorization_code = auth_code
+            instance.authorization_status = 'authorized'
+        if commit:
+            instance.save()
+        return instance
 
     class Meta:
         model = Prescription

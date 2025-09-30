@@ -65,13 +65,13 @@ The `AuthorizationCode` model has been enhanced with:
 ## Workflow
 
 ### Generating Authorization Codes
-1. Navigate to `/desk-office/generate-code/`
-2. Search for NHIA patient by name or ID
-3. Select the patient from search results
-4. Fill in service details:
-   - Service type
-   - Service description
-   - Department
+1. Navigate to `/desk-office/authorization-dashboard/`
+2. View pending consultations and referrals
+3. Click "Authorize" button for the item requiring authorization
+4. Fill in authorization details:
+   - Amount covered
+   - Validity period
+   - Notes
 5. Generate the authorization code
 6. Provide the code to the patient
 

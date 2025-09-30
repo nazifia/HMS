@@ -20,6 +20,10 @@
         </div>
     </div>
 
+    <!-- Authorization Status/Warning -->
+    {% include 'includes/authorization_status.html' with object=consultation %}
+    {% include 'includes/authorization_warning.html' with patient=consultation.patient consultation=consultation %}
+
     <div class="row">
         <!-- Consultation Form -->
         <div class="col-lg-8">

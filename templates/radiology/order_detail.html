@@ -12,6 +12,9 @@
         </a>
     </div>
 
+    <!-- NHIA Authorization Warning -->
+    {% include 'includes/authorization_warning.html' with radiology_order=order %}
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card shadow mb-4">
@@ -58,6 +61,11 @@
                             <p>{% if order %}{{ order.clinical_information|default:"-" }}{% else %}-{% endif %}</p>
                             <h5 class="font-weight-bold mt-4">Additional Notes</h5>
                             <p>{% if order %}{{ order.notes|default:"-" }}{% else %}-{% endif %}</p>
+
+                            <!-- NHIA Authorization Status -->
+                            <div class="mt-4">
+                                {% include 'includes/authorization_status.html' with object=order %}
+                            </div>
                         </div>
                     </div>
                     <hr>

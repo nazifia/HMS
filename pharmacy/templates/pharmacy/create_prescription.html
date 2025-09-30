@@ -122,6 +122,9 @@
                         {{ prescription_form.prescription_type|as_crispy_field }}
                         {{ prescription_form.notes|as_crispy_field }}
 
+                        <!-- NHIA Authorization Code Input -->
+                        {% include 'includes/authorization_code_input.html' with form=prescription_form %}
+
                         <hr>
                         <h4>Medications</h4>
                         <div id="medication-items-container">

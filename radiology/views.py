@@ -192,6 +192,13 @@ def edit_order(request, order_id):
 @require_POST
 def schedule_order(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
+
+    # Check authorization requirement before scheduling
+    can_process, message = order.can_be_processed()
+    if not can_process:
+        messages.error(request, message)
+        return redirect('radiology:order_detail', order_id=order.id)
+
     order.status = 'scheduled'
     order.scheduled_date = timezone.now()
     order.save()
@@ -202,6 +209,13 @@ def schedule_order(request, order_id):
 @require_POST
 def mark_completed(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
+
+    # Check authorization requirement before marking as completed
+    can_process, message = order.can_be_processed()
+    if not can_process:
+        messages.error(request, message)
+        return redirect('radiology:order_detail', order_id=order.id)
+
     order.status = 'completed'
     order.completed_date = timezone.now()
     order.save()
@@ -220,6 +234,13 @@ def cancel_order(request, order_id):
 @login_required
 def add_result(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
+
+    # Check authorization requirement BEFORE allowing result entry
+    can_process, message = order.can_be_processed()
+    if not can_process:
+        messages.error(request, message)
+        return redirect('radiology:order_detail', order_id=order.id)
+
     try:
         result = order.result
     except RadiologyResult.DoesNotExist:

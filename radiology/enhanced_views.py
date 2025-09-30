@@ -13,7 +13,13 @@ from patients.models import Patient
 def enhanced_add_result(request, order_id):
     """Enhanced view for adding/editing radiology test results"""
     order = get_object_or_404(RadiologyOrder, pk=order_id)
-    
+
+    # Check authorization requirement BEFORE allowing result entry
+    can_process, message = order.can_be_processed()
+    if not can_process:
+        messages.error(request, message)
+        return redirect('radiology:order_detail', order_id=order.id)
+
     # Check if result already exists
     try:
         result = order.result

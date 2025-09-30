@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-shield-alt me-2"></i>
+            {{ page_title }}
+        </h1>
+        <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Consultation Information -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-stethoscope me-2"></i>
+                        Consultation Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Consultation ID:</th>
+                            <td>#{{ consultation.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Patient:</th>
+                            <td>
+                                {{ consultation.patient.get_full_name }}
+                                <br>
+                                <small class="text-muted">{{ consultation.patient.patient_id }}</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Doctor:</th>
+                            <td>Dr. {{ consultation.doctor.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Consulting Room:</th>
+                            <td>{{ consultation.consulting_room }}</td>
+                        </tr>
+                        <tr>
+                            <th>Date:</th>
+                            <td>{{ consultation.consultation_date|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Chief Complaint:</th>
+                            <td>{{ consultation.chief_complaint }}</td>
+                        </tr>
+                        <tr>
+                            <th>Authorization Status:</th>
+                            <td>
+                                <span class="badge bg-warning">{{ consultation.get_authorization_status_display }}</span>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Why Authorization is Required:</strong><br>
+                        This NHIA patient was seen in a non-NHIA consulting room. All services from this consultation require desk office authorization.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-key me-2"></i>
+                        Generate Authorization Code
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount Covered (GH₵)</label>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" value="0.00" required>
+                            <small class="form-text text-muted">Enter the amount this authorization code will cover</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="expiry_days" class="form-label">Validity Period (Days)</label>
+                            <select class="form-select" id="expiry_days" name="expiry_days" required>
+                                <option value="7">7 Days</option>
+                                <option value="14">14 Days</option>
+                                <option value="30" selected>30 Days</option>
+                                <option value="60">60 Days</option>
+                                <option value="90">90 Days</option>
+                            </select>
+                            <small class="form-text text-muted">How long should this authorization code be valid?</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Add any additional notes or remarks..."></textarea>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Important:</strong> Once generated, the authorization code will be linked to this consultation and can be used for all services (prescriptions, lab tests, radiology) from this consultation.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check me-2"></i>
+                                Generate Authorization Code
+                            </button>
+                            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

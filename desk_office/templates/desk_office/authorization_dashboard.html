@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-shield-alt me-2"></i>
+            NHIA Authorization Dashboard
+        </h1>
+        <div>
+            <a href="{% url 'desk_office:authorization_code_list' %}" class="btn btn-primary">
+                <i class="fas fa-list me-2"></i>
+                View All Codes
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Total Pending
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Consultations
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.consultations }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Referrals
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.referrals }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Prescriptions
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.prescriptions }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-pills fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Lab Tests
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.lab_tests }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-flask fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                Radiology
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.radiology }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-x-ray fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pending Consultations -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-stethoscope me-2"></i>
+                        Pending Consultations
+                    </h6>
+                    <a href="{% url 'desk_office:pending_consultations' %}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if pending_consultations %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Doctor</th>
+                                        <th>Room</th>
+                                        <th>Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for consultation in pending_consultations %}
+                                    <tr>
+                                        <td>{{ consultation.patient.get_full_name }}</td>
+                                        <td>Dr. {{ consultation.doctor.get_full_name }}</td>
+                                        <td>{{ consultation.consulting_room }}</td>
+                                        <td>{{ consultation.consultation_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'desk_office:authorize_consultation' consultation.id %}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check"></i> Authorize
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No pending consultations requiring authorization.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Referrals -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-exchange-alt me-2"></i>
+                        Pending Referrals
+                    </h6>
+                    <a href="{% url 'desk_office:pending_referrals' %}" class="btn btn-sm btn-info">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if pending_referrals %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>From</th>
+                                        <th>To</th>
+                                        <th>Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for referral in pending_referrals %}
+                                    <tr>
+                                        <td>{{ referral.patient.get_full_name }}</td>
+                                        <td>Dr. {{ referral.referring_doctor.get_full_name }}</td>
+                                        <td>Dr. {{ referral.referred_to.get_full_name }}</td>
+                                        <td>{{ referral.referral_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'desk_office:authorize_referral' referral.id %}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check"></i> Authorize
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No pending referrals requiring authorization.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Authorization Codes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-key me-2"></i>
+                        Recent Authorization Codes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_codes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Patient</th>
+                                        <th>Service Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Generated</th>
+                                        <th>Expiry</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for code in recent_codes %}
+                                    <tr>
+                                        <td><strong>{{ code.code }}</strong></td>
+                                        <td>{{ code.patient.get_full_name }}</td>
+                                        <td>{{ code.get_service_type_display }}</td>
+                                        <td>GH₵ {{ code.amount }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if code.status == 'active' %}success{% elif code.status == 'used' %}secondary{% else %}danger{% endif %}">
+                                                {{ code.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ code.generated_at|date:"M d, Y H:i" }}</td>
+                                        <td>{{ code.expiry_date|date:"M d, Y" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No authorization codes generated yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

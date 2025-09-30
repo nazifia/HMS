@@ -1,0 +1,97 @@
+{% comment %}
+Reusable template partial for authorization code input field.
+
+Usage:
+    {% include 'includes/authorization_code_input.html' with form=form patient=patient %}
+
+Parameters:
+    - form: The form object containing the authorization_code_input field
+    - patient: The patient object (optional, used to check if NHIA patient)
+    - show_help: Boolean to show/hide help text (default: True)
+{% endcomment %}
+
+{% load core_form_tags %}
+
+{% if patient %}
+    {% if patient.patient_type == 'nhia' or patient.nhia_info %}
+        <div class="mb-3" id="authorization-code-section">
+            <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">
+                Authorization Code
+                <span class="text-muted">(if required)</span>
+            </label>
+            
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fas fa-key"></i>
+                </span>
+                {{ form.authorization_code_input }}
+            </div>
+            
+            {% if form.authorization_code_input.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.authorization_code_input.errors }}
+                </div>
+            {% endif %}
+            
+            {% if show_help|default:True %}
+                <div class="form-text">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>When is authorization required?</strong>
+                    <ul class="mb-0 mt-1 small">
+                        <li>NHIA patients seen in non-NHIA consulting rooms</li>
+                        <li>NHIA patients referred from NHIA to non-NHIA units</li>
+                        <li>Services (prescriptions, lab tests, radiology) from such consultations</li>
+                    </ul>
+                    <div class="mt-2">
+                        <strong>How to obtain authorization:</strong><br>
+                        Contact the desk office to generate an authorization code for this patient.
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <script>
+        // JavaScript to show/hide authorization field based on patient NHIA status
+        document.addEventListener('DOMContentLoaded', function() {
+            const authSection = document.getElementById('authorization-code-section');
+            const patientSelect = document.querySelector('select[name="patient"]');
+            
+            if (patientSelect && authSection) {
+                patientSelect.addEventListener('change', function() {
+                    // You can add AJAX call here to check if selected patient is NHIA
+                    // and show/hide the authorization section accordingly
+                });
+            }
+        });
+        </script>
+    {% endif %}
+{% else %}
+    {# Show the field even if patient is not provided, for generic forms #}
+    <div class="mb-3">
+        <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">
+            Authorization Code
+            <span class="text-muted">(if required)</span>
+        </label>
+        
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="fas fa-key"></i>
+            </span>
+            {{ form.authorization_code_input }}
+        </div>
+        
+        {% if form.authorization_code_input.errors %}
+            <div class="invalid-feedback d-block">
+                {{ form.authorization_code_input.errors }}
+            </div>
+        {% endif %}
+        
+        {% if show_help|default:True %}
+            <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                Required for NHIA patients from non-NHIA consultations or referrals.
+            </div>
+        {% endif %}
+    </div>
+{% endif %}
+

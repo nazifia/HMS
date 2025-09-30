@@ -815,12 +815,19 @@ def update_test_request_status(request, request_id):
     if request.method == 'POST':
         status = request.POST.get('status')
         if status in dict(TestRequest.STATUS_CHOICES):
+            # Check authorization requirement before allowing status change to processing states
+            if status in ['sample_collected', 'processing']:
+                can_process, message = test_request.can_be_processed()
+                if not can_process:
+                    messages.error(request, message)
+                    return redirect('laboratory:test_request_detail', request_id=test_request.id)
+
             # Add logic here: if status is moving to 'sample_collected' or 'processing',
             # ensure payment is confirmed if it was 'awaiting_payment'.
             if test_request.status == 'awaiting_payment' and status != 'cancelled':
                 messages.error(request, "Cannot proceed. Payment is still pending for this test request.")
                 return redirect('laboratory:test_request_detail', request_id=test_request.id)
-            
+
             test_request.status = status
             test_request.save()
             messages.success(request, f'Test request status updated to {test_request.get_status_display()}.')
@@ -835,6 +842,12 @@ def update_test_request_status(request, request_id):
 def create_test_result(request, request_id):
     """View for creating a new test result"""
     test_request = get_object_or_404(TestRequest, id=request_id)
+
+    # Check authorization requirement BEFORE allowing test processing
+    can_process, message = test_request.can_be_processed()
+    if not can_process:
+        messages.error(request, message)
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
     # Check payment status - redirect staff to manual entry for better experience
     if test_request.status == 'awaiting_payment':

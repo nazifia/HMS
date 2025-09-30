@@ -1,0 +1,63 @@
+{% comment %}
+Reusable template partial for displaying NHIA authorization status.
+
+Usage:
+    {% include 'includes/authorization_status.html' with object=consultation %}
+    {% include 'includes/authorization_status.html' with object=prescription %}
+    {% include 'includes/authorization_status.html' with object=test_request %}
+    {% include 'includes/authorization_status.html' with object=radiology_order %}
+
+The object should have the following attributes:
+    - requires_authorization (boolean)
+    - authorization_status (string)
+    - authorization_code (AuthorizationCode object or None)
+{% endcomment %}
+
+{% if object.requires_authorization %}
+<div class="alert alert-{% if object.authorization_status == 'authorized' %}success{% elif object.authorization_status == 'required' %}warning{% elif object.authorization_status == 'rejected' %}danger{% else %}info{% endif %} mb-3" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-{% if object.authorization_status == 'authorized' %}check-circle{% elif object.authorization_status == 'required' %}exclamation-triangle{% elif object.authorization_status == 'rejected' %}times-circle{% else %}clock{% endif %} me-2"></i>
+        <div class="flex-grow-1">
+            <strong>NHIA Authorization Status:</strong>
+            
+            {% if object.authorization_status == 'authorized' %}
+                <span class="badge bg-success ms-2">Authorized</span>
+                {% if object.authorization_code %}
+                    <div class="mt-2 small">
+                        <strong>Authorization Code:</strong> {{ object.authorization_code.code }}<br>
+                        <strong>Service Type:</strong> {{ object.authorization_code.get_service_type_display }}<br>
+                        <strong>Expiry Date:</strong> {{ object.authorization_code.expiry_date|date:"M d, Y" }}
+                    </div>
+                {% endif %}
+            
+            {% elif object.authorization_status == 'required' %}
+                <span class="badge bg-warning text-dark ms-2">Authorization Required</span>
+                <div class="mt-2">
+                    <i class="fas fa-info-circle me-1"></i>
+                    This NHIA patient was seen in a non-NHIA unit. Desk office authorization is required before services can be delivered.
+                    <br>
+                    <small class="text-muted">Please obtain an authorization code from the desk office before proceeding.</small>
+                </div>
+            
+            {% elif object.authorization_status == 'pending' %}
+                <span class="badge bg-info ms-2">Pending Authorization</span>
+                <div class="mt-2">
+                    <i class="fas fa-clock me-1"></i>
+                    Authorization request is pending approval from desk office.
+                </div>
+            
+            {% elif object.authorization_status == 'rejected' %}
+                <span class="badge bg-danger ms-2">Authorization Rejected</span>
+                <div class="mt-2">
+                    <i class="fas fa-times-circle me-1"></i>
+                    Authorization request was rejected. Please contact desk office for more information.
+                </div>
+            
+            {% else %}
+                <span class="badge bg-secondary ms-2">{{ object.get_authorization_status_display }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+

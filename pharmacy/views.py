@@ -1729,6 +1729,13 @@ def update_prescription_status(request, prescription_id):
 def dispense_prescription(request, prescription_id):
     """View for dispensing a prescription"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
+
+    # Check authorization requirement BEFORE allowing dispensing
+    can_dispense, message = prescription.can_be_dispensed()
+    if not can_dispense:
+        messages.error(request, message)
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
     # Prepare prescription items for dispensing
     prescription_items = list(prescription.items.select_related('medication'))
 
@@ -1738,7 +1745,7 @@ def dispense_prescription(request, prescription_id):
     # Selected dispensary handling (optional pre-selection)
     selected_dispensary = None
     dispensary_id = None
-    
+
     # Check if a dispensary was selected
     if request.method == 'POST':
         dispensary_id = request.POST.get('dispensary_select') or request.POST.get('dispensary_id') or request.POST.get('selected_dispensary')
