@@ -557,6 +557,12 @@ class Prescription(models.Model):
         self.authorization_status = 'not_required'
         return False
 
+    def save(self, *args, **kwargs):
+        """Override save to auto-check authorization requirement"""
+        # Auto-check authorization requirement on save
+        self.check_authorization_requirement()
+        super().save(*args, **kwargs)
+
     def get_total_prescribed_price(self): # Renamed for clarity
         """Calculate the total price of all originally prescribed medications in this prescription"""
         total = 0
