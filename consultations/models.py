@@ -178,7 +178,14 @@ class Referral(models.Model):
         ('rejected', 'Rejected'),
     )
 
-    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='referrals')
+    consultation = models.ForeignKey(
+        Consultation,
+        on_delete=models.CASCADE,
+        related_name='referrals',
+        null=True,
+        blank=True,
+        help_text="Optional link to the consultation this referral was created from"
+    )
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='referrals')
     referring_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referrals_made')
     referred_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referrals_received')

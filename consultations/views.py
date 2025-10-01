@@ -741,33 +741,29 @@ def create_referral(request, patient_id=None):
             if patient:
                 referral.patient = patient
             referral.referring_doctor = request.user
-            referral.save()
 
-            # Create a consultation if it doesn't exist
+            # Try to link to an existing consultation from today
             consultation = Consultation.objects.filter(
                 patient=referral.patient,
                 doctor=referral.referring_doctor,
                 consultation_date__date=timezone.now().date()
             ).first()
 
-            if not consultation:
-                consultation = Consultation.objects.create(
-                    patient=referral.patient,
-                    doctor=referral.referring_doctor,
-                    chief_complaint="Referral to specialist",
-                    symptoms="See referral notes",
-                    diagnosis="Requires specialist consultation",
-                    consultation_notes=f"Patient referred to Dr. {referral.referred_to.get_full_name()} for {referral.reason}",
-                    status='completed'
-                )
+            if consultation:
+                referral.consultation = consultation
+            # If no consultation exists, that's okay - consultation is now optional
 
-            referral.consultation = consultation
             referral.save()
 
             messages.success(request, f"Referral for {referral.patient.get_full_name()} created successfully.")
             return redirect('patients:detail', patient_id=referral.patient.id)
         else:
-            messages.error(request, "Missing required fields for referral.")
+            # Show specific form errors
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            messages.error(request, "Form validation failed: " + "; ".join(error_messages))
             if patient:
                 return redirect('patients:detail', patient_id=patient.id)
             else:

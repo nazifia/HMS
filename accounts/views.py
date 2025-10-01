@@ -456,7 +456,10 @@ def api_users(request):
     users_query = User.objects.filter(is_active=True)
 
     if role:
-        users_query = users_query.filter(profile__role=role)
+        # Support both many-to-many roles and profile role
+        users_query = users_query.filter(
+            Q(roles__name__iexact=role) | Q(profile__role__iexact=role)
+        ).distinct()
 
     users = users_query.select_related('profile').prefetch_related('roles')
 
@@ -470,7 +473,7 @@ def api_users(request):
             'last_name': user.last_name,
             'full_name': user.get_full_name(),
             'roles': user_roles,
-            'department': user.profile.department if user.profile else None
+            'department': user.profile.department.name if (user.profile and user.profile.department) else None
         })
 
     return JsonResponse(results, safe=False)

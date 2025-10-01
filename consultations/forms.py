@@ -88,10 +88,12 @@ class ReferralForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+
+        # Get doctors using both role systems (many-to-many and profile role)
+        from django.db.models import Q
         self.fields['referred_to'].queryset = CustomUser.objects.filter(
-            is_active=True,
-            profile__role='doctor'
-        ).order_by('first_name', 'last_name')
+            Q(is_active=True) & (Q(roles__name__iexact='doctor') | Q(profile__role__iexact='doctor'))
+        ).distinct().order_by('first_name', 'last_name')
 
         # Set empty labels
         self.fields['referred_to'].empty_label = "Select Referred Doctor"

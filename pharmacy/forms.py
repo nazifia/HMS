@@ -131,6 +131,7 @@ class PrescriptionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)
         preselected_patient = kwargs.pop('preselected_patient', None)
+        current_user = kwargs.pop('current_user', None)
         super().__init__(*args, **kwargs)
 
         # Handle patient preselection from multiple sources
@@ -189,6 +190,29 @@ class PrescriptionForm(forms.ModelForm):
             # Ensure all patients are available for selection when not preselected
             self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
 
+        # Handle doctor field - set to current user and make read-only
+        if current_user:
+            self.fields['doctor'].initial = current_user
+            self.fields['doctor'].widget.attrs.update({
+                'readonly': True,
+                'disabled': True,
+                'class': 'form-select',
+                'style': 'background-color: #e9ecef; cursor: not-allowed;'
+            })
+            # Limit queryset to only the current user
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            self.fields['doctor'].queryset = User.objects.filter(id=current_user.id)
+            self.fields['doctor'].empty_label = None
+
+            # Add a hidden field to ensure the doctor is submitted
+            self.fields['doctor_hidden'] = forms.ModelChoiceField(
+                queryset=User.objects.filter(id=current_user.id),
+                initial=current_user,
+                widget=forms.HiddenInput(),
+                required=True
+            )
+
     def clean_authorization_code_input(self):
         """Validate authorization code if provided"""
         code_str = self.cleaned_data.get('authorization_code_input', '').strip()
@@ -210,6 +234,10 @@ class PrescriptionForm(forms.ModelForm):
         # Handle patient field when it's disabled
         if 'patient_hidden' in self.fields:
             cleaned_data['patient'] = cleaned_data.get('patient_hidden')
+
+        # Handle doctor field when it's disabled
+        if 'doctor_hidden' in self.fields:
+            cleaned_data['doctor'] = cleaned_data.get('doctor_hidden')
 
         return cleaned_data
 

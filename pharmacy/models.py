@@ -543,7 +543,13 @@ class Prescription(models.Model):
     def check_authorization_requirement(self):
         """
         Check if this prescription requires authorization.
-        NHIA patients with prescriptions from non-NHIA consultations require authorization.
+        NHIA patients with prescriptions from non-NHIA units require authorization.
+
+        Authorization is required if:
+        1. Patient is NHIA patient, AND
+        2. Either:
+           a. Prescription is linked to a consultation that requires authorization, OR
+           b. Prescription is created by a doctor NOT in NHIA department
         """
         if self.is_nhia_patient():
             # Check if linked to a consultation that requires authorization
@@ -552,6 +558,19 @@ class Prescription(models.Model):
                 if not self.authorization_code:
                     self.authorization_status = 'required'
                 return True
+
+            # Check if prescribing doctor is from non-NHIA department
+            if self.doctor:
+                # Check if doctor is in NHIA department
+                if hasattr(self.doctor, 'profile') and self.doctor.profile:
+                    doctor_profile = self.doctor.profile
+                    if doctor_profile.department:
+                        # If doctor is NOT in NHIA department, authorization required
+                        if doctor_profile.department.name.upper() != 'NHIA':
+                            self.requires_authorization = True
+                            if not self.authorization_code:
+                                self.authorization_status = 'required'
+                            return True
 
         self.requires_authorization = False
         self.authorization_status = 'not_required'

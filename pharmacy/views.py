@@ -1637,14 +1637,18 @@ def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # This is the same as create_prescription but might have different permissions or workflow
     if request.method == 'POST':
-        form = PrescriptionForm(request.POST, request=request)
+        form = PrescriptionForm(request.POST, request=request, current_user=request.user)
         if form.is_valid():
-            prescription = form.save()
+            prescription = form.save(commit=False)
+            # Set the current user as the doctor/prescriber
+            prescription.doctor = request.user
+            prescription.save()
+            form.save_m2m()  # Save many-to-many relationships if any
             messages.success(request, f'Prescription #{prescription.id} created successfully.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
     else:
         # Preselect patient if patient_id is provided
-        initial_data = {}
+        initial_data = {'doctor': request.user}  # Set current user as doctor
         preselected_patient = None
         if patient_id:
             try:
@@ -1652,14 +1656,15 @@ def pharmacy_create_prescription(request, patient_id=None):
                 initial_data['patient'] = preselected_patient
             except Patient.DoesNotExist:
                 initial_data['patient'] = patient_id
-        form = PrescriptionForm(request=request, initial=initial_data, preselected_patient=preselected_patient)
-    
+        form = PrescriptionForm(request=request, initial=initial_data, preselected_patient=preselected_patient, current_user=request.user)
+
     context = {
         'form': form,
         'title': 'Create Prescription (Pharmacy)',
         'active_nav': 'pharmacy',
         'selected_patient': preselected_patient,
         'patient': preselected_patient,
+        'current_user': request.user,  # Add current user to context
     }
 
     return render(request, 'pharmacy/prescription_form.html', context)
@@ -2513,8 +2518,25 @@ def create_prescription_invoice(request, prescription_id):
 @login_required
 def medication_api(request):
     """API endpoint for medications"""
-    # Implementation for medication API
-    pass
+    from django.http import JsonResponse
+
+    # Get all active medications
+    medications = Medication.objects.filter(is_active=True).select_related('category')
+
+    # Build response data
+    data = []
+    for med in medications:
+        data.append({
+            'id': med.id,
+            'name': med.name,
+            'generic_name': med.generic_name,
+            'category': med.category.name if med.category else None,
+            'price': float(med.price),
+            'dosage_form': med.dosage_form,
+            'strength': med.strength,
+        })
+
+    return JsonResponse(data, safe=False)
 
 
 @login_required
