@@ -75,12 +75,11 @@
                             <td>{{ stock.stock_quantity }}</td>
                             <td>{{ stock.unit_cost }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-primary transfer-btn" 
+                                <button type="button" class="btn btn-sm btn-primary transfer-btn"
                                         data-medication="{{ stock.medication.id }}"
                                         data-medication-name="{{ stock.medication.name }}"
                                         data-batch="{{ stock.batch_number }}"
-                                        data-quantity="{{ stock.stock_quantity }}"
-                                        data-bs-toggle="modal" data-bs-target="#transferModal">
+                                        data-quantity="{{ stock.stock_quantity }}">
                                     Transfer
                                 </button>
                             </td>
@@ -149,7 +148,7 @@
         // Store the clicked button's data
         var currentTransferData = {};
 
-        // Handle transfer button clicks - store data
+        // Handle transfer button clicks - store data and open modal
         $(document).on('click', '.transfer-btn', function() {
             console.log("Transfer button clicked");
             currentTransferData = {
@@ -160,6 +159,10 @@
             };
 
             console.log("Transfer data stored:", currentTransferData);
+
+            // Manually open the modal after storing data
+            var transferModal = new bootstrap.Modal(document.getElementById('transferModal'));
+            transferModal.show();
         });
 
         // Populate form when modal is shown
