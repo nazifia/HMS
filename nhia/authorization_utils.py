@@ -11,14 +11,15 @@ from django.utils import timezone
 def is_nhia_patient(patient):
     """
     Check if a patient is an NHIA patient.
-    
+
     Args:
         patient: Patient model instance
-        
+
     Returns:
-        bool: True if patient has NHIA info, False otherwise
+        bool: True if patient has active NHIA info, False otherwise
     """
-    return hasattr(patient, 'nhia_info') and patient.nhia_info is not None
+    # Use the Patient model's is_nhia_patient() method for consistency
+    return patient.is_nhia_patient()
 
 
 def is_nhia_department(department):

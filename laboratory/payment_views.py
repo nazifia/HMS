@@ -17,7 +17,16 @@ from .models import TestRequest
 def laboratory_payment(request, test_request_id):
     """Handle laboratory test payment processing with dual payment methods"""
     test_request = get_object_or_404(TestRequest, id=test_request_id)
-    
+
+    # Check if patient is NHIA - NHIA patients are exempt from lab test payments
+    if test_request.patient.is_nhia_patient():
+        messages.info(
+            request,
+            f'Patient {test_request.patient.get_full_name()} is an NHIA patient and is exempt from laboratory test payments. '
+            'No payment is required.'
+        )
+        return redirect('laboratory:test_request_detail', test_request_id=test_request.id)
+
     # Get the associated invoice
     try:
         invoice = test_request.invoice

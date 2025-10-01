@@ -183,14 +183,7 @@ class Command(BaseCommand):
         Returns the charge amount if successful, None if skipped.
         """
         # Check if patient is NHIA - NHIA patients are exempt from admission fees
-        try:
-            is_nhia_patient = (hasattr(admission.patient, 'nhia_info') and
-                             admission.patient.nhia_info and
-                             admission.patient.nhia_info.is_active)
-        except:
-            is_nhia_patient = False
-
-        if is_nhia_patient:
+        if admission.patient.is_nhia_patient():
             logger.info(f'Patient {admission.patient.get_full_name()} is NHIA - no daily charges applied.')
             return None
 
@@ -282,14 +275,7 @@ class Command(BaseCommand):
         Returns the amount recovered.
         """
         # Check if patient is NHIA - NHIA patients are exempt
-        try:
-            is_nhia_patient = (hasattr(admission.patient, 'nhia_info') and
-                             admission.patient.nhia_info and
-                             admission.patient.nhia_info.is_active)
-        except:
-            is_nhia_patient = False
-
-        if is_nhia_patient:
+        if admission.patient.is_nhia_patient():
             return Decimal('0.00')
 
         # Calculate outstanding balance

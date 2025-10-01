@@ -111,7 +111,7 @@ class RadiologyOrder(models.Model):
 
     def is_nhia_patient(self):
         """Check if the patient is an NHIA patient"""
-        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None
+        return self.patient.is_nhia_patient()
 
     def check_authorization_requirement(self):
         """

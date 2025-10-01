@@ -151,14 +151,7 @@ def process_admission_charge_internal(admission, charge_date):
     This mirrors the logic from the management command but returns structured data.
     """
     # Check if patient is NHIA - NHIA patients are exempt from admission fees
-    try:
-        is_nhia_patient = (hasattr(admission.patient, 'nhia_info') and
-                         admission.patient.nhia_info and
-                         admission.patient.nhia_info.is_active)
-    except:
-        is_nhia_patient = False
-
-    if is_nhia_patient:
+    if admission.patient.is_nhia_patient():
         return {'success': True, 'amount': None, 'reason': 'NHIA patient - exempt from charges'}
 
     # Check if admission was active on the charge date

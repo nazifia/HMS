@@ -170,6 +170,18 @@ class Patient(models.Model):
     def get_patient_type_display(self):
         return dict(self.PATIENT_TYPE_CHOICES).get(self.patient_type, self.patient_type)
 
+    def is_nhia_patient(self):
+        """
+        Check if patient is an active NHIA patient.
+        Returns True if patient has active NHIA information, False otherwise.
+        """
+        try:
+            return (hasattr(self, 'nhia_info') and
+                    self.nhia_info is not None and
+                    self.nhia_info.is_active)
+        except Exception:
+            return False
+
     class Meta:
         db_table = 'patients_patient'
         verbose_name = 'Patient'

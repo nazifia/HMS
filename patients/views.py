@@ -417,13 +417,14 @@ def check_patient_nhia(request):
 
     try:
         patient = Patient.objects.get(id=patient_id)
+        has_nhia = patient.is_nhia_patient()
         nhia_status = {
-            'has_nhia': hasattr(patient, 'nhia_info') and patient.nhia_info is not None,
+            'has_nhia': has_nhia,
             'patient_name': patient.get_full_name(),
             'patient_id': patient.patient_id,
         }
 
-        if nhia_status['has_nhia']:
+        if has_nhia and hasattr(patient, 'nhia_info'):
             nhia_status.update({
                 'nhia_reg_number': patient.nhia_info.nhia_reg_number,
                 'is_active': patient.nhia_info.is_active,

@@ -12,6 +12,16 @@
         </a>
     </div>
 
+    <!-- NHIA Exemption Alert -->
+    {% if order.patient.is_nhia_patient %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle"></i>
+        <strong>NHIA Patient - Payment Exempt:</strong> This patient is exempt from radiology test payments.
+        No payment is required for this radiology order.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
     <!-- NHIA Authorization Warning -->
     {% include 'includes/authorization_warning.html' with radiology_order=order %}
 

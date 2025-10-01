@@ -3,12 +3,27 @@
 {% block content %}
 <div class="container">
     <h2>{{ title }}</h2>
+
+    <!-- NHIA Exemption Alert -->
+    {% if admission.patient.is_nhia_patient %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <i class="fas fa-info-circle"></i>
+        <strong>NHIA Patient:</strong> This patient is exempt from admission fees and daily charges.
+        No wallet deductions will be made.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
     <div class="card">
         <div class="card-header">
             Admission Details
         </div>
         <div class="card-body">
-            <p><strong>Patient:</strong> {{ admission.patient.get_full_name }} (ID: {{ admission.patient.patient_id }})</p>
+            <p><strong>Patient:</strong> {{ admission.patient.get_full_name }} (ID: {{ admission.patient.patient_id }})
+                {% if admission.patient.is_nhia_patient %}
+                <span class="badge bg-success ms-2"><i class="fas fa-shield-alt"></i> NHIA Patient - Fee Exempt</span>
+                {% endif %}
+            </p>
             <p><strong>Admission Date:</strong> {{ admission.admission_date|date:"M d, Y H:i" }}</p>
             {% if admission.discharge_date %}
             <p><strong>Discharge Date:</strong> {{ admission.discharge_date|date:"M d, Y H:i" }}</p>

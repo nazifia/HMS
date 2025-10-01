@@ -17,7 +17,16 @@ from .models import RadiologyOrder
 def radiology_payment(request, order_id):
     """Handle radiology test payment processing with dual payment methods"""
     radiology_order = get_object_or_404(RadiologyOrder, id=order_id)
-    
+
+    # Check if patient is NHIA - NHIA patients are exempt from radiology payments
+    if radiology_order.patient.is_nhia_patient():
+        messages.info(
+            request,
+            f'Patient {radiology_order.patient.get_full_name()} is an NHIA patient and is exempt from radiology payments. '
+            'No payment is required.'
+        )
+        return redirect('radiology:order_detail', order_id=radiology_order.id)
+
     # Get the associated invoice
     try:
         invoice = radiology_order.invoice

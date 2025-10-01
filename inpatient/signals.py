@@ -13,16 +13,7 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
     if created:
         try:
             # Check if patient is NHIA - NHIA patients are exempt from admission fees
-            is_nhia_patient = False
-            try:
-                is_nhia_patient = (hasattr(instance.patient, 'nhia_info') and
-                                 instance.patient.nhia_info and
-                                 instance.patient.nhia_info.is_active)
-            except:
-                # If NHIA app is not available or any error, treat as non-NHIA
-                is_nhia_patient = False
-
-            if is_nhia_patient:
+            if instance.patient.is_nhia_patient():
                 logger.info(f'Patient {instance.patient.get_full_name()} is NHIA - no admission fee charged.')
                 return
 
@@ -37,11 +28,11 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
             existing_admission_fee = WalletTransaction.objects.filter(
                 wallet__patient=instance.patient,
                 transaction_type='admission_fee',
-                description__icontains=f'Admission fee for {instance.patient.get_full_name()}'
+                admission=instance  # Use FK relationship for accurate duplicate detection
             ).exists()
 
             if existing_admission_fee:
-                logger.info(f'Admission fee already deducted for patient {instance.patient.get_full_name()} - skipping.')
+                logger.info(f'Admission fee already deducted for admission {instance.id} - skipping.')
                 return
 
             # Get the service for admission
@@ -95,7 +86,8 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
                     description=f'Admission fee for {instance.patient.get_full_name()} - {instance.bed.ward.name if instance.bed else "General"}',
                     transaction_type='admission_fee',
                     user=instance.created_by,
-                    invoice=invoice
+                    invoice=invoice,
+                    admission=instance  # Link transaction to admission
                 )
 
                 logger.info(f'Automatically deducted ₦{admission_cost} admission fee from wallet for patient {instance.patient.get_full_name()}. New balance: ₦{wallet.balance}')
@@ -117,6 +109,13 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
 
                 logger.info(f'Invoice {invoice.id} marked as paid via wallet deduction.')
 
+        except ValueError as e:
+            # Validation errors - log but don't break admission
+            logger.warning(f'Validation error in wallet deduction for admission {instance.id}: {str(e)}')
         except Exception as e:
-            logger.error(f'Error processing admission invoice and wallet deduction for admission {instance.id}: {str(e)}')
+            # Unexpected errors - log with full traceback
+            logger.error(
+                f'Unexpected error processing admission invoice and wallet deduction for admission {instance.id}: {str(e)}',
+                exc_info=True
+            )
             # Don't raise the exception to avoid breaking the admission creation process
