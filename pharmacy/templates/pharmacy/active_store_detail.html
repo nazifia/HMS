@@ -96,7 +96,7 @@
     </div>
 </div>
 
-<!-- Transfer Modal -->
+
 <div class="modal fade" id="transferModal" tabindex="-1" role="dialog" aria-labelledby="transferModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -109,22 +109,22 @@
                     {% csrf_token %}
                     <input type="hidden" id="medicationId" name="medication_id">
                     <input type="hidden" id="batchNumber" name="batch_number">
-                    
+
                     <div class="form-group mb-3">
                         <label for="medicationName">Medication</label>
                         <input type="text" class="form-control" id="medicationName" readonly>
                     </div>
-                    
+
                     <div class="form-group mb-3">
                         <label for="availableQuantity">Available Quantity</label>
                         <input type="number" class="form-control" id="availableQuantity" readonly>
                     </div>
-                    
+
                     <div class="form-group mb-3">
                         <label for="transferQuantity">Transfer Quantity</label>
                         <input type="number" class="form-control" id="transferQuantity" name="quantity" min="1" required>
                     </div>
-                    
+
                     <div class="form-group mb-3">
                         <label for="dispensary">To Dispensary</label>
                         <input type="text" class="form-control" id="dispensary" value="{{ dispensary.name }}" readonly>
@@ -145,43 +145,48 @@
 <script>
     $(document).ready(function() {
         console.log("Document ready - transfer script loaded");
-        
-        // Handle transfer button clicks
+
+        // Store the clicked button's data
+        var currentTransferData = {};
+
+        // Handle transfer button clicks - store data
         $(document).on('click', '.transfer-btn', function() {
             console.log("Transfer button clicked");
-            var medicationId = $(this).data('medication');
-            var medicationName = $(this).data('medicationName');  // Note: kebab-case becomes camelCase
-            var batchNumber = $(this).data('batch');
-            var availableQuantity = $(this).data('quantity');
-            
-            console.log("Medication ID:", medicationId);
-            console.log("Medication Name:", medicationName);
-            console.log("Batch Number:", batchNumber);
-            console.log("Available Quantity:", availableQuantity);
-            
-            // Check if elements exist
-            if ($('#medicationId').length === 0) {
-                console.log("ERROR: #medicationId element not found");
-            }
-            if ($('#medicationName').length === 0) {
-                console.log("ERROR: #medicationName element not found");
-            }
-            if ($('#batchNumber').length === 0) {
-                console.log("ERROR: #batchNumber element not found");
-            }
-            if ($('#availableQuantity').length === 0) {
-                console.log("ERROR: #availableQuantity element not found");
-            }
-            
-            $('#medicationId').val(medicationId);
-            $('#medicationName').val(medicationName);
-            $('#batchNumber').val(batchNumber);
-            $('#availableQuantity').val(availableQuantity);
-            $('#transferQuantity').attr('max', availableQuantity);
-            
-            console.log("Form fields updated");
+            currentTransferData = {
+                medicationId: $(this).data('medication'),
+                medicationName: $(this).data('medication-name'),  // Use exact attribute name
+                batchNumber: $(this).data('batch'),
+                availableQuantity: $(this).data('quantity')
+            };
+
+            console.log("Transfer data stored:", currentTransferData);
+        });
+
+        // Populate form when modal is shown
+        $('#transferModal').on('show.bs.modal', function (e) {
+            console.log("Modal showing, populating form with:", currentTransferData);
+
+            // Populate form fields
+            $('#medicationId').val(currentTransferData.medicationId);
+            $('#medicationName').val(currentTransferData.medicationName);
+            $('#batchNumber').val(currentTransferData.batchNumber);
+            $('#availableQuantity').val(currentTransferData.availableQuantity);
+            $('#transferQuantity').attr('max', currentTransferData.availableQuantity);
+            $('#transferQuantity').val(''); // Clear previous quantity
+
+            console.log("Form fields populated:");
+            console.log("- Medication ID:", $('#medicationId').val());
+            console.log("- Medication Name:", $('#medicationName').val());
+            console.log("- Batch Number:", $('#batchNumber').val());
+            console.log("- Available Quantity:", $('#availableQuantity').val());
+        });
+
+        // Clear form when modal is hidden
+        $('#transferModal').on('hidden.bs.modal', function (e) {
+            console.log("Modal hidden, clearing form");
+            $('#transferQuantity').val('');
+            currentTransferData = {};
         });
     });
 </script>
 {% endblock %}
-</div>

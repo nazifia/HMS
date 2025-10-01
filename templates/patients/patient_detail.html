@@ -911,6 +911,7 @@
             </div>
             <form method="post" action="{% url 'consultations:create_referral' patient.id %}">
                 {% csrf_token %}
+                <input type="hidden" name="patient" value="{{ patient.id }}">
                 <div class="modal-body">
                     <div class="row mb-3">
                         <div class="col-md-12">
@@ -933,21 +934,6 @@
                         <div class="col-md-12">
                             <label for="notes" class="form-label">Additional Notes</label>
                             <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="urgency" class="form-label">Urgency</label>
-                            <select class="form-select" id="urgency" name="urgency">
-                                <option value="normal">Normal</option>
-                                <option value="urgent">Urgent</option>
-                                <option value="emergency">Emergency</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="referral_date" class="form-label">Referral Date</label>
-                            <input type="date" class="form-control" id="referral_date" name="referral_date" value="{{ today|date:'Y-m-d' }}" required>
                         </div>
                     </div>
                 </div>
@@ -1110,10 +1096,9 @@
                 });
         }
 
-        // Load doctors for referral modal
-        if (document.getElementById('referralModal')) {
+        // Load doctors for referral modal when page loads
+        function loadDoctorsForReferral() {
             console.log('Loading doctors for referral modal...');
-            // Get all users with doctor role
             fetch('/accounts/api/users/?role=doctor')
                 .then(response => {
                     console.log('Doctors API response status:', response.status);
@@ -1126,7 +1111,7 @@
                     console.log('Doctors loaded:', data.length);
                     const doctorsSelect = document.getElementById('referred_to');
                     if (doctorsSelect) {
-                        // Clear existing options except the first one
+                        // Clear existing options
                         doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
 
                         if (data && data.length > 0) {
@@ -1134,6 +1119,9 @@
                                 const option = document.createElement('option');
                                 option.value = doctor.id;
                                 option.textContent = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                                if (doctor.department) {
+                                    option.textContent += ` (${doctor.department})`;
+                                }
                                 doctorsSelect.appendChild(option);
                             });
                             console.log('Doctors dropdown populated successfully');
@@ -1159,28 +1147,22 @@
                         doctorsSelect.appendChild(option);
                     }
                 });
+        }
+
+        // Load doctors when page loads
+        if (document.getElementById('referralModal')) {
+            loadDoctorsForReferral();
         } else {
             console.warn('Referral modal not found on page');
         }
 
-        // Manual button click handler for referral button
-        const referPatientBtn = document.getElementById('referPatientBtn');
-        if (referPatientBtn) {
-            console.log('Referral button found, adding click handler');
-            referPatientBtn.addEventListener('click', function(e) {
-                console.log('Referral button clicked!');
-                const modalElement = document.getElementById('referralModal');
-                if (modalElement) {
-                    console.log('Modal element found, attempting to show...');
-                    // Use Bootstrap 5 Modal API
-                    const modal = new bootstrap.Modal(modalElement);
-                    modal.show();
-                } else {
-                    console.error('Referral modal element not found!');
-                }
+        // Reload doctors when modal is shown (in case data changed)
+        const referralModal = document.getElementById('referralModal');
+        if (referralModal) {
+            referralModal.addEventListener('show.bs.modal', function (event) {
+                console.log('Referral modal opening, reloading doctors...');
+                loadDoctorsForReferral();
             });
-        } else {
-            console.error('Referral button not found!');
         }
     });
 </script>

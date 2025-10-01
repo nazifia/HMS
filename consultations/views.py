@@ -735,11 +735,23 @@ def create_referral(request, patient_id=None):
         patient = get_object_or_404(Patient, id=patient_id)
 
     if request.method == 'POST':
-        form = ReferralForm(request.POST)
+        # Create a mutable copy of POST data
+        post_data = request.POST.copy()
+
+        # If patient_id is provided in URL, add it to POST data
+        if patient_id and 'patient' not in post_data:
+            post_data['patient'] = patient_id
+
+        form = ReferralForm(post_data)
+
         if form.is_valid():
             referral = form.save(commit=False)
-            if patient:
+
+            # Ensure patient is set from URL if not in form
+            if patient and not referral.patient:
                 referral.patient = patient
+
+            # Set referring doctor to current user
             referral.referring_doctor = request.user
 
             # Try to link to an existing consultation from today
