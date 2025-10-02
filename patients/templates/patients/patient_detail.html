@@ -216,7 +216,9 @@
             <div class="card-body">
                 <a href="#" class="btn btn-info btn-block mb-2">New Appointment</a>
                 <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-warning btn-block mb-2">New Consultation</a>
-                <a href="{% url 'consultations:create_referral' %}" class="btn btn-info btn-block mb-2">Refer Patient</a>
+                <button type="button" class="btn btn-danger btn-block mb-2" id="referPatientBtn" data-bs-toggle="modal" data-bs-target="#referralModal">
+                    <i class="fas fa-user-md"></i> Refer Patient
+                </button>
                 <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success btn-block mb-2" style="display: block !important; visibility: visible !important;">Send Medication Prescription</a>
                 <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-primary btn-block mb-2">Pharmacy Prescription</a>
                 <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-secondary btn-block mb-2">Request Lab Tests</a>
@@ -227,5 +229,7 @@
     </div>
 </div>
 
+<!-- Include Referral Modal -->
+{% include 'includes/referral_modal.html' with patient=patient %}
 
 {% endblock content %}

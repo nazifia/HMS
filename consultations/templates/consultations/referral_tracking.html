@@ -172,7 +172,7 @@
                                     </button>
                                     {% endif %}
                                     {% if referral.referred_to == request.user and referral.status == 'pending' %}
-                                    <a href="{% url 'consultations:create_consultation' %}?patient={{ referral.patient.id }}" 
+                                    <a href="{% url 'consultations:create_consultation' referral.patient.id %}" 
                                        class="btn btn-outline-success" title="Start Consultation">
                                         <i class="fas fa-stethoscope"></i>
                                     </a>

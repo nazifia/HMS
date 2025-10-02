@@ -6,10 +6,28 @@
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Create Referral for {{ consultation.patient.get_full_name }}</h1>
-        <a href="{% url 'consultations:doctor_consultation' consultation.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
-            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Consultation
-        </a>
+        <h1 class="h3 mb-0 text-gray-800">
+            {% if consultation %}
+                Create Referral for {{ consultation.patient.get_full_name }}
+            {% elif patient %}
+                Create Referral for {{ patient.get_full_name }}
+            {% else %}
+                Create Referral
+            {% endif %}
+        </h1>
+        {% if consultation %}
+            <a href="{% url 'consultations:doctor_consultation' consultation.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Consultation
+            </a>
+        {% elif patient %}
+            <a href="{% url 'patients:patient_detail' patient.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Patient
+            </a>
+        {% else %}
+            <a href="{% url 'consultations:referral_tracking' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Referrals
+            </a>
+        {% endif %}
     </div>
 
     <div class="row">
@@ -53,10 +71,36 @@
                             {% endif %}
                         </div>
 
+                        <!-- Authorization Code Field (if needed) -->
+                        <div class="mb-3" id="authorization-field" style="display: none;">
+                            <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">
+                                <i class="fas fa-key text-warning"></i> Authorization Code
+                            </label>
+                            {{ form.authorization_code_input|add_class:"form-control" }}
+                            {% if form.authorization_code_input.errors %}
+                                <div class="text-danger">
+                                    {{ form.authorization_code_input.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> Required for NHIA patients referred to non-NHIA units
+                            </div>
+                        </div>
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{% url 'consultations:doctor_consultation' consultation.id %}" class="btn btn-secondary me-md-2">
-                                <i class="fas fa-times me-1"></i> Cancel
-                            </a>
+                            {% if consultation %}
+                                <a href="{% url 'consultations:doctor_consultation' consultation.id %}" class="btn btn-secondary me-md-2">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
+                            {% elif patient %}
+                                <a href="{% url 'patients:patient_detail' patient.id %}" class="btn btn-secondary me-md-2">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
+                            {% else %}
+                                <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-secondary me-md-2">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
+                            {% endif %}
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-paper-plane me-1"></i> Create Referral
                             </button>
@@ -76,6 +120,21 @@
             theme: 'bootstrap-5',
             width: '100%'
         });
+
+        // Check if authorization is required based on patient selection
+        function checkAuthorizationRequirement() {
+            // This would need to be implemented with AJAX call to check if patient is NHIA
+            // For now, we'll show it conditionally
+            var patientId = $('#{{ form.patient.id_for_label }}').val();
+            if (patientId) {
+                // Show authorization field if needed
+                // This would be determined by checking patient NHIA status and referred doctor's department
+                // $('#authorization-field').show();
+            }
+        }
+
+        // Check authorization requirement when patient or referred doctor changes
+        $('#{{ form.patient.id_for_label }}, #{{ form.referred_to.id_for_label }}').change(checkAuthorizationRequirement);
     });
 </script>
 {% endblock %}

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refer Patient UI Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-pass {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .test-fail {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .test-info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .console-output {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .console-log {
+            color: #333;
+        }
+        .console-error {
+            color: #dc3545;
+        }
+        .console-warn {
+            color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">
+            <i class="fas fa-user-md"></i> Refer Patient UI Test
+        </h1>
+
+        <div class="test-section">
+            <h3>Test Instructions</h3>
+            <ol>
+                <li>Open this file in your browser</li>
+                <li>Navigate to a patient detail page in your HMS</li>
+                <li>Click the "Refer Patient" button</li>
+                <li>Check if the modal opens correctly</li>
+                <li>Verify that doctors are loaded in the dropdown</li>
+                <li>Fill in the form and submit</li>
+                <li>Check the console for any errors</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>Automated Checks</h3>
+            <div id="test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Console Output</h3>
+            <div id="console-output" class="console-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Manual Test Checklist</h3>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check1">
+                <label class="form-check-label" for="check1">
+                    ✓ Refer Patient button is visible on patient detail page
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check2">
+                <label class="form-check-label" for="check2">
+                    ✓ Modal opens when button is clicked
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check3">
+                <label class="form-check-label" for="check3">
+                    ✓ Doctors dropdown is populated with doctors
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check4">
+                <label class="form-check-label" for="check4">
+                    ✓ Reason field is present and editable
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check5">
+                <label class="form-check-label" for="check5">
+                    ✓ Notes field is present and editable
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check6">
+                <label class="form-check-label" for="check6">
+                    ✓ Form submits successfully
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check7">
+                <label class="form-check-label" for="check7">
+                    ✓ Success message is displayed after submission
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="check8">
+                <label class="form-check-label" for="check8">
+                    ✓ Referral appears in the referral list
+                </label>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Quick Test Script</h3>
+            <p>Copy and paste this into your browser console on the patient detail page:</p>
+            <pre class="console-output"><code>// Test Refer Patient Modal
+console.log('=== Refer Patient Modal Test ===');
+
+// Check if modal exists
+const modal = document.getElementById('referralModal');
+console.log('Modal exists:', !!modal);
+
+// Check if button exists
+const button = document.getElementById('referPatientBtn');
+console.log('Button exists:', !!button);
+
+// Check if form exists
+const form = modal ? modal.querySelector('form') : null;
+console.log('Form exists:', !!form);
+
+// Check form action
+if (form) {
+    console.log('Form action:', form.action);
+}
+
+// Check if referred_to select exists
+const referredToSelect = document.getElementById('referred_to');
+console.log('Referred_to select exists:', !!referredToSelect);
+
+// Check if doctors are loaded
+if (referredToSelect) {
+    console.log('Number of doctors:', referredToSelect.options.length - 1); // -1 for placeholder
+    console.log('Doctors:', Array.from(referredToSelect.options).map(o => o.text));
+}
+
+// Test API endpoint
+fetch('/accounts/api/users/?role=doctor')
+    .then(response => response.json())
+    .then(data => {
+        console.log('API Response - Doctors found:', data.length);
+        console.log('Sample doctors:', data.slice(0, 3));
+    })
+    .catch(error => {
+        console.error('API Error:', error);
+    });
+
+// Test modal opening
+if (button && modal) {
+    console.log('Testing modal open...');
+    button.click();
+    setTimeout(() => {
+        const isVisible = modal.classList.contains('show');
+        console.log('Modal is visible:', isVisible);
+    }, 500);
+}
+
+console.log('=== Test Complete ===');</code></pre>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Capture console output
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addToConsole(message, type = 'log') {
+            const div = document.createElement('div');
+            div.className = `console-${type}`;
+            div.textContent = `[${type.toUpperCase()}] ${message}`;
+            consoleOutput.appendChild(div);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToConsole(args.join(' '), 'warn');
+        };
+
+        // Run automated checks
+        const testResults = document.getElementById('test-results');
+
+        function addTestResult(message, passed) {
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'test-pass' : 'test-fail'}`;
+            div.innerHTML = `<i class="fas fa-${passed ? 'check' : 'times'}-circle"></i> ${message}`;
+            testResults.appendChild(div);
+        }
+
+        function addTestInfo(message) {
+            const div = document.createElement('div');
+            div.className = 'test-result test-info';
+            div.innerHTML = `<i class="fas fa-info-circle"></i> ${message}`;
+            testResults.appendChild(div);
+        }
+
+        // Run tests
+        console.log('Starting automated UI tests...');
+
+        // Test 1: Check if we're on the right page
+        addTestInfo('This test page is ready. Please navigate to a patient detail page to test the modal.');
+
+        // Test 2: Provide instructions for manual testing
+        addTestInfo('Use the checklist below to verify all functionality manually.');
+
+        // Test 3: Check if Bootstrap is loaded
+        if (typeof bootstrap !== 'undefined') {
+            addTestResult('Bootstrap is loaded', true);
+        } else {
+            addTestResult('Bootstrap is not loaded', false);
+        }
+
+        console.log('Automated tests complete. Please follow manual test instructions.');
+    </script>
+</body>
+</html>
+

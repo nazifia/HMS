@@ -89,11 +89,24 @@ class ReferralForm(forms.ModelForm):
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
 
-        # Get doctors using both role systems (many-to-many and profile role)
+        # Get doctors using multiple role systems with fallback to all active users
         from django.db.models import Q
-        self.fields['referred_to'].queryset = CustomUser.objects.filter(
-            Q(is_active=True) & (Q(roles__name__iexact='doctor') | Q(profile__role__iexact='doctor'))
+        
+        # Try different role systems
+        doctors_queryset = CustomUser.objects.filter(
+            Q(is_active=True) & (
+                Q(roles__name__iexact='doctor') |  # Many-to-many roles
+                Q(profile__role__iexact='doctor') |  # Profile role
+                Q(groups__name__iexact='doctor') |  # Django groups
+                Q(is_staff=True)  # Fallback: staff users
+            )
         ).distinct().order_by('first_name', 'last_name')
+        
+        # If no doctors found with role filtering, fall back to all active users
+        if not doctors_queryset.exists():
+            doctors_queryset = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
+        self.fields['referred_to'].queryset = doctors_queryset
 
         # Set empty labels
         self.fields['referred_to'].empty_label = "Select Referred Doctor"

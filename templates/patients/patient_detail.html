@@ -901,50 +901,8 @@
     </div>
 </div>
 
-<!-- Referral Modal -->
-<div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="referralModalLabel">Refer {{ patient.get_full_name }} to Another Doctor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" action="{% url 'consultations:create_referral' patient.id %}">
-                {% csrf_token %}
-                <input type="hidden" name="patient" value="{{ patient.id }}">
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="referred_to" class="form-label">Refer To</label>
-                            <select class="form-select" id="referred_to" name="referred_to" required>
-                                <option value="">Select Doctor</option>
-                                <!-- This will be populated via AJAX -->
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="reason" class="form-label">Reason for Referral</label>
-                            <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="notes" class="form-label">Additional Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Submit Referral</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!-- Include Referral Modal -->
+{% include 'includes/referral_modal.html' with patient=patient %}
 
 {% block extra_js %}
 <script>
@@ -1096,74 +1054,7 @@
                 });
         }
 
-        // Load doctors for referral modal when page loads
-        function loadDoctorsForReferral() {
-            console.log('Loading doctors for referral modal...');
-            fetch('/accounts/api/users/?role=doctor')
-                .then(response => {
-                    console.log('Doctors API response status:', response.status);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Doctors loaded:', data.length);
-                    const doctorsSelect = document.getElementById('referred_to');
-                    if (doctorsSelect) {
-                        // Clear existing options
-                        doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
-
-                        if (data && data.length > 0) {
-                            data.forEach(doctor => {
-                                const option = document.createElement('option');
-                                option.value = doctor.id;
-                                option.textContent = `Dr. ${doctor.first_name} ${doctor.last_name}`;
-                                if (doctor.department) {
-                                    option.textContent += ` (${doctor.department})`;
-                                }
-                                doctorsSelect.appendChild(option);
-                            });
-                            console.log('Doctors dropdown populated successfully');
-                        } else {
-                            const option = document.createElement('option');
-                            option.textContent = 'No doctors available';
-                            option.disabled = true;
-                            doctorsSelect.appendChild(option);
-                            console.warn('No doctors found in response');
-                        }
-                    } else {
-                        console.error('Doctors select element not found');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading doctors:', error);
-                    const doctorsSelect = document.getElementById('referred_to');
-                    if (doctorsSelect) {
-                        doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
-                        const option = document.createElement('option');
-                        option.textContent = 'Error loading doctors. Please refresh the page.';
-                        option.disabled = true;
-                        doctorsSelect.appendChild(option);
-                    }
-                });
-        }
-
-        // Load doctors when page loads
-        if (document.getElementById('referralModal')) {
-            loadDoctorsForReferral();
-        } else {
-            console.warn('Referral modal not found on page');
-        }
-
-        // Reload doctors when modal is shown (in case data changed)
-        const referralModal = document.getElementById('referralModal');
-        if (referralModal) {
-            referralModal.addEventListener('show.bs.modal', function (event) {
-                console.log('Referral modal opening, reloading doctors...');
-                loadDoctorsForReferral();
-            });
-        }
+        // Referral modal JavaScript is now in includes/referral_modal.html
     });
 </script>
 
