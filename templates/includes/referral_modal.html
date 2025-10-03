@@ -42,11 +42,11 @@ Features:
                     <!-- Refer To Doctor -->
                     <div class="row mb-3">
                         <div class="col-md-12">
-                            <label for="referred_to" class="form-label">
+                            <label for="referred_to_doctor" class="form-label">
                                 <i class="fas fa-user-doctor me-1"></i>
                                 Refer To Doctor <span class="text-danger">*</span>
                             </label>
-                            <select class="form-select" id="referred_to" name="referred_to" required>
+                            <select class="form-select" id="referred_to_doctor" name="referred_to_doctor" required>
                                 <option value="">Loading doctors...</option>
                             </select>
                             <div class="form-text">Select the doctor you want to refer this patient to</div>
@@ -111,8 +111,8 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function loadDoctorsForReferral() {
         console.log('Loading doctors for referral modal...');
-        
-        const doctorsSelect = document.getElementById('referred_to');
+
+        const doctorsSelect = document.getElementById('referred_to_doctor');
         if (!doctorsSelect) {
             console.error('Doctors select element not found');
             return;
@@ -207,9 +207,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const referralForm = document.getElementById('referralForm');
     if (referralForm) {
         referralForm.addEventListener('submit', function(event) {
-            const doctorSelect = document.getElementById('referred_to');
+            const doctorSelect = document.getElementById('referred_to_doctor');
             const reasonField = document.getElementById('reason');
-            
+
             // Validate doctor selection
             if (!doctorSelect.value) {
                 event.preventDefault();

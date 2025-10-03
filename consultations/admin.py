@@ -9,6 +9,7 @@ class ReferralInline(admin.TabularInline):
     model = Referral
     extra = 0
     fk_name = 'consultation'
+    fields = ('referral_type', 'referred_to_department', 'referred_to_specialty', 'referred_to_unit', 'reason', 'status')
 
 @admin.register(Consultation)
 class ConsultationAdmin(admin.ModelAdmin):
@@ -35,10 +36,31 @@ class ConsultationNoteAdmin(admin.ModelAdmin):
 
 @admin.register(Referral)
 class ReferralAdmin(admin.ModelAdmin):
-    list_display = ('id', 'patient', 'referring_doctor', 'referred_to', 'referral_date', 'status')
-    list_filter = ('status', 'referral_date', 'referring_doctor', 'referred_to')
-    search_fields = ('patient__first_name', 'patient__last_name', 'patient__patient_id', 'referring_doctor__username', 'referred_to__username')
+    list_display = ('id', 'patient', 'referring_doctor', 'get_referral_destination', 'referral_type', 'referral_date', 'status', 'assigned_doctor')
+    list_filter = ('status', 'referral_type', 'referral_date', 'referring_doctor', 'referred_to_department', 'assigned_doctor')
+    search_fields = ('patient__first_name', 'patient__last_name', 'patient__patient_id', 'referring_doctor__username', 'assigned_doctor__username', 'referred_to_specialty', 'referred_to_unit')
     date_hierarchy = 'referral_date'
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('patient', 'referring_doctor', 'consultation', 'referral_date', 'status')
+        }),
+        ('Referral Destination', {
+            'fields': ('referral_type', 'referred_to_department', 'referred_to_specialty', 'referred_to_unit', 'assigned_doctor')
+        }),
+        ('Details', {
+            'fields': ('reason', 'notes')
+        }),
+        ('Authorization', {
+            'fields': ('requires_authorization', 'authorization_status', 'authorization_code'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_referral_destination(self, obj):
+        """Display referral destination in admin list"""
+        return obj.get_referral_destination()
+    get_referral_destination.short_description = 'Referred To'
 
 @admin.register(ConsultingRoom)
 class ConsultingRoomAdmin(admin.ModelAdmin):

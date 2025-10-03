@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            {% if patient %}
+            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Patient
+            </a>
+            {% else %}
+            <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Referrals
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Referral Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-share-alt"></i> Referral Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="referralForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Patient</label>
+                                    {% if patient %}
+                                        <input type="text" class="form-control" value="{{ patient.get_full_name }} ({{ patient.patient_id }})" readonly>
+                                        <input type="hidden" name="patient" value="{{ patient.id }}">
+                                    {% else %}
+                                        {{ form.patient }}
+                                        {% if form.patient.errors %}
+                                            <div class="text-danger">{{ form.patient.errors }}</div>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Referring Doctor</label>
+                                    <input type="text" class="form-control" value="{{ request.user.get_full_name }}" readonly>
+                                    <input type="hidden" name="referring_doctor" value="{{ request.user.id }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.referral_type.id_for_label }}" class="form-label">{{ form.referral_type.label }}</label>
+                                    {{ form.referral_type }}
+                                    {% if form.referral_type.errors %}
+                                        <div class="text-danger">{{ form.referral_type.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Department Selection -->
+                        <div class="row" id="department_section" style="display: block;">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.referred_to_department.id_for_label }}" class="form-label">{{ form.referred_to_department.label }}</label>
+                                    {{ form.referred_to_department }}
+                                    {% if form.referred_to_department.errors %}
+                                        <div class="text-danger">{{ form.referred_to_department.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Specialty/Unit Fields -->
+                        <div class="row" id="specialty_unit_section" style="display: block;">
+                            <div class="col-md-6" id="specialty_field" style="display: block;">
+                                <div class="mb-3">
+                                    <label for="{{ form.referred_to_specialty.id_for_label }}" class="form-label">{{ form.referred_to_specialty.label }}</label>
+                                    {{ form.referred_to_specialty }}
+                                    {% if form.referred_to_specialty.errors %}
+                                        <div class="text-danger">{{ form.referred_to_specialty.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">e.g., Cardiology, Neurology, Pediatrics</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="unit_field" style="display: block;">
+                                <div class="mb-3">
+                                    <label for="{{ form.referred_to_unit.id_for_label }}" class="form-label">{{ form.referred_to_unit.label }}</label>
+                                    {{ form.referred_to_unit }}
+                                    {% if form.referred_to_unit.errors %}
+                                        <div class="text-danger">{{ form.referred_to_unit.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">e.g., ICU, Emergency, Outpatient</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.reason.id_for_label }}" class="form-label">Reason for Referral</label>
+                            {{ form.reason }}
+                            {% if form.reason.errors %}
+                                <div class="text-danger">{{ form.reason.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Additional Notes (Optional)</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Authorization Code for NHIA patients -->
+                        {% if patient and patient.patient_type == 'nhia' %}
+                        <div class="mb-3">
+                            <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">Authorization Code</label>
+                            {{ form.authorization_code_input }}
+                            {% if form.authorization_code_input.errors %}
+                                <div class="text-danger">{{ form.authorization_code_input.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">{{ form.authorization_code_input.help_text }}</small>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-end">
+                            {% if patient %}
+                            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary me-2">Cancel</a>
+                            {% else %}
+                            <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-secondary me-2">Cancel</a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-paper-plane"></i> Create Referral
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            {% if patient %}
+            <!-- Patient Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user"></i> Patient Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <h5>{{ patient.get_full_name }}</h5>
+                        <p class="text-muted">{{ patient.patient_id }}</p>
+                    </div>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Age:</strong></td>
+                            <td>{{ patient.get_age }} years</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gender:</strong></td>
+                            <td>{{ patient.get_gender_display }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phone:</strong></td>
+                            <td>{{ patient.phone_number|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Patient Type:</strong></td>
+                            <td>
+                                <span class="badge {% if patient.patient_type == 'nhia' %}bg-success{% else %}bg-info{% endif %}">
+                                    {{ patient.get_patient_type_display }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Referrals -->
+            {% if referral_history %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Referrals
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for referral in referral_history %}
+                    <div class="mb-2 p-2 border rounded">
+                        <small class="text-muted">{{ referral.referral_date|date:"M d, Y" }}</small>
+                        <div>
+                            <strong>From:</strong> {{ referral.referring_doctor.get_full_name }}<br>
+                            <strong>To:</strong> {{ referral.get_referral_destination }}<br>
+                            <span class="badge {% if referral.status == 'pending' %}bg-warning{% elif referral.status == 'accepted' %}bg-info{% elif referral.status == 'completed' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ referral.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Consultations -->
+            {% if recent_consultations %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-stethoscope"></i> Recent Consultations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for consultation in recent_consultations %}
+                    <div class="mb-2 p-2 border rounded">
+                        <small class="text-muted">{{ consultation.consultation_date|date:"M d, Y" }}</small>
+                        <div>
+                            <strong>Doctor:</strong> {{ consultation.doctor.get_full_name }}<br>
+                            <strong>Chief Complaint:</strong> {{ consultation.chief_complaint|truncatechars:50 }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <!-- Help Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Referral Types
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-building text-primary"></i> <strong>Department:</strong> Refer to an entire department</li>
+                            <li><i class="fas fa-stethoscope text-success"></i> <strong>Specialty:</strong> Refer to a specific medical specialty</li>
+                            <li><i class="fas fa-hospital text-info"></i> <strong>Unit:</strong> Refer to a specific unit (ICU, Emergency, etc.)</li>
+                        </ul>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const referralTypeSelect = document.getElementById('id_referral_type');
+    const departmentSection = document.getElementById('department_section');
+    const specialtyUnitSection = document.getElementById('specialty_unit_section');
+    const specialtyField = document.getElementById('specialty_field');
+    const unitField = document.getElementById('unit_field');
+
+    function toggleFields() {
+        const selectedType = referralTypeSelect.value;
+        console.log('Selected referral type:', selectedType); // Debug log
+        
+        // Hide all sections first
+        if (departmentSection) departmentSection.style.display = 'none';
+        if (specialtyUnitSection) specialtyUnitSection.style.display = 'none';
+        if (specialtyField) specialtyField.style.display = 'none';
+        if (unitField) unitField.style.display = 'none';
+
+        // Show relevant sections based on selection
+        if (selectedType) {
+            switch(selectedType) {
+                case 'department':
+                    if (departmentSection) departmentSection.style.display = 'block';
+                    if (specialtyUnitSection) specialtyUnitSection.style.display = 'block';
+                    if (specialtyField) specialtyField.style.display = 'block';
+                    if (unitField) unitField.style.display = 'block';
+                    break;
+                case 'specialty':
+                    if (departmentSection) departmentSection.style.display = 'block';
+                    if (specialtyUnitSection) specialtyUnitSection.style.display = 'block';
+                    if (specialtyField) specialtyField.style.display = 'block';
+                    break;
+                case 'unit':
+                    if (departmentSection) departmentSection.style.display = 'block';
+                    if (specialtyUnitSection) specialtyUnitSection.style.display = 'block';
+                    if (unitField) unitField.style.display = 'block';
+                    break;
+                default:
+                    // Show department section by default
+                    if (departmentSection) departmentSection.style.display = 'block';
+                    break;
+            }
+        } else {
+            // If no selection, show department section by default
+            if (departmentSection) departmentSection.style.display = 'block';
+        }
+    }
+
+    // Check if elements exist before proceeding
+    if (referralTypeSelect) {
+        // Initialize on page load
+        toggleFields();
+
+        // Add event listener for changes
+        referralTypeSelect.addEventListener('change', toggleFields);
+    } else {
+        console.error('Referral type select element not found');
+    }
+});
+</script>
+
+<style>
+.form-control, .form-select {
+    border: 1px solid #d1d3e2;
+    border-radius: 0.35rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #5a5c69;
+    box-shadow: 0 0 0 0.2rem rgba(90, 92, 105, 0.25);
+}
+
+textarea.form-control {
+    min-height: 80px;
+}
+
+.list-unstyled li {
+    margin-bottom: 8px;
+}
+</style>
+{% endblock %}

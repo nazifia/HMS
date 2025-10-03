@@ -289,9 +289,11 @@ def doctor_dashboard(request):
 
     # Get pending referrals
     pending_referrals = Referral.objects.filter(
-        referred_to=doctor,
+        Q(assigned_doctor=doctor) |     # Assigned referrals
+        (Q(referral_type='department') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None)) |
+        (Q(referral_type='specialty') & Q(referred_to_department=doctor.profile.department) & Q(referred_to_specialty__icontains=doctor.profile.specialization) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department and doctor.profile.specialization else Q(pk=None)),
         status='pending'
-    ).order_by('-referral_date')
+    ).distinct().order_by('-referral_date')
 
     context = {
         'appointments': appointments,
@@ -518,8 +520,15 @@ def referral_list(request):
     # Get referrals made by this doctor
     referrals_made = Referral.objects.filter(referring_doctor=doctor).order_by('-referral_date')
 
-    # Get referrals received by this doctor
-    referrals_received = Referral.objects.filter(referred_to=doctor).order_by('-referral_date')
+    # Get referrals received by this doctor (includes assignments)
+    referrals_received = Referral.objects.filter(
+        Q(assigned_doctor=doctor) |     # Assigned referrals
+        (Q(referral_type='department') & Q(referred_to_department=doctor.profile.department)) |  # Department referrals
+        (Q(referral_type='specialty') & Q(referred_to_department=doctor.profile.department) & Q(referred_to_specialty__icontains=doctor.profile.specialization)) |  # Specialty referrals
+        (Q(referral_type='unit') & Q(referred_to_department=doctor.profile.department))  # Unit referrals
+    ).distinct().order_by('-referral_date') if hasattr(doctor, 'profile') and doctor.profile else Referral.objects.filter(
+        Q(assigned_doctor=doctor)
+    ).distinct().order_by('-referral_date')
 
     # Filter by status
     status = request.GET.get('status', '')
@@ -550,15 +559,31 @@ def update_referral_status(request, referral_id):
     """View for updating referral status"""
     referral = get_object_or_404(Referral, id=referral_id)
 
-    # Check if the logged-in doctor is the one who received the referral
-    if referral.referred_to != request.user and not request.user.is_superuser:
+    # Check if the logged-in user can update this referral
+    can_update = False
+    
+    if referral.referral_type in ['department', 'specialty', 'unit']:
+        # Department/specialty/unit referral - check if user can accept
+        can_update = referral.can_be_accepted_by(request.user)
+    
+    # Admin and superuser can always update
+    if request.user.is_superuser:
+        can_update = True
+
+    if not can_update:
         messages.error(request, "You don't have permission to update this referral.")
         return redirect('consultations:referral_list')
 
     if request.method == 'POST':
         status = request.POST.get('status')
         if status in dict(Referral.STATUS_CHOICES):
+            old_status = referral.status
             referral.status = status
+            
+            # If accepting a department/specialty/unit referral, assign the doctor
+            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit']:
+                referral.assigned_doctor = request.user
+            
             referral.save()
             messages.success(request, "Referral status updated successfully.")
         else:
@@ -573,14 +598,18 @@ def referral_tracking(request):
 
     # Base queryset
     referrals = Referral.objects.select_related(
-        'patient', 'referring_doctor', 'referred_to', 'consultation'
+        'patient', 'referring_doctor', 'referred_to_department', 'assigned_doctor', 'consultation'
     ).order_by('-referral_date')
 
     # Filter based on user role and permissions
     if 'admin' not in user_roles and not request.user.is_superuser:
         # Non-admin users see only their referrals
         referrals = referrals.filter(
-            Q(referring_doctor=request.user) | Q(referred_to=request.user)
+            Q(referring_doctor=request.user) | 
+            Q(assigned_doctor=request.user) |
+            (Q(referral_type='department') & Q(referred_to_department=request.user.profile.department) if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department else Q(pk=None)) |
+            (Q(referral_type='specialty') & Q(referred_to_department=request.user.profile.department) & Q(referred_to_specialty__icontains=request.user.profile.specialization) if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department and request.user.profile.specialization else Q(pk=None)) |
+            (Q(referral_type='unit') & Q(referred_to_department=request.user.profile.department) if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department else Q(pk=None))
         )
 
     # Apply filters
@@ -600,7 +629,7 @@ def referral_tracking(request):
     if doctor_filter:
         referrals = referrals.filter(
             Q(referring_doctor__id=doctor_filter) |
-            Q(referred_to__id=doctor_filter)
+            Q(assigned_doctor__id=doctor_filter)
         )
 
     date_from = request.GET.get('date_from', '')
@@ -648,19 +677,27 @@ def referral_detail(request, referral_id):
     """Detailed view of a referral with comprehensive tracking"""
     referral = get_object_or_404(Referral, id=referral_id)
 
-    # Check permissions - referring doctor, referred doctor, or admin can view
-    if (referral.referring_doctor != request.user and
-        referral.referred_to != request.user and
-        not request.user.is_superuser):
+    # Check permissions - referring doctor, assigned doctor, or admin can view
+    can_view = False
+    
+    if (referral.referring_doctor == request.user or 
+        request.user.is_superuser):
+        can_view = True
+    elif referral.assigned_doctor == request.user:
+        can_view = True
+    elif referral.referral_type in ['department', 'specialty', 'unit'] and referral.can_be_accepted_by(request.user):
+        can_view = True
+        
+    if not can_view:
         messages.error(request, "You don't have permission to view this referral.")
         return redirect('consultations:referral_list')
 
-    # Get related consultations
+    # Get related consultations from assigned doctor
     follow_up_consultations = Consultation.objects.filter(
         patient=referral.patient,
-        doctor=referral.referred_to,
+        doctor=referral.assigned_doctor,
         consultation_date__gte=referral.referral_date
-    ).order_by('-consultation_date')
+    ).order_by('-consultation_date') if referral.assigned_doctor else Consultation.objects.none()
 
     # Get referral history for this patient
     patient_referrals = Referral.objects.filter(
@@ -682,9 +719,19 @@ def update_referral_status_detailed(request, referral_id):
     referral = get_object_or_404(Referral, id=referral_id)
 
     # Check permissions
-    if (referral.referred_to != request.user and
-        referral.referring_doctor != request.user and
-        not request.user.is_superuser):
+    can_update = False
+    
+    if referral.referral_type in ['department', 'specialty', 'unit']:
+        # Department/specialty/unit referral
+        can_update = (referral.can_be_accepted_by(request.user) or 
+                     referral.referring_doctor == request.user or
+                     referral.assigned_doctor == request.user)
+    
+    # Admin and superuser can always update
+    if request.user.is_superuser:
+        can_update = True
+        
+    if not can_update:
         messages.error(request, "You don't have permission to update this referral.")
         return redirect('consultations:referral_tracking')
 
@@ -703,23 +750,29 @@ def update_referral_status_detailed(request, referral_id):
                 else:
                     referral.notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
 
+            # If accepting a department/specialty/unit referral, assign the doctor
+            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit']:
+                referral.assigned_doctor = request.user
+
             referral.save()
 
             # Create notification for the other party
-            if referral.referred_to == request.user:
+            if referral.referral_type in ['department', 'specialty', 'unit'] and referral.can_be_accepted_by(request.user):
                 # Notify referring doctor
                 from core.models import InternalNotification
                 InternalNotification.objects.create(
                     user=referral.referring_doctor,
-                    message=f"Referral for {referral.patient.get_full_name()} has been {status} by Dr. {request.user.get_full_name()}"
+                    message=f"Referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()} has been {status} by Dr. {request.user.get_full_name()}"
                 )
             else:
-                # Notify referred doctor
-                from core.models import InternalNotification
-                InternalNotification.objects.create(
-                    user=referral.referred_to,
-                    message=f"Referral for {referral.patient.get_full_name()} status updated to {status} by Dr. {request.user.get_full_name()}"
-                )
+                # Notify assigned doctor if different from current user
+                target_doctor = referral.assigned_doctor
+                if target_doctor and target_doctor != request.user:
+                    from core.models import InternalNotification
+                    InternalNotification.objects.create(
+                        user=target_doctor,
+                        message=f"Referral for {referral.patient.get_full_name()} status updated to {status} by Dr. {request.user.get_full_name()}"
+                    )
 
             messages.success(request, f"Referral status updated to {status}.")
         else:
@@ -733,6 +786,32 @@ def create_referral(request, patient_id=None):
     patient = None
     if patient_id:
         patient = get_object_or_404(Patient, id=patient_id)
+
+    # Get referral history for this patient
+    referral_history = []
+    recent_consultations = []
+    current_admissions = []
+    
+    if patient:
+        # Get referral history (both sent and received)
+        referral_history = Referral.objects.filter(
+            patient=patient
+        ).select_related('referring_doctor', 'referred_to_department', 'assigned_doctor').order_by('-referral_date')[:10]
+        
+        # Get recent consultations
+        recent_consultations = Consultation.objects.filter(
+            patient=patient
+        ).select_related('doctor').order_by('-consultation_date')[:5]
+        
+        # Check for current admissions
+        try:
+            from inpatient.models import Admission
+            current_admissions = Admission.objects.filter(
+                patient=patient,
+                status__in=['active', 'admitted']
+            ).select_related('attending_doctor', 'bed')[:5]  # Fixed field names
+        except (ImportError, Exception):
+            current_admissions = []
 
     if request.method == 'POST':
         # Create a mutable copy of POST data
@@ -765,6 +844,24 @@ def create_referral(request, patient_id=None):
                 referral.consultation = consultation
             # If no consultation exists, that's okay - consultation is now optional
 
+            # Determine if authorization is required (for NHIA patients)
+            if referral.patient.patient_type == 'nhia':
+                # Check if referring from NHIA to non-NHIA unit
+                referring_dept = getattr(referral.referring_doctor.profile, 'department', None) if hasattr(referral.referring_doctor, 'profile') else None
+                
+                # For department/specialty/unit referrals, check the department
+                if referral.referral_type in ['department', 'specialty', 'unit'] and referral.referred_to_department:
+                    referred_dept = referral.referred_to_department
+                if referral.referral_type in ['department', 'specialty', 'unit'] and referral.referred_to_department:
+                    referred_dept = referral.referred_to_department
+                else:
+                    referred_dept = None
+                
+                # This logic can be enhanced based on your NHIA authorization rules
+                if referring_dept and referred_dept:
+                    referral.requires_authorization = True
+                    referral.authorization_status = 'required'
+
             referral.save()
 
             messages.success(request, f"Referral for {referral.patient.get_full_name()} created successfully.")
@@ -790,7 +887,10 @@ def create_referral(request, patient_id=None):
     context = {
         'form': form,
         'patient': patient,
-        'title': 'Create New Referral'
+        'title': 'Create New Referral',
+        'referral_history': referral_history,
+        'recent_consultations': recent_consultations,
+        'current_admissions': current_admissions,
     }
     return render(request, 'consultations/referral_form.html', context)
 

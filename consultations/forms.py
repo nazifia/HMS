@@ -1,5 +1,6 @@
 from django import forms
 from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
 from .models import ConsultationOrder, ConsultingRoom, WaitingList, Referral, Consultation
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
@@ -62,7 +63,7 @@ class WaitingListForm(forms.ModelForm):
 
 
 class ReferralForm(forms.ModelForm):
-    """Form for creating referrals"""
+    """Form for creating referrals to departments/units/specialists"""
 
     authorization_code_input = forms.CharField(
         max_length=50,
@@ -76,22 +77,28 @@ class ReferralForm(forms.ModelForm):
 
     class Meta:
         model = Referral
-        fields = ['patient', 'referred_to', 'reason', 'notes']
+        fields = ['patient', 'referral_type', 'referred_to_department', 'referred_to_specialty', 'referred_to_unit', 'referred_to_doctor', 'reason', 'notes']
         widgets = {
-            'patient': forms.Select(attrs={'class': 'form-select select2'}),
-            'referred_to': forms.Select(attrs={'class': 'form-select select2'}),
+            'patient': forms.Select(attrs={'class': 'form-select'}),
+            'referral_type': forms.Select(attrs={'class': 'form-select', 'id': 'id_referral_type'}),
+            'referred_to_department': forms.Select(attrs={'class': 'form-select', 'id': 'id_referred_to_department'}),
+            'referred_to_specialty': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_referred_to_specialty', 'placeholder': 'e.g., Cardiology, Neurology'}),
+            'referred_to_unit': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_referred_to_unit', 'placeholder': 'e.g., ICU, Emergency'}),
+            'referred_to_doctor': forms.Select(attrs={'class': 'form-select select2', 'id': 'id_referred_to_doctor'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        self.fields['referred_to_department'].queryset = Department.objects.all().order_by('name')
 
         # Get doctors using multiple role systems with fallback to all active users
         from django.db.models import Q
-        
+
         # Try different role systems
         doctors_queryset = CustomUser.objects.filter(
             Q(is_active=True) & (
@@ -101,15 +108,57 @@ class ReferralForm(forms.ModelForm):
                 Q(is_staff=True)  # Fallback: staff users
             )
         ).distinct().order_by('first_name', 'last_name')
-        
+
         # If no doctors found with role filtering, fall back to all active users
         if not doctors_queryset.exists():
             doctors_queryset = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
-        
-        self.fields['referred_to'].queryset = doctors_queryset
+
+        self.fields['referred_to_doctor'].queryset = doctors_queryset
 
         # Set empty labels
-        self.fields['referred_to'].empty_label = "Select Referred Doctor"
+        self.fields['referred_to_department'].empty_label = "Select Department"
+        self.fields['referred_to_doctor'].empty_label = "Select Doctor"
+
+        # Set field labels
+        self.fields['referral_type'].label = "Refer To"
+        self.fields['referred_to_department'].label = "Department"
+        self.fields['referred_to_specialty'].label = "Specialty"
+        self.fields['referred_to_unit'].label = "Unit"
+        self.fields['referred_to_doctor'].label = "Doctor"
+
+        # Make all referral destination fields not required (validation in clean method)
+        self.fields['referred_to_department'].required = False
+        self.fields['referred_to_specialty'].required = False
+        self.fields['referred_to_unit'].required = False
+        self.fields['referred_to_doctor'].required = False
+
+        # Set initial value for referral_type if not already set
+        if not self.initial.get('referral_type'):
+            self.fields['referral_type'].initial = 'department'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        referral_type = cleaned_data.get('referral_type')
+
+        # Validate based on referral type
+        if referral_type == 'department':
+            if not cleaned_data.get('referred_to_department'):
+                raise forms.ValidationError("Please select a department for department referral.")
+        elif referral_type == 'specialty':
+            if not cleaned_data.get('referred_to_specialty'):
+                raise forms.ValidationError("Please specify the specialty.")
+            if not cleaned_data.get('referred_to_department'):
+                raise forms.ValidationError("Please select a department for specialty referral.")
+        elif referral_type == 'unit':
+            if not cleaned_data.get('referred_to_unit'):
+                raise forms.ValidationError("Please specify the unit.")
+            if not cleaned_data.get('referred_to_department'):
+                raise forms.ValidationError("Please select a department for unit referral.")
+        elif referral_type == 'doctor':
+            if not cleaned_data.get('referred_to_doctor'):
+                raise forms.ValidationError("Please select a doctor for doctor referral.")
+
+        return cleaned_data
 
     def clean_authorization_code_input(self):
         """Validate authorization code if provided"""
@@ -152,11 +201,13 @@ class ConsultationForm(forms.ModelForm):
 
     class Meta:
         model = Consultation
-        fields = ['patient', 'doctor', 'vitals', 'chief_complaint', 'symptoms', 'diagnosis', 'consultation_notes']
+        fields = ['patient', 'doctor', 'vitals', 'consultation_date', 'status', 'chief_complaint', 'symptoms', 'diagnosis', 'consultation_notes']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select select2'}),
             'doctor': forms.Select(attrs={'class': 'form-select select2'}),
             'vitals': forms.Select(attrs={'class': 'form-select select2'}),
+            'consultation_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
             'chief_complaint': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'symptoms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'diagnosis': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),

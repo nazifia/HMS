@@ -10,7 +10,11 @@
             <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Tracking
             </a>
-            {% if referral.referred_to == request.user or referral.referring_doctor == request.user %}
+            {% if referral.referral_type in 'department,specialty,unit' and referral.can_be_accepted_by == request.user %}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+                <i class="fas fa-edit"></i> Accept/Update Status
+            </button>
+            {% elif referral.assigned_doctor == request.user or referral.referring_doctor == request.user %}
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
                 <i class="fas fa-edit"></i> Update Status
             </button>
@@ -38,7 +42,7 @@
                                 <tr>
                                     <td><strong>Patient:</strong></td>
                                     <td>
-                                        <a href="{% url 'patients:patient_detail' referral.patient.id %}">
+                                        <a href="{% url 'patients:detail' referral.patient.id %}">
                                             {{ referral.patient.get_full_name }}
                                         </a>
                                         <small class="text-muted d-block">{{ referral.patient.patient_id }}</small>
@@ -50,8 +54,14 @@
                                 </tr>
                                 <tr>
                                     <td><strong>Referred To:</strong></td>
-                                    <td>{{ referral.referred_to.get_full_name }}</td>
+                                    <td>{{ referral.get_referral_destination }}</td>
                                 </tr>
+                                {% if referral.assigned_doctor %}
+                                <tr>
+                                    <td><strong>Assigned Doctor:</strong></td>
+                                    <td>{{ referral.assigned_doctor.get_full_name }}</td>
+                                </tr>
+                                {% endif %}
                                 <tr>
                                     <td><strong>Referral Date:</strong></td>
                                     <td>{{ referral.referral_date|date:"M d, Y H:i" }}</td>
@@ -191,7 +201,7 @@
                         </tr>
                     </table>
                     <div class="text-center">
-                        <a href="{% url 'patients:patient_detail' referral.patient.id %}" class="btn btn-sm btn-outline-primary">
+                        <a href="{% url 'patients:detail' referral.patient.id %}" class="btn btn-sm btn-outline-primary">
                             View Full Profile
                         </a>
                     </div>
@@ -212,7 +222,7 @@
                         <small class="text-muted">{{ ref.referral_date|date:"M d, Y" }}</small>
                         <div>
                             <strong>From:</strong> {{ ref.referring_doctor.get_full_name }}<br>
-                            <strong>To:</strong> {{ ref.referred_to.get_full_name }}<br>
+                            <strong>To:</strong> {{ ref.get_referral_destination }}<br>
                             <span class="badge {% if ref.status == 'pending' %}bg-warning{% elif ref.status == 'accepted' %}bg-info{% elif ref.status == 'completed' %}bg-success{% else %}bg-danger{% endif %}">
                                 {{ ref.get_status_display }}
                             </span>
@@ -234,8 +244,12 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        {% if referral.referred_to == request.user and referral.status == 'pending' %}
-                        <a href="{% url 'consultations:create_consultation' %}?patient={{ referral.patient.id }}" class="btn btn-success btn-sm">
+                        {% if referral.referral_type in 'department,specialty,unit' and referral.can_be_accepted_by == request.user and referral.status == 'pending' %}
+                        <a href="{% url 'consultations:create_consultation' referral.patient.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus"></i> Start Consultation
+                        </a>
+                        {% elif referral.assigned_doctor == request.user and referral.status == 'accepted' %}
+                        <a href="{% url 'consultations:create_consultation' referral.patient.id %}" class="btn btn-success btn-sm">
                             <i class="fas fa-plus"></i> Start Consultation
                         </a>
                         {% endif %}

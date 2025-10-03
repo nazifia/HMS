@@ -162,7 +162,7 @@ class ConsultationNote(models.Model):
 
 
 class Referral(models.Model):
-    """Model for patient referrals to other doctors/specialists"""
+    """Model for patient referrals to departments/units/specialists"""
     STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
@@ -178,6 +178,12 @@ class Referral(models.Model):
         ('rejected', 'Rejected'),
     )
 
+    REFERRAL_TYPE_CHOICES = (
+        ('department', 'Department'),
+        ('specialty', 'Specialty'),
+        ('unit', 'Unit'),
+    )
+
     consultation = models.ForeignKey(
         Consultation,
         on_delete=models.CASCADE,
@@ -188,7 +194,19 @@ class Referral(models.Model):
     )
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='referrals')
     referring_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referrals_made')
-    referred_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referrals_received')
+    
+    # New referral destination fields
+    referral_type = models.CharField(max_length=20, choices=REFERRAL_TYPE_CHOICES, default='department')
+    referred_to_department = models.ForeignKey('accounts.Department', on_delete=models.CASCADE, related_name='referrals_received', null=True, blank=True)
+    referred_to_specialty = models.CharField(max_length=100, blank=True, null=True, help_text="Specialty within the department")
+    referred_to_unit = models.CharField(max_length=100, blank=True, null=True, help_text="Specific unit within the department")
+    
+    # Keep the old doctor field for backward compatibility and specific doctor referrals
+    referred_to_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='direct_referrals_received', null=True, blank=True)
+    
+    # Assigned doctor (can be set later when someone accepts the referral)
+    assigned_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name='assigned_referrals', null=True, blank=True, help_text="Doctor who accepted and is handling this referral")
+    
     reason = models.TextField()
     notes = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -218,7 +236,68 @@ class Referral(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Referral for {self.patient.get_full_name()} from Dr. {self.referring_doctor.get_full_name()} to Dr. {self.referred_to.get_full_name()}"
+        if self.referral_type == 'department' and self.referred_to_department:
+            destination = f"{self.referred_to_department.name} Department"
+            if self.referred_to_specialty:
+                destination += f" ({self.referred_to_specialty})"
+            if self.referred_to_unit:
+                destination += f" - {self.referred_to_unit} Unit"
+        elif self.referral_type == 'specialty' and self.referred_to_specialty:
+            destination = f"{self.referred_to_specialty} Specialty"
+            if self.referred_to_department:
+                destination += f" ({self.referred_to_department.name})"
+        elif self.referral_type == 'unit' and self.referred_to_unit:
+            destination = f"{self.referred_to_unit} Unit"
+            if self.referred_to_department:
+                destination += f" ({self.referred_to_department.name})"
+        else:
+            destination = "Unspecified Destination"
+            
+        return f"Referral for {self.patient.get_full_name()} from Dr. {self.referring_doctor.get_full_name()} to {destination}"
+
+    def get_referral_destination(self):
+        """Get a formatted string of the referral destination"""
+        if self.referral_type == 'department' and self.referred_to_department:
+            dest = self.referred_to_department.name
+            if self.referred_to_specialty:
+                dest += f" - {self.referred_to_specialty}"
+            if self.referred_to_unit:
+                dest += f" ({self.referred_to_unit})"
+            return dest
+        elif self.referral_type == 'specialty':
+            dest = self.referred_to_specialty or "Unspecified Specialty"
+            if self.referred_to_department:
+                dest += f" ({self.referred_to_department.name})"
+            return dest
+        elif self.referral_type == 'unit':
+            dest = self.referred_to_unit or "Unspecified Unit"
+            if self.referred_to_department:
+                dest += f" ({self.referred_to_department.name})"
+            return dest
+        return "Unspecified Destination"
+
+    def can_be_accepted_by(self, user):
+        """Check if a user can accept this referral"""
+        if self.status != 'pending':
+            return False
+            
+        # For department/specialty/unit referrals, check if user works in that area
+        if hasattr(user, 'profile') and user.profile:
+            profile = user.profile
+            
+            # Check department match
+            if self.referred_to_department and profile.department:
+                if profile.department != self.referred_to_department:
+                    return False
+                    
+            # Check specialty match (if specified)
+            if self.referred_to_specialty and profile.specialization:
+                if self.referred_to_specialty.lower() not in profile.specialization.lower():
+                    return False
+                    
+            return True
+            
+        return False
 
     def is_nhia_patient(self):
         """Check if the patient is an NHIA patient"""
@@ -231,13 +310,10 @@ class Referral(models.Model):
         return self.consultation.is_nhia_consulting_room()
 
     def is_to_nhia_unit(self):
-        """Check if the referred-to doctor is in NHIA department"""
-        if not self.referred_to or not hasattr(self.referred_to, 'profile'):
-            return False
-        profile = self.referred_to.profile
-        if not profile or not profile.department:
-            return False
-        return profile.department.name.upper() == 'NHIA'
+        """Check if the referral is to NHIA department"""
+        if self.referred_to_department:
+            return self.referred_to_department.name.upper() == 'NHIA'
+        return False
 
     def check_authorization_requirement(self):
         """

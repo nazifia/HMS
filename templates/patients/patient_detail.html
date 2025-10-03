@@ -138,9 +138,9 @@
                             </button>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <button type="button" class="btn btn-danger btn-block" id="referPatientBtn" data-bs-toggle="modal" data-bs-target="#referralModal">
+                            <a href="{% url 'consultations:create_referral' patient.id %}" class="btn btn-danger btn-block">
                                 <i class="fas fa-user-md"></i> Refer Patient
-                            </button>
+                            </a>
                         </div>
                         <div class="col-md-6 mb-3">
                             <a href="{% url 'inpatient:create_admission' %}?patient_id={{ patient.id }}" class="btn btn-secondary btn-block">
@@ -901,8 +901,92 @@
     </div>
 </div>
 
-<!-- Include Referral Modal -->
-{% include 'includes/referral_modal.html' with patient=patient %}
+<!-- Referral Modal -->
+<div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="referralModalLabel">
+                    <i class="fas fa-user-md me-2"></i>
+                    Refer {{ patient.get_full_name }} to Another Doctor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'consultations:create_referral' patient.id %}" id="referralForm">
+                {% csrf_token %}
+                <input type="hidden" name="patient" value="{{ patient.id }}">
+                
+                <div class="modal-body">
+                    <!-- Patient Info Summary -->
+                    <div class="alert alert-info mb-3">
+                        <strong>Patient:</strong> {{ patient.get_full_name }} ({{ patient.patient_id }})<br>
+                        <strong>Type:</strong> {{ patient.get_patient_type_display }}
+                        {% if patient.patient_type == 'nhia' %}
+                            <span class="badge bg-primary ms-2">NHIA Patient</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Refer To Doctor -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="referred_to" class="form-label">
+                                <i class="fas fa-user-doctor me-1"></i>
+                                Refer To Doctor <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="referred_to" name="referred_to" required>
+                                <option value="">Loading doctors...</option>
+                            </select>
+                            <div class="form-text">Select the doctor you want to refer this patient to</div>
+                        </div>
+                    </div>
+
+                    <!-- Reason for Referral -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="reason" class="form-label">
+                                <i class="fas fa-clipboard-list me-1"></i>
+                                Reason for Referral <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="reason" name="reason" rows="4" required 
+                                      placeholder="Enter the reason for referring this patient (e.g., specialist consultation needed, second opinion, etc.)"></textarea>
+                            <div class="form-text">Provide a clear reason for the referral</div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Notes -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="referral_notes" class="form-label">
+                                <i class="fas fa-notes-medical me-1"></i>
+                                Additional Notes <span class="text-muted">(Optional)</span>
+                            </label>
+                            <textarea class="form-control" id="referral_notes" name="notes" rows="3" 
+                                      placeholder="Any additional information that might be helpful for the receiving doctor"></textarea>
+                            <div class="form-text">Include any relevant medical history, test results, or observations</div>
+                        </div>
+                    </div>
+
+                    <!-- NHIA Authorization Notice -->
+                    {% if patient.patient_type == 'nhia' %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>NHIA Patient:</strong> This referral may require authorization. The system will automatically check authorization requirements.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger" id="submitReferralBtn">
+                        <i class="fas fa-paper-plane me-1"></i> Submit Referral
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% block extra_js %}
 <script>
@@ -1054,7 +1138,162 @@
                 });
         }
 
-        // Referral modal JavaScript is now in includes/referral_modal.html
+        // Fallback function for referral button
+        function fallbackReferralRedirect(event, patientId) {
+            // Check if modal exists and is functional
+            const modal = document.getElementById('referralModal');
+            const doctorsSelect = document.getElementById('referred_to');
+            
+            // If modal doesn't exist or doctors dropdown is not working, redirect to form page
+            if (!modal || !doctorsSelect) {
+                console.log('Modal not functional, redirecting to referral form page...');
+                event.preventDefault();
+                event.stopPropagation();
+                window.location.href = `/consultations/referrals/create/${patientId}/`;
+                return false;
+            }
+            
+            // Otherwise, let the modal open normally
+            console.log('Modal functional, opening modal...');
+            return true;
+        }
+
+        // Referral modal JavaScript
+        console.log('Referral modal script loaded');
+
+        /**
+         * Load doctors from API and populate the dropdown
+         */
+        function loadDoctorsForReferral() {
+            console.log('Loading doctors for referral modal...');
+            
+            const doctorsSelect = document.getElementById('referred_to');
+            if (!doctorsSelect) {
+                console.error('Doctors select element not found');
+                return;
+            }
+
+            // Show loading state
+            doctorsSelect.innerHTML = '<option value="">Loading doctors...</option>';
+            doctorsSelect.disabled = true;
+
+            fetch('/accounts/api/users/?role=doctor')
+                .then(response => {
+                    console.log('Doctors API response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Doctors loaded:', data.length);
+                    
+                    // Clear and enable select
+                    doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
+                    doctorsSelect.disabled = false;
+
+                    if (data && data.length > 0) {
+                        data.forEach(doctor => {
+                            const option = document.createElement('option');
+                            option.value = doctor.id;
+                            
+                            // Format doctor name
+                            let doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                            
+                            // Add department if available
+                            if (doctor.department) {
+                                doctorName += ` (${doctor.department})`;
+                            }
+                            
+                            option.textContent = doctorName;
+                            doctorsSelect.appendChild(option);
+                        });
+                        console.log('Doctors dropdown populated successfully');
+                    } else {
+                        const option = document.createElement('option');
+                        option.textContent = 'No doctors available';
+                        option.disabled = true;
+                        doctorsSelect.appendChild(option);
+                        console.warn('No doctors found in response');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading doctors:', error);
+                    
+                    // Show error state
+                    doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
+                    doctorsSelect.disabled = false;
+                    
+                    const option = document.createElement('option');
+                    option.textContent = 'Error loading doctors. Please refresh the page.';
+                    option.disabled = true;
+                    doctorsSelect.appendChild(option);
+                    
+                    // Show user-friendly error message
+                    alert('Failed to load doctors. Please refresh the page and try again.');
+                });
+        }
+
+        // Load doctors when page loads
+        const referralModal = document.getElementById('referralModal');
+        if (referralModal) {
+            console.log('Referral modal found, loading doctors...');
+            loadDoctorsForReferral();
+            
+            // Reload doctors when modal is shown (ensures fresh data)
+            referralModal.addEventListener('show.bs.modal', function (event) {
+                console.log('Referral modal opening, reloading doctors...');
+                loadDoctorsForReferral();
+            });
+            
+            // Clear form when modal is hidden
+            referralModal.addEventListener('hidden.bs.modal', function (event) {
+                console.log('Referral modal closed, clearing form...');
+                const form = document.getElementById('referralForm');
+                if (form) {
+                    form.reset();
+                    // Reload doctors for next time
+                    loadDoctorsForReferral();
+                }
+            });
+        } else {
+            console.warn('Referral modal not found on page');
+        }
+
+        // Form validation
+        const referralForm = document.getElementById('referralForm');
+        if (referralForm) {
+            referralForm.addEventListener('submit', function(event) {
+                const doctorSelect = document.getElementById('referred_to');
+                const reasonField = document.getElementById('reason');
+                
+                // Validate doctor selection
+                if (!doctorSelect.value) {
+                    event.preventDefault();
+                    alert('Please select a doctor to refer the patient to.');
+                    doctorSelect.focus();
+                    return false;
+                }
+                
+                // Validate reason
+                if (!reasonField.value.trim()) {
+                    event.preventDefault();
+                    alert('Please provide a reason for the referral.');
+                    reasonField.focus();
+                    return false;
+                }
+                
+                // Show loading state on submit button
+                const submitBtn = document.getElementById('submitReferralBtn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Submitting...';
+                }
+                
+                console.log('Referral form submitted');
+                return true;
+            });
+        }
     });
 </script>
 

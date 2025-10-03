@@ -144,13 +144,18 @@
                         <tr>
                             <td>{{ referral.referral_date|date:"M d, Y" }}</td>
                             <td>
-                                <a href="{% url 'patients:patient_detail' referral.patient.id %}">
+                                <a href="{% url 'patients:detail' referral.patient.id %}">
                                     {{ referral.patient.get_full_name }}
                                 </a>
                                 <small class="text-muted d-block">{{ referral.patient.patient_id }}</small>
                             </td>
                             <td>{{ referral.referring_doctor.get_full_name }}</td>
-                            <td>{{ referral.referred_to.get_full_name }}</td>
+                            <td>
+                                {{ referral.get_referral_destination }}
+                                {% if referral.assigned_doctor %}
+                                    <small class="text-muted d-block">Assigned to: {{ referral.assigned_doctor.get_full_name }}</small>
+                                {% endif %}
+                            </td>
                             <td>{{ referral.reason|truncatechars:50 }}</td>
                             <td>
                                 <span class="badge {% if referral.status == 'pending' %}bg-warning{% elif referral.status == 'accepted' %}bg-info{% elif referral.status == 'completed' %}bg-success{% else %}bg-danger{% endif %}">
@@ -163,7 +168,7 @@
                                        class="btn btn-outline-primary" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    {% if referral.referred_to == request.user or referral.referring_doctor == request.user %}
+                                    {% if referral.assigned_doctor == request.user or referral.referring_doctor == request.user or referral.can_be_accepted_by == request.user %}
                                     <button type="button" class="btn btn-outline-info" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#updateStatusModal{{ referral.id }}" 
@@ -171,7 +176,7 @@
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     {% endif %}
-                                    {% if referral.referred_to == request.user and referral.status == 'pending' %}
+                                    {% if referral.assigned_doctor == request.user and referral.status == 'accepted' or referral.can_be_accepted_by == request.user and referral.status == 'pending' %}
                                     <a href="{% url 'consultations:create_consultation' referral.patient.id %}" 
                                        class="btn btn-outline-success" title="Start Consultation">
                                         <i class="fas fa-stethoscope"></i>

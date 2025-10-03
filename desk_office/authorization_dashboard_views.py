@@ -39,7 +39,7 @@ def authorization_dashboard(request):
     pending_referrals = Referral.objects.filter(
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
-    ).select_related('patient', 'referring_doctor', 'referred_to').order_by('-referral_date')
+    ).select_related('patient', 'referring_doctor', 'referred_to_doctor', 'referred_to_department', 'assigned_doctor').order_by('-referral_date')
     
     # Get all prescriptions requiring authorization
     pending_prescriptions = Prescription.objects.filter(
@@ -116,7 +116,7 @@ def pending_referrals_list(request):
     referrals = Referral.objects.filter(
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
-    ).select_related('patient', 'referring_doctor', 'referred_to').order_by('-referral_date')
+    ).select_related('patient', 'referring_doctor', 'referred_to_doctor', 'referred_to_department', 'assigned_doctor').order_by('-referral_date')
     
     context = {
         'referrals': referrals,
@@ -214,7 +214,7 @@ def authorize_referral(request, referral_id):
             amount=amount,
             expiry_date=expiry_date,
             status='active',
-            notes=f"Generated for referral #{referral.id} to Dr. {referral.referred_to.get_full_name()}. {notes}",
+            notes=f"Generated for referral #{referral.id} to {referral.get_referral_destination()}. {notes}",
             generated_by=request.user
         )
         
