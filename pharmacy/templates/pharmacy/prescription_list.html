@@ -52,6 +52,43 @@
     .btn-group-vertical .btn:last-child {
         margin-bottom: 0;
     }
+
+    .dispensing-status-cell {
+        min-width: 150px;
+    }
+
+    .progress {
+        background-color: #e9ecef;
+    }
+
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .table th:nth-child(6) {
+        min-width: 180px;
+    }
+
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+
+    .border-left-secondary {
+        border-left: 0.25rem solid #858796 !important;
+    }
 </style>
 {% endblock %}
 
@@ -152,6 +189,77 @@
         </div>
     </div>
 
+    <!-- Dispensing Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Prescriptions</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prescriptions }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-prescription-bottle-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Fully Dispensed</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ dispensing_stats.fully_dispensed }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Partially Dispensed</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ dispensing_stats.partially_dispensed }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                Not Dispensed</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ dispensing_stats.not_dispensed }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hourglass-start fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Prescription List</h6>
@@ -167,12 +275,15 @@
                             <th>Prescription Date</th>
                             <th>Status</th>
                             <th>Payment Status</th>
+                            <th>Dispensing Status</th>
                             <th>Type</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for prescription in page_obj %}
+                        {% with dispensing_info=prescription.get_dispensing_status_info %}
+                        {% with progress=prescription.get_dispensing_progress %}
                         <tr>
                             <td>
                                 {{ prescription.patient.get_full_name }}
@@ -197,6 +308,38 @@
                                 </span>
                                 {% endwith %}
                             </td>
+                            <td>
+                                <div class="dispensing-status-cell">
+                                    <span class="badge badge-{{ dispensing_info.badge_color }}">
+                                        <i class="fas fa-{{ dispensing_info.icon }}"></i> {{ dispensing_info.message }}
+                                    </span>
+                                    {% if dispensing_info.status == 'fully_dispensed' %}
+                                        <div class="progress mt-1" style="height: 4px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                                        </div>
+                                        <small class="text-success">
+                                            <i class="fas fa-check"></i> All {{ progress.total_items }} items dispensed
+                                        </small>
+                                    {% elif dispensing_info.status == 'partially_dispensed' %}
+                                        <div class="progress mt-1" style="height: 4px;">
+                                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ progress.progress_percentage }}%"></div>
+                                        </div>
+                                        <small class="text-warning">
+                                            {{ progress.fully_dispensed }}/{{ progress.total_items }} items completed
+                                            {% if progress.partially_dispensed > 0 %}
+                                                <br>{{ progress.partially_dispensed }} partially dispensed
+                                            {% endif %}
+                                        </small>
+                                    {% else %}
+                                        <div class="progress mt-1" style="height: 4px;">
+                                            <div class="progress-bar bg-secondary" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted">
+                                            0/{{ progress.total_items }} items dispensed
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </td>
                             <td>{{ prescription.get_prescription_type_display }}</td>
                             <td>
                                 <div class="btn-group-vertical" role="group">
@@ -204,9 +347,16 @@
                                         <i class="fas fa-eye"></i> View
                                     </a>
                                     {% if prescription.is_payment_verified %}
-                                        <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success btn-sm">
-                                            <i class="fas fa-pills"></i> Dispense
-                                        </a>
+                                        {% if dispensing_info.status == 'fully_dispensed' %}
+                                            <button type="button" class="btn btn-success btn-sm" disabled title="Already fully dispensed">
+                                                <i class="fas fa-check-circle"></i> Dispensed
+                                            </button>
+                                        {% else %}
+                                            <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success btn-sm">
+                                                <i class="fas fa-pills"></i> 
+                                                {% if dispensing_info.status == 'partially_dispensed' %}Continue{% else %}Dispense{% endif %}
+                                            </a>
+                                        {% endif %}
                                     {% else %}
                                         <button type="button" class="btn btn-success btn-sm" disabled title="Payment required">
                                             <i class="fas fa-lock"></i> Dispense
@@ -218,6 +368,8 @@
                                 </div>
                             </td>
                         </tr>
+                        {% endwith %}
+                        {% endwith %}
                         {% endfor %}
                     </tbody>
                 </table>

@@ -186,6 +186,12 @@ class Command(BaseCommand):
         if admission.patient.is_nhia_patient():
             logger.info(f'Patient {admission.patient.get_full_name()} is NHIA - no daily charges applied.')
             return None
+        
+        # Apply daily charges to all other patient types (regular, private pay, insurance, etc.)
+        # This ensures that admission charges are auto-deducted for all non-NHIA patients
+
+        # Apply daily charges to all other patient types (regular, private pay, insurance, etc.)
+        # This ensures that admission charges are auto-deducted for all non-NHIA patients
 
         # Check if admission was active on the charge date
         admission_date = admission.admission_date.date()
@@ -274,9 +280,12 @@ class Command(BaseCommand):
         Process outstanding balance recovery for an admission using wallet-balance-aware strategies.
         Returns the amount recovered.
         """
-        # Check if patient is NHIA - NHIA patients are exempt
+        # Check if patient is NHIA - NHIA patients are exempt from admission fees
         if admission.patient.is_nhia_patient():
             return Decimal('0.00')
+        
+        # Apply outstanding balance recovery to all other patient types (regular, private pay, insurance, etc.)
+        # This ensures that outstanding balances are recovered for all non-NHIA patients
 
         # Calculate outstanding balance
         outstanding_balance = admission.get_outstanding_admission_cost()

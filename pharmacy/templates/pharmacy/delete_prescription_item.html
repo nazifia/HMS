@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-danger">
+                <i class="fas fa-exclamation-triangle"></i> Confirm Deletion
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning border-0" role="alert">
+                <h4 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle"></i> Are you sure you want to delete this medication?
+                </h4>
+                <p class="mb-0">This action cannot be undone. The medication will be permanently removed from the prescription.</p>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Prescription Information</h5>
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Prescription ID:</th>
+                            <td>#{{ prescription.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Patient:</th>
+                            <td>{{ prescription.patient.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Doctor:</th>
+                            <td>{{ prescription.doctor.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Date:</th>
+                            <td>{{ prescription.prescription_date }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h5>Medication to Delete</h5>
+                    <div class="card border-danger">
+                        <div class="card-body">
+                            <h6 class="card-title text-danger">
+                                <i class="fas fa-pills"></i> {{ item.medication.name }}
+                            </h6>
+                            <p class="card-text">
+                                <strong>Strength:</strong> {{ item.medication.strength }}<br>
+                                <strong>Form:</strong> {{ item.medication.dosage_form }}<br>
+                                <strong>Quantity:</strong> {{ item.quantity }} units<br>
+                                <strong>Dosage:</strong> {{ item.dosage|default:"Not specified" }}<br>
+                                <strong>Frequency:</strong> {{ item.frequency|default:"Not specified" }}<br>
+                                <strong>Duration:</strong> {{ item.duration|default:"Not specified" }}
+                            </p>
+                            {% if item.instructions %}
+                            <p class="card-text">
+                                <strong>Instructions:</strong><br>
+                                <em>{{ item.instructions }}</em>
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dispensing Status Check -->
+            {% if item.is_dispensed %}
+            <div class="alert alert-danger mt-3" role="alert">
+                <h4 class="alert-heading">
+                    <i class="fas fa-ban"></i> Cannot Delete - Already Dispensed
+                </h4>
+                <p class="mb-0">This medication has already been fully dispensed and cannot be deleted.</p>
+            </div>
+            {% elif item.quantity_dispensed_so_far > 0 %}
+            <div class="alert alert-danger mt-3" role="alert">
+                <h4 class="alert-heading">
+                    <i class="fas fa-ban"></i> Cannot Delete - Partially Dispensed
+                </h4>
+                <p class="mb-0">
+                    This medication has been partially dispensed ({{ item.quantity_dispensed_so_far }}/{{ item.quantity }} units) 
+                    and cannot be deleted.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="card-footer">
+            <div class="row">
+                <div class="col-md-6">
+                    <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Cancel
+                    </a>
+                </div>
+                <div class="col-md-6 text-end">
+                    {% if can_delete %}
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger" 
+                                onclick="return confirm('Are you absolutely sure you want to delete {{ item.medication.name }} from this prescription?')">
+                            <i class="fas fa-trash"></i> Delete Medication
+                        </button>
+                    </form>
+                    {% else %}
+                    <button type="button" class="btn btn-danger" disabled>
+                        <i class="fas fa-ban"></i> Cannot Delete
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

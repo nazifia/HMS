@@ -114,7 +114,8 @@ class PrescriptionForm(forms.ModelForm):
     )
 
     prescription_date = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date'})
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        initial=timezone.now().date()
     )
 
     # Authorization code input field
@@ -166,26 +167,15 @@ class PrescriptionForm(forms.ModelForm):
 
         if patient_instance:
             self.fields['patient'].initial = patient_instance
-            # Make patient field read-only when preselected
+            # Don't disable the field, just set it as readonly in the template
             self.fields['patient'].widget.attrs.update({
-                'readonly': True,
-                'disabled': True,
                 'class': 'form-select',
-                'style': 'background-color: #e9ecef; cursor: not-allowed;'
+                'style': 'pointer-events: none; background-color: #e9ecef;'
             })
             # Limit queryset to only the selected patient
-            # patient_instance could be an integer ID or Patient object
             patient_id_for_filter = patient_instance.id if hasattr(patient_instance, 'id') else patient_instance
             self.fields['patient'].queryset = Patient.objects.filter(id=patient_id_for_filter)
             self.fields['patient'].empty_label = None
-
-            # Add a hidden field to ensure the patient is submitted
-            self.fields['patient_hidden'] = forms.ModelChoiceField(
-                queryset=Patient.objects.filter(id=patient_id_for_filter),
-                initial=patient_instance,
-                widget=forms.HiddenInput(),
-                required=True
-            )
         else:
             # Ensure all patients are available for selection when not preselected
             self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
@@ -194,24 +184,14 @@ class PrescriptionForm(forms.ModelForm):
         if current_user:
             self.fields['doctor'].initial = current_user
             self.fields['doctor'].widget.attrs.update({
-                'readonly': True,
-                'disabled': True,
                 'class': 'form-select',
-                'style': 'background-color: #e9ecef; cursor: not-allowed;'
+                'style': 'pointer-events: none; background-color: #e9ecef;'
             })
             # Limit queryset to only the current user
             from django.contrib.auth import get_user_model
             User = get_user_model()
             self.fields['doctor'].queryset = User.objects.filter(id=current_user.id)
             self.fields['doctor'].empty_label = None
-
-            # Add a hidden field to ensure the doctor is submitted
-            self.fields['doctor_hidden'] = forms.ModelChoiceField(
-                queryset=User.objects.filter(id=current_user.id),
-                initial=current_user,
-                widget=forms.HiddenInput(),
-                required=True
-            )
 
     def clean_authorization_code_input(self):
         """Validate authorization code if provided"""
@@ -231,13 +211,12 @@ class PrescriptionForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        # Handle patient field when it's disabled
-        if 'patient_hidden' in self.fields:
-            cleaned_data['patient'] = cleaned_data.get('patient_hidden')
-
-        # Handle doctor field when it's disabled
-        if 'doctor_hidden' in self.fields:
-            cleaned_data['doctor'] = cleaned_data.get('doctor_hidden')
+        # Ensure required fields are present
+        if not cleaned_data.get('patient'):
+            raise forms.ValidationError("Patient is required.")
+        
+        if not cleaned_data.get('doctor'):
+            raise forms.ValidationError("Doctor is required.")
 
         return cleaned_data
 
@@ -342,11 +321,12 @@ class DispenseItemForm(forms.Form):
                     try:
                         active_store = getattr(self.selected_dispensary, 'active_store', None)
                         if active_store:
-                            med_inventory = ActiveStoreInventory.objects.get(
+                            # Handle multiple inventory records by summing all available stock
+                            inventories = ActiveStoreInventory.objects.filter(
                                 medication=self.prescription_item.medication,
                                 active_store=active_store
                             )
-                            available_stock = med_inventory.stock_quantity
+                            available_stock = sum(inv.stock_quantity for inv in inventories)
                             logging.debug(f"  Available stock at selected dispensary ({self.selected_dispensary.name}): {available_stock}")
                         else:
                             available_stock = 0
@@ -454,14 +434,15 @@ class DispenseItemForm(forms.Form):
                 try:
                     active_store = getattr(effective_dispensary_for_stock, 'active_store', None)
                     if active_store:
-                        med_inventory = ActiveStoreInventory.objects.get(
+                        # Handle multiple inventory records by summing all available stock
+                        inventories = ActiveStoreInventory.objects.filter(
                             medication=self.prescription_item.medication,
                             active_store=active_store
                         )
-                        available_stock = med_inventory.stock_quantity
+                        available_stock = sum(inv.stock_quantity for inv in inventories)
                     else:
                         available_stock = 0
-                except ActiveStoreInventory.DoesNotExist:
+                except Exception as e:
                     available_stock = 0
         else:
             # No dispensary selected yet; skip stock validation until dispensary provided

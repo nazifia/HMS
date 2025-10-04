@@ -44,12 +44,19 @@ class Command(BaseCommand):
         # Then test ActiveStoreInventory (new)
         if active_store:
             try:
-                active_inventory = ActiveStoreInventory.objects.get(
+                # Handle multiple inventory records by getting all and showing details
+                active_inventories = ActiveStoreInventory.objects.filter(
                     medication=medication,
                     active_store=active_store
                 )
-                self.stdout.write(f"Found ActiveStoreInventory: {active_inventory.stock_quantity} units")
-            except ActiveStoreInventory.DoesNotExist:
-                self.stdout.write("No ActiveStoreInventory found")
+                if active_inventories.exists():
+                    total_stock = sum(inv.stock_quantity for inv in active_inventories)
+                    self.stdout.write(f"Found {active_inventories.count()} ActiveStoreInventory records: {total_stock} total units")
+                    for i, inv in enumerate(active_inventories):
+                        self.stdout.write(f"  Record {i+1}: {inv.stock_quantity} units (Batch: {getattr(inv, 'batch_number', 'N/A')})")
+                else:
+                    self.stdout.write("No ActiveStoreInventory found")
+            except Exception as e:
+                self.stdout.write(f"Error accessing ActiveStoreInventory: {e}")
         
         self.stdout.write("Test completed successfully!")

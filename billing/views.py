@@ -771,6 +771,7 @@ def prescription_billing_detail(request, prescription_id):
             'nhia_covers': nhia_covers
         })
 
+    # Enhanced context for NHIA medication payment display
     context = {
         'prescription': prescription,
         'prescription_items': prescription_items,
@@ -778,7 +779,12 @@ def prescription_billing_detail(request, prescription_id):
         'pricing_breakdown': pricing_breakdown,
         'pharmacy_invoice': pharmacy_invoice,
         'payments': payments,
-        'title': f'Prescription Billing - #{prescription.id}'
+        'title': f'Prescription Billing - #{prescription.id}',
+        # Additional context for enhanced NHIA display
+        'nhia_patient_pays_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
+        'nhia_covers_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
+        'patient_payment_amount': pricing_breakdown['patient_portion'],
+        'total_medication_cost': pricing_breakdown['total_medication_cost'],
     }
 
     return render(request, 'billing/prescription_billing_detail.html', context)
@@ -870,6 +876,9 @@ def create_invoice_for_admission(request, admission_id):
             'No invoice will be created.'
         )
         return redirect('inpatient:admission_detail', pk=admission.id)
+    
+    # All other patient types (regular, private, insurance, corporate, staff, dependant, emergency)
+    # are subject to admission charges and will have invoices created
 
     # Check if an invoice already exists for this admission
     if hasattr(admission, 'invoices') and admission.invoices.exists():
@@ -934,6 +943,9 @@ def admission_payment(request, admission_id):
             'No payment is required.'
         )
         return redirect('inpatient:admission_detail', pk=admission.id)
+    
+    # All other patient types (regular, private, insurance, corporate, staff, dependant, emergency)
+    # are subject to admission charges and payment requirements
 
     # Get or create invoice for this admission
     invoice = None

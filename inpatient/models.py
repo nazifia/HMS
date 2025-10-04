@@ -121,6 +121,8 @@ class Admission(models.Model):
         if is_nhia_patient:
             return 0  # NHIA patients don't pay admission fees
 
+        # All other patient types (regular, private, insurance, corporate, staff, dependant, emergency) 
+        # are subject to admission charges
         duration = self.get_duration()
         if duration < 1:
             duration = 1  # Minimum 1 day charge

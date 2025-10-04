@@ -140,6 +140,29 @@
                     <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Payment Status</h5>
                 </div>
                 <div class="card-body">
+                    {% if pricing_breakdown.is_nhia_patient %}
+                    <div class="alert alert-info border-0">
+                        <h6 class="alert-heading text-info">
+                            <i class="fas fa-shield-alt"></i> NHIA Patient - 10% Payment Only
+                        </h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Total Medication Cost:</small>
+                                <strong>₦{{ total_medication_cost|floatformat:2 }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-warning d-block">Patient Pays (10%):</small>
+                                <strong class="text-warning">₦{{ patient_payment_amount|floatformat:2 }}</strong>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-success">
+                                <i class="fas fa-check-circle"></i> NHIA covers 90% (₦{{ pricing_breakdown.nhia_portion|floatformat:2 }})
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     <p><strong>Payment Status:</strong> 
                         <span class="badge bg-{{ prescription.payment_status|default:'secondary' }}">
                             {{ prescription.get_payment_status_display }}

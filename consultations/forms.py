@@ -541,19 +541,25 @@ class QuickPrescriptionForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         self.consultation = kwargs.pop('consultation', None)
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
     
     def save(self, commit=True):
         """Create a prescription from the form data"""
         if not self.consultation:
             raise ValueError("Consultation is required to create a prescription")
-            
+
         from pharmacy.models import Prescription
-            
+
+        # Determine the doctor - use consultation doctor or fallback to current user
+        doctor = self.consultation.doctor or self.user
+        if not doctor:
+            raise ValueError("A doctor must be specified for the prescription")
+
         # Create the prescription
         prescription = Prescription(
             patient=self.consultation.patient,
-            doctor=self.consultation.doctor,
+            doctor=doctor,
             prescription_date=timezone.now().date(),
             diagnosis=self.cleaned_data['diagnosis'],
             prescription_type=self.cleaned_data['prescription_type'],

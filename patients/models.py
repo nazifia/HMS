@@ -35,11 +35,17 @@ class Patient(models.Model):
     PATIENT_TYPE_CHOICES = (
         ('regular', 'Regular'),
         ('nhia', 'NHIA'),
+        ('private', 'Private Pay'),
+        ('insurance', 'Private Insurance'),
+        ('corporate', 'Corporate'),
+        ('staff', 'Staff'),
+        ('dependant', 'Dependant'),
+        ('emergency', 'Emergency'),
     )
 
     # Basic Information
     first_name = models.CharField(max_length=100)
-    patient_type = models.CharField(max_length=10, choices=PATIENT_TYPE_CHOICES, default='regular')
+    patient_type = models.CharField(max_length=15, choices=PATIENT_TYPE_CHOICES, default='regular')
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)

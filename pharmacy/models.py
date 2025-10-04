@@ -706,6 +706,115 @@ class Prescription(models.Model):
                 'icon': 'exclamation-circle'
             }
 
+    def get_dispensing_status(self):
+        """Get the dispensing status of the prescription"""
+        items = self.items.all()
+        if not items.exists():
+            return 'no_items'
+        
+        fully_dispensed_count = items.filter(is_dispensed=True).count()
+        partially_dispensed_count = items.filter(
+            is_dispensed=False, 
+            quantity_dispensed_so_far__gt=0
+        ).count()
+        total_items = items.count()
+        
+        if fully_dispensed_count == total_items:
+            return 'fully_dispensed'
+        elif fully_dispensed_count > 0 or partially_dispensed_count > 0:
+            return 'partially_dispensed'
+        else:
+            return 'not_dispensed'
+    
+    def get_dispensing_status_display(self):
+        """Get human-readable dispensing status"""
+        status = self.get_dispensing_status()
+        status_map = {
+            'fully_dispensed': 'Fully Dispensed',
+            'partially_dispensed': 'Partially Dispensed',
+            'not_dispensed': 'Not Dispensed',
+            'no_items': 'No Items'
+        }
+        return status_map.get(status, 'Unknown')
+    
+    def get_dispensing_status_info(self):
+        """Get detailed dispensing status information for display"""
+        status = self.get_dispensing_status()
+        
+        if status == 'fully_dispensed':
+            return {
+                'status': 'fully_dispensed',
+                'message': 'Fully Dispensed',
+                'css_class': 'success',
+                'icon': 'check-circle',
+                'badge_color': 'success'
+            }
+        elif status == 'partially_dispensed':
+            return {
+                'status': 'partially_dispensed',
+                'message': 'Partially Dispensed',
+                'css_class': 'warning',
+                'icon': 'clock',
+                'badge_color': 'warning'
+            }
+        elif status == 'not_dispensed':
+            return {
+                'status': 'not_dispensed',
+                'message': 'Not Dispensed',
+                'css_class': 'secondary',
+                'icon': 'hourglass-start',
+                'badge_color': 'secondary'
+            }
+        else:
+            return {
+                'status': 'no_items',
+                'message': 'No Items',
+                'css_class': 'light',
+                'icon': 'question-circle',
+                'badge_color': 'light'
+            }
+    
+    def get_dispensing_progress(self):
+        """Get dispensing progress information"""
+        items = self.items.all()
+        if not items.exists():
+            return {
+                'total_items': 0,
+                'fully_dispensed': 0,
+                'partially_dispensed': 0,
+                'not_dispensed': 0,
+                'progress_percentage': 0
+            }
+        
+        fully_dispensed = items.filter(is_dispensed=True).count()
+        partially_dispensed = items.filter(
+            is_dispensed=False,
+            quantity_dispensed_so_far__gt=0
+        ).count()
+        not_dispensed = items.filter(
+            is_dispensed=False,
+            quantity_dispensed_so_far=0
+        ).count()
+        
+        total_items = items.count()
+        progress_percentage = (fully_dispensed / total_items * 100) if total_items > 0 else 0
+        
+        return {
+            'total_items': total_items,
+            'fully_dispensed': fully_dispensed,
+            'partially_dispensed': partially_dispensed,
+            'not_dispensed': not_dispensed,
+            'progress_percentage': round(progress_percentage, 1)
+        }
+    
+    def is_fully_dispensed(self):
+        """Check if all items in the prescription are fully dispensed"""
+        return self.get_dispensing_status() == 'fully_dispensed'
+    
+    def is_partially_dispensed(self):
+        """Check if prescription has some items dispensed but not all"""
+        return self.get_dispensing_status() == 'partially_dispensed'
+
 class PrescriptionItem(models.Model):
     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name='items')
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)

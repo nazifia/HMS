@@ -72,7 +72,7 @@ def consultation_detail(request, consultation_id):
         'user_notifications': user_notifications,
         'lab_order_form': QuickLabOrderForm(consultation=consultation),
         'radiology_order_form': QuickRadiologyOrderForm(consultation=consultation),
-        'prescription_form': QuickPrescriptionForm(consultation=consultation),
+        'prescription_form': QuickPrescriptionForm(consultation=consultation, user=request.user),
     }
     
     return render(request, 'consultations/consultation_detail.html', context)
@@ -124,7 +124,7 @@ def create_consultation_order(request, consultation_id):
                 messages.error(request, "Please correct the errors below.")
                 
         elif order_type == 'prescription':
-            form = QuickPrescriptionForm(request.POST, consultation=consultation)
+            form = QuickPrescriptionForm(request.POST, consultation=consultation, user=request.user)
             if form.is_valid():
                 try:
                     with transaction.atomic():
@@ -141,7 +141,7 @@ def create_consultation_order(request, consultation_id):
         'consultation': consultation,
         'lab_order_form': QuickLabOrderForm(consultation=consultation),
         'radiology_order_form': QuickRadiologyOrderForm(consultation=consultation),
-        'prescription_form': QuickPrescriptionForm(consultation=consultation),
+        'prescription_form': QuickPrescriptionForm(consultation=consultation, user=request.user),
     }
     
     return render(request, 'consultations/consultation_detail.html', context)
@@ -206,12 +206,12 @@ def create_radiology_order_ajax(request, consultation_id):
 def create_prescription_ajax(request, consultation_id):
     """AJAX view for creating prescriptions"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
-    
+
     # Check if user has permission
     if not (request.user == consultation.doctor or request.user.is_staff):
         return JsonResponse({'success': False, 'error': 'Permission denied'})
-    
-    form = QuickPrescriptionForm(request.POST, consultation=consultation)
+
+    form = QuickPrescriptionForm(request.POST, consultation=consultation, user=request.user)
     if form.is_valid():
         try:
             with transaction.atomic():

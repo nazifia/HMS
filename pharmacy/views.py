@@ -1499,8 +1499,8 @@ def reject_purchase(request, purchase_id):
 @login_required
 def prescription_list(request):
     """View for listing prescriptions with enhanced search and filtering"""
-    # Get all prescriptions
-    prescriptions = Prescription.objects.select_related('patient', 'doctor').order_by('-prescription_date')
+    # Get all prescriptions with prefetch for efficient dispensing status calculation
+    prescriptions = Prescription.objects.select_related('patient', 'doctor').prefetch_related('items').order_by('-prescription_date')
     
     # Initialize the search form
     search_form = PrescriptionSearchForm(request.GET)
@@ -1561,8 +1561,25 @@ def prescription_list(request):
     processing_count = prescriptions.filter(status__in=['approved', 'partially_dispensed']).count()
     completed_count = prescriptions.filter(status='dispensed').count()
     
+    # Add dispensing statistics
+    prescriptions_list = list(prescriptions.distinct())
+    dispensing_stats = {
+        'fully_dispensed': 0,
+        'partially_dispensed': 0,
+        'not_dispensed': 0
+    }
+    
+    for prescription in prescriptions_list:
+        dispensing_status = prescription.get_dispensing_status()
+        if dispensing_status == 'fully_dispensed':
+            dispensing_stats['fully_dispensed'] += 1
+        elif dispensing_status == 'partially_dispensed':
+            dispensing_stats['partially_dispensed'] += 1
+        else:
+            dispensing_stats['not_dispensed'] += 1
+    
     # Pagination
-    paginator = Paginator(prescriptions.distinct(), 10)
+    paginator = Paginator(prescriptions_list, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -1573,6 +1590,7 @@ def prescription_list(request):
         'pending_count': pending_count,
         'processing_count': processing_count,
         'completed_count': completed_count,
+        'dispensing_stats': dispensing_stats,
         'page_title': 'Prescription List',
         'active_nav': 'pharmacy',
     }
@@ -1635,7 +1653,14 @@ def create_prescription(request, patient_id=None):
 @login_required
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
-    # This is the same as create_prescription but might have different permissions or workflow
+    # Initialize preselected_patient at the beginning to avoid UnboundLocalError
+    preselected_patient = None
+    if patient_id:
+        try:
+            preselected_patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            preselected_patient = None
+    
     if request.method == 'POST':
         form = PrescriptionForm(request.POST, request=request, current_user=request.user)
         if form.is_valid():
@@ -1646,16 +1671,28 @@ def pharmacy_create_prescription(request, patient_id=None):
             form.save_m2m()  # Save many-to-many relationships if any
             messages.success(request, f'Prescription #{prescription.id} created successfully.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        # If form is not valid, we need to reinitialize it with the same parameters
+        # to ensure the hidden fields and patient selection are preserved
+        else:
+            # Add detailed error messages for debugging
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+            
+            # Re-create the form with the same initialization parameters for error display
+            form = PrescriptionForm(
+                request.POST, 
+                request=request, 
+                current_user=request.user, 
+                preselected_patient=preselected_patient
+            )
     else:
         # Preselect patient if patient_id is provided
         initial_data = {'doctor': request.user}  # Set current user as doctor
-        preselected_patient = None
-        if patient_id:
-            try:
-                preselected_patient = Patient.objects.get(id=patient_id)
-                initial_data['patient'] = preselected_patient
-            except Patient.DoesNotExist:
-                initial_data['patient'] = patient_id
+        if preselected_patient:
+            initial_data['patient'] = preselected_patient
+        elif patient_id:
+            initial_data['patient'] = patient_id
         form = PrescriptionForm(request=request, initial=initial_data, preselected_patient=preselected_patient, current_user=request.user)
 
     context = {
@@ -1672,7 +1709,7 @@ def pharmacy_create_prescription(request, patient_id=None):
 
 @login_required
 def prescription_detail(request, prescription_id):
-    """View for displaying prescription details"""
+    """View for displaying prescription details with enhanced NHIA pricing breakdown"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
     
     # Get prescription items
@@ -1688,6 +1725,38 @@ def prescription_detail(request, prescription_id):
     except PharmacyInvoice.DoesNotExist:
         pharmacy_invoice = None
 
+    # Enhanced NHIA pricing breakdown
+    pricing_breakdown = prescription.get_pricing_breakdown()
+    
+    # Calculate detailed item-level pricing for NHIA display
+    items_with_pricing = []
+    total_patient_pays = Decimal('0.00')
+    total_nhia_covers = Decimal('0.00')
+    total_medication_cost = Decimal('0.00')
+    
+    for item in prescription_items:
+        item_total_cost = item.medication.price * item.quantity
+        total_medication_cost += item_total_cost
+        
+        if pricing_breakdown['is_nhia_patient']:
+            item_patient_pays = item_total_cost * Decimal('0.10')  # 10% patient portion
+            item_nhia_covers = item_total_cost * Decimal('0.90')   # 90% NHIA portion
+        else:
+            item_patient_pays = item_total_cost  # 100% patient pays
+            item_nhia_covers = Decimal('0.00')   # NHIA covers nothing
+        
+        total_patient_pays += item_patient_pays
+        total_nhia_covers += item_nhia_covers
+        
+        items_with_pricing.append({
+            'item': item,
+            'total_cost': item_total_cost,
+            'patient_pays': item_patient_pays,
+            'nhia_covers': item_nhia_covers,
+            'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
+            'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
+        })
+
     context = {
         'prescription': prescription,
         'prescription_items': prescription_items,
@@ -1695,6 +1764,15 @@ def prescription_detail(request, prescription_id):
         'pharmacy_invoice': pharmacy_invoice,
         'page_title': f'Prescription Details - #{prescription.id}',
         'active_nav': 'pharmacy',
+        # Enhanced NHIA context
+        'pricing_breakdown': pricing_breakdown,
+        'items_with_pricing': items_with_pricing,
+        'total_medication_cost': total_medication_cost,
+        'total_patient_pays': total_patient_pays,
+        'total_nhia_covers': total_nhia_covers,
+        'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
+        'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
+        'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
     }
     
     return render(request, 'pharmacy/prescription_detail.html', context)
@@ -1862,30 +1940,30 @@ def dispense_prescription(request, prescription_id):
                     try:
                         active_store = getattr(dispensary, 'active_store', None)
                         if active_store:
-                            med_inventory = ActiveStoreInventory.objects.get(
+                            # Handle multiple inventory records by getting the first one with sufficient stock
+                            med_inventory = ActiveStoreInventory.objects.filter(
                                 medication=medication,
                                 active_store=active_store,
                                 stock_quantity__gte=qty
-                            )
-                    except ActiveStoreInventory.DoesNotExist:
-                        # If not found in active store, try legacy MedicationInventory (backward compatibility)
+                            ).first()
+                    except Exception as e:
+                        pass  # Continue to legacy inventory check
+                    
+                    # If not found in active store, try legacy MedicationInventory (backward compatibility)
+                    if med_inventory is None:
                         try:
-                            med_inventory = MedicationInventory.objects.get(
+                            med_inventory = MedicationInventory.objects.filter(
                                 medication=medication,
                                 dispensary=dispensary,
                                 stock_quantity__gte=qty
-                            )
-                        except MedicationInventory.DoesNotExist:
-                            messages.error(request, f'Insufficient stock for {medication.name} at {dispensary.name}.')
-                            context = {
-                                'prescription': prescription,
-                                'page_title': f'Dispense Prescription - #{prescription.id}',
-                                'dispensaries': Dispensary.objects.filter(is_active=True),
-                                'formset': formset,
-                                'selected_dispensary': selected_dispensary,
-                                'dispensary_id': dispensary_id,
-                            }
-                            return render(request, 'pharmacy/dispense_prescription.html', context)
+                            ).first()
+                        except Exception as e:
+                            pass  # med_inventory remains None
+                    
+                    # If no inventory found with sufficient stock, show error and continue
+                    if med_inventory is None:
+                        messages.error(request, f'Insufficient stock for {medication.name} at {dispensary.name}.')
+                        continue
 
                     # Create dispensing log
                     unit_price = medication.price or Decimal('0.00')
@@ -1900,14 +1978,23 @@ def dispense_prescription(request, prescription_id):
                     )
 
                     # Update inventory (update the correct inventory model)
-                    if isinstance(med_inventory, ActiveStoreInventory):
-                        # Update active store inventory
-                        med_inventory.stock_quantity -= qty
-                        med_inventory.save()
+                    if med_inventory is not None:
+                        # Ensure we have sufficient stock before deducting
+                        if hasattr(med_inventory, 'stock_quantity') and med_inventory.stock_quantity >= qty:
+                            if isinstance(med_inventory, ActiveStoreInventory):
+                                # Update active store inventory
+                                med_inventory.stock_quantity -= qty
+                                med_inventory.save()
+                            else:
+                                # Update legacy medication inventory
+                                med_inventory.stock_quantity -= qty
+                                med_inventory.save()
+                        else:
+                            messages.error(request, f'Insufficient stock for {medication.name}. Available: {getattr(med_inventory, "stock_quantity", 0)}, Required: {qty}')
+                            continue
                     else:
-                        # Update legacy medication inventory
-                        med_inventory.stock_quantity -= qty
-                        med_inventory.save()
+                        messages.error(request, f'No inventory record found for {medication.name} at {dispensary.name}.')
+                        continue
 
                     # Update prescription item quantities
                     prescription_item.quantity_dispensed_so_far += qty
@@ -2100,8 +2187,30 @@ def add_prescription_item(request, prescription_id):
 def delete_prescription_item(request, item_id):
     """View for deleting a prescription item"""
     item = get_object_or_404(PrescriptionItem, id=item_id)
-    # Implementation for deleting prescription item
-    pass
+    prescription = item.prescription
+    
+    if request.method == 'POST':
+        # Check if the item has been dispensed (only on POST to allow viewing confirmation)
+        if item.is_dispensed or item.quantity_dispensed_so_far > 0:
+            messages.error(request, f'Cannot delete {item.medication.name} - it has already been dispensed.')
+            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        
+        # Safe to delete
+        medication_name = item.medication.name
+        item.delete()
+        messages.success(request, f'Successfully removed {medication_name} from prescription.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    
+    # For GET requests, always show confirmation page (with warnings if applicable)
+    context = {
+        'item': item,
+        'prescription': prescription,
+        'title': f'Delete Prescription Item - {item.medication.name}',
+        'active_nav': 'pharmacy',
+        'can_delete': not item.is_dispensed and item.quantity_dispensed_so_far == 0,
+    }
+    
+    return render(request, 'pharmacy/delete_prescription_item.html', context)
 
 
 @login_required
@@ -2481,13 +2590,43 @@ def billing_office_medication_payment(request, prescription_id):
     # Get payment history
     payments = pharmacy_invoice.payments.all().order_by('-payment_date')
     
+    # Get pricing breakdown for enhanced NHIA display
+    pricing_breakdown = prescription.get_pricing_breakdown()
+    
+    # Calculate item-level pricing for detailed display
+    prescription_items = prescription.items.all().select_related('medication')
+    items_with_pricing = []
+    for item in prescription_items:
+        item_total = item.medication.price * item.quantity
+        if pricing_breakdown['is_nhia_patient']:
+            patient_pays = item_total * Decimal('0.10')
+            nhia_covers = item_total * Decimal('0.90')
+        else:
+            patient_pays = item_total
+            nhia_covers = Decimal('0.00')
+
+        items_with_pricing.append({
+            'item': item,
+            'total_cost': item_total,
+            'patient_pays': patient_pays,
+            'nhia_covers': nhia_covers
+        })
+    
     context = {
         'prescription': prescription,
         'pharmacy_invoice': pharmacy_invoice,
         'patient_wallet': patient_wallet,
         'remaining_amount': remaining_amount,
         'payments': payments,
-        'title': f'Billing Office - Medication Payment #{prescription.id}'
+        'title': f'Billing Office - Medication Payment #{prescription.id}',
+        # Enhanced NHIA context
+        'pricing_breakdown': pricing_breakdown,
+        'prescription_items': prescription_items,
+        'items_with_pricing': items_with_pricing,
+        'nhia_patient_pays_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
+        'nhia_covers_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
+        'patient_payment_amount': pricing_breakdown['patient_portion'],
+        'total_medication_cost': pricing_breakdown['total_medication_cost'],
     }
     
     return render(request, 'pharmacy/billing_office_medication_payment.html', context)
@@ -3074,9 +3213,13 @@ def get_stock_quantities(request, prescription_id):
             try:
                 active_store = getattr(dispensary, 'active_store', None)
                 if active_store:
-                    med_inv = ActiveStoreInventory.objects.get(medication=p_item.medication, active_store=active_store)
-                    stock_qty = med_inv.stock_quantity
-            except ActiveStoreInventory.DoesNotExist:
+                    # Handle multiple inventory records by summing all available stock
+                    inventories = ActiveStoreInventory.objects.filter(
+                        medication=p_item.medication, 
+                        active_store=active_store
+                    )
+                    stock_qty = sum(inv.stock_quantity for inv in inventories)
+            except Exception:
                 stock_qty = 0
 
         stock_quantities.append({

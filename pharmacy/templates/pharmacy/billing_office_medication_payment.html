@@ -104,33 +104,97 @@
                                 <table class="table table-sm table-borderless">
                                     <tr>
                                         <td>Total Medication Cost:</td>
-                                        <td class="text-end"><strong>₦{{ pricing_breakdown.total_cost|floatformat:2 }}</strong></td>
+                                        <td class="text-end"><strong>₦{{ total_medication_cost|floatformat:2 }}</strong></td>
                                     </tr>
                                     {% if pricing_breakdown.is_nhia_patient %}
-                                    <tr>
-                                        <td>NHIA Coverage (90%):</td>
-                                        <td class="text-end text-success">-₦{{ pricing_breakdown.nhia_coverage|floatformat:2 }}</td>
+                                    <tr class="table-success">
+                                        <td><i class="fas fa-shield-alt text-success"></i> NHIA Coverage ({{ nhia_covers_percentage }}):</td>
+                                        <td class="text-end text-success">-₦{{ pricing_breakdown.nhia_portion|floatformat:2 }}</td>
                                     </tr>
-                                    <tr class="border-top">
-                                        <td><strong>Patient Pays (10%):</strong></td>
-                                        <td class="text-end"><strong>₦{{ pricing_breakdown.patient_pays|floatformat:2 }}</strong></td>
+                                    <tr class="border-top table-warning">
+                                        <td><strong><i class="fas fa-user text-warning"></i> Patient Pays ({{ nhia_patient_pays_percentage }}):</strong></td>
+                                        <td class="text-end"><strong class="text-warning">₦{{ patient_payment_amount|floatformat:2 }}</strong></td>
                                     </tr>
                                     {% else %}
                                     <tr class="border-top">
                                         <td><strong>Patient Pays (100%):</strong></td>
-                                        <td class="text-end"><strong>₦{{ pricing_breakdown.patient_pays|floatformat:2 }}</strong></td>
+                                        <td class="text-end"><strong>₦{{ patient_payment_amount|floatformat:2 }}</strong></td>
                                     </tr>
                                     {% endif %}
                                 </table>
                             </div>
                             <div class="col-md-6">
                                 <div class="text-center">
-                                    <h3 class="text-primary">₦{{ remaining_amount|floatformat:2 }}</h3>
-                                    <small class="text-muted">Amount Due</small>
+                                    {% if pricing_breakdown.is_nhia_patient %}
+                                        <div class="alert alert-warning border-0 shadow-sm">
+                                            <h4 class="text-warning mb-1">
+                                                <i class="fas fa-percentage"></i> NHIA Patient - 10% Only
+                                            </h4>
+                                            <h2 class="text-warning mb-0">₦{{ remaining_amount|floatformat:2 }}</h2>
+                                            <small class="text-muted d-block">Patient's 10% Contribution</small>
+                                            <small class="text-success d-block">NHIA covers remaining 90%</small>
+                                        </div>
+                                    {% else %}
+                                        <h3 class="text-primary">₦{{ remaining_amount|floatformat:2 }}</h3>
+                                        <small class="text-muted">Full Amount Due</small>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Medication Breakdown -->
+                    {% if items_with_pricing %}
+                    <div class="alert alert-light border mt-3">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-pills"></i> Medication Breakdown
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Total Cost</th>
+                                        <th>Patient Pays</th>
+                                        {% if pricing_breakdown.is_nhia_patient %}
+                                        <th>NHIA Covers</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item_data in items_with_pricing %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item_data.item.medication.name }}</strong>
+                                            <div class="small text-muted">
+                                                {{ item_data.item.medication.strength }} - {{ item_data.item.medication.dosage_form }}
+                                            </div>
+                                        </td>
+                                        <td>{{ item_data.item.quantity }}</td>
+                                        <td>₦{{ item_data.item.medication.price|floatformat:2 }}</td>
+                                        <td>₦{{ item_data.total_cost|floatformat:2 }}</td>
+                                        <td class="text-warning"><strong>₦{{ item_data.patient_pays|floatformat:2 }}</strong></td>
+                                        {% if pricing_breakdown.is_nhia_patient %}
+                                        <td class="text-success">₦{{ item_data.nhia_covers|floatformat:2 }}</td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-dark">
+                                    <tr>
+                                        <th colspan="4">Total:</th>
+                                        <th class="text-warning">₦{{ patient_payment_amount|floatformat:2 }}</th>
+                                        {% if pricing_breakdown.is_nhia_patient %}
+                                        <th class="text-success">₦{{ pricing_breakdown.nhia_portion|floatformat:2 }}</th>
+                                        {% endif %}
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <!-- Payment Form -->
                     <form method="post">

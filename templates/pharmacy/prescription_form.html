@@ -16,23 +16,46 @@
                     
                     {% if form.non_field_errors %}
                         <div class="alert alert-danger">
+                            <strong>Form Errors:</strong>
                             {{ form.non_field_errors }}
                         </div>
                     {% endif %}
+                    
+                    {% if form.errors %}
+                        <div class="alert alert-warning">
+                            <strong>Please correct the following errors:</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ field|title }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Hidden fields for disabled form fields -->
+                    {% for hidden in form.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
                     
                     <div class="row">
                         {% if selected_patient or form.initial.patient %}
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Patient</label>
-                                {% if selected_patient %}
-                                    <input type="hidden" name="patient" value="{{ selected_patient.id }}">
-                                    <div class="form-control-plaintext">
+                                <div class="form-control-plaintext border p-2 bg-light">
+                                    <i class="fas fa-user text-primary me-2"></i>
+                                    {% if selected_patient %}
                                         {{ selected_patient.get_full_name }} ({{ selected_patient.patient_id }})
-                                    </div>
-                                {% else %}
-                                    <input type="hidden" name="patient" value="{{ form.initial.patient }}">
-                                    <div class="form-control-plaintext">
+                                    {% else %}
                                         {{ form.initial.patient }}
+                                    {% endif %}
+                                </div>
+                                <!-- Render the actual patient field (styled to look disabled but still functional) -->
+                                {{ form.patient|add_class:"form-select" }}
+                                {% if form.patient.errors %}
+                                    <div class="text-danger">
+                                        {{ form.patient.errors }}
                                     </div>
                                 {% endif %}
                             </div>
@@ -50,7 +73,15 @@
                         
                         <div class="col-md-6 mb-3">
                             <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
-                            {{ form.doctor|add_class:"form-select select2" }}
+                            <!-- Show current user info for readonly doctor field -->
+                            {% if current_user %}
+                                <div class="form-control-plaintext border p-2 bg-light">
+                                    <i class="fas fa-user-md text-success me-2"></i>
+                                    {{ current_user.get_full_name|default:current_user.username }}
+                                </div>
+                            {% endif %}
+                            <!-- Render the actual doctor field (styled to look disabled but still functional) -->
+                            {{ form.doctor|add_class:"form-select" }}
                             {% if form.doctor.errors %}
                                 <div class="text-danger">
                                     {{ form.doctor.errors }}

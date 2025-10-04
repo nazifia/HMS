@@ -18,7 +18,14 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6">
-                    <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+                    <p><strong>Patient:</strong> 
+                        {{ prescription.patient.get_full_name }}
+                        {% if is_nhia_patient %}
+                            <span class="badge bg-success ms-2">
+                                <i class="fas fa-shield-alt"></i> NHIA Patient
+                            </span>
+                        {% endif %}
+                    </p>
                     <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
                     <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
                     <p><strong>Diagnosis:</strong> {{ prescription.diagnosis|default:"N/A" }}</p>
@@ -34,6 +41,15 @@
 
                     <!-- NHIA Authorization Status -->
                     {% include 'includes/authorization_status.html' with object=prescription %}
+                    
+                    {% if is_nhia_patient %}
+                    <div class="alert alert-success border-0 mt-3 p-2">
+                        <small class="mb-0">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>NHIA Benefit:</strong> Patient pays only 10% of medication costs
+                        </small>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -92,6 +108,56 @@
         </div>
     </div>
 
+    <!-- NHIA Medication Pricing Breakdown Card -->
+    {% if is_nhia_patient %}
+    <div class="card shadow mb-4 border-warning">
+        <div class="card-header bg-warning text-white py-3">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-shield-alt me-2"></i>NHIA Patient - Medication Cost Breakdown
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="alert alert-info border-0">
+                        <h6 class="alert-heading text-info">
+                            <i class="fas fa-info-circle"></i> NHIA Benefit Summary
+                        </h6>
+                        <div class="row">
+                            <div class="col-4">
+                                <small class="text-muted d-block">Total Medication Cost:</small>
+                                <strong class="text-dark">₦{{ total_medication_cost|floatformat:2 }}</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-success d-block">NHIA Covers (90%):</small>
+                                <strong class="text-success">₦{{ total_nhia_covers|floatformat:2 }}</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-warning d-block">Patient Pays (10%):</small>
+                                <strong class="text-warning">₦{{ total_patient_pays|floatformat:2 }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="alert alert-warning border-0 shadow-sm">
+                            <h5 class="text-warning mb-1">
+                                <i class="fas fa-percentage"></i> Patient's 10% Only
+                            </h5>
+                            <h2 class="text-warning mb-0">₦{{ total_patient_pays|floatformat:2 }}</h2>
+                            <small class="text-muted d-block">Total Amount Due</small>
+                            <small class="text-success d-block">
+                                <i class="fas fa-check"></i> NHIA covers ₦{{ total_nhia_covers|floatformat:2 }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Prescription Items</h6>
@@ -103,46 +169,98 @@
             {% if prescription_items %}
             <div class="table-responsive">
                 <table class="table table-bordered" width="100%" cellspacing="0">
-                    <thead>
+                    <thead class="table-dark">
                         <tr>
                             <th>Medication</th>
                             <th>Dosage</th>
                             <th>Frequency</th>
                             <th>Duration</th>
                             <th>Instructions</th>
-                            <th>Prescribed Quantity</th>
-                            <th>Dispensed So Far</th>
-                            <th>Remaining</th>
-                            <th>Status</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total Cost</th>
+                            {% if is_nhia_patient %}
+                            <th class="text-warning">Patient Pays (10%)</th>
+                            <th class="text-success">NHIA Covers (90%)</th>
+                            {% else %}
+                            <th class="text-primary">Patient Pays</th>
+                            {% endif %}
+                            <th>Dispensing Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in prescription_items %}
+                        {% for item_data in items_with_pricing %}
                         <tr>
-                            <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
-                            <td>{{ item.dosage }}</td>
-                            <td>{{ item.frequency }}</td>
-                            <td>{{ item.duration }}</td>
-                            <td>{{ item.instructions|default:"N/A" }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.quantity_dispensed_so_far }}</td>
-                            <td>{{ item.remaining_quantity_to_dispense }}</td>
                             <td>
-                                {% if item.is_dispensed %}
+                                <strong>{{ item_data.item.medication.name }}</strong>
+                                <div class="small text-muted">
+                                    {{ item_data.item.medication.strength }} - {{ item_data.item.medication.dosage_form }}
+                                </div>
+                            </td>
+                            <td>{{ item_data.item.dosage }}</td>
+                            <td>{{ item_data.item.frequency }}</td>
+                            <td>{{ item_data.item.duration }}</td>
+                            <td>{{ item_data.item.instructions|default:"N/A" }}</td>
+                            <td class="text-center">{{ item_data.item.quantity }}</td>
+                            <td class="text-end">₦{{ item_data.item.medication.price|floatformat:2 }}</td>
+                            <td class="text-end"><strong>₦{{ item_data.total_cost|floatformat:2 }}</strong></td>
+                            {% if is_nhia_patient %}
+                            <td class="text-end text-warning">
+                                <strong>₦{{ item_data.patient_pays|floatformat:2 }}</strong>
+                                <div class="small">({{ item_data.patient_percentage }})</div>
+                            </td>
+                            <td class="text-end text-success">
+                                ₦{{ item_data.nhia_covers|floatformat:2 }}
+                                <div class="small">({{ item_data.nhia_percentage }})</div>
+                            </td>
+                            {% else %}
+                            <td class="text-end text-primary">
+                                <strong>₦{{ item_data.patient_pays|floatformat:2 }}</strong>
+                                <div class="small">(100%)</div>
+                            </td>
+                            {% endif %}
+                            <td class="text-center">
+                                {% if item_data.item.is_dispensed %}
                                     <span class="badge bg-success">Fully Dispensed</span>
-                                {% elif item.quantity_dispensed_so_far > 0 %}
+                                {% elif item_data.item.quantity_dispensed_so_far > 0 %}
                                     <span class="badge bg-warning">Partially Dispensed</span>
+                                    <div class="small text-muted mt-1">
+                                        {{ item_data.item.quantity_dispensed_so_far }}/{{ item_data.item.quantity }} dispensed
+                                    </div>
                                 {% else %}
                                     <span class="badge bg-info">Pending</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <a href="{% url 'pharmacy:delete_prescription_item' item.id %}" class="btn btn-danger btn-sm">Delete</a>
+                            <td class="text-center">
+                                <a href="{% url 'pharmacy:delete_prescription_item' item_data.item.id %}" 
+                                   class="btn btn-danger btn-sm" 
+                                   onclick="return confirm('Are you sure you want to delete this medication?')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <th colspan="7" class="text-end">Totals:</th>
+                            <th class="text-end">₦{{ total_medication_cost|floatformat:2 }}</th>
+                            {% if is_nhia_patient %}
+                            <th class="text-end text-warning">
+                                <strong>₦{{ total_patient_pays|floatformat:2 }}</strong>
+                            </th>
+                            <th class="text-end text-success">
+                                ₦{{ total_nhia_covers|floatformat:2 }}
+                            </th>
+                            {% else %}
+                            <th class="text-end text-primary">
+                                <strong>₦{{ total_patient_pays|floatformat:2 }}</strong>
+                            </th>
+                            {% endif %}
+                            <th colspan="2"></th>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             {% else %}
@@ -152,37 +270,64 @@
     </div>
 
     <div class="card-footer">
-        <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-secondary">Back to Prescriptions</a>
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Prescriptions
+                </a>
+                
+                <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info">
+                    <i class="fas fa-print"></i> Print Prescription
+                </a>
+            </div>
+            <div class="col-md-6 text-end">
+                {% if is_nhia_patient %}
+                    <!-- NHIA Patient Payment Info -->
+                    <div class="mb-2">
+                        <small class="text-muted">NHIA Patient - Total Due:</small>
+                        <h5 class="text-warning mb-1">₦{{ total_patient_pays|floatformat:2 }}</h5>
+                        <small class="text-success">
+                            <i class="fas fa-shield-alt"></i> NHIA saves you ₦{{ total_nhia_covers|floatformat:2 }}
+                        </small>
+                    </div>
+                {% else %}
+                    <!-- Regular Patient Payment Info -->
+                    <div class="mb-2">
+                        <small class="text-muted">Total Amount Due:</small>
+                        <h5 class="text-primary mb-1">₦{{ total_patient_pays|floatformat:2 }}</h5>
+                    </div>
+                {% endif %}
 
-        {% if prescription.is_payment_verified %}
-            <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success">
-                <i class="fas fa-pills"></i> Dispense Medication
-            </a>
-        {% else %}
-            <button type="button" class="btn btn-success" disabled title="Payment required before dispensing">
-                <i class="fas fa-lock"></i> Dispense Medication (Payment Required)
-            </button>
-
-            <!-- Payment Options -->
-            <div class="btn-group ml-2" role="group">
-                {% if prescription.invoice %}
-                    <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning">
-                        <i class="fas fa-credit-card"></i> Pay Now
-                    </a>
-                    <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-outline-warning">
-                        <i class="fas fa-file-invoice"></i> View Invoice
+                {% if prescription.is_payment_verified %}
+                    <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success">
+                        <i class="fas fa-pills"></i> Dispense Medication
                     </a>
                 {% else %}
-                    <a href="{% url 'pharmacy:create_prescription_invoice' prescription.id %}" class="btn btn-primary">
-                        <i class="fas fa-file-invoice-dollar"></i> Create Invoice & Pay
-                    </a>
+                    <button type="button" class="btn btn-success" disabled title="Payment required before dispensing">
+                        <i class="fas fa-lock"></i> Dispense Medication (Payment Required)
+                    </button>
+
+                    <!-- Payment Options -->
+                    <div class="btn-group ml-2" role="group">
+                        {% if prescription.invoice %}
+                            <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning">
+                                <i class="fas fa-credit-card"></i> Pay Now
+                                {% if is_nhia_patient %}
+                                    <span class="badge bg-light text-dark ms-1">₦{{ total_patient_pays|floatformat:2 }}</span>
+                                {% endif %}
+                            </a>
+                            <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-outline-warning">
+                                <i class="fas fa-file-invoice"></i> View Invoice
+                            </a>
+                        {% else %}
+                            <a href="{% url 'pharmacy:create_prescription_invoice' prescription.id %}" class="btn btn-primary">
+                                <i class="fas fa-file-invoice-dollar"></i> Create Invoice & Pay
+                            </a>
+                        {% endif %}
+                    </div>
                 {% endif %}
             </div>
-        {% endif %}
-
-        <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info">
-            <i class="fas fa-print"></i> Print Prescription
-        </a>
+        </div>
     </div>
 </div>
 
