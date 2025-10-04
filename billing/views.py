@@ -660,17 +660,22 @@ def create_invoice_for_prescription(request, prescription_id):
         messages.error(request, 'Medication Dispensing service not found. Please create it in Billing > Services.')
         return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
 
-    # Calculate total from prescription items
-    items = prescription.items.all()
-    subtotal = sum(item.medication.price * item.quantity for item in items)
-    tax_amount = (subtotal * service.tax_percentage) / 100
-    total = subtotal + tax_amount
+    # Calculate patient payable amount (10% for NHIA, 100% for others)
+    from decimal import Decimal
+    patient_payable_amount = prescription.get_patient_payable_amount()
+
+    # Get pricing breakdown for logging
+    pricing_breakdown = prescription.get_pricing_breakdown()
+
+    # Calculate tax on patient payable amount
+    tax_amount = (patient_payable_amount * Decimal(str(service.tax_percentage))) / Decimal('100')
+    total = patient_payable_amount + tax_amount
 
     invoice = Invoice.objects.create(
         patient=prescription.patient,
         status='pending',
         total_amount=total,
-        subtotal=subtotal,
+        subtotal=patient_payable_amount,
         tax_amount=tax_amount,
         created_by=request.user,
         prescription=prescription
@@ -679,17 +684,32 @@ def create_invoice_for_prescription(request, prescription_id):
     prescription.invoice = invoice
     prescription.save()
 
-    # Add invoice items
+    # Add invoice items with patient payable amounts
+    items = prescription.items.all()
     for item in items:
+        # Calculate item cost
+        item_total_cost = item.medication.price * item.quantity
+
+        # Apply NHIA discount if applicable
+        if pricing_breakdown['is_nhia_patient']:
+            item_patient_pays = item_total_cost * Decimal('0.10')  # 10% for NHIA
+        else:
+            item_patient_pays = item_total_cost  # 100% for non-NHIA
+
+        item_tax = (item_patient_pays * Decimal(str(service.tax_percentage))) / Decimal('100')
+        item_total = item_patient_pays + item_tax
+
         InvoiceItem.objects.create(
             invoice=invoice,
             service=service,
-            description=f"{item.medication.name} x {item.quantity}",
+            description=f"{item.medication.name} x {item.quantity}" +
+                       (f" (NHIA 10%)" if pricing_breakdown['is_nhia_patient'] else ""),
             quantity=item.quantity,
-            unit_price=item.medication.price,
+            unit_price=item.medication.price if not pricing_breakdown['is_nhia_patient']
+                      else item.medication.price * Decimal('0.10'),
             tax_percentage=service.tax_percentage,
-            tax_amount=(item.medication.price * item.quantity * service.tax_percentage) / 100,
-            total_amount=(item.medication.price * item.quantity) + ((item.medication.price * item.quantity * service.tax_percentage) / 100)
+            tax_amount=item_tax,
+            total_amount=item_total
         )
 
     messages.success(request, f'Invoice created for prescription #{prescription.id}.')

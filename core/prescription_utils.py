@@ -78,32 +78,37 @@ def create_prescription_invoice(prescription):
                 'is_active': True
             }
         )
-        
-        # Calculate total prescription price
-        total_prescription_price = prescription.get_total_prescribed_price()
-        
-        # Create invoice
+
+        # Calculate patient payable amount (10% for NHIA, 100% for others)
+        patient_payable_amount = prescription.get_patient_payable_amount()
+
+        # Get pricing breakdown for logging
+        pricing_breakdown = prescription.get_pricing_breakdown()
+
+        # Create invoice with patient payable amount
         invoice = Invoice.objects.create(
             patient=prescription.patient,
             invoice_date=timezone.now().date(),
             due_date=timezone.now().date() + timezone.timedelta(days=30),
             created_by=prescription.doctor,
-            subtotal=total_prescription_price,
+            subtotal=patient_payable_amount,
             tax_amount=0,
-            total_amount=total_prescription_price,
+            total_amount=patient_payable_amount,
             status='pending',
             source_app='pharmacy'
         )
-        
-        # Create invoice item
+
+        # Create invoice item with patient payable amount
         InvoiceItem.objects.create(
             invoice=invoice,
             service=medication_service,
-            description=f'Invoice for Prescription #{prescription.id}',
+            description=f'Invoice for Prescription #{prescription.id}' +
+                       (f' (NHIA Patient - 10% of ₦{pricing_breakdown["total_medication_cost"]})'
+                        if pricing_breakdown['is_nhia_patient'] else ''),
             quantity=1,
-            unit_price=total_prescription_price,
+            unit_price=patient_payable_amount,
             tax_amount=0,
-            total_amount=total_prescription_price,
+            total_amount=patient_payable_amount,
         )
         
         # Link invoice to prescription

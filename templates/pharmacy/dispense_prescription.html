@@ -18,7 +18,71 @@
             transform: translateX(-50%) translateY(-5px);
         }
     }
-    
+
+    /* Dispensed row styling */
+    tr.dispensed-row {
+        background-color: #f8f9fa;
+        opacity: 0.7;
+    }
+
+    tr.dispensed-row td {
+        color: #6c757d;
+    }
+
+    /* Disabled checkbox styling */
+    input[type="checkbox"]:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    /* Message styling */
+    .alert {
+        border-left: 4px solid;
+        border-radius: 0.375rem;
+    }
+
+    .alert-success {
+        background-color: #d1e7dd;
+        border-left-color: #0f5132;
+        color: #0f5132;
+    }
+
+    .alert-info {
+        background-color: #cff4fc;
+        border-left-color: #055160;
+        color: #055160;
+    }
+
+    .alert-warning {
+        background-color: #fff3cd;
+        border-left-color: #664d03;
+        color: #664d03;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        border-left-color: #842029;
+        color: #842029;
+    }
+
+    /* Badge for dispensed status */
+    .badge-dispensed {
+        background-color: #198754;
+        color: white;
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 600;
+        border-radius: 0.25rem;
+    }
+
+    .badge-pending {
+        background-color: #ffc107;
+        color: #000;
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 600;
+        border-radius: 0.25rem;
+    }
 
 </style>
 {% endblock %}
@@ -34,7 +98,7 @@
                 <!-- Info: Invoice will be generated after dispensing -->
                 <div class="alert alert-info mb-4">
                     <i class="fas fa-info-circle me-2"></i>
-                    <strong>Note:</strong> The invoice for dispensed medicines will be generated and sent to billing/Context7 MCP only after you confirm dispensing below.
+                    <strong>Note:</strong> The invoice for dispensed medicines will be generated and sent to billing only after you confirm dispensing below.
                 </div>
                 <!-- Prescription Information -->
                 <div class="card mb-4">
@@ -96,7 +160,74 @@
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- NHIA Payment Information - Prominent Display -->
+                {% if is_nhia_patient %}
+                <div class="card border-success shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>NHIA Patient - Payment Breakdown
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <small class="text-muted d-block mb-1">Total Medication Cost</small>
+                                    <h4 class="text-primary mb-0">₦{{ total_medication_cost|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-warning bg-opacity-10 rounded border border-warning">
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="fas fa-user me-1"></i>Patient Pays (10%)
+                                    </small>
+                                    <h3 class="text-warning mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <small class="text-success mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> Only 10% required
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-success bg-opacity-10 rounded border border-success">
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="fas fa-shield-alt me-1"></i>NHIA Covers (90%)
+                                    </small>
+                                    <h4 class="text-success mb-0">₦{{ total_nhia_covers|floatformat:2 }}</h4>
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-check-circle"></i> Covered by insurance
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>₦{{ total_nhia_covers|floatformat:2 }}</strong> (90% of total cost).
+                            You only need to pay <strong>₦{{ total_patient_pays|floatformat:2 }}</strong> for all medications.
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card border-primary shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user me-2"></i>Payment Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 offset-md-3">
+                                <div class="text-center p-3 bg-primary bg-opacity-10 rounded border border-primary">
+                                    <small class="text-muted d-block mb-1">Total Amount Due</small>
+                                    <h3 class="text-primary mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <small class="text-muted mt-1 d-block">Full payment required</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Dispense Form -->
                 <div class="card">
                     <div class="card-header bg-light">
@@ -149,32 +280,48 @@
                                             </th>
                                             <th>Medication</th>
                                             <th>Prescribed Qty</th>
+                                            <th>Remaining Qty</th>
                                             <th>Stock</th>
                                             <th>Unit Price</th>
-                                            <th>Dispense Qty</th>
-                                            <th>Item Total</th>
+                                            <th>Qty to Dispense</th>
+                                            <th>Status</th>
+                                            {% if is_nhia_patient %}
+                                            <th class="text-end">Item Total</th>
+                                            <th class="text-end bg-warning bg-opacity-10">You Pay (10%)</th>
+                                            <th class="text-end bg-success bg-opacity-10">NHIA Covers (90%)</th>
+                                            {% else %}
+                                            <th class="text-end">Item Total</th>
+                                            {% endif %}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for form in formset %}
                                             {% with item=form.prescription_item %}
-                                            <tr id="item-row-{{ forloop.counter0 }}" data-item-id="{{ item.id }}" data-unit-price="{{ item.medication.price }}">
-                                                <td>
+                                            <tr id="item-row-{{ forloop.counter0 }}" data-item-id="{{ item.id }}" data-unit-price="{{ item.medication.price }}"
+                                                class="{% if item.is_dispensed %}dispensed-row{% endif %}">
+                                                <td class="text-center">
                                                     {{ form.item_id }}
                                                     {{ form.dispensary }}
                                                     {{ form.stock_quantity_display }}
                                                     <input type="hidden" name="form-{{ forloop.counter0 }}-dispense_this_item" value="off">
-                                                    <input type="checkbox" class="dispense-checkbox item-checkbox" name="form-{{ forloop.counter0 }}-dispense_this_item" value="on" {% if form.dispense_this_item.value %}checked{% endif %}>
+                                                    <input type="checkbox" class="dispense-checkbox item-checkbox" name="form-{{ forloop.counter0 }}-dispense_this_item" value="on"
+                                                           {% if form.dispense_this_item.value %}checked{% endif %}
+                                                           {% if form.dispense_this_item.field.widget.attrs.disabled %}disabled{% endif %}
+                                                           title="{{ form.dispense_this_item.field.widget.attrs.title|default:'' }}">
                                                     {% if form.dispense_this_item.errors %}<div class="text-danger small">{{ form.dispense_this_item.errors|join:", " }}</div>{% endif %}
-                                                    {% if form.dispense_this_item.field.widget.attrs.disabled %}
-                                                        <span class="badge bg-secondary ms-1">N/A</span>
-                                                    {% endif %}
                                                 </td>
                                                 <td>
                                                     <strong>{{ item.medication.name }}</strong> ({{ item.medication.strength }})
                                                     <div class="small text-muted">{{ item.medication.dosage_form }}</div>
                                                 </td>
-                                                <td>{{ item.quantity }}</td>
+                                                <td><strong>{{ item.quantity }}</strong> units</td>
+                                                <td>
+                                                    {% if item.is_dispensed %}
+                                                        <span class="badge bg-success">0</span>
+                                                    {% else %}
+                                                        <strong class="text-primary">{{ item.remaining_quantity_to_dispense }}</strong> units
+                                                    {% endif %}
+                                                </td>
                                                 <td class="text-center">
                     {% if selected_dispensary %}
                         {% if form.stock_quantity_display.value %}
@@ -210,19 +357,58 @@
                         <span class="badge badge-info">Select dispensary</span>
                     {% endif %}
                 </td>
-                                                <td>{{ item.medication.price }}</td>
+                                                <td>₦{{ item.medication.price|floatformat:2 }}</td>
                                                 <td>
                                                     {{ form.quantity_to_dispense|add_class:"form-control form-control-sm quantity-input" }}
-                                                    {% if form.quantity_to_dispense.errors %}<div class="text-danger small">{{ form.quantity_to_dispense.errors|join:", " }}</div>{% endif %}
+                                                    {% if form.quantity_to_dispense.errors %}
+                                                        <div class="text-danger small">{{ form.quantity_to_dispense.errors|join:", " }}</div>
+                                                    {% endif %}
                                                 </td>
                                                 <td>
-                                                    <span class="item-total-price">0.00</span>
+                                                    {% if item.is_dispensed %}
+                                                        <span class="badge badge-dispensed">
+                                                            <i class="fas fa-check-circle"></i> Fully Dispensed
+                                                        </span>
+                                                    {% elif item.quantity_dispensed_so_far > 0 %}
+                                                        <span class="badge badge-pending">
+                                                            <i class="fas fa-clock"></i> Partially Dispensed ({{ item.quantity_dispensed_so_far }}/{{ item.quantity }})
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-hourglass-start"></i> Pending
+                                                        </span>
+                                                    {% endif %}
                                                 </td>
+                                                {% if is_nhia_patient %}
+                                                {% for pricing in items_with_pricing %}
+                                                    {% if pricing.item.id == item.id %}
+                                                <td class="text-end">
+                                                    <span class="item-total-price">₦{{ pricing.total_cost|floatformat:2 }}</span>
+                                                </td>
+                                                <td class="text-end bg-warning bg-opacity-10">
+                                                    <strong class="text-warning item-patient-pays">₦{{ pricing.patient_pays|floatformat:2 }}</strong>
+                                                    <div class="small text-muted">10%</div>
+                                                </td>
+                                                <td class="text-end bg-success bg-opacity-10">
+                                                    <strong class="text-success item-nhia-covers">₦{{ pricing.nhia_covers|floatformat:2 }}</strong>
+                                                    <div class="small text-muted">90%</div>
+                                                </td>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% else %}
+                                                {% for pricing in items_with_pricing %}
+                                                    {% if pricing.item.id == item.id %}
+                                                <td class="text-end">
+                                                    <span class="item-total-price">₦{{ pricing.total_cost|floatformat:2 }}</span>
+                                                </td>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% endif %}
                                             </tr>
                                             {% endwith %}
                                         {% empty %}
                                             <tr>
-                                                <td colspan="7" class="text-center text-muted">
+                                                <td colspan="{% if is_nhia_patient %}11{% else %}9{% endif %}" class="text-center text-muted">
                                                     {% if prescription.status == 'completed' %}
                                                         All medications in this prescription have been dispensed.
                                                     {% else %}
@@ -232,11 +418,24 @@
                                             </tr>
                                         {% endfor %}
                                     </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="6" class="text-end"><strong>Overall Total for this Dispense:</strong></td>
-                                            <td id="overall-total-price" class="fw-bold">0.00</td>
+                                    <tfoot class="table-light">
+                                        {% if is_nhia_patient %}
+                                        <tr class="fw-bold">
+                                            <td colspan="8" class="text-end">TOTAL:</td>
+                                            <td class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td class="text-end bg-warning bg-opacity-10">
+                                                <span class="text-warning">₦{{ total_patient_pays|floatformat:2 }}</span>
+                                            </td>
+                                            <td class="text-end bg-success bg-opacity-10">
+                                                <span class="text-success">₦{{ total_nhia_covers|floatformat:2 }}</span>
+                                            </td>
                                         </tr>
+                                        {% else %}
+                                        <tr class="fw-bold">
+                                            <td colspan="8" class="text-end">TOTAL:</td>
+                                            <td class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endif %}
                                     </tfoot>
                                 </table>
                             </div>
@@ -486,18 +685,9 @@
                 }
                 updateTotals();
             } else if (target.classList.contains('quantity-input')) {
-                const row = target.closest('tr');
-                const dispenseCheckbox = row.querySelector('.dispense-checkbox');
-                if (dispenseCheckbox && !dispenseCheckbox.disabled) {
-                    // Auto-check if quantity > 0, uncheck if 0 or empty
-                    if (parseInt(target.value) > 0) {
-                        dispenseCheckbox.checked = true;
-                    } else {
-                        dispenseCheckbox.checked = false;
-                    }
-                    // Trigger change event for checkbox to update disabled state and totals
-                    dispenseCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                }
+                // Just update totals when quantity changes
+                // Don't auto-check/uncheck the checkbox - let user control that
+                updateTotals();
             }
         });
 

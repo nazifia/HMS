@@ -195,18 +195,6 @@
         </div>
     {% endif %}
 
-    <!-- Debug Information -->
-    <div class="alert alert-info">
-        <strong>Debug Info:</strong>
-        Prescription ID: {{ prescription.id }},
-        Items count: {{ prescription_items|length }},
-        {% if prescription_items %}
-            Items: {% for item in prescription_items %}{{ item.medication.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
-        {% else %}
-            No items found
-        {% endif %}
-    </div>
-
     <!-- Dispensing Form -->
     <div class="items-table">
         <form id="dispense-form" method="post" {% if not prescription.is_payment_verified %}style="pointer-events: none; opacity: 0.6;"{% endif %}>

@@ -1860,14 +1860,51 @@ def dispense_prescription(request, prescription_id):
             })
 
         formset = DispenseFormSet(initial=initial_data, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
-        
+
+        # Enhanced NHIA pricing breakdown
+        pricing_breakdown = prescription.get_pricing_breakdown()
+
+        # Calculate detailed item-level pricing for NHIA display
+        items_with_pricing = []
+        total_patient_pays = Decimal('0.00')
+        total_nhia_covers = Decimal('0.00')
+        total_medication_cost = Decimal('0.00')
+
+        for item in prescription_items:
+            item_total_cost = item.medication.price * item.quantity
+            total_medication_cost += item_total_cost
+
+            if pricing_breakdown['is_nhia_patient']:
+                item_patient_pays = item_total_cost * Decimal('0.10')
+                item_nhia_covers = item_total_cost * Decimal('0.90')
+            else:
+                item_patient_pays = item_total_cost
+                item_nhia_covers = Decimal('0.00')
+
+            total_patient_pays += item_patient_pays
+            total_nhia_covers += item_nhia_covers
+
+            items_with_pricing.append({
+                'item': item,
+                'total_cost': item_total_cost,
+                'patient_pays': item_patient_pays,
+                'nhia_covers': item_nhia_covers,
+            })
+
         context = {
             'prescription': prescription,
             'page_title': f'Dispense Prescription - #{prescription.id}',
+            'title': f'Dispense Prescription - #{prescription.id}',
             'dispensaries': Dispensary.objects.filter(is_active=True),
             'formset': formset,
             'selected_dispensary': selected_dispensary,
             'dispensary_id': dispensary_id,
+            'pricing_breakdown': pricing_breakdown,
+            'items_with_pricing': items_with_pricing,
+            'total_medication_cost': total_medication_cost,
+            'total_patient_pays': total_patient_pays,
+            'total_nhia_covers': total_nhia_covers,
+            'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
         }
         return render(request, 'pharmacy/dispense_prescription.html', context)
 
@@ -1879,13 +1916,51 @@ def dispense_prescription(request, prescription_id):
         any_checked = any(request.POST.get(f'form-{i}-dispense_this_item') in ['on', 'True', 'true', '1'] for i in range(len(prescription_items)))
         if not selected_dispensary and any_checked:
             messages.error(request, 'Please select a dispensary before dispensing items.')
+
+            # Enhanced NHIA pricing breakdown
+            pricing_breakdown = prescription.get_pricing_breakdown()
+
+            # Calculate detailed item-level pricing for NHIA display
+            items_with_pricing = []
+            total_patient_pays = Decimal('0.00')
+            total_nhia_covers = Decimal('0.00')
+            total_medication_cost = Decimal('0.00')
+
+            for item in prescription_items:
+                item_total_cost = item.medication.price * item.quantity
+                total_medication_cost += item_total_cost
+
+                if pricing_breakdown['is_nhia_patient']:
+                    item_patient_pays = item_total_cost * Decimal('0.10')
+                    item_nhia_covers = item_total_cost * Decimal('0.90')
+                else:
+                    item_patient_pays = item_total_cost
+                    item_nhia_covers = Decimal('0.00')
+
+                total_patient_pays += item_patient_pays
+                total_nhia_covers += item_nhia_covers
+
+                items_with_pricing.append({
+                    'item': item,
+                    'total_cost': item_total_cost,
+                    'patient_pays': item_patient_pays,
+                    'nhia_covers': item_nhia_covers,
+                })
+
             context = {
                 'prescription': prescription,
                 'page_title': f'Dispense Prescription - #{prescription.id}',
+                'title': f'Dispense Prescription - #{prescription.id}',
                 'dispensaries': Dispensary.objects.filter(is_active=True),
                 'formset': formset,
                 'selected_dispensary': selected_dispensary,
                 'dispensary_id': dispensary_id,
+                'pricing_breakdown': pricing_breakdown,
+                'items_with_pricing': items_with_pricing,
+                'total_medication_cost': total_medication_cost,
+                'total_patient_pays': total_patient_pays,
+                'total_nhia_covers': total_nhia_covers,
+                'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
             }
             return render(request, 'pharmacy/dispense_prescription.html', context)
 
@@ -1920,18 +1995,13 @@ def dispense_prescription(request, prescription_id):
                         skipped_items.append(prescription_item)
                         continue
 
-                    # Get the medication and quantity to dispense
-                    medication = prescription_item.medication
-                    # Use .get() method instead of direct dictionary access to avoid KeyError
-                    qty = form.cleaned_data.get('quantity_to_dispense', 0)
-
                     # Validate quantity
                     if qty <= 0:
                         messages.error(request, f'Quantity for {medication.name} must be greater than zero.')
                         continue
 
                     if qty > prescription_item.remaining_quantity_to_dispense:
-                        messages.error(request, f'Cannot dispense more than remaining quantity for {medication.name}.')
+                        messages.error(request, f'Cannot dispense more than remaining quantity ({prescription_item.remaining_quantity_to_dispense} units) for {medication.name}.')
                         continue
 
                     # Check inventory in the selected dispensary
@@ -2007,12 +2077,29 @@ def dispense_prescription(request, prescription_id):
                     any_dispensed = True
 
             if any_dispensed:
-                # Optionally mark prescription as dispensed if all items are dispensed
-                remaining = prescription.items.filter(is_dispensed=False).count()
-                if remaining == 0:
+                # Update prescription status based on dispensing progress
+                total_items = prescription.items.count()
+                fully_dispensed_items = prescription.items.filter(is_dispensed=True).count()
+                partially_dispensed_items = prescription.items.filter(
+                    is_dispensed=False,
+                    quantity_dispensed_so_far__gt=0
+                ).count()
+
+                # Determine the correct status
+                if fully_dispensed_items == total_items:
+                    # All items fully dispensed
                     prescription.status = 'dispensed'
                     prescription.save(update_fields=['status'])
-                messages.success(request, 'Selected medications dispensed successfully.')
+                    messages.success(request, f'All medications dispensed successfully. Prescription marked as fully dispensed.')
+                elif fully_dispensed_items > 0 or partially_dispensed_items > 0:
+                    # Some items dispensed (fully or partially)
+                    prescription.status = 'partially_dispensed'
+                    prescription.save(update_fields=['status'])
+                    messages.success(request, f'Selected medications dispensed successfully. {fully_dispensed_items} of {total_items} items fully dispensed.')
+                else:
+                    # This shouldn't happen if any_dispensed is True, but handle it
+                    messages.success(request, 'Selected medications dispensed successfully.')
+
                 if skipped_items:
                     names = ', '.join([s.medication.name for s in skipped_items])
                     messages.warning(request, f'Some items were skipped because they are already fully dispensed: {names}')
@@ -2034,13 +2121,50 @@ def dispense_prescription(request, prescription_id):
                 messages.error(request, str(err))
 
             # Make sure to pass the selected dispensary to the context when there are form errors
+            # Enhanced NHIA pricing breakdown
+            pricing_breakdown = prescription.get_pricing_breakdown()
+
+            # Calculate detailed item-level pricing for NHIA display
+            items_with_pricing = []
+            total_patient_pays = Decimal('0.00')
+            total_nhia_covers = Decimal('0.00')
+            total_medication_cost = Decimal('0.00')
+
+            for item in prescription_items:
+                item_total_cost = item.medication.price * item.quantity
+                total_medication_cost += item_total_cost
+
+                if pricing_breakdown['is_nhia_patient']:
+                    item_patient_pays = item_total_cost * Decimal('0.10')
+                    item_nhia_covers = item_total_cost * Decimal('0.90')
+                else:
+                    item_patient_pays = item_total_cost
+                    item_nhia_covers = Decimal('0.00')
+
+                total_patient_pays += item_patient_pays
+                total_nhia_covers += item_nhia_covers
+
+                items_with_pricing.append({
+                    'item': item,
+                    'total_cost': item_total_cost,
+                    'patient_pays': item_patient_pays,
+                    'nhia_covers': item_nhia_covers,
+                })
+
             context = {
                 'prescription': prescription,
                 'page_title': f'Dispense Prescription - #{prescription.id}',
+                'title': f'Dispense Prescription - #{prescription.id}',
                 'dispensaries': Dispensary.objects.filter(is_active=True),
                 'formset': formset,
                 'selected_dispensary': selected_dispensary,
                 'dispensary_id': dispensary_id,
+                'pricing_breakdown': pricing_breakdown,
+                'items_with_pricing': items_with_pricing,
+                'total_medication_cost': total_medication_cost,
+                'total_patient_pays': total_patient_pays,
+                'total_nhia_covers': total_nhia_covers,
+                'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
             }
             return render(request, 'pharmacy/dispense_prescription.html', context)
 
@@ -2058,13 +2182,55 @@ def dispense_prescription(request, prescription_id):
 
         formset = DispenseFormSet(initial=initial_data, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
 
+    # Enhanced NHIA pricing breakdown
+    pricing_breakdown = prescription.get_pricing_breakdown()
+
+    # Calculate detailed item-level pricing for NHIA display
+    items_with_pricing = []
+    total_patient_pays = Decimal('0.00')
+    total_nhia_covers = Decimal('0.00')
+    total_medication_cost = Decimal('0.00')
+
+    for item in prescription_items:
+        item_total_cost = item.medication.price * item.quantity
+        total_medication_cost += item_total_cost
+
+        if pricing_breakdown['is_nhia_patient']:
+            item_patient_pays = item_total_cost * Decimal('0.10')  # 10% patient portion
+            item_nhia_covers = item_total_cost * Decimal('0.90')   # 90% NHIA portion
+        else:
+            item_patient_pays = item_total_cost  # 100% patient pays
+            item_nhia_covers = Decimal('0.00')   # NHIA covers nothing
+
+        total_patient_pays += item_patient_pays
+        total_nhia_covers += item_nhia_covers
+
+        items_with_pricing.append({
+            'item': item,
+            'total_cost': item_total_cost,
+            'patient_pays': item_patient_pays,
+            'nhia_covers': item_nhia_covers,
+            'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
+            'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
+        })
+
     context = {
         'prescription': prescription,
         'page_title': f'Dispense Prescription - #{prescription.id}',
+        'title': f'Dispense Prescription - #{prescription.id}',
         'dispensaries': Dispensary.objects.filter(is_active=True),
         'formset': formset,
         'selected_dispensary': selected_dispensary,
         'dispensary_id': dispensary_id,
+        # Enhanced NHIA context
+        'pricing_breakdown': pricing_breakdown,
+        'items_with_pricing': items_with_pricing,
+        'total_medication_cost': total_medication_cost,
+        'total_patient_pays': total_patient_pays,
+        'total_nhia_covers': total_nhia_covers,
+        'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
+        'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
+        'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
     }
     return render(request, 'pharmacy/dispense_prescription.html', context)
 

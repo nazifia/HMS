@@ -281,7 +281,15 @@ class DispenseItemForm(forms.Form):
     """Form for a single item in the dispensing process."""
     item_id = forms.IntegerField(widget=forms.HiddenInput())
     dispense_this_item = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
-    quantity_to_dispense = forms.IntegerField(min_value=0, required=False, widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width: 70px;'}))
+    quantity_to_dispense = forms.IntegerField(
+        min_value=0,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-sm quantity-input',
+            'style': 'width: 80px;',
+            'placeholder': '0'
+        })
+    )
     dispensary = forms.ModelChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         required=False,
@@ -304,7 +312,7 @@ class DispenseItemForm(forms.Form):
             remaining_qty = self.prescription_item.remaining_quantity_to_dispense
             
             is_fully_dispensed = self.prescription_item.is_dispensed # Based on new logic (qty_dispensed_so_far >= quantity)
-            
+
             # Get available stock from both inventory models for the selected dispensary
             available_stock = 0
             if self.selected_dispensary:
@@ -337,37 +345,41 @@ class DispenseItemForm(forms.Form):
 
             # Store available stock as instance variable for template access
             self.available_stock = available_stock
-            
+
             can_be_dispensed = remaining_qty > 0 and not is_fully_dispensed
             logging.debug(f"  Can be dispensed: {can_be_dispensed}")
 
-            if not can_be_dispensed:
-                # Only disable if we have a dispensary selected and stock is actually 0
-                # If no dispensary is selected, we should allow the form to be submitted
-                # so that stock can be checked after dispensary selection
+            # Disable checkbox and quantity input for already dispensed items
+            if is_fully_dispensed:
+                self.fields['dispense_this_item'].widget.attrs['disabled'] = True
+                self.fields['dispense_this_item'].widget.attrs['title'] = 'Already fully dispensed'
+                self.fields['dispense_this_item'].label = "Fully Dispensed"
+                self.fields['dispense_this_item'].initial = False
+                self.fields['quantity_to_dispense'].widget.attrs['disabled'] = True
+                self.fields['quantity_to_dispense'].initial = 0
+            elif not can_be_dispensed:
+                # Disable if no remaining quantity
                 if self.selected_dispensary and available_stock == 0:
                     self.fields['dispense_this_item'].widget.attrs['disabled'] = True
+                    self.fields['dispense_this_item'].widget.attrs['title'] = 'Out of stock'
+                    self.fields['dispense_this_item'].label = "Out of Stock"
                     self.fields['quantity_to_dispense'].widget.attrs['disabled'] = True
                     self.fields['quantity_to_dispense'].initial = 0
-                    if is_fully_dispensed:
-                        self.fields['dispense_this_item'].label = "Fully Dispensed"
-                    elif available_stock == 0:
-                         self.fields['dispense_this_item'].label = "Out of Stock"
                 elif not self.selected_dispensary:
                     # No dispensary selected yet, allow form submission
                     self.fields['dispense_this_item'].initial = False
+                    self.fields['quantity_to_dispense'].initial = 0
             else:
-                # Default to remaining quantity, capped by current stock if dispensary is selected
+                # Set initial quantity to remaining quantity, capped by available stock
                 initial_qty_to_dispense = remaining_qty
                 if self.selected_dispensary and available_stock > 0:
                     initial_qty_to_dispense = min(remaining_qty, available_stock)
+                    # Don't auto-check the checkbox - let user decide what to dispense
+                    # self.fields['dispense_this_item'].initial = True
+
                 self.fields['quantity_to_dispense'].initial = initial_qty_to_dispense
-                if self.selected_dispensary and available_stock is not None:
-                    self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, available_stock)
-                self.fields['quantity_to_dispense'].widget.attrs['min'] = 0 # Allow 0 if user unchecks
-                # Pre-select items that are eligible for dispensing only if a dispensary was provided
-                if self.selected_dispensary and available_stock > 0:
-                    self.fields['dispense_this_item'].initial = True
+                self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, available_stock) if self.selected_dispensary else remaining_qty
+                self.fields['quantity_to_dispense'].widget.attrs['min'] = 1
 
             # Set initial value for dispensary field if selected_dispensary is provided
             if self.selected_dispensary:
