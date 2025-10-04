@@ -1,6 +1,8 @@
 from django import forms
 from .models import AncRecord
 from core.medical_forms import MedicalRecordSearchForm
+from patients.models import Patient
+from doctors.models import Doctor
 
 class AncRecordForm(forms.ModelForm):
     class Meta:
@@ -35,6 +37,14 @@ class AncRecordForm(forms.ModelForm):
             'treatment_plan': forms.Textarea(attrs={'rows': 3}),
             'notes': forms.Textarea(attrs={'rows': 4}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Get all active patients
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
+        # Get all doctors
+        self.fields['doctor'].queryset = Doctor.objects.select_related('user').all().order_by('user__first_name', 'user__last_name')
 
 class AncRecordSearchForm(MedicalRecordSearchForm):
     """Search form for ANC records"""

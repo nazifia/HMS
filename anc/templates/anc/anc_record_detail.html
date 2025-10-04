@@ -51,7 +51,7 @@
                 <div class="col-md-6">
                     <p><strong>Name:</strong> {{ record.patient.get_full_name }}</p>
                     <p><strong>Patient ID:</strong> {{ record.patient.patient_id }}</p>
-                    <p><strong>Age:</strong> {{ record.patient.age }} years</p>
+                    <p><strong>Age:</strong> {{ record.patient.get_age }} years</p>
                     <p><strong>Gender:</strong> {{ record.patient.get_gender_display }}</p>
                 </div>
                 <div class="col-md-6">
@@ -72,7 +72,7 @@
         </div>
     </div>
 
-        <!-- Specific Fields -->
+    <!-- Specific Fields -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Anc Specific Fields</h6>
@@ -160,7 +160,8 @@
             </div>
         </div>
     </div>
-<!-- Chief Complaint -->
+
+    <!-- Chief Complaint -->
     {% if record.chief_complaint %}
     <div class="card shadow mb-4">
         <div class="card-header py-3">

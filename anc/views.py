@@ -71,9 +71,13 @@ def create_anc_record(request):
     else:
         form = AncRecordForm()
     
+    # Get all active patients for the dropdown
+    all_patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+    
     context = {
         'form': form,
-        'title': 'Create ANC Record'
+        'title': 'Create ANC Record',
+        'all_patients': all_patients,
     }
     return render(request, 'anc/anc_record_form.html', context)
 
@@ -108,10 +112,14 @@ def edit_anc_record(request, record_id):
     else:
         form = AncRecordForm(instance=record)
     
+    # Get all active patients for the dropdown
+    all_patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+    
     context = {
         'form': form,
         'record': record,
-        'title': 'Edit ANC Record'
+        'title': 'Edit ANC Record',
+        'all_patients': all_patients,
     }
     return render(request, 'anc/anc_record_form.html', context)
 

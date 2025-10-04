@@ -16,117 +16,177 @@
                 {% csrf_token %}
                 <div class="row">
                     <div class="col-md-6">
-                        
-                <div class="form-group">
-                    <label for="{{ form.gravida.id_for_label }}">Gravida</label>
-                    {{ form.gravida|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.para.id_for_label }}">Para</label>
-                    {{ form.para|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.abortions.id_for_label }}">Abortions</label>
-                    {{ form.abortions|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.lmp.id_for_label }}">Last Menstrual Period</label>
-                    {{ form.lmp|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.edd.id_for_label }}">Expected Date of Delivery</label>
-                    {{ form.edd|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.fundal_height.id_for_label }}">Fundal Height (cm)</label>
-                    {{ form.fundal_height|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.fetal_heartbeat.id_for_label }}">Fetal Heartbeat</label>
-                    {{ form.fetal_heartbeat|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.fetal_position.id_for_label }}">Fetal Position</label>
-                    {{ form.fetal_position|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.blood_pressure.id_for_label }}">Blood Pressure</label>
-                    {{ form.blood_pressure|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.urine_protein.id_for_label }}">Urine Protein</label>
-                    {{ form.urine_protein|add_class:"form-control" }}
-                </div>
-                
-<div class="form-group">
+                        <!-- Patient Selection with Search -->
+                        <div class="form-group">
                             <label for="{{ form.patient.id_for_label }}">Patient *</label>
-                            {{ form.patient|add_class:"form-control" }}
+                            
+                            <!-- Enhanced Patient Search Field -->
+                            <div class="input-group mb-2">
+                                <input type="text" id="patient_search" class="form-control" placeholder="Search by name, ID, or phone number...">
+                                <button class="btn btn-outline-secondary" type="button" id="clear_patient_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Patient Dropdown with Select2 -->
+                            <select id="patient_dropdown" class="form-control select2" data-placeholder="Select a patient...">
+                                <option value="">Select a patient...</option>
+                                {% for patient in all_patients %}
+                                    <option value="{{ patient.id }}" 
+                                            data-name="{{ patient.get_full_name }}" 
+                                            data-pid="{{ patient.patient_id }}" 
+                                            data-age="{{ patient.get_age }}" 
+                                            data-gender="{{ patient.get_gender_display }}" 
+                                            data-phone="{{ patient.phone_number|default:'N/A' }}">
+                                        {{ patient.get_full_name }} ({{ patient.patient_id }}) - {{ patient.get_gender_display }}, {{ patient.get_age }} years
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            
+                            <!-- Hidden field for form submission (will be updated by JavaScript) -->
+                            {{ form.patient|add_class:"d-none" }}
+                            
+                            <!-- Selected Patient Info -->
+                            <div id="selected_patient_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
+                                <strong>Selected Patient:</strong>
+                                <span id="patient_name"></span> (<span id="patient_id"></span>)
+                                <br>
+                                <small class="text-muted">
+                                    Age: <span id="patient_age"></span> | 
+                                    Gender: <span id="patient_gender"></span> | 
+                                    Phone: <span id="patient_phone"></span>
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.gravida.id_for_label }}">Gravida</label>
+                            {{ form.gravida|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.para.id_for_label }}">Para</label>
+                            {{ form.para|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.abortions.id_for_label }}">Abortions</label>
+                            {{ form.abortions|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.lmp.id_for_label }}">Last Menstrual Period</label>
+                            {{ form.lmp|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.edd.id_for_label }}">Expected Date of Delivery</label>
+                            {{ form.edd|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.fundal_height.id_for_label }}">Fundal Height (cm)</label>
+                            {{ form.fundal_height|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.fetal_heartbeat.id_for_label }}">Fetal Heartbeat</label>
+                            {{ form.fetal_heartbeat|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.fetal_position.id_for_label }}">Fetal Position</label>
+                            {{ form.fetal_position|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.blood_pressure.id_for_label }}">Blood Pressure</label>
+                            {{ form.blood_pressure|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.urine_protein.id_for_label }}">Urine Protein</label>
+                            {{ form.urine_protein|add_class:"form-control" }}
                         </div>
                     </div>
                     <div class="col-md-6">
+                        <!-- Doctor Selection with Search -->
                         <div class="form-group">
                             <label for="{{ form.doctor.id_for_label }}">Doctor</label>
-                            {{ form.doctor|add_class:"form-control" }}
+                            
+                            <!-- Enhanced Doctor Search Field -->
+                            <div class="input-group mb-2">
+                                <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
+                                <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Doctor Dropdown with Select2 -->
+                            <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
+                                <option value="">Select a doctor...</option>
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                            
+                            <!-- Hidden field for form submission (will be updated by JavaScript) -->
+                            {{ form.doctor|add_class:"d-none" }}
+                            
+                            <!-- Selected Doctor Info -->
+                            <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
+                                <strong>Selected Doctor:</strong>
+                                <span id="doctor_name"></span>
+                                <br>
+                                <small class="text-muted">
+                                    Department: <span id="doctor_department"></span>
+                                </small>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
+                        
                         <div class="form-group">
                             <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
                             {{ form.visit_date|add_class:"form-control" }}
                         </div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
-                    {{ form.chief_complaint|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
-                    {{ form.history_of_present_illness|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
-                    {{ form.diagnosis|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
-                    {{ form.treatment_plan|add_class:"form-control" }}
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
+                        
                         <div class="form-group">
-                            <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
-                            {{ form.follow_up_required|add_class:"form-control" }}
+                            <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
+                            {{ form.chief_complaint|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
+                            {{ form.history_of_present_illness|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
+                            {{ form.diagnosis|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
+                            {{ form.treatment_plan|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
+                                    {{ form.follow_up_required|add_class:"form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
+                                    {{ form.follow_up_date|add_class:"form-control" }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}">Notes</label>
+                            {{ form.notes|add_class:"form-control" }}
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
-                            {{ form.follow_up_date|add_class:"form-control" }}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.notes.id_for_label }}">Notes</label>
-                    {{ form.notes|add_class:"form-control" }}
                 </div>
                 
                 <button type="submit" class="btn btn-primary">
@@ -139,4 +199,261 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for dropdowns
+    if (typeof $ !== 'undefined') {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            allowClear: true
+        });
+    }
+    
+    // Patient Search Functionality
+    const patientSearchField = document.getElementById('patient_search');
+    const patientDropdown = document.getElementById('patient_dropdown');
+    const patientHiddenField = document.getElementById('{{ form.patient.auto_id }}');
+    const selectedPatientInfo = document.getElementById('selected_patient_info');
+    const clearPatientSearchBtn = document.getElementById('clear_patient_search');
+    
+    // Doctor Search Functionality
+    const doctorSearchField = document.getElementById('doctor_search');
+    const doctorDropdown = document.getElementById('doctor_dropdown');
+    const doctorHiddenField = document.getElementById('{{ form.doctor.auto_id }}');
+    const selectedDoctorInfo = document.getElementById('selected_doctor_info');
+    const clearDoctorSearchBtn = document.getElementById('clear_doctor_search');
+    
+    let patientSearchTimeout;
+    let doctorSearchTimeout;
+    
+    // Load all doctors for dropdown
+    function loadAllDoctors() {
+        fetch('/accounts/api/users/?role=doctor')
+            .then(response => response.json())
+            .then(data => {
+                const options = data.map(doctor => {
+                    const doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                    const department = doctor.department || 'N/A';
+                    return `<option value="${doctor.id}" 
+                             data-name="${doctorName}" 
+                             data-department="${department}">
+                             ${doctorName}${department ? ` (${department})` : ''}
+                             </option>`;
+                }).join('');
+                doctorDropdown.innerHTML = '<option value="">Select a doctor...</option>' + options;
+                $(doctorDropdown).trigger('change.select2');
+            })
+            .catch(error => console.error('Error loading doctors:', error));
+    }
+    
+    // Initialize doctors dropdown with data
+    loadAllDoctors();
+    
+    // Patient Search Handler
+    if (patientSearchField) {
+        patientSearchField.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+            
+            clearTimeout(patientSearchTimeout);
+            
+            if (searchTerm.length === 0) {
+                // Reset to all patients
+                $(patientDropdown).val(null).trigger('change.select2');
+                return;
+            }
+            
+            if (searchTerm.length < 2) {
+                return;
+            }
+            
+            patientSearchTimeout = setTimeout(() => {
+                fetch('{% url "anc:search_anc_patients" %}?term=' + encodeURIComponent(searchTerm))
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update dropdown with search results
+                        const options = data.map(patient => 
+                            `<option value="${patient.id}" 
+                             data-name="${patient.name}" 
+                             data-pid="${patient.patient_id}" 
+                             data-age="${patient.age}" 
+                             data-gender="${patient.gender}" 
+                             data-phone="${patient.phone}">
+                             ${patient.text}
+                             </option>`
+                        ).join('');
+                        patientDropdown.innerHTML = '<option value="">Select a patient...</option>' + options;
+                        $(patientDropdown).trigger('change.select2');
+                    })
+                    .catch(error => console.error('Error searching patients:', error));
+            }, 300);
+        });
+    }
+    
+    // Doctor Search Handler
+    if (doctorSearchField) {
+        doctorSearchField.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+            
+            clearTimeout(doctorSearchTimeout);
+            
+            if (searchTerm.length === 0) {
+                // Reload all doctors
+                loadAllDoctors();
+                return;
+            }
+            
+            if (searchTerm.length < 2) {
+                return;
+            }
+            
+            doctorSearchTimeout = setTimeout(() => {
+                fetch('/accounts/api/users/?role=doctor')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Filter doctors based on search term
+                        const filteredDoctors = data.filter(doctor => 
+                            `${doctor.first_name} ${doctor.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
+                        );
+                        
+                        const options = filteredDoctors.map(doctor => {
+                            const doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                            const department = doctor.department || 'N/A';
+                            return `<option value="${doctor.id}" 
+                                     data-name="${doctorName}" 
+                                     data-department="${department}">
+                                     ${doctorName}${department ? ` (${department})` : ''}
+                                     </option>`;
+                        }).join('');
+                        doctorDropdown.innerHTML = '<option value="">Select a doctor...</option>' + options;
+                        $(doctorDropdown).trigger('change.select2');
+                    })
+                    .catch(error => console.error('Error searching doctors:', error));
+            }, 300);
+        });
+    }
+    
+    // Patient Dropdown Selection Handler
+    if (patientDropdown) {
+        patientDropdown.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const patientId = selectedOption.value;
+                const patientName = selectedOption.dataset.name;
+                const patientIdText = selectedOption.dataset.pid;
+                const patientAge = selectedOption.dataset.age;
+                const patientGender = selectedOption.dataset.gender;
+                const patientPhone = selectedOption.dataset.phone;
+                
+                // Update hidden field
+                patientHiddenField.value = patientId;
+                
+                // Update selected patient info display
+                document.getElementById('patient_name').textContent = patientName;
+                document.getElementById('patient_id').textContent = patientIdText;
+                document.getElementById('patient_age').textContent = patientAge;
+                document.getElementById('patient_gender').textContent = patientGender;
+                document.getElementById('patient_phone').textContent = patientPhone;
+                selectedPatientInfo.style.display = 'block';
+                
+                // Sync search field
+                patientSearchField.value = patientName;
+            } else {
+                // Clear selection
+                patientHiddenField.value = '';
+                selectedPatientInfo.style.display = 'none';
+                patientSearchField.value = '';
+            }
+        });
+    }
+    
+    // Doctor Dropdown Selection Handler
+    if (doctorDropdown) {
+        doctorDropdown.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const doctorId = selectedOption.value;
+                const doctorName = selectedOption.dataset.name;
+                const doctorDepartment = selectedOption.dataset.department;
+                
+                // Update hidden field
+                doctorHiddenField.value = doctorId;
+                
+                // Update selected doctor info display
+                document.getElementById('doctor_name').textContent = doctorName;
+                document.getElementById('doctor_department').textContent = doctorDepartment;
+                selectedDoctorInfo.style.display = 'block';
+                
+                // Sync search field
+                doctorSearchField.value = doctorName;
+            } else {
+                // Clear selection
+                doctorHiddenField.value = '';
+                selectedDoctorInfo.style.display = 'none';
+                doctorSearchField.value = '';
+            }
+        });
+    }
+    
+    // Clear Patient Search
+    if (clearPatientSearchBtn) {
+        clearPatientSearchBtn.addEventListener('click', function() {
+            patientSearchField.value = '';
+            patientHiddenField.value = '';
+            selectedPatientInfo.style.display = 'none';
+            $(patientDropdown).val(null).trigger('change.select2');
+        });
+    }
+    
+    // Clear Doctor Search
+    if (clearDoctorSearchBtn) {
+        clearDoctorSearchBtn.addEventListener('click', function() {
+            doctorSearchField.value = '';
+            doctorHiddenField.value = '';
+            selectedDoctorInfo.style.display = 'none';
+            loadAllDoctors(); // Reload all doctors
+        });
+    }
+    
+    // Pre-fill if editing existing record
+    {% if record and record.patient %}
+        const patientId = "{{ record.patient.id }}";
+        const patientName = "{{ record.patient.get_full_name }}";
+        const patientIdText = "{{ record.patient.patient_id }}";
+        const patientAge = "{{ record.patient.get_age }}";
+        const patientGender = "{{ record.patient.get_gender_display }}";
+        const patientPhone = "{{ record.patient.phone_number|default:'N/A' }}";
+        
+        patientHiddenField.value = patientId;
+        document.getElementById('patient_name').textContent = patientName;
+        document.getElementById('patient_id').textContent = patientIdText;
+        document.getElementById('patient_age').textContent = patientAge;
+        document.getElementById('patient_gender').textContent = patientGender;
+        document.getElementById('patient_phone').textContent = patientPhone;
+        selectedPatientInfo.style.display = 'block';
+        
+        // Set dropdown selection
+        $(patientDropdown).val(patientId).trigger('change.select2');
+    {% endif %}
+    
+    {% if record and record.doctor %}
+        const doctorId = "{{ record.doctor.id }}";
+        const doctorName = "Dr. {{ record.doctor.get_full_name }}";
+        const doctorDepartment = "{{ record.doctor.profile.department.name|default:'N/A' }}";
+        
+        doctorHiddenField.value = doctorId;
+        document.getElementById('doctor_name').textContent = doctorName;
+        document.getElementById('doctor_department').textContent = doctorDepartment;
+        selectedDoctorInfo.style.display = 'block';
+        
+        // Set dropdown selection
+        $(doctorDropdown).val(doctorId).trigger('change.select2');
+    {% endif %}
+});
+</script>
+{% endblock %}
+</script>
 {% endblock %}
