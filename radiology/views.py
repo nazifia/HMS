@@ -11,28 +11,71 @@ from .forms import RadiologyOrderForm, RadiologyResultForm
 @login_required
 def index(request):
     """Radiology dashboard view"""
+    from django.db.models import Sum, Count
+    from datetime import datetime, timedelta
+
+    today = timezone.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+
     # Get counts for dashboard cards
     pending_count = RadiologyOrder.objects.filter(status='pending').count()
     scheduled_count = RadiologyOrder.objects.filter(status='scheduled').count()
     completed_count = RadiologyOrder.objects.filter(status='completed').count()
     total_count = RadiologyOrder.objects.count()
 
-    # Get recent orders for the table
-    recent_orders = RadiologyOrder.objects.all().order_by('-order_date')[:10]
+    # Today's statistics
+    today_orders = RadiologyOrder.objects.filter(order_date__date=today).count()
+    today_completed = RadiologyOrder.objects.filter(order_date__date=today, status='completed').count()
 
-    # Get all active patients for the dashboard
-    patients = Patient.objects.all()
+    # This week's statistics
+    week_orders = RadiologyOrder.objects.filter(order_date__date__gte=week_start).count()
+    week_completed = RadiologyOrder.objects.filter(order_date__date__gte=week_start, status='completed').count()
+
+    # This month's statistics
+    month_orders = RadiologyOrder.objects.filter(order_date__date__gte=month_start).count()
+    month_revenue = RadiologyOrder.objects.filter(
+        order_date__date__gte=month_start,
+        invoice__isnull=False
+    ).aggregate(total=Sum('invoice__total_amount'))['total'] or 0
+
+    # Get recent orders for the table with filtering
+    recent_orders_query = RadiologyOrder.objects.select_related('patient', 'test', 'referring_doctor').order_by('-order_date')
+
+    # Apply filters if provided
+    status_filter = request.GET.get('status')
+    if status_filter:
+        recent_orders_query = recent_orders_query.filter(status=status_filter)
+
+    patient_id_filter = request.GET.get('patient_id')
+    if patient_id_filter:
+        recent_orders_query = recent_orders_query.filter(patient__patient_id=patient_id_filter)
+
+    recent_orders = recent_orders_query[:20]
+
+    # Get patients with radiology orders (more relevant than all patients)
+    patients = Patient.objects.filter(radiology_orders__isnull=False).distinct()[:50]
     # Add patient results page link to each patient in the dashboard context
     for patient in patients:
         patient.results_url = f"/radiology/patient/{patient.id}/results/"
+        patient.order_count = patient.radiology_orders.count()
 
     context = {
         'pending_count': pending_count,
         'scheduled_count': scheduled_count,
         'completed_count': completed_count,
         'total_count': total_count,
+        'today_orders': today_orders,
+        'today_completed': today_completed,
+        'week_orders': week_orders,
+        'week_completed': week_completed,
+        'month_orders': month_orders,
+        'month_revenue': month_revenue,
         'recent_orders': recent_orders,
-        'patients': patients,  # Add patients to context
+        'patients': patients,
+        'today': today,
+        'week_start': week_start,
+        'month_start': month_start,
     }
 
     return render(request, 'radiology/index.html', context)

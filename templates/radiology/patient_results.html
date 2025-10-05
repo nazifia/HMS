@@ -1,9 +1,101 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    @media print {
+        /* Hide navigation, sidebar, and action buttons when printing */
+        .navbar, .sidebar, .btn-group, .print-btn, .back-btn,
+        .card-header .badge, body > nav, #accordionSidebar,
+        .topbar, footer, .no-print {
+            display: none !important;
+        }
+
+        /* Adjust page layout for printing */
+        body {
+            background: white !important;
+        }
+
+        .container {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .card {
+            border: 1px solid #000 !important;
+            box-shadow: none !important;
+            page-break-inside: avoid;
+        }
+
+        .card-header {
+            background-color: #f8f9fa !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* Add hospital header for print */
+        .print-header {
+            display: block !important;
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .print-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .print-header p {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        /* Ensure table fits on page */
+        table {
+            font-size: 11px !important;
+        }
+
+        /* Page breaks */
+        .card {
+            page-break-after: auto;
+        }
+
+        tr {
+            page-break-inside: avoid;
+        }
+    }
+
+    /* Hide print header on screen */
+    .print-header {
+        display: none;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+<!-- Print Header (only visible when printing) -->
+<div class="print-header">
+    <h2>Hospital Management System</h2>
+    <p>Radiology Results Report</p>
+    <p>Generated on: {{ today|date:"F d, Y" }}</p>
+</div>
 <div class="container mt-4">
-    <h2 class="mb-4">Radiology Results for {{ patient.get_full_name }}</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <h2 class="mb-0">Radiology Results for {{ patient.get_full_name }}</h2>
+        <div>
+            <button onclick="window.print()" class="btn btn-primary print-btn">
+                <i class="fas fa-print"></i> Print Results
+            </button>
+            <button onclick="window.history.back()" class="btn btn-secondary back-btn">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+        </div>
+    </div>
     <div class="card mb-4 border-primary">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <strong><i class="fas fa-user"></i> Patient Information</strong>
@@ -219,26 +311,5 @@ function showFullText(resultId, fieldType) {
     //     content.html(data);
     // });
 }
-
-// Print functionality
-function printResults() {
-    window.print();
-}
-
-// Add print button if not exists
-$(document).ready(function() {
-    if ($('.print-btn').length === 0) {
-        $('h2').after(`
-            <div class="mb-3">
-                <button onclick="printResults()" class="btn btn-outline-primary print-btn">
-                    <i class="fas fa-print"></i> Print Results
-                </button>
-                <button onclick="window.history.back()" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-            </div>
-        `);
-    }
-});
 </script>
 {% endblock %}

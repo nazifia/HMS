@@ -171,8 +171,13 @@
                         </thead>
                         <tbody>
                             {% for prescription in page_obj %}
-                                <tr class="{% if prescription.status == 'pending' %}table-warning{% elif prescription.status == 'processing' %}table-info{% elif prescription.status == 'completed' %}table-success{% elif prescription.status == 'cancelled' %}table-danger{% endif %}">
-                                    <td>{{ prescription.id }}</td>
+                                <tr class="{% if prescription.is_from_surgery_pack %}bg-warning bg-opacity-50{% elif prescription.status == 'pending' %}table-warning{% elif prescription.status == 'processing' %}table-info{% elif prescription.status == 'completed' %}table-success{% elif prescription.status == 'cancelled' %}table-danger{% endif %}" {% if prescription.is_from_surgery_pack %}style="background-color: #fff3cd !important;"{% endif %}>
+                                    <td>
+                                        {{ prescription.id }}
+                                        {% if prescription.is_from_surgery_pack %}
+                                            <br><small class="badge bg-warning text-dark"><i class="fas fa-scalpel"></i> Surgery Pack</small>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
                                     <td>
                                         <a href="{% url 'patients:detail' prescription.patient.id %}">

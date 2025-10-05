@@ -13,6 +13,7 @@ from patients.models import Patient
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
 from pharmacy.forms import PackOrderForm
+from pharmacy.views import _add_pack_to_patient_billing
 from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 from .models import (
@@ -1000,15 +1001,15 @@ def order_medical_pack_for_surgery(request, surgery_id):
                     # Automatically process pack order and create prescription
                     try:
                         prescription = pack_order.process_order(request.user)
-                        
-                        # Add pack costs to surgery invoice
-                        _add_pack_to_surgery_invoice(surgery, pack_order)
-                        
+
+                        # Add pack costs to patient billing via pharmacy
+                        _add_pack_to_patient_billing(surgery.patient, pack_order, 'surgery')
+
                         messages.success(
-                            request, 
+                            request,
                             f'Medical pack "{pack_order.pack.name}" ordered successfully for surgery. '
                             f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications. '
-                            f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to the surgery invoice.'
+                            f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to pharmacy billing.'
                         )
                     except Exception as e:
                         # Pack order was created but processing failed

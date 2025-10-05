@@ -284,11 +284,14 @@
                         {% for prescription in page_obj %}
                         {% with dispensing_info=prescription.get_dispensing_status_info %}
                         {% with progress=prescription.get_dispensing_progress %}
-                        <tr>
+                        <tr {% if prescription.is_from_surgery_pack %}style="background-color: #fff3cd !important;"{% endif %}>
                             <td>
                                 {{ prescription.patient.get_full_name }}
                                 <br>
                                 <small class="text-muted">ID: {{ prescription.patient.patient_id }}</small>
+                                {% if prescription.is_from_surgery_pack %}
+                                    <br><small class="badge bg-warning text-dark"><i class="fas fa-scalpel"></i> Surgery Pack</small>
+                                {% endif %}
                                 <br>
                                 <a href="{% url 'pharmacy:patient_prescriptions' prescription.patient.id %}" class="btn btn-outline-primary btn-xs mt-1" title="View all prescriptions for this patient">
                                     <i class="fas fa-list"></i> All Prescriptions

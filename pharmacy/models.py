@@ -540,6 +540,30 @@ class Prescription(models.Model):
         """Check if the patient is an NHIA patient"""
         return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None
 
+    def is_from_pack_order(self):
+        """Check if this prescription was created from a pack order"""
+        return self.notes and "Created from Pack Order #" in self.notes
+
+    def get_pack_order(self):
+        """Get the pack order that created this prescription"""
+        if not self.is_from_pack_order():
+            return None
+        try:
+            # Extract pack order ID from notes
+            import re
+            match = re.search(r'Created from Pack Order #(\d+)', self.notes)
+            if match:
+                pack_order_id = int(match.group(1))
+                return PackOrder.objects.get(id=pack_order_id)
+        except (PackOrder.DoesNotExist, ValueError):
+            pass
+        return None
+
+    def is_from_surgery_pack(self):
+        """Check if this prescription was created from a surgery pack order"""
+        pack_order = self.get_pack_order()
+        return pack_order and pack_order.surgery is not None
+
     def check_authorization_requirement(self):
         """
         Check if this prescription requires authorization.
