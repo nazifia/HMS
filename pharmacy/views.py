@@ -1509,7 +1509,7 @@ def reject_purchase(request, purchase_id):
 def prescription_list(request):
     """View for listing prescriptions with enhanced search and filtering"""
     # Get all prescriptions with prefetch for efficient dispensing status calculation
-    prescriptions = Prescription.objects.select_related('patient', 'doctor').prefetch_related('items').order_by('-prescription_date')
+    prescriptions = Prescription.objects.select_related('patient', 'doctor').prefetch_related('items').order_by('-created_at')
     
     # Initialize the search form
     search_form = PrescriptionSearchForm(request.GET)
@@ -1609,6 +1609,13 @@ def prescription_list(request):
     }
     
     return render(request, 'pharmacy/prescription_list.html', context)
+import datetime
+
+from django.core.paginator import Paginator
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+
+from .models import Patient, Prescription
 
 
 @login_required
@@ -1618,7 +1625,7 @@ def patient_prescriptions(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
     # Get prescriptions for this patient
-    prescriptions = Prescription.objects.filter(patient=patient).select_related('doctor').order_by('-prescription_date')
+    prescriptions = Prescription.objects.filter(patient=patient).select_related('doctor').order_by('-created_at')
     
     # Pagination
     paginator = Paginator(prescriptions, 10)
