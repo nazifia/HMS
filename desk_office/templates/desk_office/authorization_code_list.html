@@ -95,7 +95,7 @@
                                 <td>{{ code.patient.get_full_name }}</td>
                                 <td>{{ code.patient.patient_id }}</td>
                                 <td>{{ code.get_service_type_display }}</td>
-                                <td>GH₵ {{ code.amount }}</td>
+                                <td>₦ {{ code.amount }}</td>
                                 <td>
                                     <span class="badge bg-{% if code.status == 'active' %}success{% elif code.status == 'used' %}secondary{% elif code.status == 'expired' %}danger{% else %}warning{% endif %}">
                                         {{ code.get_status_display }}
