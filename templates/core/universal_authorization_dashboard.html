@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Universal Authorization Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-shield-alt"></i> Universal Authorization Dashboard
+        </h1>
+        <div>
+            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Back to Desk Office Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Requests</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_pending }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Generated Today</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.today_generated }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Active Codes</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active_codes }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-key fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Expired Codes</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.expired_codes }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Authorization Requests -->
+    {% if pending_items %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Pending Authorization Requests
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="accordion" id="pendingAccordion">
+                {% for model_type, data in pending_items.items %}
+                <div class="card mb-2">
+                    <div class="card-header" id="heading{{ forloop.counter }}">
+                        <h2 class="mb-0">
+                            <button class="btn btn-link btn-block text-left" type="button" 
+                                    data-toggle="collapse" data-target="#collapse{{ forloop.counter }}" 
+                                    aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" 
+                                    aria-controls="collapse{{ forloop.counter }}">
+                                <i class="fas fa-chevron-down"></i> 
+                                {{ data.display_name }} 
+                                <span class="badge badge-warning">{{ data.count }}</span>
+                            </button>
+                        </h2>
+                    </div>
+
+                    <div id="collapse{{ forloop.counter }}" 
+                         class="collapse {% if forloop.first %}show{% endif %}" 
+                         aria-labelledby="heading{{ forloop.counter }}" 
+                         data-parent="#pendingAccordion">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Patient</th>
+                                            <th>Patient ID</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in data.items %}
+                                        <tr>
+                                            <td>{{ item.id }}</td>
+                                            <td>{{ item.patient.get_full_name }}</td>
+                                            <td>{{ item.patient.patient_id }}</td>
+                                            <td>
+                                                {% if item.visit_date %}
+                                                    {{ item.visit_date|date:"Y-m-d" }}
+                                                {% elif item.consultation_date %}
+                                                    {{ item.consultation_date|date:"Y-m-d" }}
+                                                {% elif item.request_date %}
+                                                    {{ item.request_date|date:"Y-m-d" }}
+                                                {% elif item.order_date %}
+                                                    {{ item.order_date|date:"Y-m-d" }}
+                                                {% elif item.prescription_date %}
+                                                    {{ item.prescription_date|date:"Y-m-d" }}
+                                                {% elif item.referral_date %}
+                                                    {{ item.referral_date|date:"Y-m-d" }}
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.authorization_status %}
+                                                    <span class="badge badge-{% if item.authorization_status == 'pending' %}warning{% elif item.authorization_status == 'required' %}danger{% else %}secondary{% endif %}">
+                                                        {{ item.authorization_status|title }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge badge-warning">Required</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'core:generate_authorization' model_type=model_type object_id=item.id %}" 
+                                                   class="btn btn-sm btn-success">
+                                                    <i class="fas fa-key"></i> Generate Code
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No pending authorization requests at this time.
+    </div>
+    {% endif %}
+
+    <!-- Recent Authorization Codes -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-history"></i> Recent Authorization Codes
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Patient</th>
+                            <th>Service Type</th>
+                            <th>Amount</th>
+                            <th>Expiry Date</th>
+                            <th>Status</th>
+                            <th>Generated By</th>
+                            <th>Generated At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for code in recent_codes %}
+                        <tr>
+                            <td><strong>{{ code.code }}</strong></td>
+                            <td>{{ code.patient.get_full_name }}</td>
+                            <td>{{ code.get_service_type_display }}</td>
+                            <td>GH₵ {{ code.amount|floatformat:2 }}</td>
+                            <td>
+                                {{ code.expiry_date|date:"Y-m-d" }}
+                                {% if code.expiry_date < today %}
+                                    <span class="badge badge-danger">Expired</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge badge-{% if code.status == 'active' %}success{% elif code.status == 'used' %}info{% elif code.status == 'expired' %}danger{% else %}secondary{% endif %}">
+                                    {{ code.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ code.generated_by.get_full_name|default:"System" }}</td>
+                            <td>{{ code.generated_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No authorization codes generated yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

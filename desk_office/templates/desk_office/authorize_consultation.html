@@ -83,21 +83,49 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="authForm">
                         {% csrf_token %}
-                        
+
+                        <!-- Code Type Selection -->
+                        <div class="mb-3">
+                            <label class="form-label">Authorization Code Type</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="code_type" id="codeTypeAuto" value="auto" checked>
+                                <label class="form-check-label" for="codeTypeAuto">
+                                    <i class="fas fa-magic text-primary"></i> <strong>Auto-Generate</strong>
+                                    <small class="d-block text-muted">System generates unique code</small>
+                                </label>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="radio" name="code_type" id="codeTypeManual" value="manual">
+                                <label class="form-check-label" for="codeTypeManual">
+                                    <i class="fas fa-keyboard text-success"></i> <strong>Manual Input</strong>
+                                    <small class="d-block text-muted">Enter custom code</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Manual Code Input -->
+                        <div class="mb-3" id="manualCodeGroup" style="display: none;">
+                            <label for="manual_code" class="form-label">Manual Authorization Code</label>
+                            <input type="text" class="form-control text-uppercase" id="manual_code" name="manual_code"
+                                   placeholder="e.g., NHIA-2025-001" {% if form_data.code_type == 'manual' %}value="{{ form_data.manual_code }}"{% endif %}>
+                            <small class="form-text text-muted">Letters, numbers, and hyphens only</small>
+                        </div>
+
                         <div class="mb-3">
                             <label for="amount" class="form-label">Amount Covered (GH₵)</label>
-                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" value="0.00" required>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount"
+                                   value="{% if form_data.amount %}{{ form_data.amount }}{% else %}0.00{% endif %}" required>
                             <small class="form-text text-muted">Enter the amount this authorization code will cover</small>
                         </div>
 
                         <div class="mb-3">
                             <label for="expiry_days" class="form-label">Validity Period (Days)</label>
                             <select class="form-select" id="expiry_days" name="expiry_days" required>
-                                <option value="7">7 Days</option>
-                                <option value="14">14 Days</option>
-                                <option value="30" selected>30 Days</option>
+                                <option value="7" {% if form_data.expiry_days == '7' %}selected{% endif %}>7 Days</option>
+                                <option value="14" {% if form_data.expiry_days == '14' %}selected{% endif %}>14 Days</option>
+                                <option value="30" {% if not form_data.expiry_days or form_data.expiry_days == '30' %}selected{% endif %}>30 Days</option>
                                 <option value="60">60 Days</option>
                                 <option value="90">90 Days</option>
                             </select>
@@ -106,7 +134,7 @@
 
                         <div class="mb-3">
                             <label for="notes" class="form-label">Notes (Optional)</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Add any additional notes or remarks..."></textarea>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Add any additional notes or remarks...">{% if form_data.notes %}{{ form_data.notes }}{% endif %}</textarea>
                         </div>
 
                         <div class="alert alert-warning">
@@ -129,5 +157,32 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Toggle manual code input
+    $('input[name="code_type"]').change(function() {
+        if ($(this).val() === 'manual') {
+            $('#manualCodeGroup').slideDown();
+            $('#manual_code').prop('required', true);
+        } else {
+            $('#manualCodeGroup').slideUp();
+            $('#manual_code').prop('required', false);
+        }
+    });
+
+    // Auto-uppercase manual code
+    $('#manual_code').on('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+
+    // Check if manual was previously selected
+    {% if form_data.code_type == 'manual' %}
+    $('#codeTypeManual').prop('checked', true).trigger('change');
+    {% endif %}
+});
+</script>
 {% endblock %}
 

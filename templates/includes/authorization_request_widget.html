@@ -1,0 +1,190 @@
+{% load static %}
+{% comment %}
+Universal Authorization Request Widget
+Can be included in any module's detail page to request/view authorization
+
+Usage:
+    {% include 'includes/authorization_request_widget.html' with object=record model_type='dental_record' %}
+    
+Parameters:
+    - object: The model instance (consultation, prescription, dental_record, etc.)
+    - model_type: String identifier from AUTHORIZATION_SUPPORTED_MODELS
+    - show_request_button: Boolean, default True - whether to show request button
+    - show_generate_button: Boolean, default False - whether to show generate button (for desk office staff)
+{% endcomment %}
+
+{% if object and object.patient %}
+<div class="card border-left-info shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-info">
+            <i class="fas fa-shield-alt"></i> NHIA Authorization Status
+        </h6>
+        {% if object.patient.patient_type == 'nhia' %}
+            <span class="badge badge-info">NHIA Patient</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if object.patient.patient_type != 'nhia' %}
+            <div class="alert alert-secondary mb-0">
+                <i class="fas fa-info-circle"></i> Authorization not required - Patient is not NHIA
+            </div>
+        {% else %}
+            {# Check authorization status #}
+            {% if object.authorization_code %}
+                {# Has authorization code #}
+                <div class="alert alert-success">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle fa-2x me-3"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1"><strong>Authorization Granted</strong></h6>
+                            <p class="mb-1">
+                                <strong>Code:</strong> 
+                                {% if object.authorization_code.code %}
+                                    {{ object.authorization_code.code }}
+                                {% else %}
+                                    {{ object.authorization_code }}
+                                {% endif %}
+                            </p>
+                            {% if object.authorization_code.expiry_date %}
+                                <p class="mb-1">
+                                    <strong>Expires:</strong> {{ object.authorization_code.expiry_date|date:"F d, Y" }}
+                                    {% if object.authorization_code.expiry_date < today %}
+                                        <span class="badge badge-danger">Expired</span>
+                                    {% endif %}
+                                </p>
+                            {% endif %}
+                            {% if object.authorization_code.amount %}
+                                <p class="mb-0">
+                                    <strong>Amount Covered:</strong> GH₵ {{ object.authorization_code.amount|floatformat:2 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% elif object.authorization_status == 'pending' or object.authorization_status == 'required' %}
+                {# Pending authorization #}
+                <div class="alert alert-warning">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-clock fa-2x me-3"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1"><strong>Authorization Required</strong></h6>
+                            <p class="mb-0">
+                                {% if object.authorization_status == 'pending' %}
+                                    Authorization request is pending desk office approval.
+                                {% else %}
+                                    This service requires desk office authorization before processing.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                {# Action buttons #}
+                <div class="mt-3">
+                    {% if show_generate_button %}
+                        {# For desk office staff #}
+                        <a href="{% url 'core:generate_authorization' model_type=model_type object_id=object.id %}" 
+                           class="btn btn-success">
+                            <i class="fas fa-key"></i> Generate Authorization Code
+                        </a>
+                    {% endif %}
+                    
+                    {% if object.authorization_status != 'pending' and show_request_button|default:True %}
+                        {# Request authorization button #}
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#authRequestModal{{ object.id }}">
+                            <i class="fas fa-paper-plane"></i> Request Authorization
+                        </button>
+                    {% endif %}
+                </div>
+            {% else %}
+                {# No authorization yet #}
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle fa-2x me-3"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1"><strong>NHIA Patient</strong></h6>
+                            <p class="mb-0">
+                                This patient may require desk office authorization for this service.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                {# Action buttons #}
+                <div class="mt-3">
+                    {% if show_generate_button %}
+                        {# For desk office staff #}
+                        <a href="{% url 'core:generate_authorization' model_type=model_type object_id=object.id %}" 
+                           class="btn btn-success">
+                            <i class="fas fa-key"></i> Generate Authorization Code
+                        </a>
+                    {% endif %}
+                    
+                    {% if show_request_button|default:True %}
+                        {# Request authorization button #}
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#authRequestModal{{ object.id }}">
+                            <i class="fas fa-paper-plane"></i> Request Authorization
+                        </button>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{# Authorization Request Modal #}
+{% if object.patient.patient_type == 'nhia' and show_request_button|default:True %}
+<div class="modal fade" id="authRequestModal{{ object.id }}" tabindex="-1" role="dialog" aria-labelledby="authRequestModalLabel{{ object.id }}" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="authRequestModalLabel{{ object.id }}">
+                    <i class="fas fa-paper-plane"></i> Request Authorization
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" action="{% url 'core:request_authorization' model_type=model_type object_id=object.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Patient:</strong> {{ object.patient.get_full_name }}<br>
+                        <strong>Patient ID:</strong> {{ object.patient.patient_id }}<br>
+                        <strong>Service:</strong> {{ model_type|title|replace:"_":" " }}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="request_notes{{ object.id }}">Reason for Authorization Request</label>
+                        <textarea class="form-control" id="request_notes{{ object.id }}" name="notes" rows="3" 
+                                  placeholder="Explain why this service requires authorization..."></textarea>
+                        <small class="form-text text-muted">
+                            Provide details to help desk office staff process this request quickly.
+                        </small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="estimated_amount{{ object.id }}">Estimated Amount (Optional)</label>
+                        <input type="number" class="form-control" id="estimated_amount{{ object.id }}" 
+                               name="estimated_amount" step="0.01" min="0" 
+                               placeholder="0.00">
+                        <small class="form-text text-muted">
+                            Estimated cost of the service (if known)
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+

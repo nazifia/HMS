@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Generate Authorization Code{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-key"></i> Generate Authorization Code
+        </h1>
+        <a href="javascript:history.back()" class="btn btn-sm btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Object Information Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> {{ model_info.display_name }} Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Record ID:</th>
+                            <td>#{{ object.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Patient Name:</th>
+                            <td>{{ object.patient.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Patient ID:</th>
+                            <td>{{ object.patient.patient_id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Patient Type:</th>
+                            <td>
+                                <span class="badge badge-{% if object.patient.patient_type == 'nhia' %}info{% else %}secondary{% endif %}">
+                                    {{ object.patient.get_patient_type_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Service Type:</th>
+                            <td>{{ model_info.display_name }}</td>
+                        </tr>
+                        {% if object.doctor %}
+                        <tr>
+                            <th>Doctor:</th>
+                            <td>{{ object.doctor.get_full_name }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if object.diagnosis %}
+                        <tr>
+                            <th>Diagnosis:</th>
+                            <td>{{ object.diagnosis }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            <!-- Authorization Form Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-key"></i> Generate Authorization Code
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="authorizationForm">
+                        {% csrf_token %}
+
+                        <!-- Code Type Selection -->
+                        <div class="form-group">
+                            <label>Authorization Code Type <span class="text-danger">*</span></label>
+                            <div class="custom-control custom-radio">
+                                <input type="radio" id="codeTypeAuto" name="code_type" value="auto"
+                                       class="custom-control-input" checked>
+                                <label class="custom-control-label" for="codeTypeAuto">
+                                    <i class="fas fa-magic text-primary"></i> <strong>Auto-Generate Code</strong>
+                                    <small class="d-block text-muted">System will automatically generate a unique code</small>
+                                </label>
+                            </div>
+                            <div class="custom-control custom-radio mt-2">
+                                <input type="radio" id="codeTypeManual" name="code_type" value="manual"
+                                       class="custom-control-input">
+                                <label class="custom-control-label" for="codeTypeManual">
+                                    <i class="fas fa-keyboard text-success"></i> <strong>Manual Code Input</strong>
+                                    <small class="d-block text-muted">Enter your own authorization code</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Manual Code Input (Hidden by default) -->
+                        <div class="form-group" id="manualCodeGroup" style="display: none;">
+                            <label for="manual_code">Manual Authorization Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control text-uppercase" id="manual_code" name="manual_code"
+                                   placeholder="e.g., NHIA-2025-001, CUSTOM-CODE-123"
+                                   pattern="[A-Z0-9\-]+"
+                                   title="Only uppercase letters, numbers, and hyphens allowed"
+                                   {% if form_data.code_type == 'manual' %}value="{{ form_data.manual_code }}"{% endif %}>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> Enter a unique code (letters, numbers, and hyphens only).
+                                Code will be automatically converted to uppercase.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="amount">Amount Covered <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">GH₵</span>
+                                </div>
+                                <input type="number" class="form-control" id="amount" name="amount"
+                                       step="0.01" min="0"
+                                       value="{% if form_data.amount %}{{ form_data.amount }}{% else %}0.00{% endif %}"
+                                       required>
+                            </div>
+                            <small class="form-text text-muted">
+                                Enter the amount that will be covered by this authorization code.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expiry_days">Validity Period <span class="text-danger">*</span></label>
+                            <select class="form-control" id="expiry_days" name="expiry_days" required>
+                                <option value="7" {% if form_data.expiry_days == '7' %}selected{% endif %}>7 Days</option>
+                                <option value="14" {% if form_data.expiry_days == '14' %}selected{% endif %}>14 Days</option>
+                                <option value="30" {% if not form_data.expiry_days or form_data.expiry_days == '30' %}selected{% endif %}>30 Days (1 Month)</option>
+                                <option value="60" {% if form_data.expiry_days == '60' %}selected{% endif %}>60 Days (2 Months)</option>
+                                <option value="90" {% if form_data.expiry_days == '90' %}selected{% endif %}>90 Days (3 Months)</option>
+                                <option value="180" {% if form_data.expiry_days == '180' %}selected{% endif %}>180 Days (6 Months)</option>
+                                <option value="365" {% if form_data.expiry_days == '365' %}selected{% endif %}>365 Days (1 Year)</option>
+                            </select>
+                            <small class="form-text text-muted">
+                                Select how long this authorization code will remain valid.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="notes">Notes/Remarks</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="4"
+                                      placeholder="Enter any additional notes or remarks about this authorization...">{% if form_data.notes %}{{ form_data.notes }}{% endif %}</textarea>
+                            <small class="form-text text-muted">
+                                Optional: Add any relevant information about this authorization.
+                            </small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Note:</strong> Once generated, the authorization code will be automatically linked to this {{ model_info.display_name|lower }} and the patient will be able to proceed with the service.
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-key"></i> Generate Authorization Code
+                            </button>
+                            <a href="javascript:history.back()" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Help Card -->
+            <div class="card shadow mb-4 border-left-info">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-question-circle"></i> Help & Guidelines
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="font-weight-bold">Authorization Code Purpose</h6>
+                    <p class="small">
+                        Authorization codes are required for NHIA patients accessing services in non-NHIA units or specialty services.
+                    </p>
+
+                    <h6 class="font-weight-bold mt-3">Code Type Options</h6>
+                    <p class="small mb-1">
+                        <strong>Auto-Generate:</strong> System creates a unique code automatically (e.g., AUTH-20251005-ABC123)
+                    </p>
+                    <p class="small">
+                        <strong>Manual Input:</strong> Enter your own custom code (e.g., NHIA-2025-001, CUSTOM-CODE-123)
+                    </p>
+
+                    <h6 class="font-weight-bold mt-3">Amount Covered</h6>
+                    <p class="small">
+                        Enter the maximum amount that NHIA will cover for this service. The patient may be responsible for any amount exceeding this.
+                    </p>
+
+                    <h6 class="font-weight-bold mt-3">Validity Period</h6>
+                    <p class="small">
+                        Choose an appropriate validity period based on the service type and expected completion time.
+                    </p>
+
+                    <h6 class="font-weight-bold mt-3">After Generation</h6>
+                    <p class="small mb-0">
+                        The authorization code will be:
+                    </p>
+                    <ul class="small">
+                        <li>Automatically linked to this record</li>
+                        <li>Visible to relevant staff</li>
+                        <li>Tracked in the system</li>
+                        <li>Marked as used when service is completed</li>
+                        <li>Accepted at all requesting units/departments</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Patient History Card -->
+            {% if object.patient %}
+            <div class="card shadow mb-4 border-left-warning">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-history"></i> Patient Authorization History
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="small">
+                        <a href="{% url 'core:authorization_history' model_type=model_type object_id=object.id %}" 
+                           class="btn btn-sm btn-outline-warning btn-block">
+                            <i class="fas fa-list"></i> View Full Authorization History
+                        </a>
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Toggle manual code input visibility
+    $('input[name="code_type"]').change(function() {
+        if ($(this).val() === 'manual') {
+            $('#manualCodeGroup').slideDown();
+            $('#manual_code').prop('required', true);
+        } else {
+            $('#manualCodeGroup').slideUp();
+            $('#manual_code').prop('required', false);
+        }
+    });
+
+    // Auto-uppercase manual code input
+    $('#manual_code').on('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+
+    // Form validation
+    $('#authorizationForm').submit(function(e) {
+        var codeType = $('input[name="code_type"]:checked').val();
+
+        if (codeType === 'manual') {
+            var manualCode = $('#manual_code').val().trim();
+
+            if (!manualCode) {
+                e.preventDefault();
+                alert('Please enter a manual authorization code.');
+                $('#manual_code').focus();
+                return false;
+            }
+
+            // Validate format (alphanumeric and hyphens only)
+            var pattern = /^[A-Z0-9\-]+$/;
+            if (!pattern.test(manualCode)) {
+                e.preventDefault();
+                alert('Authorization code can only contain uppercase letters, numbers, and hyphens.');
+                $('#manual_code').focus();
+                return false;
+            }
+
+            // Minimum length check
+            if (manualCode.length < 3) {
+                e.preventDefault();
+                alert('Authorization code must be at least 3 characters long.');
+                $('#manual_code').focus();
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    // Check if manual code was previously selected (form resubmission)
+    {% if form_data.code_type == 'manual' %}
+    $('#codeTypeManual').prop('checked', true).trigger('change');
+    {% endif %}
+});
+</script>
+{% endblock %}
+

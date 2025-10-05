@@ -137,21 +137,50 @@ def authorize_consultation(request, consultation_id):
         return redirect('desk_office:authorization_dashboard')
     
     if request.method == 'POST':
-        # Generate authorization code
-        while True:
-            code_str = generate_authorization_code_string()
-            if not AuthorizationCode.objects.filter(code=code_str).exists():
-                break
-        
-        # Determine service type based on consultation
-        service_type = 'general'
-        
-        # Get amount and expiry date from form
+        # Get form data
         amount = request.POST.get('amount', '0.00')
         expiry_days = int(request.POST.get('expiry_days', '30'))
         expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
         notes = request.POST.get('notes', '')
-        
+        code_type = request.POST.get('code_type', 'auto')
+        manual_code = request.POST.get('manual_code', '').strip().upper()
+
+        # Determine service type based on consultation
+        service_type = 'general'
+
+        # Handle code generation (auto or manual)
+        if code_type == 'manual':
+            if not manual_code:
+                messages.error(request, 'Please enter a manual authorization code.')
+                context = {
+                    'consultation': consultation,
+                    'page_title': f'Authorize Consultation #{consultation.id}',
+                    'active_nav': 'desk_office',
+                    'form_data': request.POST,
+                }
+                return render(request, 'desk_office/authorize_consultation.html', context)
+
+            # Check if manual code already exists
+            if AuthorizationCode.objects.filter(code=manual_code).exists():
+                messages.error(request, f'Authorization code "{manual_code}" already exists. Please use a different code.')
+                context = {
+                    'consultation': consultation,
+                    'page_title': f'Authorize Consultation #{consultation.id}',
+                    'active_nav': 'desk_office',
+                    'form_data': request.POST,
+                }
+                return render(request, 'desk_office/authorize_consultation.html', context)
+
+            code_str = manual_code
+            code_source = "Manual"
+        else:
+            # Auto-generate authorization code
+            while True:
+                code_str = generate_authorization_code_string()
+                if not AuthorizationCode.objects.filter(code=code_str).exists():
+                    break
+            code_source = "System"
+
         # Create authorization code
         auth_code = AuthorizationCode.objects.create(
             code=code_str,
@@ -160,15 +189,15 @@ def authorize_consultation(request, consultation_id):
             amount=amount,
             expiry_date=expiry_date,
             status='active',
-            notes=f"Generated for consultation #{consultation.id} in {consultation.consulting_room}. {notes}",
+            notes=f"{code_source}-generated for consultation #{consultation.id} in {consultation.consulting_room}. {notes}",
             generated_by=request.user
         )
-        
+
         # Link authorization code to consultation
         consultation.authorization_code = auth_code
         consultation.authorization_status = 'authorized'
         consultation.save()
-        
+
         messages.success(request, f'Authorization code {auth_code.code} generated successfully for consultation #{consultation.id}.')
         return redirect('desk_office:authorization_dashboard')
     
@@ -185,27 +214,56 @@ def authorize_consultation(request, consultation_id):
 def authorize_referral(request, referral_id):
     """Generate authorization code for a specific referral"""
     referral = get_object_or_404(Referral, id=referral_id)
-    
+
     if not referral.requires_authorization:
         messages.error(request, 'This referral does not require authorization.')
         return redirect('desk_office:authorization_dashboard')
-    
+
     if request.method == 'POST':
-        # Generate authorization code
-        while True:
-            code_str = generate_authorization_code_string()
-            if not AuthorizationCode.objects.filter(code=code_str).exists():
-                break
-        
-        # Determine service type
-        service_type = 'general'
-        
-        # Get amount and expiry date from form
+        # Get form data
         amount = request.POST.get('amount', '0.00')
         expiry_days = int(request.POST.get('expiry_days', '30'))
         expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
         notes = request.POST.get('notes', '')
-        
+        code_type = request.POST.get('code_type', 'auto')
+        manual_code = request.POST.get('manual_code', '').strip().upper()
+
+        # Determine service type
+        service_type = 'general'
+
+        # Handle code generation (auto or manual)
+        if code_type == 'manual':
+            if not manual_code:
+                messages.error(request, 'Please enter a manual authorization code.')
+                context = {
+                    'referral': referral,
+                    'page_title': f'Authorize Referral #{referral.id}',
+                    'active_nav': 'desk_office',
+                    'form_data': request.POST,
+                }
+                return render(request, 'desk_office/authorize_referral.html', context)
+
+            # Check if manual code already exists
+            if AuthorizationCode.objects.filter(code=manual_code).exists():
+                messages.error(request, f'Authorization code "{manual_code}" already exists. Please use a different code.')
+                context = {
+                    'referral': referral,
+                    'page_title': f'Authorize Referral #{referral.id}',
+                    'active_nav': 'desk_office',
+                    'form_data': request.POST,
+                }
+                return render(request, 'desk_office/authorize_referral.html', context)
+
+            code_str = manual_code
+            code_source = "Manual"
+        else:
+            # Auto-generate authorization code
+            while True:
+                code_str = generate_authorization_code_string()
+                if not AuthorizationCode.objects.filter(code=code_str).exists():
+                    break
+            code_source = "System"
+
         # Create authorization code
         auth_code = AuthorizationCode.objects.create(
             code=code_str,
@@ -214,15 +272,15 @@ def authorize_referral(request, referral_id):
             amount=amount,
             expiry_date=expiry_date,
             status='active',
-            notes=f"Generated for referral #{referral.id} to {referral.get_referral_destination()}. {notes}",
+            notes=f"{code_source}-generated for referral #{referral.id} to {referral.get_referral_destination()}. {notes}",
             generated_by=request.user
         )
-        
+
         # Link authorization code to referral
         referral.authorization_code = auth_code
         referral.authorization_status = 'authorized'
         referral.save()
-        
+
         messages.success(request, f'Authorization code {auth_code.code} generated successfully for referral #{referral.id}.')
         return redirect('desk_office:authorization_dashboard')
     

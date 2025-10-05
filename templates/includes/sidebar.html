@@ -378,9 +378,12 @@
                 <i class="fas fa-fw fa-desktop text-white"></i>
                 <span class="text-white">Desk Office</span>
             </a>
-            <div id="collapseDeskOffice" class="collapse {% if '/desk-office/' in request.path %}show{% endif %}" aria-labelledby="headingDeskOffice" data-parent="#accordionSidebar">
+            <div id="collapseDeskOffice" class="collapse {% if '/desk-office/' in request.path or '/core/authorization/' in request.path %}show{% endif %}" aria-labelledby="headingDeskOffice" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">NHIA Authorization:</h6>
+                    <a class="collapse-item {% if 'universal_authorization_dashboard' in request.path %}active{% endif %}" href="{% url 'core:universal_authorization_dashboard' %}">
+                        <i class="fas fa-globe me-1"></i> Universal Dashboard <span class="badge badge-success">New</span>
+                    </a>
                     <a class="collapse-item {% if 'authorization-dashboard' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_dashboard' %}">
                         <i class="fas fa-tachometer-alt me-1"></i> Dashboard
                     </a>
