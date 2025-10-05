@@ -294,7 +294,21 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
             equipment_formset.save()
             
             # Create an invoice for this surgery
-            subtotal = Decimal('0.00')  # For now, we'll set this to 0 as surgeries might have complex pricing
+            # Get surgery fee from surgery type
+            surgery_fee = Decimal(str(self.object.surgery_type.fee))
+
+            # NHIA patients use authorization code (no fee charged to patient)
+            # Regular patients pay full surgery fee
+            if self.object.patient.patient_type == 'nhia':
+                # NHIA patients: Surgery covered by authorization, no fee charged
+                patient_payable_fee = Decimal('0.00')
+                invoice_description = f"Theatre Procedure: {self.object.surgery_type.name} (NHIA Covered)"
+            else:
+                # Regular patients: Pay full surgery fee
+                patient_payable_fee = surgery_fee
+                invoice_description = f"Theatre Procedure: {self.object.surgery_type.name}"
+
+            subtotal = patient_payable_fee
             tax_amount = Decimal('0.00')
             total_amount = subtotal + tax_amount
             due_date = self.object.scheduled_date.date() + timedelta(days=7) # Example: due in 7 days
@@ -318,30 +332,30 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
                 created_by=self.request.user,
                 source_app='theatre'
             )
-            
+
             # Update surgery with invoice and authorization code
             self.object.invoice = invoice
             self.object.authorization_code = authorization_code
             self.object.status = 'scheduled' if authorization_code else 'pending'
             self.object.save()
-            
+
             # Create a generic InvoiceItem for the surgery
             theatre_service_category, _ = ServiceCategory.objects.get_or_create(name="Theatre Services")
             service, _ = Service.objects.get_or_create(
-                name=f"Theatre Procedure: {self.object.surgery_type.name}", 
+                name=f"Theatre Procedure: {self.object.surgery_type.name}",
                 category=theatre_service_category,
-                defaults={'price': Decimal('0.00'), 'description': f"Theatre procedure: {self.object.surgery_type.name}"}
+                defaults={'price': surgery_fee, 'description': f"Theatre procedure: {self.object.surgery_type.name}"}
             )
 
             InvoiceItem.objects.create(
                 invoice=invoice,
-                service=service, 
-                description=f"Theatre Procedure: {self.object.surgery_type.name}",
+                service=service,
+                description=invoice_description,
                 quantity=1,
-                unit_price=Decimal('0.00'),
+                unit_price=patient_payable_fee,
                 tax_percentage=service.tax_percentage,
                 tax_amount=Decimal('0.00'),
-                total_amount=Decimal('0.00')
+                total_amount=patient_payable_fee
             )
             
             # If authorization code was used, mark it as used

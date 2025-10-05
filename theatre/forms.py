@@ -59,11 +59,13 @@ class SurgeryTypeForm(forms.ModelForm):
             'recovery_time': DurationInput(attrs={'placeholder': 'HH:MM:SS'}),
             'description': forms.Textarea(attrs={'rows': 3}),
             'instructions': forms.Textarea(attrs={'rows': 3}),
+            'fee': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01', 'min': '0'}),
         }
         help_texts = {
             'average_duration': 'Format: HH:MM:SS',
             'preparation_time': 'Format: HH:MM:SS',
             'recovery_time': 'Format: HH:MM:SS',
+            'fee': 'Surgery fee in Naira (₦)',
         }
 
 

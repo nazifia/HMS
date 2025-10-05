@@ -35,7 +35,7 @@ class SurgeryType(models.Model):
         ('high', 'High Risk'),
         ('critical', 'Critical Risk'),
     )
-    
+
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     average_duration = models.DurationField(help_text="Expected duration of surgery (HH:MM:SS)")
@@ -43,10 +43,15 @@ class SurgeryType(models.Model):
     recovery_time = models.DurationField(help_text="Expected recovery time after surgery")
     risk_level = models.CharField(max_length=20, choices=RISK_LEVELS, default='medium')
     instructions = models.TextField(blank=True, null=True, help_text="Special instructions for this surgery type")
-    
+    fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Surgery fee in Naira (₦)")
+
     def __str__(self):
         return self.name
-    
+
+    def get_fee_display(self):
+        """Return formatted fee with Naira symbol"""
+        return f"₦{self.fee:,.2f}"
+
     class Meta:
         app_label = 'theatre'
         verbose_name = "Surgery Type"
