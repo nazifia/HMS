@@ -1036,6 +1036,7 @@ class PackOrder(models.Model):
     order_notes = models.TextField(blank=True, null=True, help_text="Additional notes about this pack order")
     scheduled_date = models.DateTimeField(null=True, blank=True, help_text="When the pack is needed")
     surgery = models.ForeignKey('theatre.Surgery', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
+    labor_record = models.ForeignKey('labor.LaborRecord', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
 
     def __str__(self):
         return f"Pack Order #{self.id} - {self.pack.name}"
@@ -1325,19 +1326,24 @@ class MedicalPack(models.Model):
 
     def get_total_value(self):
         """Calculate the total value of all items in the pack"""
-        total = 0
+        from decimal import Decimal
+        total = Decimal('0.00')
         try:
-            for item in self.medicalpackitem_set.all():
-                total += item.medication.price * item.quantity
+            for item in self.items.all():
+                total += Decimal(str(item.medication.price)) * item.quantity
         except AttributeError:
             # Fallback if no items relationship exists
-            total = 0
+            total = Decimal('0.00')
         return total
+
+    def get_total_cost(self):
+        """Calculate the total cost of all items in the pack (alias for get_total_value)"""
+        return self.get_total_value()
 
     def get_item_count(self):
         """Get the total number of items in this pack"""
         try:
-            return self.medicalpackitem_set.count()
+            return self.items.count()
         except AttributeError:
             return 0
 

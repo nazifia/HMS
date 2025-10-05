@@ -1164,12 +1164,21 @@ class PackOrderForm(forms.ModelForm):
         self.surgery = kwargs.pop('surgery', None)
         self.labor_record = kwargs.pop('labor_record', None)
         request = kwargs.pop('request', None)
-        
+
         super().__init__(*args, **kwargs)
-        
-        # Handle patient preselection
+
+        # Handle patient pre-selection for surgery context
+        if self.surgery and not self.preselected_patient:
+            self.preselected_patient = self.surgery.patient
+
+        # Handle patient pre-selection for labor context
+        if self.labor_record and not self.preselected_patient:
+            self.preselected_patient = self.labor_record.patient
+
+        # Apply patient pre-selection if set
         if self.preselected_patient:
             self.fields['patient'].initial = self.preselected_patient
+            self.fields['patient'].required = False  # Make it not required since we use patient_hidden
             self.fields['patient'].widget.attrs.update({
                 'readonly': True,
                 'disabled': True,
@@ -1177,7 +1186,7 @@ class PackOrderForm(forms.ModelForm):
                 'style': 'background-color: #e9ecef; cursor: not-allowed;'
             })
             self.fields['patient'].queryset = Patient.objects.filter(id=self.preselected_patient.id)
-            
+
             # Add hidden field for patient
             self.fields['patient_hidden'] = forms.ModelChoiceField(
                 queryset=Patient.objects.filter(id=self.preselected_patient.id),
@@ -1185,7 +1194,7 @@ class PackOrderForm(forms.ModelForm):
                 widget=forms.HiddenInput(),
                 required=True
             )
-        
+
         # Filter packs based on context
         if self.surgery:
             # Filter to surgery packs
@@ -1196,7 +1205,7 @@ class PackOrderForm(forms.ModelForm):
                 'Cesarean Section': 'cesarean_section',
                 'Tonsillectomy': 'tonsillectomy',
             }
-            
+
             surgery_type = surgery_type_mapping.get(self.surgery.surgery_type.name)
             if surgery_type:
                 self.fields['pack'].queryset = MedicalPack.objects.filter(
@@ -1209,7 +1218,7 @@ class PackOrderForm(forms.ModelForm):
                     is_active=True,
                     pack_type='surgery'
                 )
-                
+
         elif self.labor_record:
             # Filter to labor packs
             self.fields['pack'].queryset = MedicalPack.objects.filter(

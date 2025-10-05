@@ -73,7 +73,26 @@
                 <div class="card-body">
                     <form method="post" id="packOrderForm">
                         {% csrf_token %}
-                        
+
+                        <!-- Patient Field (Pre-selected and Disabled) -->
+                        <div class="mb-3">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">
+                                Patient <span class="text-danger">*</span>
+                            </label>
+                            {{ form.patient }}
+                            {% if form.patient_hidden %}
+                                {{ form.patient_hidden }}
+                            {% endif %}
+                            {% if form.patient.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.patient.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Patient is automatically selected from the surgery
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="mb-3">
@@ -92,9 +111,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Hidden patient field since it's pre-filled from surgery -->
-                        <input type="hidden" name="patient" value="{{ surgery.patient.id }}">
 
                         <div class="mb-3">
                             <label for="{{ form.scheduled_date.id_for_label }}" class="form-label">

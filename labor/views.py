@@ -227,8 +227,8 @@ def order_medical_pack_for_labor(request, record_id):
             available_packs = delivery_type_packs
     
     if request.method == 'POST':
-        form = PackOrderForm(request.POST)
-        
+        form = PackOrderForm(request.POST, labor_record=record, preselected_patient=record.patient)
+
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -272,11 +272,10 @@ def order_medical_pack_for_labor(request, record_id):
     else:
         # Pre-populate form with labor context
         initial_data = {
-            'patient': record.patient.id,
             'scheduled_date': record.visit_date,
             'order_notes': f'Pack order for labor record: {record.diagnosis or "Labor/Delivery"}'
         }
-        form = PackOrderForm(initial=initial_data)
+        form = PackOrderForm(initial=initial_data, labor_record=record, preselected_patient=record.patient)
         
         # Filter pack choices to labor-specific packs
         form.fields['pack'].queryset = available_packs

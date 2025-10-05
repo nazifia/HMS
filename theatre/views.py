@@ -929,24 +929,33 @@ def order_medical_pack_for_surgery(request, surgery_id):
         is_active=True,
         pack_type='surgery'
     )
-    
+
     # Filter by surgery type if available
     if hasattr(surgery.surgery_type, 'name'):
-        surgery_type_packs = available_packs.filter(
-            surgery_type__icontains=surgery.surgery_type.name.lower()
-        )
-        if surgery_type_packs.exists():
-            available_packs = surgery_type_packs
+        # Map surgery type name to the choice value
+        surgery_type_mapping = {
+            'Appendectomy': 'appendectomy',
+            'Cholecystectomy': 'cholecystectomy',
+            'Hernia Repair': 'hernia_repair',
+            'Cesarean Section': 'cesarean_section',
+            'Tonsillectomy': 'tonsillectomy',
+        }
+
+        surgery_type = surgery_type_mapping.get(surgery.surgery_type.name)
+        if surgery_type:
+            surgery_type_packs = available_packs.filter(surgery_type=surgery_type)
+            if surgery_type_packs.exists():
+                available_packs = surgery_type_packs
     
     if request.method == 'POST':
-        form = PackOrderForm(request.POST)
-        
+        form = PackOrderForm(request.POST, surgery=surgery, preselected_patient=surgery.patient)
+
         if form.is_valid():
             try:
                 with transaction.atomic():
                     pack_order = form.save(commit=False)
-                    pack_order.patient = surgery.patient
                     pack_order.surgery = surgery
+                    pack_order.patient = surgery.patient
                     pack_order.ordered_by = request.user
                     
                     # Set scheduled date to surgery date if not provided
@@ -955,9 +964,9 @@ def order_medical_pack_for_surgery(request, surgery_id):
                     
                     pack_order.save()
                     
-                    # Automatically create prescription from pack items
+                    # Automatically process pack order and create prescription
                     try:
-                        prescription = pack_order.create_prescription()
+                        prescription = pack_order.process_order(request.user)
                         
                         # Add pack costs to surgery invoice
                         _add_pack_to_surgery_invoice(surgery, pack_order)
@@ -969,11 +978,11 @@ def order_medical_pack_for_surgery(request, surgery_id):
                             f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to the surgery invoice.'
                         )
                     except Exception as e:
-                        # Pack order was created but prescription failed
+                        # Pack order was created but processing failed
                         messages.warning(
                             request,
-                            f'Medical pack "{pack_order.pack.name}" ordered successfully, but prescription creation failed: {str(e)}. '
-                            f'Please create the prescription manually if needed.'
+                            f'Medical pack "{pack_order.pack.name}" ordered successfully, but processing failed: {str(e)}. '
+                            f'Please process the pack order manually if needed.'
                         )
                     
                     return redirect('theatre:surgery_detail', pk=surgery.id)
@@ -981,20 +990,22 @@ def order_medical_pack_for_surgery(request, surgery_id):
             except Exception as e:
                 messages.error(request, f'Error creating pack order: {str(e)}')
         else:
-            messages.error(request, 'Please correct the form errors.')
+            # Display specific form errors for debugging
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
+            if not form.errors:
+                messages.error(request, 'Please correct the form errors.')
     else:
         # Pre-populate form with surgery context
         initial_data = {
-            'patient': surgery.patient.id,
             'scheduled_date': surgery.scheduled_date,
             'order_notes': f'Pack order for surgery: {surgery.surgery_type.name}'
         }
-        form = PackOrderForm(initial=initial_data)
-        
+        form = PackOrderForm(initial=initial_data, surgery=surgery, preselected_patient=surgery.patient)
+
         # Filter pack choices to surgery-specific packs
         form.fields['pack'].queryset = available_packs
-        form.fields['patient'].initial = surgery.patient
-        form.fields['patient'].widget.attrs['readonly'] = True
     
     context = {
         'surgery': surgery,
@@ -1029,6 +1040,7 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
             status='pending',
             subtotal=Decimal('0.00'),
             tax_amount=Decimal('0.00'),
+            discount_amount=Decimal('0.00'),
             total_amount=Decimal('0.00'),
             created_by=pack_order.ordered_by,
             source_app='theatre'
@@ -1037,6 +1049,10 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
         surgery.save()
     else:
         invoice = surgery.invoice
+        # Ensure discount_amount is a Decimal
+        if not isinstance(invoice.discount_amount, Decimal):
+            invoice.discount_amount = Decimal(str(invoice.discount_amount))
+            invoice.save()
     
     # Create or get medical pack service category
     pack_service_category, _ = ServiceCategory.objects.get_or_create(
@@ -1049,15 +1065,15 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
         name=f"Medical Pack: {pack_order.pack.name}",
         category=pack_service_category,
         defaults={
-            'price': pack_order.pack.get_total_cost(),
+            'price': Decimal(str(pack_order.pack.get_total_cost())),
             'description': f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
             'tax_percentage': Decimal('0.00')  # Assuming no tax on medical packs
         }
     )
     
     # Calculate pack cost with NHIA discount if applicable
-    pack_cost = pack_order.pack.get_total_cost()
-    
+    pack_cost = Decimal(str(pack_order.pack.get_total_cost()))
+
     # Apply 10% payment for NHIA patients (they pay 10%, NHIA covers 90%)
     if surgery.patient.patient_type == 'nhia':
         pack_cost = pack_cost * Decimal('0.10')  # NHIA patients pay 10%

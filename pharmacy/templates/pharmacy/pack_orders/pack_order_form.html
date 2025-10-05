@@ -103,6 +103,9 @@
                                         Patient <span class="text-danger">*</span>
                                     </label>
                                     {{ form.patient }}
+                                    {% if form.patient_hidden %}
+                                        {{ form.patient_hidden }}
+                                    {% endif %}
                                     {% if form.patient.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.patient.errors.0 }}

@@ -3779,7 +3779,7 @@ def pack_order_list(request):
 def pack_order_detail(request, order_id):
     """View for displaying pack order details"""
     pack_order = get_object_or_404(
-        PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by', 'prescription'),
+        PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by'),
         id=order_id
     )
     
