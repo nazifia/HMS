@@ -1,0 +1,342 @@
+{% extends 'base_print.html' %}
+{% load static %}
+
+{% block title %}Payment Receipt - {{ receipt_number|default:payment.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .receipt-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: white;
+    }
+    
+    .receipt-header {
+        text-align: center;
+        border-bottom: 3px solid #4e73df;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .receipt-header h1 {
+        color: #4e73df;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    
+    .receipt-header .hospital-info {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    .receipt-number {
+        background: #4e73df;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        display: inline-block;
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin: 20px 0;
+    }
+    
+    .receipt-section {
+        margin-bottom: 30px;
+    }
+    
+    .receipt-section h3 {
+        color: #4e73df;
+        border-bottom: 2px solid #e3e6f0;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #5a5c69;
+    }
+    
+    .info-value {
+        color: #3a3b45;
+    }
+    
+    .payment-details-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    
+    .payment-details-table th,
+    .payment-details-table td {
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #e3e6f0;
+    }
+    
+    .payment-details-table th {
+        background-color: #f8f9fc;
+        font-weight: 600;
+        color: #4e73df;
+    }
+    
+    .payment-details-table tr:nth-child(even) {
+        background-color: #f8f9fc;
+    }
+    
+    .amount-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 30px 0;
+    }
+    
+    .amount-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        font-size: 1.1rem;
+    }
+    
+    .total-amount {
+        font-size: 1.8rem;
+        font-weight: bold;
+        border-top: 2px solid rgba(255,255,255,0.3);
+        padding-top: 15px;
+        margin-top: 10px;
+    }
+    
+    .receipt-footer {
+        text-align: center;
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 2px solid #e3e6f0;
+    }
+    
+    .signature-section {
+        display: flex;
+        justify-content: space-around;
+        margin: 40px 0;
+    }
+    
+    .signature-box {
+        text-align: center;
+        min-width: 200px;
+    }
+    
+    .signature-line {
+        border-top: 2px solid #000;
+        margin-top: 60px;
+        padding-top: 10px;
+    }
+    
+    .stamp-box {
+        border: 2px dashed #ccc;
+        padding: 40px;
+        text-align: center;
+        color: #999;
+        margin: 20px 0;
+    }
+    
+    @media print {
+        .receipt-container {
+            padding: 0;
+        }
+        
+        .no-print {
+            display: none !important;
+        }
+        
+        .print-button {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="receipt-container">
+    <!-- Receipt Header -->
+    <div class="receipt-header">
+        <h1>{{ hospital_name|default:"Hospital Management System" }}</h1>
+        <div class="hospital-info">
+            <p>{{ hospital_address|default:"123 Medical Center Drive, City, State" }}</p>
+            <p>Phone: {{ hospital_phone|default:"(123) 456-7890" }} | Email: {{ hospital_email|default:"info@hospital.com" }}</p>
+        </div>
+        <div class="receipt-number">
+            RECEIPT #{{ receipt_number|default:payment.id }}
+        </div>
+    </div>
+
+    <!-- Patient Information -->
+    <div class="receipt-section">
+        <h3><i class="fas fa-user"></i> Patient Information</h3>
+        <div class="info-row">
+            <span class="info-label">Patient Name:</span>
+            <span class="info-value">{{ patient.get_full_name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Patient ID:</span>
+            <span class="info-value">{{ patient.patient_id }}</span>
+        </div>
+        {% if patient.is_nhia_patient %}
+        <div class="info-row">
+            <span class="info-label">Insurance:</span>
+            <span class="info-value"><span class="badge badge-success">NHIA Patient</span></span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="info-label">Date:</span>
+            <span class="info-value">{{ payment.payment_date|date:"F d, Y" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Time:</span>
+            <span class="info-value">{{ payment.created_at|date:"h:i A" }}</span>
+        </div>
+    </div>
+
+    <!-- Service Information -->
+    <div class="receipt-section">
+        <h3><i class="fas fa-clipboard-list"></i> Service Information</h3>
+        <div class="info-row">
+            <span class="info-label">Service Type:</span>
+            <span class="info-value">{{ service_type|default:"Medical Service" }}</span>
+        </div>
+        {% if invoice %}
+        <div class="info-row">
+            <span class="info-label">Invoice Number:</span>
+            <span class="info-value">{{ invoice.invoice_number|default:invoice.id }}</span>
+        </div>
+        {% endif %}
+        {% if service_description %}
+        <div class="info-row">
+            <span class="info-label">Description:</span>
+            <span class="info-value">{{ service_description }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Payment Details -->
+    <div class="receipt-section">
+        <h3><i class="fas fa-money-bill-wave"></i> Payment Details</h3>
+        
+        {% if items %}
+        <table class="payment-details-table">
+            <thead>
+                <tr>
+                    <th>Item/Service</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>₦{{ item.unit_price|floatformat:2 }}</td>
+                    <td>₦{{ item.total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        
+        <div class="info-row">
+            <span class="info-label">Payment Method:</span>
+            <span class="info-value">{{ payment.get_payment_method_display }}</span>
+        </div>
+        {% if payment.transaction_id %}
+        <div class="info-row">
+            <span class="info-label">Transaction ID:</span>
+            <span class="info-value">{{ payment.transaction_id }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="info-label">Received By:</span>
+            <span class="info-value">{{ payment.received_by.get_full_name|default:payment.created_by.get_full_name }}</span>
+        </div>
+    </div>
+
+    <!-- Amount Summary -->
+    <div class="amount-section">
+        {% if invoice %}
+        <div class="amount-row">
+            <span>Subtotal:</span>
+            <span>₦{{ invoice.subtotal|floatformat:2 }}</span>
+        </div>
+        {% if invoice.tax_amount > 0 %}
+        <div class="amount-row">
+            <span>Tax:</span>
+            <span>₦{{ invoice.tax_amount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if invoice.discount_amount > 0 %}
+        <div class="amount-row">
+            <span>Discount:</span>
+            <span>-₦{{ invoice.discount_amount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="amount-row">
+            <span>Total Amount:</span>
+            <span>₦{{ invoice.total_amount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="amount-row total-amount">
+            <span>Amount Paid:</span>
+            <span>₦{{ payment.amount|floatformat:2 }}</span>
+        </div>
+        {% if invoice %}
+        <div class="amount-row">
+            <span>Balance:</span>
+            <span>₦{{ invoice.get_balance|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Notes -->
+    {% if payment.notes %}
+    <div class="receipt-section">
+        <h3><i class="fas fa-sticky-note"></i> Notes</h3>
+        <p>{{ payment.notes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Signature Section -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="signature-line">
+                Patient Signature
+            </div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">
+                Authorized Signature
+            </div>
+        </div>
+    </div>
+
+    <!-- Official Stamp -->
+    <div class="stamp-box">
+        OFFICIAL STAMP
+    </div>
+
+    <!-- Footer -->
+    <div class="receipt-footer">
+        <p><strong>Thank you for choosing our services!</strong></p>
+        <p class="text-muted">This is a computer-generated receipt and is valid without signature.</p>
+        <p class="text-muted">For any queries, please contact our billing department.</p>
+        <p class="text-muted">Printed on: {{ now|date:"F d, Y h:i A" }}</p>
+    </div>
+</div>
+{% endblock %}
+

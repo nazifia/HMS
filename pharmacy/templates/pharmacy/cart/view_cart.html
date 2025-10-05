@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cart-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .cart-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .cart-status-badge {
+        font-size: 1rem;
+        padding: 8px 16px;
+        border-radius: 20px;
+    }
+    
+    .dispensary-section {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .cart-items-table {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .cart-items-table table {
+        margin-bottom: 0;
+    }
+    
+    .cart-items-table th {
+        background: #667eea;
+        color: white;
+        font-weight: 600;
+        border: none;
+    }
+    
+    .quantity-input {
+        width: 80px;
+        text-align: center;
+    }
+    
+    .stock-badge {
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .cart-summary {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .summary-row:last-child {
+        border-bottom: none;
+        font-size: 1.2rem;
+        font-weight: bold;
+        padding-top: 15px;
+    }
+    
+    .nhia-info {
+        background: #e8f5e9;
+        border-left: 4px solid #4caf50;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-checkout {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 12px 30px;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .btn-checkout:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cart-container">
+    <!-- Cart Header -->
+    <div class="cart-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h3 class="mb-2">
+                    <i class="fas fa-shopping-cart"></i> Prescription Cart #{{ cart.id }}
+                </h3>
+                <p class="mb-1"><strong>Patient:</strong> {{ cart.prescription.patient.get_full_name }}</p>
+                <p class="mb-1"><strong>Prescription:</strong> #{{ cart.prescription.id }}</p>
+                <p class="mb-0"><strong>Created by:</strong> {{ cart.created_by.get_full_name }}</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <span class="cart-status-badge badge bg-{{ cart.status }}">
+                    {{ cart.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- NHIA Info -->
+    {% if is_nhia_patient %}
+    <div class="nhia-info">
+        <h5><i class="fas fa-info-circle"></i> NHIA Patient</h5>
+        <p class="mb-0">Patient pays <strong>10%</strong>, NHIA covers <strong>90%</strong> of medication costs.</p>
+    </div>
+    {% endif %}
+
+    <!-- Dispensary Selection -->
+    {% if cart.status == 'active' %}
+    <div class="dispensary-section">
+        <h5><i class="fas fa-hospital"></i> Select Dispensary</h5>
+        <form method="post" action="{% url 'pharmacy:update_cart_dispensary' cart.id %}">
+            {% csrf_token %}
+            <div class="row align-items-end">
+                <div class="col-md-8">
+                    <label for="dispensary_id" class="form-label">Dispensary</label>
+                    <select name="dispensary_id" id="dispensary_id" class="form-select" required>
+                        <option value="">-- Select Dispensary --</option>
+                        {% for dispensary in dispensaries %}
+                        <option value="{{ dispensary.id }}" {% if cart.dispensary.id == dispensary.id %}selected{% endif %}>
+                            {{ dispensary.name }} - {{ dispensary.location }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Update Dispensary
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <div class="dispensary-section">
+        <h5><i class="fas fa-hospital"></i> Dispensary</h5>
+        <p class="mb-0"><strong>{{ cart.dispensary.name }}</strong> - {{ cart.dispensary.location }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Cart Items -->
+    <div class="cart-items-table">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Medication</th>
+                    <th width="10%">Prescribed</th>
+                    <th width="10%">Quantity</th>
+                    <th width="10%">Unit Price</th>
+                    <th width="12%">Stock Status</th>
+                    <th width="10%">Subtotal</th>
+                    {% if is_nhia_patient %}
+                    <th width="10%">You Pay (10%)</th>
+                    <th width="10%">NHIA (90%)</th>
+                    {% endif %}
+                    {% if cart.status == 'active' %}
+                    <th width="8%">Action</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cart.items.all %}
+                {% with stock_status=item.get_stock_status %}
+                <tr id="cart-item-{{ item.id }}">
+                    <td>
+                        <strong>{{ item.prescription_item.medication.name }}</strong><br>
+                        <small class="text-muted">{{ item.prescription_item.medication.strength }}</small>
+                    </td>
+                    <td>{{ item.prescription_item.quantity }}</td>
+                    <td>
+                        {% if cart.status == 'active' %}
+                        <input type="number" 
+                               class="form-control quantity-input" 
+                               value="{{ item.quantity }}"
+                               min="1"
+                               max="{{ item.prescription_item.remaining_quantity_to_dispense }}"
+                               data-item-id="{{ item.id }}"
+                               onchange="updateQuantity({{ item.id }}, this.value)">
+                        {% else %}
+                        {{ item.quantity }}
+                        {% endif %}
+                    </td>
+                    <td>₦{{ item.unit_price|floatformat:2 }}</td>
+                    <td>
+                        <span class="stock-badge bg-{{ stock_status.css_class }}">
+                            <i class="fas fa-{{ stock_status.icon }}"></i>
+                            {{ stock_status.message }}
+                        </span>
+                    </td>
+                    <td class="item-subtotal">₦{{ item.get_subtotal|floatformat:2 }}</td>
+                    {% if is_nhia_patient %}
+                    <td class="item-patient-pays">₦{{ item.get_patient_pays|floatformat:2 }}</td>
+                    <td class="item-nhia-covers">₦{{ item.get_nhia_covers|floatformat:2 }}</td>
+                    {% endif %}
+                    {% if cart.status == 'active' %}
+                    <td>
+                        <a href="{% url 'pharmacy:remove_cart_item' item.id %}" 
+                           class="btn btn-sm btn-danger"
+                           onclick="return confirm('Remove this item from cart?')">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr>
+                    <td colspan="{% if is_nhia_patient %}9{% else %}7{% endif %}" class="text-center py-4">
+                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Cart is empty</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Cart Status Widget and Summary -->
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Cart Status Timeline -->
+            {% include 'pharmacy/cart/_cart_status_widget.html' with cart=cart %}
+        </div>
+
+        <div class="col-md-4">
+            <!-- Cart Summary Widget -->
+            {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_actions=True %}
+        </div>
+    </div>
+</div>
+
+<script>
+function updateQuantity(itemId, quantity) {
+    fetch(`/pharmacy/cart/item/${itemId}/update-quantity/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ quantity: parseInt(quantity) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update item row
+            const row = document.getElementById(`cart-item-${itemId}`);
+            row.querySelector('.item-subtotal').textContent = `₦${data.item_subtotal.toFixed(2)}`;
+            {% if is_nhia_patient %}
+            row.querySelector('.item-patient-pays').textContent = `₦${data.item_patient_pays.toFixed(2)}`;
+            row.querySelector('.item-nhia-covers').textContent = `₦${data.item_nhia_covers.toFixed(2)}`;
+            {% endif %}
+            
+            // Update cart totals
+            document.getElementById('cart-subtotal').textContent = `₦${data.cart_subtotal.toFixed(2)}`;
+            document.getElementById('cart-patient-payable').textContent = `₦${data.cart_patient_payable.toFixed(2)}`;
+            {% if is_nhia_patient %}
+            document.getElementById('cart-nhia-coverage').textContent = `₦${data.cart_nhia_coverage.toFixed(2)}`;
+            {% endif %}
+        } else {
+            alert('Error: ' + data.error);
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update quantity');
+        location.reload();
+    });
+}
+</script>
+{% endblock %}
+

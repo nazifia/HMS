@@ -170,14 +170,28 @@ class Invoice(models.Model):
         """
         Generate a unique invoice number in the format INVYYYYMMDDXXXX
         where XXXX is a zero-padded sequence for the day.
+        Uses a retry mechanism to handle race conditions.
         """
         from django.utils import timezone
         today = timezone.now().date()
         date_str = today.strftime('%Y%m%d')
         prefix = 'INV'
-        # Count existing invoices for today
-        count = Invoice.objects.filter(invoice_date=today).count() + 1
-        return f"{prefix}{date_str}{str(count).zfill(4)}"
+
+        # Try to generate a unique invoice number with retry logic
+        max_attempts = 100
+        for attempt in range(max_attempts):
+            # Count existing invoices for today and add attempt number
+            count = Invoice.objects.filter(invoice_date=today).count() + 1 + attempt
+            invoice_number = f"{prefix}{date_str}{str(count).zfill(4)}"
+
+            # Check if this invoice number already exists
+            if not Invoice.objects.filter(invoice_number=invoice_number).exists():
+                return invoice_number
+
+        # If we couldn't generate a unique number after max_attempts, use timestamp
+        import time
+        timestamp = str(int(time.time() * 1000))[-4:]  # Last 4 digits of millisecond timestamp
+        return f"{prefix}{date_str}{timestamp}"
 
     class Meta:
         indexes = [

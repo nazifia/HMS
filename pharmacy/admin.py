@@ -91,3 +91,31 @@ if MEDICATION_INVENTORY_AVAILABLE:
         list_filter = ('dispensary', 'last_restock_date')
         search_fields = ('medication__name', 'dispensary__name')
         date_hierarchy = 'last_restock_date'
+
+# Register Prescription Cart models
+try:
+    from .cart_models import PrescriptionCart, PrescriptionCartItem
+
+    class PrescriptionCartItemInline(admin.TabularInline):
+        model = PrescriptionCartItem
+        extra = 0
+        readonly_fields = ('available_stock', 'created_at', 'updated_at')
+
+    @admin.register(PrescriptionCart)
+    class PrescriptionCartAdmin(admin.ModelAdmin):
+        list_display = ('id', 'prescription', 'created_by', 'dispensary', 'status', 'created_at')
+        list_filter = ('status', 'created_at', 'dispensary')
+        search_fields = ('prescription__patient__first_name', 'prescription__patient__last_name', 'created_by__username')
+        readonly_fields = ('created_at', 'updated_at')
+        inlines = [PrescriptionCartItemInline]
+        date_hierarchy = 'created_at'
+
+    @admin.register(PrescriptionCartItem)
+    class PrescriptionCartItemAdmin(admin.ModelAdmin):
+        list_display = ('cart', 'prescription_item', 'quantity', 'unit_price', 'available_stock', 'created_at')
+        list_filter = ('created_at',)
+        search_fields = ('cart__id', 'prescription_item__medication__name')
+        readonly_fields = ('available_stock', 'created_at', 'updated_at')
+        date_hierarchy = 'created_at'
+except ImportError:
+    pass

@@ -1,5 +1,4 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, F, Count
@@ -7,6 +6,7 @@ from django.db import models, transaction
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 from .models import (
     Medication, MedicationCategory, Supplier, Purchase, PurchaseItem,
     Prescription, PrescriptionItem, Dispensary, ActiveStore, ActiveStoreInventory, MedicationInventory,
@@ -2123,7 +2123,39 @@ def dispense_prescription(request, prescription_id):
                 if skipped_items:
                     names = ', '.join([s.medication.name for s in skipped_items])
                     messages.warning(request, f'Some items were skipped because they are already fully dispensed: {names}')
-                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+                # Create invoice based on dispensed quantities
+                from pharmacy_billing.models import Invoice as PharmacyInvoice
+                from pharmacy_billing.utils import create_pharmacy_invoice
+
+                # Check if invoice already exists
+                try:
+                    pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+                    messages.info(request, 'Invoice already exists for this prescription.')
+                except PharmacyInvoice.DoesNotExist:
+                    # Calculate total based on dispensed quantities
+                    dispensed_total = Decimal('0.00')
+                    for log in DispensingLog.objects.filter(prescription_item__prescription=prescription):
+                        dispensed_total += log.total_price_for_this_log
+
+                    # Apply NHIA discount if applicable
+                    if prescription.patient.is_nhia_patient():
+                        # Patient pays 10%, NHIA covers 90%
+                        patient_payable = dispensed_total * Decimal('0.10')
+                    else:
+                        # Patient pays 100%
+                        patient_payable = dispensed_total
+
+                    # Create invoice
+                    pharmacy_invoice = create_pharmacy_invoice(request, prescription, patient_payable)
+
+                    if pharmacy_invoice:
+                        messages.success(request, f'Invoice created successfully. Total: ₦{patient_payable:.2f}')
+                    else:
+                        messages.error(request, 'Failed to create invoice. Please contact billing.')
+
+                # Redirect to payment page
+                return redirect('pharmacy:prescription_payment', prescription_id=prescription.id)
             else:
                 messages.warning(request, 'No medications were selected for dispensing.')
         else:
@@ -2838,6 +2870,273 @@ def create_prescription_invoice(request, prescription_id):
 
     # On error, redirect back to the prescription detail page
     return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def check_medication_availability(request):
+    """
+    AJAX endpoint to check medication availability in a specific dispensary.
+    Returns availability status for each medication.
+    """
+    import json
+    from decimal import Decimal
+
+    try:
+        data = json.loads(request.body)
+        dispensary_id = data.get('dispensary_id')
+        medications = data.get('medications', [])
+
+        if not dispensary_id:
+            return JsonResponse({'error': 'Dispensary ID required'}, status=400)
+
+        dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+        active_store = getattr(dispensary, 'active_store', None)
+
+        results = []
+
+        for med_data in medications:
+            item_id = med_data.get('item_id')
+            medication_id = med_data.get('medication_id')
+            requested_quantity = Decimal(str(med_data.get('quantity', 0)))
+
+            # Get medication
+            medication = get_object_or_404(Medication, id=medication_id)
+
+            # Check availability
+            available_quantity = Decimal('0')
+
+            # Check ActiveStoreInventory
+            if active_store:
+                inventory_items = ActiveStoreInventory.objects.filter(
+                    medication=medication,
+                    active_store=active_store,
+                    stock_quantity__gt=0
+                )
+                available_quantity += sum(Decimal(str(inv.stock_quantity)) for inv in inventory_items)
+
+            # Check legacy inventory
+            try:
+                legacy_inv = MedicationInventory.objects.filter(
+                    medication=medication,
+                    dispensary=dispensary,
+                    stock_quantity__gt=0
+                ).first()
+                if legacy_inv:
+                    available_quantity += Decimal(str(legacy_inv.stock_quantity))
+            except:
+                pass
+
+            # Calculate price
+            unit_price = medication.selling_price if hasattr(medication, 'selling_price') else medication.price
+            total_price = unit_price * requested_quantity
+
+            is_available = available_quantity >= requested_quantity
+
+            results.append({
+                'item_id': item_id,
+                'medication_id': medication_id,
+                'medication_name': medication.name,
+                'quantity': float(requested_quantity),
+                'stock_available': float(available_quantity),
+                'available': is_available,
+                'unit_price': float(unit_price),
+                'total_price': float(total_price)
+            })
+
+        return JsonResponse({
+            'success': True,
+            'medications': results
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def pharmacist_generate_invoice(request, prescription_id):
+    """
+    View for pharmacist to generate invoice after checking medication availability.
+    Only generates invoice for medications that are available in the selected dispensary.
+    Accepts custom quantities from pharmacist input.
+    """
+    from pharmacy_billing.models import Invoice as PharmacyInvoice
+    from pharmacy_billing.utils import create_pharmacy_invoice
+    from django.db import transaction
+    from core.audit_utils import log_audit_action
+    import json
+
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+
+    # Check if invoice already exists
+    try:
+        existing_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+        messages.warning(request, f'Invoice already exists for this prescription.')
+        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    except PharmacyInvoice.DoesNotExist:
+        pass
+
+    # Get all dispensaries
+    dispensaries = Dispensary.objects.filter(is_active=True)
+
+    if request.method == 'POST':
+        dispensary_id = request.POST.get('dispensary_id')
+        if not dispensary_id:
+            messages.error(request, 'Please select a dispensary.')
+            return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+
+        dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+
+        # Get availability data from form
+        availability_data_str = request.POST.get('availability_data')
+
+        try:
+            with transaction.atomic():
+                # Parse availability data
+                if availability_data_str:
+                    availability_data = json.loads(availability_data_str)
+                    medications_data = availability_data.get('medications', [])
+                else:
+                    messages.error(request, 'Please check availability before generating invoice.')
+                    return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+
+                # Get prescription items
+                prescription_items = prescription.items.all()
+                available_items = []
+                unavailable_items = []
+                total_available_amount = Decimal('0.00')
+
+                # Process each medication based on availability check
+                for med_data in medications_data:
+                    item_id = med_data.get('item_id')
+                    is_available = med_data.get('available', False)
+                    quantity = Decimal(str(med_data.get('quantity', 0)))
+
+                    # Get the prescription item
+                    try:
+                        item = prescription_items.get(id=item_id)
+                    except:
+                        continue
+
+                    # Get custom quantity from form if provided
+                    custom_quantity_key = f'quantity_{item_id}'
+                    if custom_quantity_key in request.POST:
+                        quantity = Decimal(str(request.POST.get(custom_quantity_key, quantity)))
+
+                    if quantity <= 0:
+                        continue
+
+                    medication = item.medication
+
+                    if is_available:
+                        available_items.append({
+                            'item': item,
+                            'quantity': quantity,
+                            'status': 'available'
+                        })
+
+                        # Calculate amount based on NHIA status
+                        unit_price = medication.selling_price if hasattr(medication, 'selling_price') else medication.price
+                        item_cost = unit_price * quantity
+
+                        if prescription.patient.is_nhia_patient():
+                            # NHIA patients pay 10%
+                            total_available_amount += item_cost * Decimal('0.10')
+                        else:
+                            total_available_amount += item_cost
+                    else:
+                        unavailable_items.append({
+                            'item': item,
+                            'quantity': quantity,
+                            'status': 'insufficient'
+                        })
+
+                # If no items are available, show error
+                if not available_items:
+                    messages.error(request, 'No medications are available in the selected dispensary. Cannot generate invoice.')
+                    return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+
+                # Create pharmacy invoice for available items only
+                pharmacy_invoice = create_pharmacy_invoice(request, prescription, total_available_amount)
+
+                if pharmacy_invoice:
+                    # Log audit action
+                    log_audit_action(
+                        request.user,
+                        'create',
+                        pharmacy_invoice,
+                        f'Generated invoice for prescription #{prescription.id} at {dispensary.name}. '
+                        f'Available items: {len(available_items)}, Unavailable items: {len(unavailable_items)}'
+                    )
+
+                    success_msg = f'Invoice generated successfully for {len(available_items)} available medication(s).'
+                    if unavailable_items:
+                        success_msg += f' Note: {len(unavailable_items)} medication(s) are not available in {dispensary.name}.'
+
+                    messages.success(request, success_msg)
+                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                else:
+                    messages.error(request, 'Failed to create invoice.')
+                    return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+
+        except Exception as e:
+            messages.error(request, f'Error generating invoice: {str(e)}')
+            return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+
+    # GET request - show availability check page
+    # Check availability for all items across all dispensaries
+    prescription_items = prescription.items.select_related('medication')
+    items_availability = []
+
+    for item in prescription_items:
+        medication = item.medication
+        quantity = item.quantity
+        dispensary_stock = []
+
+        for dispensary in dispensaries:
+            active_store = getattr(dispensary, 'active_store', None)
+            available_quantity = 0
+
+            if active_store:
+                inventory_items = ActiveStoreInventory.objects.filter(
+                    medication=medication,
+                    active_store=active_store,
+                    stock_quantity__gt=0
+                )
+                available_quantity = sum(inv.stock_quantity for inv in inventory_items)
+
+            # Also check legacy inventory
+            try:
+                legacy_inv = MedicationInventory.objects.filter(
+                    medication=medication,
+                    dispensary=dispensary,
+                    stock_quantity__gt=0
+                ).first()
+                if legacy_inv:
+                    available_quantity += legacy_inv.stock_quantity
+            except:
+                pass
+
+            dispensary_stock.append({
+                'dispensary': dispensary,
+                'available': available_quantity,
+                'sufficient': available_quantity >= quantity
+            })
+
+        items_availability.append({
+            'item': item,
+            'dispensary_stock': dispensary_stock
+        })
+
+    context = {
+        'prescription': prescription,
+        'items_availability': items_availability,
+        'dispensaries': dispensaries,
+        'page_title': f'Generate Invoice - Prescription #{prescription.id}',
+        'active_nav': 'pharmacy',
+    }
+
+    return render(request, 'pharmacy/pharmacist_generate_invoice.html', context)
 
 
 @login_required
@@ -3874,6 +4173,230 @@ def process_pack_order(request, order_id):
     }
     
     return render(request, 'pharmacy/pack_orders/process_pack_order.html', context)
+
+
+@login_required
+def pharmacy_payment_receipt(request, payment_id):
+    """
+    Generate and display printable payment receipt for pharmacy payments.
+    Works with both pharmacy_billing.Payment and billing.Payment models.
+    """
+    from pharmacy_billing.models import Payment as PharmacyPayment, Invoice as PharmacyInvoice
+    from billing.models import Payment as BillingPayment
+    from django.utils import timezone
+
+    # Try to get payment from pharmacy_billing first
+    payment = None
+    invoice = None
+    is_pharmacy_billing = False
+
+    try:
+        payment = PharmacyPayment.objects.select_related(
+            'invoice', 'invoice__prescription', 'invoice__patient', 'received_by'
+        ).get(id=payment_id)
+        invoice = payment.invoice
+        is_pharmacy_billing = True
+    except PharmacyPayment.DoesNotExist:
+        # Try billing.Payment
+        try:
+            payment = BillingPayment.objects.select_related(
+                'invoice', 'invoice__patient', 'received_by'
+            ).get(id=payment_id)
+            invoice = payment.invoice
+        except BillingPayment.DoesNotExist:
+            messages.error(request, 'Payment not found.')
+            return redirect('pharmacy:dashboard')
+
+    # Get prescription if available
+    prescription = None
+    if hasattr(invoice, 'prescription') and invoice.prescription:
+        prescription = invoice.prescription
+    elif hasattr(invoice, 'prescription_invoice'):
+        prescription = invoice.prescription_invoice
+
+    # Build items list for receipt
+    items = []
+    if prescription:
+        for item in prescription.items.all():
+            medication = item.medication
+            quantity = item.quantity
+            unit_price = medication.price
+
+            # Calculate based on NHIA status
+            if prescription.patient.is_nhia_patient():
+                # NHIA patients pay 10%
+                unit_price = unit_price * Decimal('0.10')
+
+            items.append({
+                'description': f'{medication.name} ({medication.strength})',
+                'quantity': quantity,
+                'unit_price': unit_price,
+                'total': unit_price * quantity
+            })
+
+    # Prepare context
+    context = {
+        'payment': payment,
+        'invoice': invoice,
+        'patient': invoice.patient if invoice else None,
+        'prescription': prescription,
+        'items': items,
+        'service_type': 'Pharmacy - Medication Dispensing',
+        'service_description': f'Prescription #{prescription.id}' if prescription else 'Medication Payment',
+        'receipt_number': f'PH-{payment.id}',
+        'hospital_name': 'Hospital Management System',
+        'hospital_address': '123 Medical Center Drive, City, State',
+        'hospital_phone': '(123) 456-7890',
+        'hospital_email': 'info@hospital.com',
+        'now': timezone.now(),
+    }
+
+    return render(request, 'payments/payment_receipt.html', context)
+
+
+@login_required
+def laboratory_payment_receipt(request, payment_id):
+    """Generate and display printable payment receipt for laboratory payments."""
+    from billing.models import Payment
+    from laboratory.models import TestRequest
+    from django.utils import timezone
+
+    payment = get_object_or_404(
+        Payment.objects.select_related('invoice', 'invoice__patient', 'received_by'),
+        id=payment_id
+    )
+    invoice = payment.invoice
+
+    # Get test request
+    test_request = None
+    try:
+        test_request = TestRequest.objects.get(invoice=invoice)
+    except TestRequest.DoesNotExist:
+        pass
+
+    # Build items list
+    items = []
+    if test_request:
+        for test in test_request.tests.all():
+            items.append({
+                'description': test.name,
+                'quantity': 1,
+                'unit_price': test.price,
+                'total': test.price
+            })
+
+    context = {
+        'payment': payment,
+        'invoice': invoice,
+        'patient': invoice.patient,
+        'test_request': test_request,
+        'items': items,
+        'service_type': 'Laboratory Services',
+        'service_description': f'Test Request #{test_request.id}' if test_request else 'Laboratory Tests',
+        'receipt_number': f'LAB-{payment.id}',
+        'hospital_name': 'Hospital Management System',
+        'hospital_address': '123 Medical Center Drive, City, State',
+        'hospital_phone': '(123) 456-7890',
+        'hospital_email': 'info@hospital.com',
+        'now': timezone.now(),
+    }
+
+    return render(request, 'payments/payment_receipt.html', context)
+
+
+@login_required
+def consultation_payment_receipt(request, payment_id):
+    """Generate and display printable payment receipt for consultation payments."""
+    from billing.models import Payment
+    from consultations.models import Consultation
+    from django.utils import timezone
+
+    payment = get_object_or_404(
+        Payment.objects.select_related('invoice', 'invoice__patient', 'received_by'),
+        id=payment_id
+    )
+    invoice = payment.invoice
+
+    # Get consultation
+    consultation = None
+    try:
+        # Try to find consultation by invoice
+        consultation = Consultation.objects.filter(patient=invoice.patient).first()
+    except:
+        pass
+
+    # Build items list
+    items = [{
+        'description': f'Consultation with Dr. {consultation.doctor.get_full_name()}' if consultation else 'Medical Consultation',
+        'quantity': 1,
+        'unit_price': payment.amount,
+        'total': payment.amount
+    }]
+
+    context = {
+        'payment': payment,
+        'invoice': invoice,
+        'patient': invoice.patient,
+        'consultation': consultation,
+        'items': items,
+        'service_type': 'Consultation Services',
+        'service_description': f'Consultation with Dr. {consultation.doctor.get_full_name()}' if consultation else 'Medical Consultation',
+        'receipt_number': f'CONS-{payment.id}',
+        'hospital_name': 'Hospital Management System',
+        'hospital_address': '123 Medical Center Drive, City, State',
+        'hospital_phone': '(123) 456-7890',
+        'hospital_email': 'info@hospital.com',
+        'now': timezone.now(),
+    }
+
+    return render(request, 'payments/payment_receipt.html', context)
+
+
+@login_required
+def admission_payment_receipt(request, payment_id):
+    """Generate and display printable payment receipt for admission payments."""
+    from billing.models import Payment
+    from inpatient.models import Admission
+    from django.utils import timezone
+
+    payment = get_object_or_404(
+        Payment.objects.select_related('invoice', 'invoice__patient', 'received_by'),
+        id=payment_id
+    )
+    invoice = payment.invoice
+
+    # Get admission
+    admission = None
+    try:
+        admission = Admission.objects.filter(patient=invoice.patient).first()
+    except:
+        pass
+
+    # Build items list
+    items = [{
+        'description': f'Admission Fee - Ward: {admission.ward.name}' if admission and admission.ward else 'Admission Fee',
+        'quantity': 1,
+        'unit_price': payment.amount,
+        'total': payment.amount
+    }]
+
+    context = {
+        'payment': payment,
+        'invoice': invoice,
+        'patient': invoice.patient,
+        'admission': admission,
+        'items': items,
+        'service_type': 'Admission Services',
+        'service_description': f'Admission to {admission.ward.name}' if admission and admission.ward else 'Hospital Admission',
+        'receipt_number': f'ADM-{payment.id}',
+        'hospital_name': 'Hospital Management System',
+        'hospital_address': '123 Medical Center Drive, City, State',
+        'hospital_phone': '(123) 456-7890',
+        'hospital_email': 'info@hospital.com',
+        'now': timezone.now(),
+    }
+
+    return render(request, 'payments/payment_receipt.html', context)
 
 
 @login_required

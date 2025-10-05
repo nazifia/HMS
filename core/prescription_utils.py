@@ -10,11 +10,11 @@ from billing.models import Service, Invoice, InvoiceItem
 from decimal import Decimal
 
 
-def create_prescription_from_module(request, patient, doctor, diagnosis="", notes="", 
-                                  module_name="", source_data=None):
+def create_prescription_from_module(request, patient, doctor, diagnosis="", notes="",
+                                  module_name="", source_data=None, auto_create_invoice=False):
     """
     Create a prescription from any medical module.
-    
+
     Args:
         request: Django request object
         patient: Patient object
@@ -23,7 +23,8 @@ def create_prescription_from_module(request, patient, doctor, diagnosis="", note
         notes: Additional notes
         module_name: Name of the module creating the prescription
         source_data: Optional data from the source module to include in notes
-    
+        auto_create_invoice: If True, automatically create invoice (default: False)
+
     Returns:
         Prescription object or None if failed
     """
@@ -39,17 +40,19 @@ def create_prescription_from_module(request, patient, doctor, diagnosis="", note
                 status='pending',
                 prescription_type='outpatient'
             )
-            
+
             # Add module-specific information to notes
             if module_name:
                 prescription.notes = f"Created from {module_name} module. {notes}"
                 prescription.save()
-            
-            # Create initial invoice for the prescription
-            create_prescription_invoice(prescription)
-            
+
+            # Only create invoice if explicitly requested
+            # This allows pharmacist to generate invoice after checking medication availability
+            if auto_create_invoice:
+                create_prescription_invoice(prescription)
+
             return prescription
-            
+
     except Exception as e:
         if request:
             messages.error(request, f'Error creating prescription: {str(e)}')

@@ -11,6 +11,11 @@
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Prescription Details</h4>
                 <div>
+                    <!-- CREATE CART BUTTON - PROMINENT -->
+                    <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-sm me-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-weight: 600;">
+                        <i class="fas fa-shopping-cart"></i> Create Billing Cart
+                    </a>
+
                     <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info me-2" target="_blank">
                         <i class="fas fa-print"></i> Print Prescription
                     </a>
@@ -52,6 +57,50 @@
                 </div>
             </div>
             <div class="card-body">
+                <!-- QUICK ACTIONS CARD - VERY PROMINENT -->
+                <div class="card mb-4" style="border-left: 5px solid #764ba2; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);">
+                    <div class="card-body">
+                        <h5 class="mb-3" style="color: #764ba2;">
+                            <i class="fas fa-bolt"></i> Quick Actions
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 20px;">
+                                    <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                    <div style="font-size: 1.1rem; font-weight: 600;">Create Billing Cart</div>
+                                    <small style="opacity: 0.9;">Review items & check stock</small>
+                                </a>
+                            </div>
+                            <div class="col-md-4">
+                                {% if pharmacy_invoice %}
+                                <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning btn-lg w-100" style="padding: 20px;">
+                                    <i class="fas fa-credit-card fa-2x mb-2"></i>
+                                    <div style="font-size: 1.1rem; font-weight: 600;">Process Payment</div>
+                                    <small>₦{{ total_patient_pays|floatformat:2 }}</small>
+                                </a>
+                                {% else %}
+                                <button class="btn btn-secondary btn-lg w-100" style="padding: 20px;" disabled>
+                                    <i class="fas fa-credit-card fa-2x mb-2"></i>
+                                    <div style="font-size: 1.1rem; font-weight: 600;">Process Payment</div>
+                                    <small>No invoice yet</small>
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info btn-lg w-100" style="padding: 20px;" target="_blank">
+                                    <i class="fas fa-print fa-2x mb-2"></i>
+                                    <div style="font-size: 1.1rem; font-weight: 600;">Print Prescription</div>
+                                    <small>Generate PDF</small>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3 mb-0" style="background: #e8f4f8; border-left: 4px solid #17a2b8;">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>New Cart System:</strong> Create a cart to review medications, check stock availability, adjust quantities based on what's available, and generate accurate invoices before payment.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Info: Invoice is generated after dispensing -->
                 <div class="alert alert-info mb-4">
                     <i class="fas fa-info-circle me-2"></i>

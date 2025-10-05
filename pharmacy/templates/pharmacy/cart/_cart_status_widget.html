@@ -1,0 +1,194 @@
+{% comment %}
+Cart Status Widget - Reusable component for displaying cart status
+Usage: {% include 'pharmacy/cart/_cart_status_widget.html' with cart=cart %}
+{% endcomment %}
+
+<style>
+    .cart-status-widget {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .status-timeline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        margin: 30px 0;
+    }
+    
+    .status-timeline::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: #e0e0e0;
+        z-index: 0;
+    }
+    
+    .status-step {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        flex: 1;
+    }
+    
+    .status-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        color: #999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 10px;
+        font-size: 1.2rem;
+        transition: all 0.3s;
+    }
+    
+    .status-step.active .status-icon {
+        background: #667eea;
+        color: white;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+    }
+    
+    .status-step.completed .status-icon {
+        background: #4caf50;
+        color: white;
+    }
+    
+    .status-step.cancelled .status-icon {
+        background: #f44336;
+        color: white;
+    }
+    
+    .status-label {
+        font-size: 0.85rem;
+        color: #666;
+        font-weight: 500;
+    }
+    
+    .status-step.active .status-label {
+        color: #667eea;
+        font-weight: 700;
+    }
+    
+    .cart-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .meta-item {
+        text-align: center;
+    }
+    
+    .meta-label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-bottom: 5px;
+    }
+    
+    .meta-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #333;
+    }
+</style>
+
+<div class="cart-status-widget">
+    <h6 class="mb-3"><i class="fas fa-info-circle"></i> Cart Status</h6>
+    
+    <!-- Status Timeline -->
+    <div class="status-timeline">
+        <!-- Active -->
+        <div class="status-step {% if cart.status == 'active' %}active{% elif cart.status in 'invoiced,paid,completed' %}completed{% endif %}">
+            <div class="status-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="status-label">Active</div>
+        </div>
+        
+        <!-- Invoiced -->
+        <div class="status-step {% if cart.status == 'invoiced' %}active{% elif cart.status in 'paid,completed' %}completed{% endif %}">
+            <div class="status-icon">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div class="status-label">Invoiced</div>
+        </div>
+        
+        <!-- Paid -->
+        <div class="status-step {% if cart.status == 'paid' %}active{% elif cart.status == 'completed' %}completed{% endif %}">
+            <div class="status-icon">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="status-label">Paid</div>
+        </div>
+        
+        <!-- Completed -->
+        <div class="status-step {% if cart.status == 'completed' %}completed{% endif %}">
+            <div class="status-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="status-label">Completed</div>
+        </div>
+    </div>
+    
+    <!-- Cancelled Status (if applicable) -->
+    {% if cart.status == 'cancelled' %}
+    <div class="alert alert-danger text-center">
+        <i class="fas fa-times-circle"></i> <strong>Cart Cancelled</strong>
+    </div>
+    {% endif %}
+    
+    <!-- Cart Meta Information -->
+    <div class="cart-meta">
+        <div class="meta-item">
+            <div class="meta-label">Cart ID</div>
+            <div class="meta-value">#{{ cart.id }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Items</div>
+            <div class="meta-value">{{ cart.get_total_items }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Total</div>
+            <div class="meta-value text-primary">₦{{ cart.get_patient_payable|floatformat:2 }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Created</div>
+            <div class="meta-value">{{ cart.created_at|date:"M d, Y" }}</div>
+        </div>
+    </div>
+    
+    <!-- Current Action -->
+    <div class="mt-3 text-center">
+        {% if cart.status == 'active' %}
+            <small class="text-muted">
+                <i class="fas fa-arrow-right"></i> Next: Generate invoice and proceed to payment
+            </small>
+        {% elif cart.status == 'invoiced' %}
+            <small class="text-muted">
+                <i class="fas fa-arrow-right"></i> Next: Process payment
+            </small>
+        {% elif cart.status == 'paid' %}
+            <small class="text-muted">
+                <i class="fas fa-arrow-right"></i> Next: Complete dispensing
+            </small>
+        {% elif cart.status == 'completed' %}
+            <small class="text-success">
+                <i class="fas fa-check"></i> All steps completed
+            </small>
+        {% endif %}
+    </div>
+</div>
+

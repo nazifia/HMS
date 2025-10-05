@@ -1,6 +1,7 @@
 from django.urls import path, include
 from django.views.generic.base import RedirectView
 from . import views
+from . import cart_views
 from .api import urls as api_urls
 
 app_name = 'pharmacy'
@@ -86,6 +87,16 @@ urlpatterns = [
     path('prescriptions/<int:prescription_id>/payment/billing-office/', views.billing_office_medication_payment, name='billing_office_medication_payment'),
     path('prescriptions/<int:prescription_id>/payment/process-outstanding/', views.process_outstanding_wallet_payment, name='process_outstanding_wallet_payment'),
     path('prescriptions/<int:prescription_id>/payment/create-invoice/', views.create_prescription_invoice, name='create_prescription_invoice'),
+    path('prescriptions/<int:prescription_id>/generate-invoice/', views.pharmacist_generate_invoice, name='pharmacist_generate_invoice'),
+
+    # AJAX endpoints
+    path('api/check-medication-availability/', views.check_medication_availability, name='check_medication_availability'),
+
+    # Payment Receipts
+    path('payments/<int:payment_id>/receipt/', views.pharmacy_payment_receipt, name='pharmacy_payment_receipt'),
+    path('payments/laboratory/<int:payment_id>/receipt/', views.laboratory_payment_receipt, name='laboratory_payment_receipt'),
+    path('payments/consultation/<int:payment_id>/receipt/', views.consultation_payment_receipt, name='consultation_payment_receipt'),
+    path('payments/admission/<int:payment_id>/receipt/', views.admission_payment_receipt, name='admission_payment_receipt'),
 
     # API Endpoints
     path('api/medications/', views.medication_api, name='medication_api'),
@@ -146,4 +157,16 @@ urlpatterns = [
     path('pack-orders/<int:order_id>/approve/', views.approve_pack_order, name='approve_pack_order'),
     path('pack-orders/<int:order_id>/process/', views.process_pack_order, name='process_pack_order'),
     path('pack-orders/<int:order_id>/dispense/', views.dispense_pack_order, name='dispense_pack_order'),
+
+    # Prescription Cart Management
+    path('carts/', cart_views.cart_list, name='cart_list'),
+    path('cart/create/<int:prescription_id>/', cart_views.create_cart_from_prescription, name='create_cart_from_prescription'),
+    path('cart/<int:cart_id>/', cart_views.view_cart, name='view_cart'),
+    path('cart/<int:cart_id>/receipt/', cart_views.cart_receipt, name='cart_receipt'),
+    path('cart/<int:cart_id>/update-dispensary/', cart_views.update_cart_dispensary, name='update_cart_dispensary'),
+    path('cart/item/<int:item_id>/update-quantity/', cart_views.update_cart_item_quantity, name='update_cart_item_quantity'),
+    path('cart/item/<int:item_id>/remove/', cart_views.remove_cart_item, name='remove_cart_item'),
+    path('cart/<int:cart_id>/generate-invoice/', cart_views.generate_invoice_from_cart, name='generate_invoice_from_cart'),
+    path('cart/<int:cart_id>/complete-dispensing/', cart_views.complete_dispensing_from_cart, name='complete_dispensing_from_cart'),
+    path('cart/<int:cart_id>/cancel/', cart_views.cancel_cart, name='cancel_cart'),
 ]

@@ -1,0 +1,263 @@
+{% comment %}
+Cart Summary Widget - Reusable component for displaying cart summary
+Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_actions=True %}
+{% endcomment %}
+
+<style>
+    .cart-summary-widget {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        position: sticky;
+        top: 20px;
+    }
+    
+    .summary-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .summary-items {
+        margin-bottom: 20px;
+    }
+    
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f5f5f5;
+    }
+    
+    .summary-item:last-child {
+        border-bottom: none;
+    }
+    
+    .item-label {
+        color: #666;
+        font-weight: 500;
+    }
+    
+    .item-value {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .summary-total {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    
+    .total-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+    
+    .total-amount {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    
+    .nhia-breakdown {
+        background: #e8f5e9;
+        border-left: 4px solid #4caf50;
+        padding: 12px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+    
+    .nhia-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        font-size: 0.9rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .stat-box {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        color: #666;
+        margin-top: 3px;
+    }
+</style>
+
+<div class="cart-summary-widget">
+    <!-- Summary Header -->
+    <div class="summary-header">
+        <h6 class="mb-0"><i class="fas fa-calculator"></i> Cart Summary</h6>
+        <span class="badge bg-primary">{{ cart.get_total_items }} item{{ cart.get_total_items|pluralize }}</span>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+        <div class="stat-box">
+            <div class="stat-value">{{ cart.get_total_items }}</div>
+            <div class="stat-label">Items</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">
+                {% if cart.prescription.patient.is_nhia_patient %}
+                <i class="fas fa-check-circle text-success"></i>
+                {% else %}
+                <i class="fas fa-times-circle text-muted"></i>
+                {% endif %}
+            </div>
+            <div class="stat-label">NHIA</div>
+        </div>
+    </div>
+    
+    <!-- NHIA Breakdown (if applicable) -->
+    {% if cart.prescription.patient.is_nhia_patient %}
+    <div class="nhia-breakdown">
+        <div class="nhia-row">
+            <span><i class="fas fa-user"></i> Patient (10%):</span>
+            <strong>₦{{ cart.get_patient_payable|floatformat:2 }}</strong>
+        </div>
+        <div class="nhia-row">
+            <span><i class="fas fa-hospital"></i> NHIA (90%):</span>
+            <strong>₦{{ cart.get_nhia_coverage|floatformat:2 }}</strong>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Summary Items -->
+    <div class="summary-items">
+        <div class="summary-item">
+            <span class="item-label">Subtotal:</span>
+            <span class="item-value">₦{{ cart.get_subtotal|floatformat:2 }}</span>
+        </div>
+        
+        {% if cart.prescription.patient.is_nhia_patient %}
+        <div class="summary-item">
+            <span class="item-label">NHIA Coverage:</span>
+            <span class="item-value text-success">-₦{{ cart.get_nhia_coverage|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        
+        {% if cart.dispensary %}
+        <div class="summary-item">
+            <span class="item-label">Dispensary:</span>
+            <span class="item-value">{{ cart.dispensary.name }}</span>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Total Amount -->
+    <div class="summary-total">
+        <div class="total-label">
+            {% if cart.prescription.patient.is_nhia_patient %}
+            Patient Pays (10%)
+            {% else %}
+            Total Amount
+            {% endif %}
+        </div>
+        <div class="total-amount">₦{{ cart.get_patient_payable|floatformat:2 }}</div>
+    </div>
+    
+    <!-- Action Buttons (if show_actions is True) -->
+    {% if show_actions %}
+    <div class="action-buttons">
+        {% if cart.status == 'active' %}
+            {% with can_checkout=cart.can_generate_invoice %}
+                {% if can_checkout.0 %}
+                    <form method="post" action="{% url 'pharmacy:generate_invoice_from_cart' cart.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-file-invoice-dollar"></i> Generate Invoice
+                        </button>
+                    </form>
+                {% else %}
+                    <button type="button" class="btn btn-secondary w-100" disabled title="{{ can_checkout.1 }}">
+                        <i class="fas fa-lock"></i> Generate Invoice
+                    </button>
+                    <small class="text-danger text-center">{{ can_checkout.1 }}</small>
+                {% endif %}
+            {% endwith %}
+            
+            <a href="{% url 'pharmacy:prescription_detail' cart.prescription.id %}" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-arrow-left"></i> Back to Prescription
+            </a>
+            
+            <a href="{% url 'pharmacy:cancel_cart' cart.id %}" 
+               class="btn btn-outline-danger w-100"
+               onclick="return confirm('Cancel this cart?')">
+                <i class="fas fa-times"></i> Cancel Cart
+            </a>
+            
+        {% elif cart.status == 'invoiced' %}
+            <a href="{% url 'pharmacy:prescription_payment' cart.prescription.id %}" class="btn btn-warning w-100">
+                <i class="fas fa-credit-card"></i> Process Payment
+            </a>
+            
+        {% elif cart.status == 'paid' %}
+            <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="fas fa-check-circle"></i> Complete Dispensing
+                </button>
+            </form>
+            
+        {% elif cart.status == 'completed' %}
+            <a href="{% url 'pharmacy:prescription_detail' cart.prescription.id %}" class="btn btn-primary w-100">
+                <i class="fas fa-file-prescription"></i> View Prescription
+            </a>
+            
+            <button onclick="window.print()" class="btn btn-outline-primary w-100">
+                <i class="fas fa-print"></i> Print Receipt
+            </button>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Additional Info -->
+    <div class="mt-3 pt-3 border-top">
+        <small class="text-muted">
+            <div class="d-flex justify-content-between mb-1">
+                <span>Created:</span>
+                <span>{{ cart.created_at|date:"M d, Y" }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+                <span>By:</span>
+                <span>{{ cart.created_by.get_full_name }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>Status:</span>
+                <span class="badge bg-{{ cart.status }}">{{ cart.get_status_display }}</span>
+            </div>
+        </small>
+    </div>
+</div>
+

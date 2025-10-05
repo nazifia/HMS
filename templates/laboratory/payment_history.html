@@ -102,6 +102,7 @@
                                     <th>Transaction ID</th>
                                     <th>Recorded By</th>
                                     <th>Notes</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -137,6 +138,12 @@
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'pharmacy:laboratory_payment_receipt' payment.id %}"
+                                           class="btn btn-sm btn-info" target="_blank">
+                                            <i class="fas fa-receipt"></i> Receipt
+                                        </a>
                                     </td>
                                 </tr>
                                 {% endfor %}

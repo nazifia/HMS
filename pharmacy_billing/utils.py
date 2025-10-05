@@ -7,6 +7,19 @@ from nhia.models import NHIAPatient # Import NHIAPatient
 
 def create_pharmacy_invoice(request, prescription, subtotal_value):
     messages.info(request, f"[create_pharmacy_invoice] Called for Prescription ID: {prescription.id}, Subtotal: {subtotal_value}")
+    
+    # Check if an invoice already exists for this prescription
+    try:
+        existing_invoice = PharmacyInvoice.objects.get(prescription=prescription)
+        messages.info(request, f"[create_pharmacy_invoice] Invoice already exists for Prescription ID: {prescription.id}, Invoice ID: {existing_invoice.id}")
+        return existing_invoice
+    except PharmacyInvoice.DoesNotExist:
+        # No existing invoice, proceed with creation
+        pass
+    except Exception as e:
+        messages.error(request, f"[create_pharmacy_invoice] Error checking for existing invoice: {str(e)}")
+        return None
+
     try:
         pharmacy_service = Service.objects.get(name__iexact="Medication Dispensing")
         messages.info(request, f"[create_pharmacy_invoice] Found 'Medication Dispensing' service. ID: {pharmacy_service.id}, Tax: {pharmacy_service.tax_percentage}%")
@@ -17,17 +30,17 @@ def create_pharmacy_invoice(request, prescription, subtotal_value):
         messages.error(request, f"[create_pharmacy_invoice] Error fetching 'Medication Dispensing' service: {str(e)}. Invoice cannot be created.")
         return None
 
-    # Use the prescription's patient payable amount method for consistent pricing
-    patient_payable_amount = prescription.get_patient_payable_amount()
-    subtotal_value = Decimal(str(patient_payable_amount)).quantize(Decimal('0.01'))
+    # Use the provided subtotal_value (based on actual dispensed quantities)
+    # Convert to Decimal and quantize for precision
+    subtotal_value = Decimal(str(subtotal_value)).quantize(Decimal('0.01'))
 
     # Get pricing breakdown for logging
     pricing_breakdown = prescription.get_pricing_breakdown()
 
     if pricing_breakdown['is_nhia_patient']:
-        messages.info(request, f"[create_pharmacy_invoice] NHIA patient detected. Total cost: ₦{pricing_breakdown['total_medication_cost']}, Patient pays 10%: ₦{subtotal_value}")
+        messages.info(request, f"[create_pharmacy_invoice] NHIA patient detected. Patient pays (based on dispensed): ₦{subtotal_value}")
     else:
-        messages.info(request, f"[create_pharmacy_invoice] Non-NHIA patient. Patient pays full cost: ₦{subtotal_value}")
+        messages.info(request, f"[create_pharmacy_invoice] Non-NHIA patient. Patient pays full cost (based on dispensed): ₦{subtotal_value}")
 
     tax_percentage = pharmacy_service.tax_percentage if pharmacy_service and pharmacy_service.tax_percentage is not None else Decimal('0.00')
     tax_amount_calculated = Decimal('0.00')
@@ -59,5 +72,4 @@ def create_pharmacy_invoice(request, prescription, subtotal_value):
         messages.error(request, f"[create_pharmacy_invoice] CRITICAL ERROR creating PharmacyInvoice object: {str(e)}")
         return None
 
-    return invoice
     return invoice

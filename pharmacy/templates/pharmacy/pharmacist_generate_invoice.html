@@ -1,0 +1,471 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .availability-table {
+        font-size: 0.9rem;
+    }
+    .stock-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .stock-sufficient {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .stock-insufficient {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .stock-none {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .medication-row {
+        border-left: 4px solid #4e73df;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: #f8f9fc;
+        border-radius: 0.35rem;
+    }
+    .medication-row.unavailable {
+        border-left-color: #e74a3b;
+        background: #fff5f5;
+    }
+    .medication-row.available {
+        border-left-color: #1cc88a;
+        background: #f0fdf4;
+    }
+    .quantity-input {
+        width: 120px;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    .availability-status {
+        font-size: 1.1rem;
+        font-weight: bold;
+        padding: 0.5rem 1rem;
+        border-radius: 0.35rem;
+        display: inline-block;
+    }
+    .dispensary-selector {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    .total-summary {
+        background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        font-size: 1.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ page_title }}</h1>
+        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Prescription
+        </a>
+    </div>
+
+    <!-- Alert -->
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <strong>Pharmacist Invoice Generation:</strong> Enter the quantity to dispense for each medication. The system will check availability in real-time and show you which medications can be dispensed from the selected dispensary.
+    </div>
+
+    <!-- Prescription Info -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Prescription Information</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+                    <p><strong>Patient Type:</strong> 
+                        {% if prescription.patient.is_nhia_patient %}
+                            <span class="badge badge-success">NHIA Patient (10% Payment)</span>
+                        {% else %}
+                            <span class="badge badge-primary">Regular Patient (100% Payment)</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+                    <p><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
+                    <p><strong>Status:</strong> <span class="badge badge-{{ prescription.status }}">{{ prescription.get_status_display }}</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dispensary Selection First -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-primary text-white">
+            <h6 class="m-0 font-weight-bold">Step 1: Select Dispensary</h6>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="dispensary_select"><strong>Select Dispensary:</strong></label>
+                <select name="dispensary_id" id="dispensary_select" class="form-control form-control-lg" required>
+                    <option value="">-- Select Dispensary to Check Availability --</option>
+                    {% for dispensary in dispensaries %}
+                    <option value="{{ dispensary.id }}">{{ dispensary.name }}</option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">
+                    Select a dispensary to check medication availability and enter quantities to dispense.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medication Quantity Input and Availability Check -->
+    <div class="card shadow mb-4" id="medications-section" style="display: none;">
+        <div class="card-header py-3 bg-success text-white">
+            <h6 class="m-0 font-weight-bold">Step 2: Enter Quantities and Check Availability</h6>
+        </div>
+        <div class="card-body">
+            <form method="post" id="invoice-form">
+                {% csrf_token %}
+                <input type="hidden" name="dispensary_id" id="selected_dispensary_id">
+
+                <div id="medications-list">
+                    {% for item_data in items_availability %}
+                    <div class="medication-row" id="med-row-{{ item_data.item.id }}" data-med-id="{{ item_data.item.medication.id }}" data-item-id="{{ item_data.item.id }}">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <h5 class="mb-2">
+                                    <i class="fas fa-pills text-primary"></i>
+                                    {{ item_data.item.medication.name }}
+                                </h5>
+                                <p class="mb-1 text-muted small">
+                                    <strong>Prescribed:</strong> {{ item_data.item.quantity }} units<br>
+                                    <strong>Dosage:</strong> {{ item_data.item.dosage }}<br>
+                                    <strong>Frequency:</strong> {{ item_data.item.frequency }}
+                                </p>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Quantity to Dispense:</label>
+                                <input type="number"
+                                       name="quantity_{{ item_data.item.id }}"
+                                       id="qty-{{ item_data.item.id }}"
+                                       class="form-control quantity-input"
+                                       value="{{ item_data.item.quantity }}"
+                                       min="0"
+                                       max="{{ item_data.item.quantity }}"
+                                       data-prescribed="{{ item_data.item.quantity }}"
+                                       data-price="{{ item_data.item.medication.selling_price }}">
+                                <small class="text-muted">Max: {{ item_data.item.quantity }}</small>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="font-weight-bold">Available:</label>
+                                <div class="availability-status" id="avail-{{ item_data.item.id }}">
+                                    <i class="fas fa-spinner fa-spin"></i> Checking...
+                                </div>
+                                <div id="stock-info-{{ item_data.item.id }}" class="small mt-1"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Item Total:</label>
+                                <div class="h4 mb-0" id="total-{{ item_data.item.id }}">
+                                    ₦0.00
+                                </div>
+                                <small class="text-muted">Unit: ₦{{ item_data.item.medication.selling_price|floatformat:2 }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-4">
+                    <button type="button" class="btn btn-lg btn-info btn-block" id="check-availability-btn">
+                        <i class="fas fa-search"></i> Check Availability for All Medications
+                    </button>
+                </div>
+
+                <!-- Summary Section -->
+                <div id="summary-section" class="mt-4" style="display: none;">
+                    <div class="total-summary">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-check-circle"></i> Available Medications: <span id="available-count">0</span></h5>
+                                <h5><i class="fas fa-times-circle"></i> Unavailable Medications: <span id="unavailable-count">0</span></h5>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <h5>Subtotal: <span id="subtotal-amount">₦0.00</span></h5>
+                                {% if prescription.patient.is_nhia_patient %}
+                                <h5>NHIA Discount (90%): <span id="nhia-discount">₦0.00</span></h5>
+                                <h4>Patient Pays (10%): <span id="patient-amount">₦0.00</span></h4>
+                                {% else %}
+                                <h4>Total Amount: <span id="total-amount">₦0.00</span></h4>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning mt-3" id="unavailable-alert" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Note:</strong> Some medications are not available in sufficient quantity. Only available medications will be included in the invoice.
+                        <div id="unavailable-list" class="mt-2"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg" id="generate-invoice-btn">
+                            <i class="fas fa-file-invoice"></i> Generate Invoice
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dispensarySelect = document.getElementById('dispensary_select');
+    const medicationsSection = document.getElementById('medications-section');
+    const selectedDispensaryInput = document.getElementById('selected_dispensary_id');
+    const checkAvailabilityBtn = document.getElementById('check-availability-btn');
+    const summarySection = document.getElementById('summary-section');
+    const form = document.getElementById('invoice-form');
+    const isNhiaPatient = {{ prescription.patient.is_nhia_patient|yesno:"true,false" }};
+
+    let availabilityData = {};
+
+    // Show medications section when dispensary is selected
+    dispensarySelect.addEventListener('change', function() {
+        if (this.value) {
+            medicationsSection.style.display = 'block';
+            selectedDispensaryInput.value = this.value;
+            summarySection.style.display = 'none';
+
+            // Reset all availability statuses
+            document.querySelectorAll('[id^="avail-"]').forEach(el => {
+                el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+                el.className = 'availability-status';
+            });
+
+            // Scroll to medications section
+            medicationsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            medicationsSection.style.display = 'none';
+            summarySection.style.display = 'none';
+        }
+    });
+
+    // Update item total when quantity changes
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const itemId = this.id.replace('qty-', '');
+            const quantity = parseFloat(this.value) || 0;
+            const price = parseFloat(this.dataset.price) || 0;
+            const prescribed = parseFloat(this.dataset.prescribed) || 0;
+
+            // Validate quantity
+            if (quantity > prescribed) {
+                this.value = prescribed;
+                alert(`Quantity cannot exceed prescribed amount of ${prescribed} units`);
+                return;
+            }
+
+            if (quantity < 0) {
+                this.value = 0;
+                return;
+            }
+
+            // Update item total
+            const total = quantity * price;
+            document.getElementById(`total-${itemId}`).textContent = `₦${total.toFixed(2)}`;
+
+            // Hide summary when quantities change
+            summarySection.style.display = 'none';
+        });
+    });
+
+    // Check availability for all medications
+    checkAvailabilityBtn.addEventListener('click', function() {
+        const dispensaryId = selectedDispensaryInput.value;
+        if (!dispensaryId) {
+            alert('Please select a dispensary first');
+            return;
+        }
+
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking Availability...';
+
+        // Collect all medication data
+        const medications = [];
+        document.querySelectorAll('.medication-row').forEach(row => {
+            const itemId = row.dataset.itemId;
+            const medId = row.dataset.medId;
+            const qtyInput = document.getElementById(`qty-${itemId}`);
+            const quantity = parseFloat(qtyInput.value) || 0;
+
+            if (quantity > 0) {
+                medications.push({
+                    item_id: itemId,
+                    medication_id: medId,
+                    quantity: quantity
+                });
+            }
+        });
+
+        // Make AJAX request to check availability
+        fetch('{% url "pharmacy:check_medication_availability" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                dispensary_id: dispensaryId,
+                medications: medications
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            availabilityData = data;
+            updateAvailabilityDisplay(data);
+            calculateTotals(data);
+            summarySection.style.display = 'block';
+            summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error checking availability. Please try again.');
+        })
+        .finally(() => {
+            checkAvailabilityBtn.disabled = false;
+            checkAvailabilityBtn.innerHTML = '<i class="fas fa-search"></i> Check Availability for All Medications';
+        });
+    });
+
+    function updateAvailabilityDisplay(data) {
+        let availableCount = 0;
+        let unavailableCount = 0;
+        const unavailableList = [];
+
+        data.medications.forEach(med => {
+            const availEl = document.getElementById(`avail-${med.item_id}`);
+            const stockInfoEl = document.getElementById(`stock-info-${med.item_id}`);
+            const rowEl = document.getElementById(`med-row-${med.item_id}`);
+
+            if (med.available) {
+                availEl.className = 'availability-status stock-sufficient';
+                availEl.innerHTML = '<i class="fas fa-check-circle"></i> Available';
+                stockInfoEl.innerHTML = `<span class="text-success">Stock: ${med.stock_available} units</span>`;
+                rowEl.classList.remove('unavailable');
+                rowEl.classList.add('available');
+                availableCount++;
+            } else {
+                availEl.className = 'availability-status stock-none';
+                availEl.innerHTML = '<i class="fas fa-times-circle"></i> Not Available';
+                stockInfoEl.innerHTML = `<span class="text-danger">Stock: ${med.stock_available} units (Need: ${med.quantity})</span>`;
+                rowEl.classList.remove('available');
+                rowEl.classList.add('unavailable');
+                unavailableCount++;
+                unavailableList.push(`${med.medication_name}: Need ${med.quantity}, Available ${med.stock_available}`);
+            }
+        });
+
+        document.getElementById('available-count').textContent = availableCount;
+        document.getElementById('unavailable-count').textContent = unavailableCount;
+
+        // Show unavailable alert if needed
+        const unavailableAlert = document.getElementById('unavailable-alert');
+        const unavailableListEl = document.getElementById('unavailable-list');
+
+        if (unavailableCount > 0) {
+            unavailableAlert.style.display = 'block';
+            unavailableListEl.innerHTML = '<ul class="mb-0">' +
+                unavailableList.map(item => `<li>${item}</li>`).join('') +
+                '</ul>';
+        } else {
+            unavailableAlert.style.display = 'none';
+        }
+    }
+
+    function calculateTotals(data) {
+        let subtotal = 0;
+
+        data.medications.forEach(med => {
+            if (med.available) {
+                subtotal += med.total_price;
+            }
+        });
+
+        document.getElementById('subtotal-amount').textContent = `₦${subtotal.toFixed(2)}`;
+
+        if (isNhiaPatient) {
+            const nhiaDiscount = subtotal * 0.9;
+            const patientAmount = subtotal * 0.1;
+            document.getElementById('nhia-discount').textContent = `₦${nhiaDiscount.toFixed(2)}`;
+            document.getElementById('patient-amount').textContent = `₦${patientAmount.toFixed(2)}`;
+        } else {
+            document.getElementById('total-amount').textContent = `₦${subtotal.toFixed(2)}`;
+        }
+    }
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!selectedDispensaryInput.value) {
+            alert('Please select a dispensary');
+            return;
+        }
+
+        if (!availabilityData.medications || availabilityData.medications.length === 0) {
+            alert('Please check availability first');
+            return;
+        }
+
+        const availableCount = availabilityData.medications.filter(m => m.available).length;
+
+        if (availableCount === 0) {
+            alert('No medications are available. Cannot generate invoice.');
+            return;
+        }
+
+        const unavailableCount = availabilityData.medications.filter(m => !m.available).length;
+        let confirmMessage = `Generate invoice for ${availableCount} available medication(s)?`;
+
+        if (unavailableCount > 0) {
+            confirmMessage += `\n\n${unavailableCount} medication(s) will be excluded due to insufficient stock.`;
+        }
+
+        if (confirm(confirmMessage)) {
+            // Add availability data to form
+            const availabilityInput = document.createElement('input');
+            availabilityInput.type = 'hidden';
+            availabilityInput.name = 'availability_data';
+            availabilityInput.value = JSON.stringify(availabilityData);
+            form.appendChild(availabilityInput);
+
+            form.submit();
+        }
+    });
+});
+</script>
+{% endblock %}
+

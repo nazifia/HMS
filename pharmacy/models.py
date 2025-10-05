@@ -660,7 +660,7 @@ class Prescription(models.Model):
         return False
 
     def can_be_dispensed(self):
-        """Check if prescription can be dispensed based on payment, authorization, and other conditions"""
+        """Check if prescription can be dispensed based on authorization and other conditions"""
         # Check if prescription is in a dispensable state
         if self.status in ['cancelled', 'dispensed']:
             return False, f'Cannot dispense prescription with status: {self.get_status_display()}'
@@ -672,9 +672,7 @@ class Prescription(models.Model):
             elif not self.authorization_code.is_valid():
                 return False, f'Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.'
 
-        # Check payment verification
-        if not self.is_payment_verified():
-            return False, 'Payment must be completed before dispensing medications'
+        # Payment verification removed - invoice will be created after dispensing based on actual quantities
 
         # Check if there are items to dispense
         pending_items = self.items.filter(is_dispensed=False)

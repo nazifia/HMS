@@ -197,7 +197,7 @@
 
     <!-- Dispensing Form -->
     <div class="items-table">
-        <form id="dispense-form" method="post" {% if not prescription.is_payment_verified %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
+        <form id="dispense-form" method="post">
             {% csrf_token %}
             
             <!-- Hidden dispensary ID field for retention -->
@@ -233,21 +233,11 @@
                 </div>
             </div>
 
-            <!-- Payment Verification Alert -->
-            {% if not prescription.is_payment_verified %}
-            <div class="alert alert-warning" role="alert">
-                <h5 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Payment Required</h5>
-                <p>This prescription cannot be dispensed until payment is completed.</p>
-                {% if prescription.invoice %}
-                    <hr>
-                    <p class="mb-0">
-                        <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-warning">
-                            <i class="fas fa-credit-card"></i> Complete Payment
-                        </a>
-                    </p>
-                {% endif %}
+            <!-- Dispensing Info Alert -->
+            <div class="alert alert-info" role="alert">
+                <h5 class="alert-heading"><i class="fas fa-info-circle"></i> Dispensing Workflow</h5>
+                <p class="mb-0">Select medications and quantities to dispense. An invoice will be created based on dispensed quantities, then patient can proceed to payment.</p>
             </div>
-            {% endif %}
 
             <!-- Formset Management Fields -->
             {{ formset.management_form }}
