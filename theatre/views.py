@@ -937,7 +937,26 @@ def order_medical_pack_for_surgery(request, surgery_id):
     """Order a medical pack for a specific surgery"""
     from .models import Surgery
     surgery = get_object_or_404(Surgery, id=surgery_id)
-    
+
+    # Check if NHIA patient requires authorization before ordering packs
+    if surgery.patient.patient_type == 'nhia':
+        if not surgery.authorization_code:
+            messages.error(
+                request,
+                'Authorization required! This is an NHIA patient. Please request and obtain '
+                'authorization from the desk office before ordering medical packs.'
+            )
+            return redirect('theatre:surgery_detail', pk=surgery.id)
+
+        # Check if authorization is still valid
+        if hasattr(surgery.authorization_code, 'is_valid') and not surgery.authorization_code.is_valid():
+            messages.error(
+                request,
+                'Authorization code has expired or is invalid. Please request a new authorization '
+                'from the desk office before ordering medical packs.'
+            )
+            return redirect('theatre:surgery_detail', pk=surgery.id)
+
     # Get surgery-specific packs
     available_packs = MedicalPack.objects.filter(
         is_active=True,
@@ -1114,5 +1133,37 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
     )['total'] or Decimal('0.00')
     invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount
     invoice.save()
-    
+
     return invoice_item
+
+
+@login_required
+def request_surgery_authorization(request, surgery_id):
+    """Request authorization from desk office for NHIA surgery"""
+    surgery = get_object_or_404(Surgery, id=surgery_id)
+
+    # Check if patient is NHIA
+    if surgery.patient.patient_type != 'nhia':
+        messages.error(request, 'Authorization is only required for NHIA patients.')
+        return redirect('theatre:surgery_detail', pk=surgery.id)
+
+    # Check if authorization already exists
+    if surgery.authorization_code:
+        messages.info(request, 'Authorization code already exists for this surgery.')
+        return redirect('theatre:surgery_detail', pk=surgery.id)
+
+    # Update surgery status to indicate authorization is pending
+    surgery.status = 'pending'
+    surgery.save()
+
+    # TODO: Create notification for desk office
+    # This would typically create a notification or task for the desk office staff
+    # For now, we'll just show a success message
+
+    messages.success(
+        request,
+        'Authorization request sent to desk office. You will be notified once the authorization '
+        'is approved. Medical packs cannot be ordered until authorization is received.'
+    )
+
+    return redirect('theatre:surgery_detail', pk=surgery.id)

@@ -482,13 +482,11 @@
         <p><strong>Date:</strong> {{ prescription.prescription_date }}</p>
         <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
         <p><strong>Payment Status:</strong> {{ prescription.get_payment_status_display }}</p>
-        {% with invoice=prescription.invoices.all|first %}
-            {% if invoice %}
-                <p><strong>Invoice:</strong> <a href="{% url 'billing:detail' invoice.id %}">#{{ invoice.invoice_number }}</a> ({{ invoice.get_status_display }})</p>
-            {% else %}
-                <p><strong>Invoice:</strong> <span class="text-muted">No invoice generated</span></p>
-            {% endif %}
-        {% endwith %}
+        {% if prescription.invoice %}
+            <p><strong>Invoice:</strong> <a href="{% url 'billing:detail' prescription.invoice.id %}">#{{ prescription.invoice.invoice_number }}</a> ({{ prescription.invoice.get_status_display }})</p>
+        {% else %}
+            <p><strong>Invoice:</strong> <span class="text-muted">No invoice generated</span></p>
+        {% endif %}
     </div>
 </div>
 

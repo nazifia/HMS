@@ -55,12 +55,45 @@
                     </div>
                     
                     <hr>
-                    
+
+                    <!-- NHIA Authorization Status -->
+                    {% if object.patient.patient_type == 'nhia' %}
+                    <div class="alert {% if object.authorization_code %}alert-success{% else %}alert-warning{% endif %} mb-3">
+                        <h6 class="font-weight-bold mb-2">
+                            <i class="fas fa-shield-alt mr-2"></i>NHIA Authorization Status
+                        </h6>
+                        {% if object.authorization_code %}
+                            <p class="mb-1">
+                                <strong>Status:</strong> <span class="badge badge-success">Authorized</span>
+                            </p>
+                            <p class="mb-1">
+                                <strong>Authorization Code:</strong> {{ object.authorization_code.code }}
+                            </p>
+                            <p class="mb-0">
+                                <i class="fas fa-check-circle text-success mr-1"></i>
+                                Medical packs can be ordered for this surgery.
+                            </p>
+                        {% else %}
+                            <p class="mb-1">
+                                <strong>Status:</strong> <span class="badge badge-warning">Pending Authorization</span>
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-exclamation-triangle text-warning mr-1"></i>
+                                Authorization required before medical packs can be ordered.
+                            </p>
+                            <a href="{% url 'theatre:request_surgery_authorization' object.id %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-paper-plane mr-1"></i>Request Authorization from Desk Office
+                            </a>
+                        {% endif %}
+                    </div>
+                    <hr>
+                    {% endif %}
+
                     <h6 class="font-weight-bold">Pre-Surgery Notes</h6>
                     <p>{{ object.pre_surgery_notes|default:"No pre-surgery notes provided." }}</p>
-                    
+
                     <hr>
-                    
+
                     <h6 class="font-weight-bold">Post-Surgery Notes</h6>
                     <p>{{ object.post_surgery_notes|default:"No post-surgery notes provided." }}</p>
                 </div>

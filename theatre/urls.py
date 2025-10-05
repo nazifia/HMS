@@ -64,9 +64,12 @@ urlpatterns = [
     # Prescription functionality
     path('surgeries/<int:surgery_id>/create-prescription/', views.create_prescription_for_theatre, name='create_prescription_for_theatre'),
     
-    # Medical Pack functionality  
+    # Medical Pack functionality
     path('surgeries/<int:surgery_id>/order-medical-pack/', views.order_medical_pack_for_surgery, name='order_medical_pack_for_surgery'),
-    
+
+    # NHIA Authorization
+    path('surgeries/<int:surgery_id>/request-authorization/', views.request_surgery_authorization, name='request_surgery_authorization'),
+
     # Payment management
     path('surgeries/<int:surgery_id>/payment/', payment_views.theatre_payment, name='theatre_payment'),
     path('surgeries/<int:surgery_id>/payment-history/', payment_views.theatre_payment_history, name='theatre_payment_history'),
