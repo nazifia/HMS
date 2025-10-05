@@ -182,7 +182,7 @@ def process_payment(request, invoice_id):
     # Check if invoice is already paid
     if invoice.status == 'paid':
         messages.warning(request, "This invoice has already been paid.")
-        return redirect('billing:invoice_detail', invoice_id=invoice.id)
+        return redirect('billing:detail', invoice_id=invoice.id)
     
     if request.method == 'POST':
         form = PaymentForm(request.POST)
@@ -205,7 +205,7 @@ def process_payment(request, invoice_id):
                 print(f"Payment processed for invoice {invoice.id} by session {isolation_info['session_id']}")
                 
                 messages.success(request, "Payment processed successfully.")
-                return redirect('billing:invoice_detail', invoice_id=invoice.id)
+                return redirect('billing:detail', invoice_id=invoice.id)
     else:
         form = PaymentForm()
     

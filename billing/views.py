@@ -652,7 +652,7 @@ def create_invoice_for_prescription(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
     if hasattr(prescription, 'invoice') and prescription.invoice:
         messages.info(request, 'Invoice already exists for this prescription.')
-        return redirect('billing:invoice_detail', invoice_id=prescription.invoice.id)
+        return redirect('billing:detail', invoice_id=prescription.invoice.id)
 
     # You may want to select a Service for dispensing medication
     service = Service.objects.filter(name__icontains='Medication Dispensing').first()
@@ -713,7 +713,7 @@ def create_invoice_for_prescription(request, prescription_id):
         )
 
     messages.success(request, f'Invoice created for prescription #{prescription.id}.')
-    return redirect('billing:invoice_detail', invoice_id=invoice.id)
+    return redirect('billing:detail', invoice_id=invoice.id)
 
 
 @login_required

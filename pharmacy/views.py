@@ -1456,6 +1456,15 @@ def purchase_detail(request, purchase_id):
     return render(request, 'pharmacy/purchase_detail.html', context)
 
 
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect, render
+from django.core.paginator import Paginator
+
+from pharmacy.forms import PrescriptionForm, PrescriptionSearchForm
+from pharmacy.models import Patient, Prescription, PrescriptionItem, Purchase
+
+
 @login_required
 def process_purchase_payment(request, purchase_id):
     """View for processing purchase payment"""
@@ -1583,6 +1592,9 @@ def prescription_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    # Add title to context for template
+    title = "Prescription Management"
+    
     context = {
         'page_obj': page_obj,
         'form': search_form,
@@ -1593,6 +1605,7 @@ def prescription_list(request):
         'dispensing_stats': dispensing_stats,
         'page_title': 'Prescription List',
         'active_nav': 'pharmacy',
+        'title': title,
     }
     
     return render(request, 'pharmacy/prescription_list.html', context)

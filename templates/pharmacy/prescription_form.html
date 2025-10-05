@@ -155,7 +155,7 @@
                     <div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
                         {# Invoice is generated automatically when dispensing #}
                         {% if form.instance.invoice %}
-                            <a href="{% url 'billing:invoice_detail' form.instance.invoice.pk %}" class="btn btn-success ms-2">
+                            <a href="{% url 'billing:detail' form.instance.invoice.pk %}" class="btn btn-success ms-2">
                                 <i class="fas fa-file-invoice-dollar"></i> View Invoice
                             </a>
                             {% if form.instance.invoice.status != 'paid' %}

@@ -89,6 +89,36 @@
     .border-left-secondary {
         border-left: 0.25rem solid #858796 !important;
     }
+
+    /* Enhanced patient ID display */
+    .patient-id-display {
+        font-weight: bold;
+        color: #4e73df;
+        font-size: 0.9rem;
+    }
+
+    .patient-id-container {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* Enhanced table styling */
+    .table-hover tbody tr:hover {
+        background-color: rgba(78, 115, 223, 0.05);
+    }
+
+    /* Quick action buttons */
+    .quick-actions {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .quick-actions .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
 </style>
 {% endblock %}
 
@@ -96,9 +126,17 @@
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
-        <a href="{% url 'pharmacy:create_prescription' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Create New Prescription
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pharmacy:create_prescription' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Create New Prescription
+            </a>
+            <a href="{% url 'pharmacy:prescription_list' %}?status=pending" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm">
+                <i class="fas fa-clock fa-sm text-white-50"></i> Pending Prescriptions
+            </a>
+            <a href="{% url 'pharmacy:prescription_list' %}?payment_status=unpaid" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm">
+                <i class="fas fa-exclamation-circle fa-sm text-white-50"></i> Unpaid Prescriptions
+            </a>
+        </div>
     </div>
 
     <div class="card shadow mb-4">
@@ -110,7 +148,7 @@
         <div class="card-body">
             <!-- Debug Information -->
             {% if form %}
-                <div class="alert alert-info">
+                <div class="alert alert-info d-none">
                     <strong>Debug:</strong> Form is available. Fields:
                     {% for field in form %}
                         {{ field.name }}{% if not forloop.last %}, {% endif %}
@@ -261,16 +299,22 @@
     </div>
 
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Prescription List</h6>
+            <div class="d-flex gap-2">
+                <span class="badge bg-primary">Total: {{ total_prescriptions }}</span>
+                <span class="badge bg-warning">Pending: {{ pending_count }}</span>
+                <span class="badge bg-success">Dispensed: {{ completed_count }}</span>
+            </div>
         </div>
         <div class="card-body">
             {% if page_obj %}
             <div class="table-responsive">
-                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                    <thead>
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead class="thead-dark">
                         <tr>
                             <th>Patient</th>
+                            <th>Patient Number</th>
                             <th>Doctor</th>
                             <th>Prescription Date</th>
                             <th>Status</th>
@@ -286,19 +330,34 @@
                         {% with progress=prescription.get_dispensing_progress %}
                         <tr {% if prescription.is_from_surgery_pack %}style="background-color: #fff3cd !important;"{% endif %}>
                             <td>
-                                {{ prescription.patient.get_full_name }}
+                                <strong>{{ prescription.patient.get_full_name }}</strong>
                                 <br>
-                                <small class="text-muted">ID: {{ prescription.patient.patient_id }}</small>
+                                <div class="patient-id-container">
+                                    <span class="patient-id-display">{{ prescription.patient.patient_id }}</span>
+                                    <button class="btn btn-link btn-xs p-0 copy-patient-id" title="Copy Patient Number" data-patient-id="{{ prescription.patient.patient_id }}">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
                                 {% if prescription.is_from_surgery_pack %}
                                     <br><small class="badge bg-warning text-dark"><i class="fas fa-scalpel"></i> Surgery Pack</small>
                                 {% endif %}
-                                <br>
-                                <a href="{% url 'pharmacy:patient_prescriptions' prescription.patient.id %}" class="btn btn-outline-primary btn-xs mt-1" title="View all prescriptions for this patient">
-                                    <i class="fas fa-list"></i> All Prescriptions
-                                </a>
+                                <div class="quick-actions mt-1">
+                                    <a href="{% url 'pharmacy:patient_prescriptions' prescription.patient.id %}" class="btn btn-outline-primary btn-xs" title="View all prescriptions for this patient">
+                                        <i class="fas fa-list"></i> All Prescriptions
+                                    </a>
+                                    <a href="#" class="btn btn-outline-info btn-xs" title="View patient details">
+                                        <i class="fas fa-user"></i> Patient Info
+                                    </a>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="patient-id-display">{{ prescription.patient.patient_id }}</span>
+                                <button class="btn btn-link btn-xs p-0 ml-1 copy-patient-id" title="Copy Patient Number" data-patient-id="{{ prescription.patient.patient_id }}">
+                                    <i class="fas fa-copy"></i>
+                                </button>
                             </td>
                             <td>{{ prescription.doctor.get_full_name }}</td>
-                            <td>{{ prescription.prescription_date }}</td>
+                            <td>{{ prescription.prescription_date|date:"Y-m-d" }}</td>
                             <td>
                                 <span class="badge badge-{{ prescription.status|default:'secondary' }}">
                                     {{ prescription.get_status_display }}
@@ -343,7 +402,9 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            <td>{{ prescription.get_prescription_type_display }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ prescription.get_prescription_type_display }}</span>
+                            </td>
                             <td>
                                 <div class="btn-group-vertical" role="group">
                                     <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-info btn-sm">
@@ -411,7 +472,11 @@
             </nav>
 
             {% else %}
-            <p>No prescriptions found.</p>
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <h4>No prescriptions found</h4>
+                <p>Try adjusting your search criteria or <a href="{% url 'pharmacy:create_prescription' %}">create a new prescription</a>.</p>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -513,6 +578,41 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Copy Patient Number functionality
+    document.querySelectorAll('.copy-patient-id').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const patientId = btn.getAttribute('data-patient-id');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(patientId).then(function() {
+                    // Show visual feedback
+                    const originalIcon = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    setTimeout(() => {
+                        btn.innerHTML = originalIcon;
+                    }, 1500);
+                });
+            }
+        });
+    });
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + N to create new prescription
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = "{% url 'pharmacy:create_prescription' %}";
+        }
+        
+        // Ctrl/Cmd + F to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+    });
 });
 </script>
 {% endblock %}

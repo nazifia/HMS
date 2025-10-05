@@ -30,6 +30,106 @@
         border-color: #4e73df;
         box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
     }
+
+    /* Patient ID styling */
+    .patient-id-container {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .patient-id-display {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: #2c3e50;
+        background-color: #f8f9fa;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    .copy-patient-id {
+        color: #6c757d;
+        font-size: 0.75rem;
+        transition: color 0.2s;
+        cursor: pointer;
+        border: none;
+        background: none;
+        padding: 0.15rem 0.3rem;
+    }
+
+    .copy-patient-id:hover {
+        color: #007bff;
+    }
+
+    .copy-patient-id.copied {
+        color: #28a745;
+    }
+
+    /* Progress bar styling */
+    .dispensing-progress {
+        width: 100%;
+        height: 6px;
+        background-color: #e9ecef;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 0.25rem;
+    }
+
+    .dispensing-progress-bar {
+        height: 100%;
+        background-color: #28a745;
+        transition: width 0.3s ease;
+    }
+
+    /* Enhanced table styling */
+    .table th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    /* Surgery pack indicator */
+    .surgery-pack-row {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107;
+    }
+
+    /* Status badges */
+    .badge-payment-paid {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .badge-payment-unpaid {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .badge-payment-waived {
+        background-color: #17a2b8;
+        color: white;
+    }
+
+    .badge-dispensing-full {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .badge-dispensing-partial {
+        background-color: #ffc107;
+        color: #000;
+    }
+
+    .badge-dispensing-none {
+        background-color: #6c757d;
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -158,61 +258,152 @@
                 <!-- Prescriptions Table -->
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
                                 <th>ID</th>
                                 <th>Date</th>
                                 <th>Patient</th>
+                                <th>Patient Number</th>
                                 <th>Doctor</th>
                                 <th>Diagnosis</th>
                                 <th>Status</th>
+                                <th>Payment</th>
+                                <th>Dispensing</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for prescription in page_obj %}
-                                <tr class="{% if prescription.is_from_surgery_pack %}bg-warning bg-opacity-50{% elif prescription.status == 'pending' %}table-warning{% elif prescription.status == 'processing' %}table-info{% elif prescription.status == 'completed' %}table-success{% elif prescription.status == 'cancelled' %}table-danger{% endif %}" {% if prescription.is_from_surgery_pack %}style="background-color: #fff3cd !important;"{% endif %}>
+                                {% with dispensing_info=prescription.get_dispensing_status_info %}
+                                {% with progress=prescription.get_dispensing_progress %}
+                                {% with payment_info=prescription.get_payment_status_display_info %}
+                                <tr class="{% if prescription.is_from_surgery_pack %}surgery-pack-row{% elif prescription.status == 'pending' %}table-warning{% elif prescription.status == 'processing' %}table-info{% elif prescription.status == 'completed' %}table-success{% elif prescription.status == 'cancelled' %}table-danger{% endif %}">
                                     <td>
-                                        {{ prescription.id }}
+                                        <strong>#{{ prescription.id }}</strong>
                                         {% if prescription.is_from_surgery_pack %}
-                                            <br><small class="badge bg-warning text-dark"><i class="fas fa-scalpel"></i> Surgery Pack</small>
+                                            <br><small class="badge bg-warning text-dark">
+                                                <i class="fas fa-scalpel"></i> Surgery Pack
+                                            </small>
                                         {% endif %}
                                     </td>
-                                    <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
                                     <td>
-                                        <a href="{% url 'patients:detail' prescription.patient.id %}">
-                                            {{ prescription.patient.get_full_name }}
-                                        </a>
+                                        <small>{{ prescription.prescription_date|date:"M d, Y" }}</small>
+                                        {% if prescription.created_at %}
+                                        <br>
+                                        <small class="text-muted">{{ prescription.created_at|date:"h:i A" }}</small>
+                                        {% endif %}
                                     </td>
-                                    <td>Dr. {{ prescription.doctor.get_full_name }}</td>
-                                    <td>{{ prescription.diagnosis|truncatechars:30 }}</td>
+                                    <td>
+                                        <a href="{% url 'patients:detail' prescription.patient.id %}" class="text-decoration-none">
+                                            <strong>{{ prescription.patient.get_full_name }}</strong>
+                                        </a>
+                                        {% if prescription.patient.patient_type == 'nhia' %}
+                                            <br><small class="badge bg-info">NHIA</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="patient-id-container">
+                                            <span class="patient-id-display">{{ prescription.patient.patient_id }}</span>
+                                            <button class="copy-patient-id"
+                                                    title="Copy Patient Number"
+                                                    data-patient-id="{{ prescription.patient.patient_id }}"
+                                                    onclick="copyPatientId(this, event)">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small>Dr. {{ prescription.doctor.get_full_name }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ prescription.diagnosis|truncatechars:30 }}</small>
+                                    </td>
                                     <td>
                                         {% if prescription.status == 'pending' %}
-                                            <span class="badge bg-warning">Pending</span>
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif prescription.status == 'approved' %}
+                                            <span class="badge bg-info">Approved</span>
                                         {% elif prescription.status == 'processing' %}
-                                            <span class="badge bg-info">Processing</span>
+                                            <span class="badge bg-primary">Processing</span>
+                                        {% elif prescription.status == 'dispensed' %}
+                                            <span class="badge bg-success">Dispensed</span>
+                                        {% elif prescription.status == 'partially_dispensed' %}
+                                            <span class="badge bg-warning">Partial</span>
                                         {% elif prescription.status == 'completed' %}
                                             <span class="badge bg-success">Completed</span>
                                         {% elif prescription.status == 'cancelled' %}
                                             <span class="badge bg-danger">Cancelled</span>
+                                        {% elif prescription.status == 'on_hold' %}
+                                            <span class="badge bg-secondary">On Hold</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if payment_info.status == 'paid' %}
+                                            <span class="badge badge-payment-paid">
+                                                <i class="fas fa-check-circle"></i> Paid
+                                            </span>
+                                        {% elif payment_info.status == 'waived' %}
+                                            <span class="badge badge-payment-waived">
+                                                <i class="fas fa-info-circle"></i> Waived
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-payment-unpaid">
+                                                <i class="fas fa-exclamation-circle"></i> Unpaid
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if dispensing_info.status == 'fully_dispensed' %}
+                                            <span class="badge badge-dispensing-full">
+                                                <i class="fas fa-check-circle"></i> Full
+                                            </span>
+                                        {% elif dispensing_info.status == 'partially_dispensed' %}
+                                            <span class="badge badge-dispensing-partial">
+                                                <i class="fas fa-clock"></i> Partial
+                                            </span>
+                                            <div class="dispensing-progress">
+                                                <div class="dispensing-progress-bar" style="width: {{ progress.progress_percentage }}%; background-color: #ffc107;"></div>
+                                            </div>
+                                            <small class="text-muted">{{ progress.progress_percentage }}%</small>
+                                        {% else %}
+                                            <span class="badge badge-dispensing-none">
+                                                <i class="fas fa-times-circle"></i> None
+                                            </span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-info" title="View">
+                                            <a href="{% url 'pharmacy:prescription_detail' prescription.id %}"
+                                               class="btn btn-info btn-sm"
+                                               title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            {% if prescription.status != 'completed' and prescription.status != 'cancelled' %}
-                                                <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success" title="Dispense">
+                                            {% if prescription.status != 'completed' and prescription.status != 'cancelled' and prescription.status != 'dispensed' %}
+                                                <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}"
+                                                   class="btn btn-success btn-sm"
+                                                   title="Dispense Medication">
                                                     <i class="fas fa-prescription-bottle-alt"></i>
+                                                </a>
+                                            {% endif %}
+                                            {% if prescription.invoice %}
+                                                <a href="{% url 'billing:detail' prescription.invoice.id %}"
+                                                   class="btn btn-primary btn-sm"
+                                                   title="View Invoice">
+                                                    <i class="fas fa-file-invoice"></i>
                                                 </a>
                                             {% endif %}
                                         </div>
                                     </td>
                                 </tr>
+                                {% endwith %}
+                                {% endwith %}
+                                {% endwith %}
                             {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center">No prescriptions found.</td>
+                                    <td colspan="10" class="text-center py-4">
+                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No prescriptions found.</p>
+                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -291,6 +482,52 @@
 
 {% block extra_js %}
 <script>
+// Copy patient ID to clipboard function
+function copyPatientId(button, event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const patientId = button.getAttribute('data-patient-id');
+
+    // Create a temporary textarea to copy the text
+    const textarea = document.createElement('textarea');
+    textarea.value = patientId;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+        document.execCommand('copy');
+
+        // Visual feedback
+        const icon = button.querySelector('i');
+        const originalClass = icon.className;
+        icon.className = 'fas fa-check';
+        button.classList.add('copied');
+        button.title = 'Copied!';
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+            icon.className = originalClass;
+            button.classList.remove('copied');
+            button.title = 'Copy Patient Number';
+        }, 2000);
+
+        // Show toast notification if available
+        if (typeof showToast === 'function') {
+            showToast('Patient ID copied to clipboard', 'success');
+        }
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        if (typeof showToast === 'function') {
+            showToast('Failed to copy patient ID', 'error');
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize select2 for doctor dropdown if available
     if (typeof $ !== 'undefined' && $.fn.select2) {
@@ -370,6 +607,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + K to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+    });
+
+    // Auto-refresh dispensing progress bars
+    const progressBars = document.querySelectorAll('.dispensing-progress-bar');
+    progressBars.forEach(bar => {
+        const width = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => {
+            bar.style.width = width;
+        }, 100);
+    });
 });
 </script>
 {% endblock %}
