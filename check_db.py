@@ -1,19 +1,26 @@
 import sqlite3
+import os
 
 # Connect to the database
-conn = sqlite3.connect('db.sqlite3')
-cursor = conn.cursor()
-
-# Get all pharmacy-related tables
-cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'pharmacy%'")
-tables = cursor.fetchall()
-print('Pharmacy tables:', tables)
-
-# Get migration status
-cursor.execute("SELECT * FROM django_migrations WHERE app = 'pharmacy' ORDER BY id")
-migrations = cursor.fetchall()
-print('Pharmacy migrations:')
-for migration in migrations:
-    print(f"  {migration[2]} (applied at {migration[3]})")
-
-conn.close()
+db_path = 'db.sqlite3'
+if os.path.exists(db_path):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Check if the table exists and get its columns
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pharmacy_prescriptioncartitem'")
+    table_exists = cursor.fetchone()
+    
+    if table_exists:
+        print("Table 'pharmacy_prescriptioncartitem' exists")
+        cursor.execute("PRAGMA table_info('pharmacy_prescriptioncartitem')")
+        columns = cursor.fetchall()
+        print("Columns in 'pharmacy_prescriptioncartitem':")
+        for col in columns:
+            print(f"  - {col[1]} ({col[2]})")
+    else:
+        print("Table 'pharmacy_prescriptioncartitem' does not exist")
+    
+    conn.close()
+else:
+    print(f"Database file {db_path} not found")

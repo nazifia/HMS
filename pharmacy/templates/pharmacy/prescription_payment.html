@@ -113,8 +113,8 @@
             </div>
 
             <!-- Cart Info (if exists) -->
-            {% if prescription.carts.filter.status__in:'invoiced,paid' %}
-                {% with cart=prescription.carts.first %}
+            <!-- Cart Info (if exists) -->
+            {% for cart in invoiced_or_paid_carts %}
                 <div class="card mb-3">
                     <div class="card-header bg-info text-white">
                         <i class="fas fa-shopping-cart"></i> Cart Information
@@ -130,8 +130,7 @@
                         </a>
                     </div>
                 </div>
-                {% endwith %}
-            {% endif %}
+            {% endfor %}
 
             <!-- Prescription Info -->
             <div class="prescription-info">

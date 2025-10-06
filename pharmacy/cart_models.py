@@ -20,11 +20,12 @@ class PrescriptionCart(models.Model):
     """
     
     STATUS_CHOICES = (
-        ('active', 'Active'),           # Cart is being prepared
-        ('invoiced', 'Invoiced'),       # Invoice created, awaiting payment
-        ('paid', 'Paid'),               # Payment completed, ready to dispense
-        ('completed', 'Completed'),     # Dispensing completed
-        ('cancelled', 'Cancelled'),     # Cart cancelled
+        ('active', 'Active'),                       # Cart is being prepared
+        ('invoiced', 'Invoiced'),                   # Invoice created, awaiting payment
+        ('paid', 'Paid'),                           # Payment completed, ready to dispense
+        ('partially_dispensed', 'Partially Dispensed'),  # Some items dispensed, others pending
+        ('completed', 'Completed'),                 # All items fully dispensed
+        ('cancelled', 'Cancelled'),                 # Cart cancelled
     )
     
     prescription = models.ForeignKey(
@@ -126,17 +127,73 @@ class PrescriptionCart(models.Model):
         return True, 'Cart is ready for invoice generation'
     
     def can_complete_dispensing(self):
-        """Check if dispensing can be completed"""
-        if self.status != 'paid':
-            return False, f'Cart status is {self.get_status_display()}, must be Paid'
-        
+        """Check if dispensing can be completed (allows partial dispensing)"""
+        # Allow dispensing if cart is paid, partially_dispensed, or invoiced with paid invoice
+        if self.status not in ['paid', 'partially_dispensed', 'invoiced']:
+            return False, f'Cart status is {self.get_status_display()}, must be Paid, Partially Dispensed, or Invoiced'
+
         if not self.invoice:
             return False, 'No invoice associated with this cart'
-        
+
+        # Check if invoice is paid
         if self.invoice.status != 'paid':
             return False, 'Invoice is not paid'
-        
+
+        # If invoice is paid but cart status is still 'invoiced', auto-update cart status
+        if self.status == 'invoiced' and self.invoice.status == 'paid':
+            self.status = 'paid'
+            self.save(update_fields=['status'])
+
+        # Check if there are any items with remaining quantity
+        has_items_to_dispense = any(
+            item.get_remaining_quantity() > 0
+            for item in self.items.all()
+        )
+
+        if not has_items_to_dispense:
+            return False, 'All items have been fully dispensed'
+
         return True, 'Cart is ready for dispensing'
+
+    def get_dispensing_progress(self):
+        """Get overall dispensing progress for the cart"""
+        total_items = self.items.count()
+        if total_items == 0:
+            return {
+                'total_items': 0,
+                'fully_dispensed': 0,
+                'partially_dispensed': 0,
+                'pending': 0,
+                'percentage': 0
+            }
+
+        fully_dispensed = sum(1 for item in self.items.all() if item.is_fully_dispensed())
+        partially_dispensed = sum(1 for item in self.items.all() if item.is_partially_dispensed())
+        pending = total_items - fully_dispensed - partially_dispensed
+
+        # Calculate percentage based on quantities
+        total_quantity = sum(item.quantity for item in self.items.all())
+        dispensed_quantity = sum(item.quantity_dispensed for item in self.items.all())
+        percentage = int((dispensed_quantity / total_quantity) * 100) if total_quantity > 0 else 0
+
+        return {
+            'total_items': total_items,
+            'fully_dispensed': fully_dispensed,
+            'partially_dispensed': partially_dispensed,
+            'pending': pending,
+            'percentage': percentage,
+            'total_quantity': total_quantity,
+            'dispensed_quantity': dispensed_quantity,
+            'remaining_quantity': total_quantity - dispensed_quantity
+        }
+
+    def is_fully_dispensed(self):
+        """Check if all items in cart are fully dispensed"""
+        return all(item.is_fully_dispensed() for item in self.items.all())
+
+    def has_pending_items(self):
+        """Check if cart has items pending dispensing"""
+        return any(item.get_remaining_quantity() > 0 for item in self.items.all())
     
     def clear_cart(self):
         """Remove all items from cart"""
@@ -167,15 +224,20 @@ class PrescriptionCartItem(models.Model):
     )
     
     quantity = models.IntegerField(
-        help_text="Quantity to dispense/bill"
+        help_text="Total quantity to dispense/bill"
     )
-    
+
+    quantity_dispensed = models.IntegerField(
+        default=0,
+        help_text="Quantity already dispensed from this cart item"
+    )
+
     unit_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         help_text="Unit price at time of adding to cart"
     )
-    
+
     available_stock = models.IntegerField(
         default=0,
         help_text="Available stock at time of adding to cart (cached)"
@@ -279,26 +341,59 @@ class PrescriptionCartItem(models.Model):
         
         self.available_stock = total_stock
     
+    def get_remaining_quantity(self):
+        """Get quantity remaining to dispense"""
+        return self.quantity - self.quantity_dispensed
+
+    def is_fully_dispensed(self):
+        """Check if this item is fully dispensed"""
+        return self.quantity_dispensed >= self.quantity
+
+    def is_partially_dispensed(self):
+        """Check if this item is partially dispensed"""
+        return self.quantity_dispensed > 0 and self.quantity_dispensed < self.quantity
+
+    def get_dispensing_progress_percentage(self):
+        """Get dispensing progress as percentage"""
+        if self.quantity == 0:
+            return 0
+        return int((self.quantity_dispensed / self.quantity) * 100)
+
     def has_sufficient_stock(self):
-        """Check if there's sufficient stock for this item"""
+        """Check if there's sufficient stock for remaining quantity"""
         self.update_available_stock()
-        return self.available_stock >= self.quantity
+        remaining = self.get_remaining_quantity()
+        return self.available_stock >= remaining
+
+    def get_available_to_dispense_now(self):
+        """Get quantity that can be dispensed now based on stock"""
+        self.update_available_stock()
+        remaining = self.get_remaining_quantity()
+        return min(self.available_stock, remaining)
     
     def get_stock_status(self):
-        """Get stock status for display"""
+        """Get stock status for display (considers remaining quantity)"""
         self.update_available_stock()
-        
-        if self.available_stock >= self.quantity:
+        remaining = self.get_remaining_quantity()
+
+        if remaining == 0:
+            return {
+                'status': 'fully_dispensed',
+                'message': 'Fully dispensed',
+                'css_class': 'success',
+                'icon': 'check-circle'
+            }
+        elif self.available_stock >= remaining:
             return {
                 'status': 'available',
-                'message': f'{self.available_stock} available',
+                'message': f'{self.available_stock} available (need {remaining})',
                 'css_class': 'success',
                 'icon': 'check-circle'
             }
         elif self.available_stock > 0:
             return {
                 'status': 'partial',
-                'message': f'Only {self.available_stock} available',
+                'message': f'Only {self.available_stock} available (need {remaining})',
                 'css_class': 'warning',
                 'icon': 'exclamation-triangle'
             }

@@ -280,108 +280,160 @@ def generate_invoice_from_cart(request, cart_id):
 def complete_dispensing_from_cart(request, cart_id):
     """
     Complete dispensing after payment.
-    Actually dispenses medications and updates inventory.
+    Supports partial dispensing - dispenses available items and keeps cart active for pending items.
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
-    
+
     # Check if dispensing can be completed
     can_complete, message = cart.can_complete_dispensing()
     if not can_complete:
         messages.error(request, f'Cannot complete dispensing: {message}')
         return redirect('pharmacy:view_cart', cart_id=cart.id)
-    
+
     try:
         with transaction.atomic():
             dispensed_count = 0
-            
+            partially_dispensed_count = 0
+            skipped_count = 0
+
             for cart_item in cart.items.all():
                 p_item = cart_item.prescription_item
                 medication = p_item.medication
-                quantity = cart_item.quantity
                 dispensary = cart.dispensary
-                
-                # Check stock availability one more time
-                if not cart_item.has_sufficient_stock():
-                    messages.error(request, f'Insufficient stock for {medication.name}')
+
+                # Get remaining quantity to dispense
+                remaining_qty = cart_item.get_remaining_quantity()
+
+                if remaining_qty <= 0:
+                    # Already fully dispensed
                     continue
+
+                # Get available quantity to dispense now
+                available_to_dispense = cart_item.get_available_to_dispense_now()
+
+                if available_to_dispense <= 0:
+                    # No stock available, skip this item
+                    messages.warning(request, f'No stock available for {medication.name}. Will dispense when stock arrives.')
+                    skipped_count += 1
+                    continue
+
+                # Determine quantity to dispense (may be partial)
+                quantity_to_dispense = available_to_dispense
                 
                 # Create dispensing log
                 unit_price = cart_item.unit_price
-                total_price = cart_item.get_subtotal()
-                
+                total_price = Decimal(str(quantity_to_dispense)) * unit_price
+
                 DispensingLog.objects.create(
                     prescription_item=p_item,
                     dispensed_by=request.user,
-                    dispensed_quantity=quantity,
+                    dispensed_quantity=quantity_to_dispense,
                     unit_price_at_dispense=unit_price,
                     total_price_for_this_log=total_price,
                     dispensary=dispensary
                 )
-                
+
                 # Update inventory
                 # Try ActiveStoreInventory first
                 active_store = getattr(dispensary, 'active_store', None)
                 inventory_updated = False
-                
+
                 if active_store:
                     inventory_items = ActiveStoreInventory.objects.filter(
                         medication=medication,
                         active_store=active_store,
-                        stock_quantity__gte=quantity
+                        stock_quantity__gte=quantity_to_dispense
                     ).first()
-                    
+
                     if inventory_items:
-                        inventory_items.stock_quantity -= quantity
+                        inventory_items.stock_quantity -= quantity_to_dispense
                         inventory_items.save()
                         inventory_updated = True
-                
+
                 # Try legacy inventory if not updated
                 if not inventory_updated:
                     legacy_inv = MedicationInventory.objects.filter(
                         medication=medication,
                         dispensary=dispensary,
-                        stock_quantity__gte=quantity
+                        stock_quantity__gte=quantity_to_dispense
                     ).first()
-                    
+
                     if legacy_inv:
-                        legacy_inv.stock_quantity -= quantity
+                        legacy_inv.stock_quantity -= quantity_to_dispense
                         legacy_inv.save()
-                
+
                 # Update prescription item
-                p_item.quantity_dispensed_so_far += quantity
+                p_item.quantity_dispensed_so_far += quantity_to_dispense
                 if p_item.quantity_dispensed_so_far >= p_item.quantity:
                     p_item.is_dispensed = True
                     p_item.dispensed_at = timezone.now()
                 p_item.save()
-                
-                dispensed_count += 1
+
+                # Update cart item
+                cart_item.quantity_dispensed += quantity_to_dispense
+                cart_item.save()
+
+                # Track dispensing status
+                if quantity_to_dispense < remaining_qty:
+                    partially_dispensed_count += 1
+                    messages.info(request, f'Partially dispensed {medication.name}: {quantity_to_dispense} of {remaining_qty} remaining')
+                else:
+                    dispensed_count += 1
             
             # Update prescription status
             prescription = cart.prescription
             total_items = prescription.items.count()
             fully_dispensed = prescription.items.filter(is_dispensed=True).count()
-            
+
             if fully_dispensed == total_items:
                 prescription.status = 'dispensed'
             elif fully_dispensed > 0:
                 prescription.status = 'partially_dispensed'
-            
+
             prescription.save()
-            
-            # Update cart status
-            cart.status = 'completed'
-            cart.save()
-            
-            # Log audit action
-            log_audit_action(
-                request.user,
-                'update',
-                cart,
-                f'Completed dispensing of {dispensed_count} items from cart'
-            )
-            
-            messages.success(request, f'Successfully dispensed {dispensed_count} items')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
+            # Update cart status based on dispensing progress
+            if cart.is_fully_dispensed():
+                cart.status = 'completed'
+                cart.save()
+
+                # Log audit action
+                log_audit_action(
+                    request.user,
+                    'update',
+                    cart,
+                    f'Completed full dispensing of all items from cart'
+                )
+
+                messages.success(request, f'✅ Successfully dispensed all items! Cart completed.')
+                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            else:
+                cart.status = 'partially_dispensed'
+                cart.save()
+
+                # Log audit action
+                log_audit_action(
+                    request.user,
+                    'update',
+                    cart,
+                    f'Partial dispensing: {dispensed_count} fully dispensed, {partially_dispensed_count} partially dispensed, {skipped_count} skipped'
+                )
+
+                # Show detailed message
+                progress = cart.get_dispensing_progress()
+                messages.success(
+                    request,
+                    f'✅ Dispensed {dispensed_count + partially_dispensed_count} items. '
+                    f'Progress: {progress["percentage"]}% complete. '
+                    f'{progress["remaining_quantity"]} items still pending.'
+                )
+                messages.info(
+                    request,
+                    f'ℹ️ Cart remains active for pending items. You can dispense remaining items when stock becomes available.'
+                )
+
+                # Stay on cart page to show progress
+                return redirect('pharmacy:view_cart', cart_id=cart.id)
     
     except Exception as e:
         messages.error(request, f'Error completing dispensing: {str(e)}')

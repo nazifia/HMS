@@ -2516,9 +2516,19 @@ def prescription_payment(request, prescription_id):
                         pharmacy_invoice.status = 'paid'
                         prescription.payment_status = 'paid'
                         prescription.save(update_fields=['payment_status'])
+
+                        # Update cart status to 'paid' if invoice is fully paid
+                        from pharmacy.cart_models import PrescriptionCart
+                        carts = PrescriptionCart.objects.filter(
+                            invoice=pharmacy_invoice,
+                            status='invoiced'
+                        )
+                        for cart in carts:
+                            cart.status = 'paid'
+                            cart.save(update_fields=['status'])
                     else:
                         pharmacy_invoice.status = 'partially_paid'
-                    
+
                     pharmacy_invoice.save()
                     
                     # Audit log
@@ -2554,6 +2564,9 @@ def prescription_payment(request, prescription_id):
             }
         )
     
+    # Get carts with status 'invoiced' or 'paid'
+    invoiced_or_paid_carts = prescription.carts.filter(status__in=['invoiced', 'paid'])
+    
     context = {
         'form': form,
         'prescription': prescription,
@@ -2561,6 +2574,7 @@ def prescription_payment(request, prescription_id):
         'invoice': pharmacy_invoice,  # Template expects 'invoice'
         'patient_wallet': patient_wallet,
         'remaining_amount': remaining_amount,
+        'invoiced_or_paid_carts': invoiced_or_paid_carts,
         'title': f'Prescription Payment - #{prescription.id}'
     }
     

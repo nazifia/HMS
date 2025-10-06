@@ -185,6 +185,10 @@
                     <th>Medication</th>
                     <th width="10%">Prescribed</th>
                     <th width="10%">Quantity</th>
+                    {% if cart.status in 'partially_dispensed,completed' %}
+                    <th width="10%">Dispensed</th>
+                    <th width="10%">Remaining</th>
+                    {% endif %}
                     <th width="10%">Unit Price</th>
                     <th width="12%">Stock Status</th>
                     <th width="10%">Subtotal</th>
@@ -200,16 +204,21 @@
             <tbody>
                 {% for item in cart.items.all %}
                 {% with stock_status=item.get_stock_status %}
-                <tr id="cart-item-{{ item.id }}">
+                <tr id="cart-item-{{ item.id }}" {% if item.is_fully_dispensed %}class="table-success"{% elif item.is_partially_dispensed %}class="table-warning"{% endif %}>
                     <td>
                         <strong>{{ item.prescription_item.medication.name }}</strong><br>
                         <small class="text-muted">{{ item.prescription_item.medication.strength }}</small>
+                        {% if item.is_fully_dispensed %}
+                        <br><span class="badge bg-success"><i class="fas fa-check-circle"></i> Fully Dispensed</span>
+                        {% elif item.is_partially_dispensed %}
+                        <br><span class="badge bg-warning"><i class="fas fa-exclamation-circle"></i> Partially Dispensed</span>
+                        {% endif %}
                     </td>
                     <td>{{ item.prescription_item.quantity }}</td>
                     <td>
                         {% if cart.status == 'active' %}
-                        <input type="number" 
-                               class="form-control quantity-input" 
+                        <input type="number"
+                               class="form-control quantity-input"
                                value="{{ item.quantity }}"
                                min="1"
                                max="{{ item.prescription_item.remaining_quantity_to_dispense }}"
@@ -218,6 +227,20 @@
                         {% else %}
                         {{ item.quantity }}
                         {% endif %}
+                    </td>
+                    {% if cart.status in 'partially_dispensed,completed' %}
+                    <td>
+                        <strong class="text-success">{{ item.quantity_dispensed }}</strong>
+                        {% if item.quantity_dispensed > 0 %}
+                        <br><small class="text-muted">{{ item.get_dispensing_progress_percentage }}%</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong class="{% if item.get_remaining_quantity > 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ item.get_remaining_quantity }}
+                        </strong>
+                    </td>
+                    {% endif %}
                     </td>
                     <td>₦{{ item.unit_price|floatformat:2 }}</td>
                     <td>
