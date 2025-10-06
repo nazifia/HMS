@@ -260,13 +260,9 @@ class PrescriptionCartItem(models.Model):
         # Check if quantity is positive
         if self.quantity <= 0:
             raise ValidationError('Quantity must be greater than zero')
-        
-        # Check if quantity doesn't exceed prescribed quantity
-        remaining = self.prescription_item.remaining_quantity_to_dispense
-        if self.quantity > remaining:
-            raise ValidationError(
-                f'Quantity ({self.quantity}) exceeds remaining quantity to dispense ({remaining})'
-            )
+
+        # Note: Prescription quantity limit removed - pharmacists can request more than prescribed
+        # Only stock availability is enforced
     
     def save(self, *args, **kwargs):
         # Set unit price from medication if not set

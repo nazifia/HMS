@@ -178,14 +178,17 @@ def update_cart_item_quantity(request, item_id):
                     'success': False,
                     'error': 'Quantity must be greater than zero'
                 }, status=400)
-            
-            remaining = item.prescription_item.remaining_quantity_to_dispense
-            if quantity > remaining:
+
+            # Validate against available stock (prescription limit removed)
+            item.update_available_stock()  # Refresh stock info
+            available_stock = item.available_stock
+
+            if quantity > available_stock:
                 return JsonResponse({
                     'success': False,
-                    'error': f'Quantity exceeds remaining quantity ({remaining})'
+                    'error': f'Quantity exceeds available stock. Only {available_stock} available in selected dispensary.'
                 }, status=400)
-            
+
             # Update quantity
             item.quantity = quantity
             item.save()
@@ -308,17 +311,42 @@ def complete_dispensing_from_cart(request, cart_id):
                     # Already fully dispensed
                     continue
 
-                # Get available quantity to dispense now
-                available_to_dispense = cart_item.get_available_to_dispense_now()
+                # Check if pharmacist specified a custom quantity
+                custom_qty_key = f'dispense_qty_{cart_item.id}'
+                custom_quantity = request.POST.get(custom_qty_key)
 
-                if available_to_dispense <= 0:
-                    # No stock available, skip this item
-                    messages.warning(request, f'No stock available for {medication.name}. Will dispense when stock arrives.')
-                    skipped_count += 1
-                    continue
+                if custom_quantity:
+                    # Pharmacist specified a custom quantity
+                    try:
+                        quantity_to_dispense = int(custom_quantity)
 
-                # Determine quantity to dispense (may be partial)
-                quantity_to_dispense = available_to_dispense
+                        # Validate the custom quantity
+                        available_to_dispense = cart_item.get_available_to_dispense_now()
+
+                        if quantity_to_dispense <= 0:
+                            # Skip items with 0 quantity
+                            continue
+
+                        if quantity_to_dispense > available_to_dispense:
+                            messages.error(request, f'Cannot dispense {quantity_to_dispense} of {medication.name}. Only {available_to_dispense} available.')
+                            return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+                    except (ValueError, TypeError):
+                        messages.error(request, f'Invalid quantity for {medication.name}.')
+                        return redirect('pharmacy:view_cart', cart_id=cart.id)
+                else:
+                    # No custom quantity specified, use automatic logic
+                    # Get available quantity to dispense now
+                    available_to_dispense = cart_item.get_available_to_dispense_now()
+
+                    if available_to_dispense <= 0:
+                        # No stock available, skip this item
+                        messages.warning(request, f'No stock available for {medication.name}. Will dispense when stock arrives.')
+                        skipped_count += 1
+                        continue
+
+                    # Determine quantity to dispense (may be partial)
+                    quantity_to_dispense = available_to_dispense
                 
                 # Create dispensing log
                 unit_price = cart_item.unit_price

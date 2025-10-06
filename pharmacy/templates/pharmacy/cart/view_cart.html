@@ -145,27 +145,27 @@
     {% endif %}
 
     <!-- Dispensary Selection -->
-    {% if cart.status == 'active' %}
+    {% if cart.status in 'active,invoiced' %}
     <div class="dispensary-section">
         <h5><i class="fas fa-hospital"></i> Select Dispensary</h5>
-        <form method="post" action="{% url 'pharmacy:update_cart_dispensary' cart.id %}">
+        <form method="post" action="{% url 'pharmacy:update_cart_dispensary' cart.id %}" id="dispensary-form">
             {% csrf_token %}
-            <div class="row align-items-end">
-                <div class="col-md-8">
+            <div class="row align-items-center">
+                <div class="col-md-12">
                     <label for="dispensary_id" class="form-label">Dispensary</label>
-                    <select name="dispensary_id" id="dispensary_id" class="form-select" required>
+                    <select name="dispensary_id" id="dispensary_id" class="form-select" required onchange="updateDispensary()">
+                        {% if not cart.dispensary %}
                         <option value="">-- Select Dispensary --</option>
+                        {% endif %}
                         {% for dispensary in dispensaries %}
-                        <option value="{{ dispensary.id }}" {% if cart.dispensary.id == dispensary.id %}selected{% endif %}>
+                        <option value="{{ dispensary.id }}" {% if cart.dispensary and cart.dispensary.id == dispensary.id %}selected{% endif %}>
                             {{ dispensary.name }} - {{ dispensary.location }}
                         </option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-sync"></i> Update Dispensary
-                    </button>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> Dispensary will update automatically when selected
+                    </small>
                 </div>
             </div>
         </form>
@@ -185,6 +185,9 @@
                     <th>Medication</th>
                     <th width="10%">Prescribed</th>
                     <th width="10%">Quantity</th>
+                    {% if cart.status in 'paid,partially_dispensed' %}
+                    <th width="10%">To Dispense</th>
+                    {% endif %}
                     {% if cart.status in 'partially_dispensed,completed' %}
                     <th width="10%">Dispensed</th>
                     <th width="10%">Remaining</th>
@@ -196,7 +199,7 @@
                     <th width="10%">You Pay (10%)</th>
                     <th width="10%">NHIA (90%)</th>
                     {% endif %}
-                    {% if cart.status == 'active' %}
+                    {% if cart.status in 'active,invoiced' %}
                     <th width="8%">Action</th>
                     {% endif %}
                 </tr>
@@ -216,18 +219,46 @@
                     </td>
                     <td>{{ item.prescription_item.quantity }}</td>
                     <td>
-                        {% if cart.status == 'active' %}
+                        {% if cart.status in 'active,invoiced' %}
                         <input type="number"
-                               class="form-control quantity-input"
+                               class="form-control quantity-input cart-quantity-input"
                                value="{{ item.quantity }}"
                                min="1"
-                               max="{{ item.prescription_item.remaining_quantity_to_dispense }}"
+                               max="{{ item.available_stock }}"
                                data-item-id="{{ item.id }}"
-                               onchange="updateQuantity({{ item.id }}, this.value)">
+                               data-unit-price="{{ item.unit_price }}"
+                               data-is-nhia="{{ is_nhia_patient|yesno:'true,false' }}"
+                               data-max-stock="{{ item.available_stock }}"
+                               oninput="updateQuantityLive({{ item.id }}, this.value)"
+                               onchange="updateQuantity({{ item.id }}, this.value)"
+                               title="Max available in stock: {{ item.available_stock }}">
+                        <small class="text-muted d-block">
+                            <i class="fas fa-box"></i> Stock: {{ item.available_stock }} available
+                        </small>
                         {% else %}
                         {{ item.quantity }}
                         {% endif %}
                     </td>
+                    {% if cart.status in 'paid,partially_dispensed' %}
+                    <td>
+                        {% with remaining=item.get_remaining_quantity available=item.get_available_to_dispense_now %}
+                        {% if remaining > 0 %}
+                        <input type="number"
+                               class="form-control quantity-input dispense-quantity-input"
+                               id="dispense-qty-{{ item.id }}"
+                               value="{{ available }}"
+                               min="0"
+                               max="{{ available }}"
+                               data-item-id="{{ item.id }}"
+                               data-max-available="{{ available }}"
+                               title="Max available: {{ available }}">
+                        <small class="text-muted d-block">Max: {{ available }}</small>
+                        {% else %}
+                        <span class="badge bg-success">Fully Dispensed</span>
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    {% endif %}
                     {% if cart.status in 'partially_dispensed,completed' %}
                     <td>
                         <strong class="text-success">{{ item.quantity_dispensed }}</strong>
@@ -254,9 +285,9 @@
                     <td class="item-patient-pays">₦{{ item.get_patient_pays|floatformat:2 }}</td>
                     <td class="item-nhia-covers">₦{{ item.get_nhia_covers|floatformat:2 }}</td>
                     {% endif %}
-                    {% if cart.status == 'active' %}
+                    {% if cart.status in 'active,invoiced' %}
                     <td>
-                        <a href="{% url 'pharmacy:remove_cart_item' item.id %}" 
+                        <a href="{% url 'pharmacy:remove_cart_item' item.id %}"
                            class="btn btn-sm btn-danger"
                            onclick="return confirm('Remove this item from cart?')">
                             <i class="fas fa-trash"></i>
@@ -292,32 +323,166 @@
 </div>
 
 <script>
+// Real-time update function (fires as user types)
+function updateQuantityLive(itemId, quantity) {
+    const input = document.querySelector(`input[data-item-id="${itemId}"]`);
+    const maxStock = parseInt(input.dataset.maxStock);
+    const quantityInt = parseInt(quantity) || 0;
+
+    // Validate against stock
+    if (quantityInt > maxStock) {
+        input.classList.add('is-invalid');
+        input.title = `Exceeds available stock! Max: ${maxStock}`;
+    } else {
+        input.classList.remove('is-invalid');
+        input.title = `Max available in stock: ${maxStock}`;
+    }
+
+    // Calculate and update totals in real-time (client-side only)
+    if (quantityInt > 0) {
+        const unitPrice = parseFloat(input.dataset.unitPrice);
+        const isNhia = input.dataset.isNhia === 'true';
+
+        // Calculate item totals
+        const itemSubtotal = quantityInt * unitPrice;
+        const itemPatientPays = isNhia ? itemSubtotal * 0.1 : itemSubtotal;
+        const itemNhiaCovers = isNhia ? itemSubtotal * 0.9 : 0;
+
+        // Update item row
+        const row = document.getElementById(`cart-item-${itemId}`);
+        if (row) {
+            row.querySelector('.item-subtotal').textContent = `₦${itemSubtotal.toFixed(2)}`;
+            {% if is_nhia_patient %}
+            row.querySelector('.item-patient-pays').textContent = `₦${itemPatientPays.toFixed(2)}`;
+            row.querySelector('.item-nhia-covers').textContent = `₦${itemNhiaCovers.toFixed(2)}`;
+            {% endif %}
+        }
+
+        // Recalculate cart totals from all items
+        let cartSubtotal = 0;
+        let cartPatientPayable = 0;
+        let cartNhiaCoverage = 0;
+
+        document.querySelectorAll('.cart-quantity-input').forEach(inp => {
+            const qty = parseInt(inp.value) || 0;
+            const price = parseFloat(inp.dataset.unitPrice);
+            const nhia = inp.dataset.isNhia === 'true';
+
+            const subtotal = qty * price;
+            cartSubtotal += subtotal;
+            cartPatientPayable += nhia ? subtotal * 0.1 : subtotal;
+            cartNhiaCoverage += nhia ? subtotal * 0.9 : 0;
+        });
+
+        // Update cart totals in table footer
+        const cartSubtotalEl = document.getElementById('cart-subtotal');
+        const cartPatientPayableEl = document.getElementById('cart-patient-payable');
+        if (cartSubtotalEl) cartSubtotalEl.textContent = `₦${cartSubtotal.toFixed(2)}`;
+        if (cartPatientPayableEl) cartPatientPayableEl.textContent = `₦${cartPatientPayable.toFixed(2)}`;
+        {% if is_nhia_patient %}
+        const cartNhiaCoverageEl = document.getElementById('cart-nhia-coverage');
+        if (cartNhiaCoverageEl) cartNhiaCoverageEl.textContent = `₦${cartNhiaCoverage.toFixed(2)}`;
+        {% endif %}
+
+        // Update summary widget totals
+        const summarySubtotalEl = document.getElementById('summary-subtotal');
+        const summaryTotalAmountEl = document.getElementById('summary-total-amount');
+        if (summarySubtotalEl) summarySubtotalEl.textContent = `₦${cartSubtotal.toFixed(2)}`;
+        if (summaryTotalAmountEl) summaryTotalAmountEl.textContent = `₦${cartPatientPayable.toFixed(2)}`;
+
+        {% if is_nhia_patient %}
+        const summaryPatientPayableEl = document.getElementById('summary-patient-payable');
+        const summaryNhiaCoverageEl = document.getElementById('summary-nhia-coverage');
+        const summaryNhiaCoverageDetailEl = document.getElementById('summary-nhia-coverage-detail');
+        if (summaryPatientPayableEl) summaryPatientPayableEl.textContent = `₦${cartPatientPayable.toFixed(2)}`;
+        if (summaryNhiaCoverageEl) summaryNhiaCoverageEl.textContent = `₦${cartNhiaCoverage.toFixed(2)}`;
+        if (summaryNhiaCoverageDetailEl) summaryNhiaCoverageDetailEl.textContent = `-₦${cartNhiaCoverage.toFixed(2)}`;
+        {% endif %}
+    }
+}
+
+// Save to server function (fires when user finishes editing)
 function updateQuantity(itemId, quantity) {
+    const input = document.querySelector(`input[data-item-id="${itemId}"]`);
+    const maxStock = parseInt(input.dataset.maxStock);
+    const quantityInt = parseInt(quantity);
+
+    // Client-side validation
+    if (quantityInt <= 0) {
+        alert('Quantity must be greater than zero');
+        input.value = input.min || 1;
+        return;
+    }
+
+    if (quantityInt > maxStock) {
+        alert(`Cannot exceed available stock!\n\nRequested: ${quantityInt}\nAvailable in stock: ${maxStock}\n\nPlease adjust the quantity.`);
+        input.value = maxStock;
+        // Update display with corrected value
+        updateQuantityLive(itemId, maxStock);
+        return;
+    }
+
+    // Save to server
     fetch(`/pharmacy/cart/item/${itemId}/update-quantity/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
         },
-        body: JSON.stringify({ quantity: parseInt(quantity) })
+        body: JSON.stringify({ quantity: quantityInt })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update item row
+            // Update with server response (more accurate)
             const row = document.getElementById(`cart-item-${itemId}`);
             row.querySelector('.item-subtotal').textContent = `₦${data.item_subtotal.toFixed(2)}`;
             {% if is_nhia_patient %}
             row.querySelector('.item-patient-pays').textContent = `₦${data.item_patient_pays.toFixed(2)}`;
             row.querySelector('.item-nhia-covers').textContent = `₦${data.item_nhia_covers.toFixed(2)}`;
             {% endif %}
-            
-            // Update cart totals
-            document.getElementById('cart-subtotal').textContent = `₦${data.cart_subtotal.toFixed(2)}`;
-            document.getElementById('cart-patient-payable').textContent = `₦${data.cart_patient_payable.toFixed(2)}`;
+
+            // Update stock status if available
+            if (data.stock_status) {
+                const stockCell = row.querySelector('.stock-status');
+                if (stockCell) {
+                    const status = data.stock_status;
+                    stockCell.innerHTML = `
+                        <span class="badge bg-${status.css_class}">
+                            <i class="fas fa-${status.icon}"></i> ${status.message}
+                        </span>
+                    `;
+                }
+            }
+
+            // Update cart totals from server
+            const cartSubtotalEl = document.getElementById('cart-subtotal');
+            const cartPatientPayableEl = document.getElementById('cart-patient-payable');
+            if (cartSubtotalEl) cartSubtotalEl.textContent = `₦${data.cart_subtotal.toFixed(2)}`;
+            if (cartPatientPayableEl) cartPatientPayableEl.textContent = `₦${data.cart_patient_payable.toFixed(2)}`;
             {% if is_nhia_patient %}
-            document.getElementById('cart-nhia-coverage').textContent = `₦${data.cart_nhia_coverage.toFixed(2)}`;
+            const cartNhiaCoverageEl = document.getElementById('cart-nhia-coverage');
+            if (cartNhiaCoverageEl) cartNhiaCoverageEl.textContent = `₦${data.cart_nhia_coverage.toFixed(2)}`;
             {% endif %}
+
+            // Update summary widget totals
+            const summarySubtotalEl = document.getElementById('summary-subtotal');
+            const summaryTotalAmountEl = document.getElementById('summary-total-amount');
+            if (summarySubtotalEl) summarySubtotalEl.textContent = `₦${data.cart_subtotal.toFixed(2)}`;
+            if (summaryTotalAmountEl) summaryTotalAmountEl.textContent = `₦${data.cart_patient_payable.toFixed(2)}`;
+
+            {% if is_nhia_patient %}
+            const summaryPatientPayableEl = document.getElementById('summary-patient-payable');
+            const summaryNhiaCoverageEl = document.getElementById('summary-nhia-coverage');
+            const summaryNhiaCoverageDetailEl = document.getElementById('summary-nhia-coverage-detail');
+            if (summaryPatientPayableEl) summaryPatientPayableEl.textContent = `₦${data.cart_patient_payable.toFixed(2)}`;
+            if (summaryNhiaCoverageEl) summaryNhiaCoverageEl.textContent = `₦${data.cart_nhia_coverage.toFixed(2)}`;
+            if (summaryNhiaCoverageDetailEl) summaryNhiaCoverageDetailEl.textContent = `-₦${data.cart_nhia_coverage.toFixed(2)}`;
+            {% endif %}
+
+            // Show success feedback
+            showUpdateFeedback(row, true);
+            input.classList.remove('is-invalid');
         } else {
             alert('Error: ' + data.error);
             location.reload();
@@ -325,9 +490,148 @@ function updateQuantity(itemId, quantity) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to update quantity');
+        alert('Failed to update quantity. Please try again.');
         location.reload();
     });
+}
+
+function showUpdateFeedback(row, success) {
+    // Add a brief highlight animation to show the update was successful
+    if (success) {
+        row.style.backgroundColor = '#d4edda';
+        setTimeout(() => {
+            row.style.backgroundColor = '';
+        }, 1000);
+    }
+}
+
+function updateDispensary() {
+    // Use setTimeout to ensure the select value has been updated
+    setTimeout(function() {
+        const form = document.getElementById('dispensary-form');
+        const select = document.getElementById('dispensary_id');
+
+        console.log('updateDispensary called, select.value:', select.value);
+
+        // Only submit if a valid dispensary is selected (not empty option)
+        if (select.value && select.value !== '') {
+            console.log('Valid dispensary selected, submitting via fetch');
+
+            // Show loading indicator
+            const loadingHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>Updating dispensary and checking stock availability...</span>
+                </div>
+            `;
+
+            // Create a temporary div to show loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'alert alert-info mt-2 mb-0';
+            loadingDiv.innerHTML = loadingHTML;
+            select.parentElement.appendChild(loadingDiv);
+            select.disabled = true;
+
+            // Use FormData to capture the current form state
+            const formData = new FormData(form);
+
+            // Manually ensure the dispensary_id is included (in case FormData doesn't pick it up)
+            formData.set('dispensary_id', select.value);
+
+            // Log the form data for debugging
+            console.log('Form data being sent:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+
+            // Submit using fetch to ensure the current form data is sent
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // Follow the redirect
+                    window.location.href = response.url;
+                } else {
+                    // Reload the page
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                alert('Failed to update dispensary. Please try again.');
+                window.location.reload();
+            });
+        } else {
+            console.log('Empty dispensary selected, not submitting');
+            // User selected the empty "-- Select Dispensary --" option
+            // Don't submit the form, just ignore
+            return false;
+        }
+    }, 10); // Small delay to ensure value is updated
+}
+
+function prepareDispenseForm(cartId) {
+    // Get all dispense quantity inputs
+    const dispenseInputs = document.querySelectorAll('.dispense-quantity-input');
+    const container = document.getElementById(`dispense-quantities-container-${cartId}`);
+
+    // Clear container
+    container.innerHTML = '';
+
+    let hasQuantities = false;
+    let invalidQuantities = [];
+
+    // Collect quantities and add hidden inputs
+    dispenseInputs.forEach(input => {
+        const itemId = input.dataset.itemId;
+        const quantity = parseInt(input.value) || 0;
+        const maxAvailable = parseInt(input.dataset.maxAvailable) || 0;
+
+        // Validate quantity
+        if (quantity > maxAvailable) {
+            invalidQuantities.push({
+                itemId: itemId,
+                quantity: quantity,
+                maxAvailable: maxAvailable
+            });
+        }
+
+        if (quantity > 0) {
+            hasQuantities = true;
+            // Create hidden input for this item's dispense quantity
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = `dispense_qty_${itemId}`;
+            hiddenInput.value = quantity;
+            container.appendChild(hiddenInput);
+        }
+    });
+
+    // Check for validation errors
+    if (invalidQuantities.length > 0) {
+        let errorMsg = 'Invalid quantities:\n';
+        invalidQuantities.forEach(item => {
+            errorMsg += `Item ${item.itemId}: Entered ${item.quantity}, but only ${item.maxAvailable} available\n`;
+        });
+        alert(errorMsg);
+        return false;
+    }
+
+    // Check if at least one quantity is entered
+    if (!hasQuantities) {
+        alert('Please enter at least one quantity to dispense.');
+        return false;
+    }
+
+    // Confirm before dispensing
+    return confirm('Are you sure you want to dispense these medications?');
 }
 </script>
 {% endblock %}

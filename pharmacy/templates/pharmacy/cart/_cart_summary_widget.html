@@ -177,26 +177,26 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
     <div class="nhia-breakdown">
         <div class="nhia-row">
             <span><i class="fas fa-user"></i> Patient (10%):</span>
-            <strong>₦{{ cart.get_patient_payable|floatformat:2 }}</strong>
+            <strong id="summary-patient-payable">₦{{ cart.get_patient_payable|floatformat:2 }}</strong>
         </div>
         <div class="nhia-row">
             <span><i class="fas fa-hospital"></i> NHIA (90%):</span>
-            <strong>₦{{ cart.get_nhia_coverage|floatformat:2 }}</strong>
+            <strong id="summary-nhia-coverage">₦{{ cart.get_nhia_coverage|floatformat:2 }}</strong>
         </div>
     </div>
     {% endif %}
-    
+
     <!-- Summary Items -->
     <div class="summary-items">
         <div class="summary-item">
             <span class="item-label">Subtotal:</span>
-            <span class="item-value">₦{{ cart.get_subtotal|floatformat:2 }}</span>
+            <span class="item-value" id="summary-subtotal">₦{{ cart.get_subtotal|floatformat:2 }}</span>
         </div>
-        
+
         {% if cart.prescription.patient.is_nhia_patient %}
         <div class="summary-item">
             <span class="item-label">NHIA Coverage:</span>
-            <span class="item-value text-success">-₦{{ cart.get_nhia_coverage|floatformat:2 }}</span>
+            <span class="item-value text-success" id="summary-nhia-coverage-detail">-₦{{ cart.get_nhia_coverage|floatformat:2 }}</span>
         </div>
         {% endif %}
         
@@ -217,7 +217,7 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
             Total Amount
             {% endif %}
         </div>
-        <div class="total-amount">₦{{ cart.get_patient_payable|floatformat:2 }}</div>
+        <div class="total-amount" id="summary-total-amount">₦{{ cart.get_patient_payable|floatformat:2 }}</div>
     </div>
     
     <!-- Action Buttons (if show_actions is True) -->
@@ -258,14 +258,15 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
                     <strong>Payment Completed</strong><br>
                     <small>Ready to dispense</small>
                 </div>
-                <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}">
+                <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" id="dispense-form-{{ cart.id }}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="fas fa-pills"></i> Dispense Available Items
+                    <div id="dispense-quantities-container-{{ cart.id }}"></div>
+                    <button type="submit" class="btn btn-success w-100" onclick="return prepareDispenseForm({{ cart.id }})">
+                        <i class="fas fa-pills"></i> Dispense Medications
                     </button>
                 </form>
                 <small class="text-muted d-block text-center mt-2">
-                    <i class="fas fa-info-circle"></i> Will dispense items with available stock
+                    <i class="fas fa-info-circle"></i> Enter quantities to dispense in the table above
                 </small>
             {% else %}
                 {# Invoice not paid - show payment button #}
@@ -275,14 +276,15 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
             {% endif %}
 
         {% elif cart.status == 'paid' %}
-            <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}">
+            <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" id="dispense-form-{{ cart.id }}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success w-100">
-                    <i class="fas fa-pills"></i> Dispense Available Items
+                <div id="dispense-quantities-container-{{ cart.id }}"></div>
+                <button type="submit" class="btn btn-success w-100" onclick="return prepareDispenseForm({{ cart.id }})">
+                    <i class="fas fa-pills"></i> Dispense Medications
                 </button>
             </form>
             <small class="text-muted d-block text-center mt-2">
-                <i class="fas fa-info-circle"></i> Will dispense items with available stock
+                <i class="fas fa-info-circle"></i> Enter quantities to dispense in the table above
             </small>
 
         {% elif cart.status == 'partially_dispensed' %}
@@ -293,14 +295,15 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
             </div>
 
             {% if cart.has_pending_items %}
-            <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}">
+            <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" id="dispense-form-{{ cart.id }}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-primary w-100 mb-2">
+                <div id="dispense-quantities-container-{{ cart.id }}"></div>
+                <button type="submit" class="btn btn-primary w-100 mb-2" onclick="return prepareDispenseForm({{ cart.id }})">
                     <i class="fas fa-pills"></i> Dispense Remaining Items
                 </button>
             </form>
             <small class="text-muted d-block text-center mb-3">
-                <i class="fas fa-info-circle"></i> Dispense items now in stock
+                <i class="fas fa-info-circle"></i> Enter quantities to dispense in the table above
             </small>
             {% endif %}
 

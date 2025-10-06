@@ -2386,6 +2386,9 @@ def add_prescription_item(request, prescription_id):
             item = form.save(commit=False)
             # Associate with the prescription
             item.prescription = prescription
+            # Set default quantity to 1 (will be adjusted at cart/dispensing level)
+            if not item.quantity:
+                item.quantity = 1
             # Initialize quantity_dispensed_so_far to 0 for new items
             # This field may not be in the model but is expected by the database
             if hasattr(item, 'quantity_dispensed_so_far'):

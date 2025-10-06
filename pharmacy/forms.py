@@ -254,24 +254,14 @@ class PrescriptionItemForm(forms.ModelForm):
     class Meta:
         model = PrescriptionItem
         fields = [
-            'medication', 'dosage', 'frequency', 'duration', 'instructions', 'quantity'
+            'medication', 'dosage', 'frequency', 'duration', 'instructions'
         ]
         widgets = {
             'dosage': forms.TextInput(attrs={'class': 'form-control'}),
             'frequency': forms.TextInput(attrs={'class': 'form-control'}),
             'duration': forms.TextInput(attrs={'class': 'form-control'}),
             'instructions': forms.Textarea(attrs={'rows': 2}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
         }
-
-    def clean_quantity(self):
-        quantity = self.cleaned_data.get('quantity')
-        # Removed stock check here as it will be handled during dispensing
-        # medication = self.cleaned_data.get('medication')
-        # if quantity and medication:
-        #     if quantity > medication.stock_quantity:
-        #         raise forms.ValidationError(f"Not enough stock. Available: {medication.stock_quantity}")
-        return quantity
 
 import logging
 

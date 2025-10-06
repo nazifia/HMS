@@ -844,7 +844,7 @@ class PrescriptionItem(models.Model):
     frequency = models.CharField(max_length=100, blank=True, null=True, help_text="How often to take (e.g., twice daily, once daily)")
     duration = models.CharField(max_length=100, blank=True, null=True, help_text="How long to take (e.g., 7 days, 2 weeks)")
     instructions = models.TextField(blank=True, null=True, help_text="Special instructions for taking the medication")
-    quantity = models.IntegerField()
+    quantity = models.IntegerField(default=1, help_text="Quantity to dispense (managed at cart level)")
     quantity_dispensed_so_far = models.IntegerField(default=0)  # Added back to fix IntegrityError
     is_dispensed = models.BooleanField(default=False)
     dispensed_at = models.DateTimeField(null=True, blank=True)
