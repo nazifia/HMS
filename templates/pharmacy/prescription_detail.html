@@ -64,20 +64,55 @@
                             <i class="fas fa-bolt"></i> Quick Actions
                         </h5>
                         <div class="row g-3">
+                            <!-- Smart Cart/Dispensing Button -->
                             <div class="col-md-4">
-                                <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 20px;">
-                                    <i class="fas fa-shopping-cart fa-2x mb-2"></i>
-                                    <div style="font-size: 1.1rem; font-weight: 600;">Create Billing Cart</div>
-                                    <small style="opacity: 0.9;">Review items & check stock</small>
-                                </a>
+                                {% if active_cart %}
+                                    {% if active_cart.status == 'paid' or active_cart.status == 'partially_dispensed' or active_cart.invoice.status == 'paid' %}
+                                        {# Payment complete - show dispense button #}
+                                        <a href="{% url 'pharmacy:view_cart' active_cart.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: none; padding: 20px;">
+                                            <i class="fas fa-pills fa-2x mb-2"></i>
+                                            <div style="font-size: 1.1rem; font-weight: 600;">Dispense Medications</div>
+                                            <small style="opacity: 0.9;">✅ Payment Complete</small>
+                                        </a>
+                                    {% elif active_cart.status == 'invoiced' %}
+                                        {# Invoice generated - show payment button #}
+                                        <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border: none; padding: 20px;">
+                                            <i class="fas fa-credit-card fa-2x mb-2"></i>
+                                            <div style="font-size: 1.1rem; font-weight: 600;">Process Payment</div>
+                                            <small style="opacity: 0.9;">₦{{ active_cart.get_patient_payable|floatformat:2 }}</small>
+                                        </a>
+                                    {% elif active_cart.status == 'active' %}
+                                        {# Cart active - show view cart button #}
+                                        <a href="{% url 'pharmacy:view_cart' active_cart.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 20px;">
+                                            <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                            <div style="font-size: 1.1rem; font-weight: 600;">View Active Cart</div>
+                                            <small style="opacity: 0.9;">Review & Generate Invoice</small>
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    {# No cart - show create cart button #}
+                                    <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 20px;">
+                                        <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                        <div style="font-size: 1.1rem; font-weight: 600;">Create Billing Cart</div>
+                                        <small style="opacity: 0.9;">Review items & check stock</small>
+                                    </a>
+                                {% endif %}
                             </div>
+
+                            <!-- Payment Button (Secondary) -->
                             <div class="col-md-4">
-                                {% if pharmacy_invoice %}
+                                {% if pharmacy_invoice and pharmacy_invoice.status != 'paid' %}
                                 <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning btn-lg w-100" style="padding: 20px;">
                                     <i class="fas fa-credit-card fa-2x mb-2"></i>
                                     <div style="font-size: 1.1rem; font-weight: 600;">Process Payment</div>
                                     <small>₦{{ total_patient_pays|floatformat:2 }}</small>
                                 </a>
+                                {% elif pharmacy_invoice and pharmacy_invoice.status == 'paid' %}
+                                <div class="btn btn-success btn-lg w-100" style="padding: 20px; cursor: default;">
+                                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                    <div style="font-size: 1.1rem; font-weight: 600;">Payment Complete</div>
+                                    <small>✅ Fully Paid</small>
+                                </div>
                                 {% else %}
                                 <button class="btn btn-secondary btn-lg w-100" style="padding: 20px;" disabled>
                                     <i class="fas fa-credit-card fa-2x mb-2"></i>
@@ -86,6 +121,8 @@
                                 </button>
                                 {% endif %}
                             </div>
+
+                            <!-- Print Button -->
                             <div class="col-md-4">
                                 <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info btn-lg w-100" style="padding: 20px;" target="_blank">
                                     <i class="fas fa-print fa-2x mb-2"></i>
@@ -297,7 +334,6 @@
                                             <th>Dosage</th>
                                             <th>Frequency</th>
                                             <th>Duration</th>
-                                            <th>Quantity</th>
                                             {% if is_nhia_patient %}
                                             <th class="text-end">Total Cost</th>
                                             <th class="text-end bg-warning bg-opacity-10">You Pay (10%)</th>
@@ -322,7 +358,6 @@
                                                 <td>{{ item_data.item.dosage }}</td>
                                                 <td>{{ item_data.item.frequency }}</td>
                                                 <td>{{ item_data.item.duration }}</td>
-                                                <td>{{ item_data.item.quantity }}</td>
                                                 {% if is_nhia_patient %}
                                                 <td class="text-end">
                                                     <strong>₦{{ item_data.total_cost|floatformat:2 }}</strong>
@@ -406,7 +441,6 @@
                                         <th>Dosage</th>
                                         <th>Frequency</th>
                                         <th>Duration</th>
-                                        <th>Quantity</th>
                                         <th>Instructions</th>
                                         <th>Admin Times</th>
                                         <th>Administered By</th>
@@ -421,7 +455,6 @@
                                         <td>{{ item.dosage }}</td>
                                         <td>{{ item.frequency }}</td>
                                         <td>{{ item.duration }}</td>
-                                        <td>{{ item.quantity }}</td>
                                         <td>{{ item.instructions }}</td>
                                         <td>
                                             <!-- Example: 08:00, 14:00, 20:00 (could be improved with real schedule logic) -->
@@ -616,15 +649,7 @@
                             {% endif %}
                         </div>
 
-                        <div class="col-md-4 mb-3">
-                            <label for="{{ item_form.quantity.id_for_label }}" class="form-label">Quantity</label>
-                            {{ item_form.quantity|add_class:"form-control" }}
-                            {% if item_form.quantity.errors %}
-                                <div class="text-danger">
-                                    {{ item_form.quantity.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
+
 
                         <div class="col-md-8 mb-3">
                             <label for="{{ item_form.instructions.id_for_label }}" class="form-label">Instructions</label>

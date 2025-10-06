@@ -87,6 +87,19 @@
         </a>
     </div>
 
+    <!-- Quick Workflow Info -->
+    {% if invoiced_or_paid_carts %}
+    <div class="alert alert-info mb-4" style="border-left: 4px solid #17a2b8;">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle fa-2x me-3"></i>
+            <div>
+                <h5 class="mb-1">💊 Quick Dispensing Workflow</h5>
+                <p class="mb-0">After payment is complete, you'll be automatically redirected to the cart to dispense medications.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row">
         <!-- Payment Summary -->
         <div class="col-lg-4">
@@ -113,21 +126,40 @@
             </div>
 
             <!-- Cart Info (if exists) -->
-            <!-- Cart Info (if exists) -->
             {% for cart in invoiced_or_paid_carts %}
-                <div class="card mb-3">
-                    <div class="card-header bg-info text-white">
-                        <i class="fas fa-shopping-cart"></i> Cart Information
+                <div class="card mb-3" style="border-left: 4px solid #17a2b8;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white;">
+                        <i class="fas fa-shopping-cart"></i> Ready to Dispense
                     </div>
                     <div class="card-body">
-                        <p class="mb-1"><strong>Cart ID:</strong> #{{ cart.id }}</p>
-                        <p class="mb-1"><strong>Items:</strong> {{ cart.get_total_items }}</p>
-                        <p class="mb-1"><strong>Status:</strong>
+                        <div class="mb-3">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <strong>Cart #{{ cart.id }}</strong>
+                        </div>
+                        <p class="mb-2">
+                            <i class="fas fa-pills text-primary"></i>
+                            <strong>{{ cart.get_total_items }}</strong> item(s) ready
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-info-circle text-info"></i>
+                            <strong>Status:</strong>
                             <span class="badge bg-{{ cart.status }}">{{ cart.get_status_display }}</span>
                         </p>
-                        <a href="{% url 'pharmacy:view_cart' cart.id %}" class="btn btn-sm btn-outline-info mt-2">
-                            <i class="fas fa-eye"></i> View Cart
+
+                        {% if cart.status == 'paid' or cart.invoice.status == 'paid' %}
+                        <div class="alert alert-success mb-2" style="font-size: 0.85rem;">
+                            <i class="fas fa-check-circle"></i> Payment complete! Ready to dispense.
+                        </div>
+                        {% endif %}
+
+                        <a href="{% url 'pharmacy:view_cart' cart.id %}" class="btn btn-info btn-sm w-100 mt-2">
+                            <i class="fas fa-eye"></i> View Cart Details
                         </a>
+
+                        <div class="mt-3 p-2" style="background: #f8f9fc; border-radius: 0.25rem; font-size: 0.85rem;">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <strong>Next Step:</strong> After payment, you'll be taken to this cart to dispense medications.
+                        </div>
                     </div>
                 </div>
             {% endfor %}

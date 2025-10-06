@@ -1745,6 +1745,13 @@ def prescription_detail(request, prescription_id):
     except PharmacyInvoice.DoesNotExist:
         pharmacy_invoice = None
 
+    # Get active or paid cart for quick access
+    from pharmacy.cart_models import PrescriptionCart
+    active_cart = PrescriptionCart.objects.filter(
+        prescription=prescription,
+        status__in=['active', 'invoiced', 'paid', 'partially_dispensed']
+    ).order_by('-created_at').first()
+
     # Enhanced NHIA pricing breakdown
     pricing_breakdown = prescription.get_pricing_breakdown()
     
@@ -1782,6 +1789,7 @@ def prescription_detail(request, prescription_id):
         'prescription_items': prescription_items,
         'item_form': item_form,
         'pharmacy_invoice': pharmacy_invoice,
+        'active_cart': active_cart,  # Add cart for quick access
         'page_title': f'Prescription Details - #{prescription.id}',
         'active_nav': 'pharmacy',
         # Enhanced NHIA context
@@ -2545,8 +2553,23 @@ def prescription_payment(request, prescription_id):
                             user=prescription.doctor,
                             message=f'Payment of ₦{amount:.2f} recorded for prescription #{prescription.id} via {payment_source}'
                         )
-                    
-                    messages.success(request, f'Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+
+                    messages.success(request, f'✅ Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+
+                    # Redirect to cart if payment is complete and cart exists
+                    if pharmacy_invoice.status == 'paid':
+                        # Find the cart associated with this invoice
+                        from pharmacy.cart_models import PrescriptionCart
+                        cart = PrescriptionCart.objects.filter(
+                            invoice=pharmacy_invoice,
+                            status__in=['paid', 'invoiced']
+                        ).first()
+
+                        if cart:
+                            messages.info(request, '💊 Payment complete! You can now dispense the medications.')
+                            return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+                    # Fallback to prescription detail if no cart found
                     return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
                     
             except Exception as e:
@@ -2791,11 +2814,21 @@ def billing_office_medication_payment(request, prescription_id):
                     pharmacy_invoice._manual_payment_processed = True
                     prescription.payment_status = 'paid'
                     prescription.save(update_fields=['payment_status'])
+
+                    # Update cart status to 'paid' if invoice is fully paid
+                    from pharmacy.cart_models import PrescriptionCart
+                    carts = PrescriptionCart.objects.filter(
+                        invoice=pharmacy_invoice,
+                        status='invoiced'
+                    )
+                    for cart in carts:
+                        cart.status = 'paid'
+                        cart.save(update_fields=['status'])
                 else:
                     pharmacy_invoice.status = 'partially_paid'
-                
+
                 pharmacy_invoice.save()
-                
+
                 # Audit log
                 log_audit_action(
                     request.user,
@@ -2803,15 +2836,30 @@ def billing_office_medication_payment(request, prescription_id):
                     payment,
                     f'Billing office recorded {payment_source} payment of ₦{amount:.2f} for prescription #{prescription.id}'
                 )
-                
+
                 # Notification
                 if prescription.doctor:
                     InternalNotification.objects.create(
                         user=prescription.doctor,
                         message=f'Billing office recorded payment of ₦{amount:.2f} for prescription #{prescription.id} via {payment_source}'
                     )
-                
-                messages.success(request, f'Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+
+                messages.success(request, f'✅ Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+
+                # Redirect to cart if payment is complete and cart exists
+                if pharmacy_invoice.status == 'paid':
+                    # Find the cart associated with this invoice
+                    from pharmacy.cart_models import PrescriptionCart
+                    cart = PrescriptionCart.objects.filter(
+                        invoice=pharmacy_invoice,
+                        status__in=['paid', 'invoiced']
+                    ).first()
+
+                    if cart:
+                        messages.info(request, '💊 Payment complete! Pharmacist can now dispense the medications from the cart.')
+                        return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+                # Fallback to prescription detail if no cart found
                 return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
                 
         except (ValueError, TypeError):
