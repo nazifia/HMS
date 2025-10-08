@@ -862,31 +862,16 @@ def bed_occupancy_report(request):
             ward_total_days = sum([admission.get_duration() for admission in current_ward_admissions])
             ward_avg_los = ward_total_days / current_ward_admissions.count()
 
+        # Add ward data to report
         report_data.append({
-            'ward_name': ward.name,
-            'ward_type': ward.get_ward_type_display(),
+            'ward': ward,
             'total_beds': total_beds,
             'occupied_beds': occupied_beds,
             'available_beds': available_beds,
             'occupancy_rate': occupancy_rate,
-            'charge_per_day': ward.charge_per_day,
-            'avg_length_of_stay': ward_avg_los,
             'current_admissions': current_ward_admissions,
-            'primary_doctor': ward.primary_doctor.get_full_name() if ward.primary_doctor else 'Not assigned'
+            'avg_length_of_stay': ward_avg_los
         })
-
-    # Recent admissions and discharges (last 7 days)
-    last_week = timezone.now() - timedelta(days=7)
-    recent_admissions = Admission.objects.filter(
-        admission_date__gte=last_week
-    ).count()
-    recent_discharges = Admission.objects.filter(
-        discharge_date__gte=last_week,
-        status='discharged'
-    ).count()
-
-    # Bed turnover rate (discharges in last 7 days / total beds)
-    bed_turnover_rate = (recent_discharges / total_beds_hospital * 100) if total_beds_hospital > 0 else 0
 
     context = {
         'report_data': report_data,
@@ -895,14 +880,68 @@ def bed_occupancy_report(request):
         'total_available_hospital': total_available_hospital,
         'overall_occupancy_rate': overall_occupancy_rate,
         'avg_length_of_stay': avg_length_of_stay,
-        'recent_admissions': recent_admissions,
-        'recent_discharges': recent_discharges,
-        'bed_turnover_rate': bed_turnover_rate,
-        'report_date': timezone.now(),
-        'title': 'Comprehensive Bed Occupancy Report'
+        'page_title': 'Bed Occupancy Report'
     }
 
     return render(request, 'inpatient/bed_occupancy_report.html', context)
+
+
+@login_required
+def admission_net_impact(request, pk):
+    """View for analyzing admission net impact on patient wallet"""
+    admission = get_object_or_404(Admission, pk=pk)
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=admission.patient)
+    
+    # Calculate admission net impact without updating the balance
+    admission_net_impact = admission.get_total_wallet_impact(update_balance=False)
+    
+    # Calculate projected balance after applying net impact
+    projected_balance = max(admission_net_impact, 0)
+    
+    context = {
+        'admission': admission,
+        'patient': admission.patient,
+        'wallet': wallet,
+        'admission_net_impact': admission_net_impact,
+        'projected_balance': projected_balance,
+        'page_title': f'Admission Net Impact - {admission.patient.get_full_name()}',
+    }
+    
+    return render(request, 'inpatient/admission_net_impact.html', context)
+
+
+@login_required
+def apply_admission_net_impact(request, pk):
+    """View for applying admission net impact calculation to patient wallet"""
+    admission = get_object_or_404(Admission, pk=pk)
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=admission.patient)
+    
+    if request.method == 'POST':
+        try:
+            # Apply net impact calculation and update wallet balance
+            net_impact = admission.get_total_wallet_impact(update_balance=True)
+            
+            # Determine if the balance is positive or negative
+            if net_impact >= 0:
+                message = f'Successfully applied admission net impact calculation. New wallet balance: ₦{net_impact:.2f}'
+                messages.success(request, message)
+            else:
+                message = f'Applied admission net impact calculation. Wallet balance is now ₦0.00 with outstanding debt of ₦{abs(net_impact):.2f}'
+                messages.warning(request, message)
+            
+            return redirect('inpatient:admission_net_impact', pk=admission.id)
+            
+        except Exception as e:
+            messages.error(request, f'Error applying admission net impact calculation: {str(e)}')
+            return redirect('inpatient:admission_net_impact', pk=admission.id)
+    
+    # If not POST, redirect to the net impact page
+    return redirect('inpatient:admission_net_impact', pk=admission.id)
+
 
 @login_required
 def load_beds(request):

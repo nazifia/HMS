@@ -179,9 +179,17 @@ class Admission(models.Model):
         paid_amount = self.get_actual_charges_from_wallet()
         return max(0, total_cost - paid_amount)
 
-    def get_total_wallet_impact(self):
-        """Get total impact on wallet: current balance + outstanding admission costs"""
+    def get_total_wallet_impact(self, update_balance=False):
+        """Get total impact on wallet: current balance + outstanding admission costs
+        
+        Args:
+            update_balance (bool): If True, updates the wallet balance with the net impact
+            
+        Returns:
+            Decimal: Net impact (positive = wallet remaining, negative = amount still owed)
+        """
         try:
+            from patients.models import PatientWallet, WalletTransaction
             current_balance = self.patient.wallet.balance
             outstanding_cost = self.get_outstanding_admission_cost()
 
@@ -195,9 +203,40 @@ class Admission(models.Model):
                 wallet_after = Decimal('0.00')
                 outstanding_after = outstanding_cost - current_balance
 
-            # Total wallet impact (positive means wallet remaining, negative means net owed)
-            return wallet_after - outstanding_after
-        except:
+            # Calculate net impact: positive means wallet remaining, negative means net owed
+            net_impact = wallet_after - outstanding_after
+            
+            # Update wallet balance if requested
+            if update_balance:
+                # The new balance should reflect the net impact
+                # If net_impact is positive, that's the new balance
+                # If net_impact is negative, the balance becomes 0 (debt)
+                new_balance = max(net_impact, Decimal('0.00'))
+                wallet = self.patient.wallet
+                wallet.balance = new_balance
+                wallet.save(update_fields=['balance'])
+                
+                # Create a transaction record for this adjustment
+                try:
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        transaction_type='adjustment',
+                        amount=current_balance - new_balance,  # Positive if balance decreased
+                        balance_after=new_balance,
+                        description=f'Wallet balance adjusted based on admission net impact: ₦{net_impact}',
+                        created_by=None  # Can be updated later if needed
+                    )
+                except Exception as e:
+                    # Log the error but don't fail the operation
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to create wallet transaction: {e}")
+            
+            return net_impact
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in get_total_wallet_impact: {e}")
             return 0
 
     def save(self, *args, **kwargs):

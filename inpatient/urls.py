@@ -35,4 +35,8 @@ urlpatterns = [
 
     # AJAX endpoint for processing outstanding admission payment
     path('admissions/<int:admission_id>/payment/ajax-process-outstanding/', payment_views.ajax_process_outstanding_admission_payment, name='ajax_process_outstanding_admission_payment'),
+    
+    # Admission net impact URLs
+    path('admissions/<int:pk>/net-impact/', views.admission_net_impact, name='admission_net_impact'),
+    path('admissions/<int:pk>/apply-net-impact/', views.apply_admission_net_impact, name='apply_admission_net_impact'),
 ]

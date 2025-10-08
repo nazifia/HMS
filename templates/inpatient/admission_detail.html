@@ -267,6 +267,9 @@
                         <a href="{% url 'patients:wallet_transactions' admission.patient.id %}?admission={{ admission.id }}" class="btn btn-outline-info btn-sm">
                             <i class="fas fa-receipt"></i> View Admission Charges
                         </a>
+                        <a href="{% url 'inpatient:admission_net_impact' admission.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-calculator"></i> Analyze Net Impact
+                        </a>
                         {% if admission.get_outstanding_admission_cost > 0 %}
                         <button type="button" id="processOutstandingBtn" class="btn btn-success btn-sm" data-url="{% url 'inpatient:ajax_process_outstanding_admission_payment' admission.id %}">
                             <i class="fas fa-wallet"></i> Process Outstanding from Wallet
@@ -527,13 +530,39 @@
                     // Numbers already on the page
                     const totalCost = parseCurrency($('#totalCostValue').text());
                     const newPaid = Math.max(totalCost - outstanding, 0);
-                    const netImpact = wallet - outstanding;
+                    
+                    // Calculate net impact using the same logic as the model
+                    let walletAfter, outstandingAfter;
+                    if (wallet >= outstanding) {
+                        // Wallet fully covers outstanding
+                        walletAfter = wallet - outstanding;
+                        outstandingAfter = 0;
+                    } else {
+                        // Wallet not enough
+                        walletAfter = 0;
+                        outstandingAfter = outstanding - wallet;
+                    }
+                    
+                    // Net impact is wallet after minus outstanding after
+                    const netImpact = walletAfter - outstandingAfter;
 
                     // Update financial cards
                     $('#walletBalanceValue').text(formatCurrency(wallet));
                     $('#totalPaidValue').text(formatCurrency(newPaid));
                     $('#outstandingValue').text(formatCurrency(outstanding));
                     $('#netImpactValue').text(formatCurrency(netImpact));
+
+                    // Update net impact card styling
+                    const $netImpactCard = $('#netImpactCard');
+                    $netImpactCard.removeClass('border-left-danger border-left-success');
+                    $('#netImpactValue').removeClass('text-danger text-success');
+                    if (netImpact < 0) {
+                        $netImpactCard.addClass('border-left-danger');
+                        $('#netImpactValue').addClass('text-danger');
+                    } else {
+                        $netImpactCard.addClass('border-left-success');
+                        $('#netImpactValue').addClass('text-success');
+                    }
 
                     // Update Payment Status summary numbers
                     $('#psTotalCost').text(formatCurrency(totalCost));

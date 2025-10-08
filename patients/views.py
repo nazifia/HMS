@@ -891,6 +891,95 @@ def wallet_payment(request, patient_id):
 
 
 @login_required
+def wallet_net_impact(request, patient_id):
+    """View for analyzing and applying net impact to patient wallet"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    # Get all active admissions for this patient
+    from inpatient.models import Admission
+    active_admissions = Admission.objects.filter(
+        patient=patient,
+        status='admitted'
+    )
+    
+    # Calculate outstanding admission costs
+    admission_outstanding = sum(
+        admission.get_outstanding_admission_cost()
+        for admission in active_admissions
+    )
+    
+    # Get all outstanding invoices for this patient
+    from billing.models import Invoice
+    outstanding_invoices = Invoice.objects.filter(
+        patient=patient,
+        status__in=['pending', 'partially_paid']
+    )
+    
+    # Calculate outstanding invoice amounts
+    invoice_outstanding = sum(
+        invoice.get_balance() for invoice in outstanding_invoices
+    )
+    
+    # Total outstanding amount (admissions + invoices)
+    total_outstanding = admission_outstanding + invoice_outstanding
+    
+    # Calculate net impact without updating the balance
+    net_impact_without_update = wallet.get_total_wallet_impact_with_admissions(update_balance=False)
+    
+    # Calculate projected balance after applying net impact
+    projected_balance = max(net_impact_without_update, 0)
+    
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'active_admissions': active_admissions,
+        'outstanding_invoices': outstanding_invoices,
+        'admission_outstanding': admission_outstanding,
+        'invoice_outstanding': invoice_outstanding,
+        'total_outstanding': total_outstanding,
+        'net_impact_without_update': net_impact_without_update,
+        'projected_balance': projected_balance,
+        'page_title': f'Wallet Net Impact - {patient.get_full_name()}',
+    }
+    
+    return render(request, 'patients/wallet_net_impact.html', context)
+
+
+@login_required
+def apply_wallet_net_impact(request, patient_id):
+    """View for applying net impact calculation to patient wallet"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        try:
+            # Apply net impact calculation and update wallet balance
+            net_impact = wallet.get_total_wallet_impact_with_admissions(update_balance=True)
+            
+            # Determine if the balance is positive or negative
+            if net_impact >= 0:
+                message = f'Successfully applied net impact calculation. New wallet balance: ₦{net_impact:.2f}'
+                messages.success(request, message)
+            else:
+                message = f'Applied net impact calculation. Wallet balance is now ₦0.00 with outstanding debt of ₦{abs(net_impact):.2f}'
+                messages.warning(request, message)
+            
+            return redirect('patients:wallet_net_impact', patient_id=patient.id)
+            
+        except Exception as e:
+            messages.error(request, f'Error applying net impact calculation: {str(e)}')
+            return redirect('patients:wallet_net_impact', patient_id=patient.id)
+    
+    # If not POST, redirect to the net impact page
+    return redirect('patients:wallet_net_impact', patient_id=patient.id)
+
+
+@login_required
 def register_nhia_patient(request, patient_id):
     """View for registering NHIA patient"""
     patient = get_object_or_404(Patient, id=patient_id)

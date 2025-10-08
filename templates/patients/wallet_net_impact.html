@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Wallet Net Impact - {{ patient.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Wallet Net Impact Analysis</h1>
+        <div>
+            <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Wallet
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                            <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Phone:</strong> {{ patient.phone_number }}</p>
+                            <p><strong>Email:</strong> {{ patient.email }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Patient Type:</strong> 
+                                <span class="badge badge-{{ patient.patient_type|default:'secondary' }}">
+                                    {{ patient.get_patient_type_display|default:patient.patient_type }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Registration Date:</strong> {{ patient.registration_date|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Wallet Status -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-{% if patient.wallet.balance < 0 %}danger{% else %}primary{% endif %} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-{% if patient.wallet.balance < 0 %}danger{% else %}primary{% endif %} text-uppercase mb-1">
+                                Current Balance
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold {% if patient.wallet.balance < 0 %}text-danger{% else %}text-gray-800{% endif %}">
+                                ₦{{ patient.wallet.balance|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-{% if net_impact_without_update < 0 %}danger{% else %}info{% endif %} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-{% if net_impact_without_update < 0 %}danger{% else %}info{% endif %} text-uppercase mb-1">
+                                Net Impact (Current)
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold {% if net_impact_without_update < 0 %}text-danger{% else %}text-info{% endif %}">
+                                ₦{{ net_impact_without_update|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Total Outstanding
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-warning">
+                                ₦{{ total_outstanding|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Projected Balance
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-success">
+                                ₦{{ projected_balance|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Net Impact Details -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Net Impact Breakdown</h6>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#applyNetImpactModal">
+                        <i class="fas fa-sync-alt"></i> Apply Net Impact to Wallet
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="font-weight-bold text-info">Current Financial Status</h6>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <td>Current Wallet Balance</td>
+                                    <td class="{% if patient.wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                                        ₦{{ patient.wallet.balance|floatformat:2 }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Active Admissions</td>
+                                    <td>{{ active_admissions|length }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Outstanding Admission Costs</td>
+                                    <td class="text-warning">₦{{ admission_outstanding|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Outstanding Invoices</td>
+                                    <td class="text-warning">₦{{ invoice_outstanding|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Total Outstanding</th>
+                                    <th class="text-warning">₦{{ total_outstanding|floatformat:2 }}</th>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="font-weight-bold text-info">Net Impact Calculation</h6>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <td>Wallet Balance</td>
+                                    <td>₦{{ patient.wallet.balance|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Total Outstanding</td>
+                                    <td>- ₦{{ total_outstanding|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Net Impact</th>
+                                    <th class="{% if net_impact_without_update < 0 %}text-danger{% else %}text-success{% endif %}">
+                                        ₦{{ net_impact_without_update|floatformat:2 }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" class="text-center">
+                                        <small class="text-muted">
+                                            {% if net_impact_without_update > 0 %}
+                                                Positive value indicates remaining balance after all outstanding payments
+                                            {% else %}
+                                                Negative value indicates amount still owed after wallet is depleted
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Outstanding Details -->
+                    {% if active_admissions %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold text-info">Active Admissions</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Admission ID</th>
+                                        <th>Admission Date</th>
+                                        <th>Ward</th>
+                                        <th>Total Cost</th>
+                                        <th>Amount Paid</th>
+                                        <th>Outstanding</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for admission in active_admissions %}
+                                    <tr>
+                                        <td>{{ admission.id }}</td>
+                                        <td>{{ admission.admission_date|date:"M d, Y" }}</td>
+                                        <td>{{ admission.bed.ward.name|default:"-" }}</td>
+                                        <td>₦{{ admission.get_total_cost|floatformat:2 }}</td>
+                                        <td>₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</td>
+                                        <td class="text-warning">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if outstanding_invoices %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold text-info">Outstanding Invoices</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice Number</th>
+                                        <th>Date Issued</th>
+                                        <th>Total Amount</th>
+                                        <th>Amount Paid</th>
+                                        <th>Balance</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for invoice in outstanding_invoices %}
+                                    <tr>
+                                        <td>{{ invoice.invoice_number }}</td>
+                                        <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                                        <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
+                                        <td>₦{{ invoice.amount_paid|floatformat:2 }}</td>
+                                        <td class="text-warning">₦{{ invoice.get_balance|floatformat:2 }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ invoice.status }}">
+                                                {{ invoice.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Apply Net Impact Modal -->
+    <div class="modal fade" id="applyNetImpactModal" tabindex="-1" role="dialog" aria-labelledby="applyNetImpactModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="applyNetImpactModalLabel">Apply Net Impact to Wallet</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="applyNetImpactForm" method="post" action="{% url 'patients:apply_wallet_net_impact' patient.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <p>Are you sure you want to apply the net impact calculation to the patient's wallet?</p>
+                        
+                        <div class="alert alert-info">
+                            <h6>Summary of Changes:</h6>
+                            <ul>
+                                <li>Current Balance: <strong>₦{{ patient.wallet.balance|floatformat:2 }}</strong></li>
+                                <li>Net Impact: <strong>₦{{ net_impact_without_update|floatformat:2 }}</strong></li>
+                                <li>New Balance: <strong>₦{{ projected_balance|floatformat:2 }}</strong></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Note:</strong> This action will update the wallet balance and create a transaction record. This cannot be undone.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i> Apply Net Impact
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Handle form submission with confirmation
+        $('#applyNetImpactForm').on('submit', function(e) {
+            var confirmed = confirm('Are you sure you want to apply the net impact calculation? This will update the wallet balance and create a transaction record.');
+            if (!confirmed) {
+                e.preventDefault();
+                return false;
+            }
+            return true;
+        });
+    });
+</script>
+{% endblock %}
