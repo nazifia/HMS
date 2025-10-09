@@ -111,6 +111,28 @@ def dashboard(request):
     icu_records_count = IcuRecord.objects.count()
     family_planning_records_count = Family_planningRecord.objects.count()
     gynae_emergency_records_count = Gynae_emergencyRecord.objects.count()
+    
+    # Get wallet statistics
+    from patients.models import PatientWallet
+    total_wallet_balance = PatientWallet.objects.aggregate(
+        total=Sum('balance')
+    )['total'] or 0
+    
+    positive_wallets = PatientWallet.objects.filter(
+        balance__gt=0
+    ).count()
+    
+    negative_wallets = PatientWallet.objects.filter(
+        balance__lt=0
+    ).count()
+    
+    zero_wallets = PatientWallet.objects.filter(
+        balance=0
+    ).count()
+    
+    # Get recent wallet transactions
+    from patients.models import WalletTransaction
+    recent_wallet_transactions = WalletTransaction.objects.order_by('-created_at')[:5]
 
     context = {
         'total_patients': total_patients,
@@ -145,6 +167,12 @@ def dashboard(request):
         'this_month_revenue': this_month_revenue,
         'appointment_stats': appointment_stats,
         'ent_follow_up_count': ent_follow_up_count,  # Add this line
+        # Wallet statistics
+        'total_wallet_balance': total_wallet_balance,
+        'positive_wallets': positive_wallets,
+        'negative_wallets': negative_wallets,
+        'zero_wallets': zero_wallets,
+        'recent_wallet_transactions': recent_wallet_transactions,
     }
 
     return render(request, 'dashboard/dashboard_modern.html', context)

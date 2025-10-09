@@ -318,15 +318,27 @@ class PatientWallet(models.Model):
     def __str__(self):
         return f"Wallet for {self.patient.get_full_name()} (₦{self.balance})"
 
-    def credit(self, amount, description="Credit", transaction_type="credit", user=None, invoice=None, payment_instance=None, admission=None):
-        """Credit amount to wallet and create transaction record"""
+    def credit(self, amount, description="Credit", transaction_type="credit", user=None, invoice=None, payment_instance=None, admission=None, apply_to_outstanding=False):
+        """Credit amount to wallet and create transaction record
+        
+        Args:
+            amount: Amount to credit to wallet
+            description: Description for the transaction
+            transaction_type: Type of transaction
+            user: User making the transaction
+            invoice: Related invoice if any
+            payment_instance: Related payment instance if any
+            admission: Related admission if any
+            apply_to_outstanding: If True, automatically apply funds to outstanding charges
+        """
         if amount <= 0:
             raise ValueError("Credit amount must be positive.")
 
+        original_balance = self.balance
         self.balance += amount
         self.save(update_fields=['balance', 'last_updated'])
 
-        # Create transaction record
+        # Create transaction record for the credit
         transaction = WalletTransaction.objects.create(
             wallet=self,
             transaction_type=transaction_type,
@@ -339,17 +351,105 @@ class PatientWallet(models.Model):
             admission=admission
         )
         
-        # Check if this credit settles an outstanding negative balance
-        # This would be the case when balance goes from negative to positive or zero
-        if self.balance >= 0 and (self.balance - amount) < 0:
-            # The balance just crossed from negative to positive/zero
-            # We could automatically settle here, but for now we'll just add a notification
-            # In a real implementation, you might want to add a setting to control this behavior
-            
-            # For now, we'll just make sure the transaction is properly recorded
-            pass
-
+        # If apply_to_outstanding is True, automatically apply funds to outstanding charges
+        if apply_to_outstanding:
+            self._apply_funds_to_outstanding(amount, user)
+        
         return transaction
+    
+    def _apply_funds_to_outstanding(self, available_funds, user=None):
+        """Apply available funds to outstanding charges from admissions and invoices
+        
+        Args:
+            available_funds: Amount of funds available to apply to outstanding charges
+            user: User making the transaction
+        """
+        from decimal import Decimal
+        from inpatient.models import Admission
+        from billing.models import Invoice
+        
+        if available_funds <= 0:
+            return
+        
+        # Get active admissions with outstanding costs
+        active_admissions = Admission.objects.filter(
+            patient=self.patient,
+            status='admitted'
+        )
+        
+        # Get outstanding invoices
+        outstanding_invoices = Invoice.objects.filter(
+            patient=self.patient,
+            status__in=['pending', 'partially_paid']
+        )
+        
+        funds_to_apply = available_funds
+        
+        # First, apply to outstanding admission costs
+        for admission in active_admissions:
+            if funds_to_apply <= 0:
+                break
+                
+            outstanding_cost = admission.get_outstanding_admission_cost()
+            if outstanding_cost <= 0:
+                continue
+            
+            # Calculate how much to apply to this admission
+            amount_to_apply = min(funds_to_apply, outstanding_cost)
+            
+            # Update wallet balance
+            self.balance -= amount_to_apply
+            self.save(update_fields=['balance'])
+            
+            # Create a payment transaction for the admission
+            WalletTransaction.objects.create(
+                wallet=self,
+                transaction_type='admission_payment',
+                amount=amount_to_apply,
+                balance_after=self.balance,
+                description=f'Automatic payment towards admission #{admission.id}',
+                created_by=user,
+                admission=admission
+            )
+            
+            funds_to_apply -= amount_to_apply
+        
+        # Then, apply to outstanding invoices
+        for invoice in outstanding_invoices:
+            if funds_to_apply <= 0:
+                break
+                
+            invoice_balance = invoice.get_balance()
+            if invoice_balance <= 0:
+                continue
+            
+            # Calculate how much to apply to this invoice
+            amount_to_apply = min(funds_to_apply, invoice_balance)
+            
+            # Update wallet balance
+            self.balance -= amount_to_apply
+            self.save(update_fields=['balance'])
+            
+            # Update the invoice
+            invoice.amount_paid += amount_to_apply
+            if invoice.amount_paid >= invoice.total_amount:
+                invoice.status = 'paid'
+            elif invoice.amount_paid > 0:
+                invoice.status = 'partially_paid'
+            invoice.save()
+            
+            # Create a payment transaction for the invoice
+            WalletTransaction.objects.create(
+                wallet=self,
+                transaction_type='payment',
+                amount=amount_to_apply,
+                balance_after=self.balance,
+                description=f'Automatic payment towards invoice #{invoice.invoice_number}',
+                created_by=user,
+                invoice=invoice
+            )
+            
+            funds_to_apply -= amount_to_apply
 
     def debit(self, amount, description="Debit", transaction_type="debit", user=None, invoice=None, payment_instance=None, admission=None):
         """Debit amount from wallet and create transaction record"""

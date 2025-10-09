@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}Wallet Net Impact - HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Wallet Net Impact Report</h1>
+        <div>
+            <a href="{% url 'dashboard:dashboard' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Net Impact Statistics -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Net Impact</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_net_impact|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Balance</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_balance|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Difference</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ difference|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-balance-scale fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Wallets</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_wallets }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Net Impact Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Wallet Net Impact Details</h6>
+            <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                    <div class="dropdown-header">Actions:</div>
+                    <a class="dropdown-item" href="{% url 'patients:wallet_list' %}">All Wallets</a>
+                    <!-- Commented out Admission Net Impact link as it needs a pk parameter -->
+                    <!-- <a class="dropdown-item" href="/inpatient/admissions/1/net-impact/">Admission Net Impact</a> -->
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if wallet_data %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="netImpactTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Patient</th>
+                                <th>Patient ID</th>
+                                <th>Current Balance</th>
+                                <th>Net Impact</th>
+                                <th>Difference</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in wallet_data %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'patients:detail' item.wallet.patient.id %}">
+                                        {{ item.wallet.patient.get_full_name }}
+                                    </a>
+                                </td>
+                                <td>{{ item.wallet.patient.patient_id }}</td>
+                                <td class="{% if item.balance > 0 %}text-success{% elif item.balance < 0 %}text-danger{% else %}text-warning{% endif %}">
+                                    ₦{{ item.balance|floatformat:2 }}
+                                </td>
+                                <td class="{% if item.net_impact > 0 %}text-success{% elif item.net_impact < 0 %}text-danger{% else %}text-warning{% endif %}">
+                                    ₦{{ item.net_impact|floatformat:2 }}
+                                </td>
+                                <td class="text-info">
+                                    ₦{{ item.net_impact|add:item.balance|floatformat:2 }}
+                                </td>
+                                <td>
+                                    <a href="{% url 'patients:wallet_dashboard' item.wallet.patient.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="{% url 'patients:wallet_net_impact' item.wallet.patient.id %}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-calculator"></i> Calculate
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-line fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-500">No wallet data found</h5>
+                    <p class="text-gray-400">Wallet net impact data will appear here when wallets exist.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#netImpactTable').DataTable({
+            "order": [[3, "desc"]], // Sort by net impact (descending)
+            "pageLength": 25,
+            "responsive": true,
+        });
+    });
+</script>
+{% endblock %}

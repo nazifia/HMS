@@ -4,12 +4,18 @@
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        <div>
+            <a href="{% url 'dashboard:system_overview' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-cogs fa-sm text-white-50"></i> System Overview
+            </a>
+        </div>
+    </div>
+
+    <!-- Content Row -->
     <div class="row">
-        
-        <div class="col-md-12">
-            <div class="container-fluid p-4">
-                <h1 class="h3 mb-4">Dashboard</h1>
-                <div class="row">
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-primary shadow h-100 py-2">
                             <div class="card-body">
@@ -68,6 +74,71 @@
                                     </div>
                                     <div class="col-auto">
                                         <i class="fas fa-flask fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Wallet Statistics -->
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Wallet Balance</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_wallet_balance|floatformat:2 }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Positive Wallets</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ positive_wallets }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-arrow-up fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Zero Balance</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ zero_wallets }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-minus fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Negative Wallets</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ negative_wallets }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-arrow-down fa-2x text-gray-300"></i>
                                     </div>
                                 </div>
                             </div>
@@ -221,7 +292,7 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-lg-6 mb-4">
+                    <div class="col-lg-4 mb-4">
                         <div class="card shadow mb-4 chart-container">
                             <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">Today's Appointments</h6>
@@ -247,13 +318,85 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-6 mb-4">
+                    <div class="col-lg-4 mb-4">
+                        <div class="card shadow mb-4 chart-container">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Recent Wallet Transactions</h6>
+                            </div>
+                            <div class="card-body">
+                                {% if recent_wallet_transactions %}
+                                    <ul class="list-group list-group-flush">
+                                        {% for transaction in recent_wallet_transactions %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>{{ transaction.get_transaction_type_display }}</strong>
+                                                    {% if transaction.patient %}
+                                                        - {{ transaction.patient.get_full_name }}
+                                                    {% endif %}
+                                                    <br>
+                                                    <small class="text-muted">{{ transaction.created_at|date:'M d, H:i' }}</small>
+                                                </div>
+                                                <div class="text-right">
+                                                    {% if transaction.transaction_type in "credit deposit" %}
+                                                        <span class="text-success">+₦{{ transaction.amount|floatformat:2 }}</span>
+                                                    {% else %}
+                                                        <span class="text-danger">-₦{{ transaction.amount|floatformat:2 }}</span>
+                                                    {% endif %}
+                                                    <br>
+                                                    <small class="text-muted">Bal: ₦{{ transaction.balance_after|floatformat:2 }}</small>
+                                                </div>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p>No recent wallet transactions.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4 mb-4">
                         <div class="card shadow mb-4 chart-container">
                             <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">Revenue Overview</h6>
                             </div>
                             <div class="card-body">
                                 <canvas id="revenueChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions Section -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <a href="{% url 'patients:register' %}" class="btn btn-primary btn-block">
+                                            <i class="fas fa-user-plus me-2"></i>Register Patient
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <a href="{% url 'appointments:create' %}" class="btn btn-info btn-block">
+                                            <i class="fas fa-calendar-plus me-2"></i>Book Appointment
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <a href="{% url 'inpatient:create_admission' %}" class="btn btn-warning btn-block">
+                                            <i class="fas fa-bed me-2"></i>Admit Patient
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <a href="{% url 'billing:create' %}" class="btn btn-success btn-block">
+                                            <i class="fas fa-file-invoice me-2"></i>Create Invoice
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

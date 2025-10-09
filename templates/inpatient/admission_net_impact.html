@@ -139,9 +139,16 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Admission Cost Breakdown</h6>
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#applyNetImpactModal">
-                        <i class="fas fa-sync-alt"></i> Apply Net Impact to Wallet
-                    </button>
+                    <div>
+                        {% if admission.get_outstanding_admission_cost > 0 %}
+                        <a href="{% url 'patients:add_funds_to_wallet' admission.patient.id %}" class="btn btn-success btn-sm me-2">
+                            <i class="fas fa-plus-circle"></i> Add Funds to Settle
+                        </a>
+                        {% endif %}
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#applyNetImpactModal">
+                            <i class="fas fa-sync-alt"></i> Apply Net Impact to Wallet
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row">

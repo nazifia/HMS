@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add Funds - {{ patient.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Add Funds to Wallet</h1>
+        <div>
+            <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Wallet
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                            <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Current Balance:</strong> 
+                                <span class="{% if wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                                    ₦{{ wallet.balance|floatformat:2 }}
+                                </span>
+                            </p>
+                            <p><strong>Wallet Status:</strong> 
+                                <span class="badge badge-{% if wallet.is_active %}success{% else %}danger{% endif %}">
+                                    {% if wallet.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Outstanding Admissions:</strong> 
+                                <span class="text-warning">₦{{ admission_outstanding|floatformat:2 }}</span>
+                            </p>
+                            <p><strong>Outstanding Invoices:</strong> 
+                                <span class="text-warning">₦{{ invoice_outstanding|floatformat:2 }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Total Outstanding:</strong> 
+                                <span class="text-danger font-weight-bold">₦{{ total_outstanding|floatformat:2 }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding Details -->
+    {% if total_outstanding > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-warning">Outstanding Charges</h6>
+                </div>
+                <div class="card-body">
+                    {% if active_admissions %}
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold text-info">Active Admissions</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Admission ID</th>
+                                        <th>Ward</th>
+                                        <th>Duration</th>
+                                        <th>Outstanding</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for admission in active_admissions %}
+                                    <tr>
+                                        <td>{{ admission.id }}</td>
+                                        <td>{{ admission.bed.ward.name|default:"-" }}</td>
+                                        <td>{{ admission.get_duration }} days</td>
+                                        <td class="text-warning">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if outstanding_invoices %}
+                    <div>
+                        <h6 class="font-weight-bold text-info">Outstanding Invoices</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice Number</th>
+                                        <th>Date Issued</th>
+                                        <th>Total Amount</th>
+                                        <th>Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for invoice in outstanding_invoices %}
+                                    <tr>
+                                        <td>{{ invoice.invoice_number }}</td>
+                                        <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                                        <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
+                                        <td class="text-warning">₦{{ invoice.get_balance|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Add Funds Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Add Funds</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.amount.id_for_label }}">Amount (₦)</label>
+                                    {{ form.amount }}
+                                    {% if form.amount.errors %}
+                                    <div class="text-danger">
+                                        {{ form.amount.errors }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.payment_method.id_for_label }}">Payment Method</label>
+                                    {{ form.payment_method }}
+                                    {% if form.payment_method.errors %}
+                                    <div class="text-danger">
+                                        {{ form.payment_method.errors }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.description.id_for_label }}">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger">
+                                {{ form.description.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if total_outstanding > 0 %}
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="apply_to_outstanding" name="apply_to_outstanding">
+                                <label class="custom-control-label" for="apply_to_outstanding">
+                                    Automatically apply funds to outstanding charges (₦{{ total_outstanding|floatformat:2 }})
+                                </label>
+                                <small class="form-text text-muted">
+                                    If checked, funds will be automatically applied to outstanding admission costs and invoices in chronological order.
+                                </small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus-circle"></i> Add Funds
+                            </button>
+                            <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Quick Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Current Balance</small>
+                        <h5 class="{% if wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₦{{ wallet.balance|floatformat:2 }}
+                        </h5>
+                    </div>
+                    
+                    {% if total_outstanding > 0 %}
+                    <div class="mb-3">
+                        <small class="text-muted">Total Outstanding</small>
+                        <h5 class="text-warning">₦{{ total_outstanding|floatformat:2 }}</h5>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Net Impact</small>
+                        <h5 class="{% if wallet.get_total_wallet_impact_with_admissions < 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₦{{ wallet.get_total_wallet_impact_with_admissions|floatformat:2 }}
+                        </h5>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <small>
+                            Adding funds to the wallet increases the patient's available balance. 
+                            {% if total_outstanding > 0 %}
+                            You can choose to automatically apply funds to outstanding charges.
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Format amount field to accept only numbers
+        $('#id_amount').on('input', function() {
+            var value = $(this).val();
+            // Remove any non-numeric characters except decimal point
+            value = value.replace(/[^0-9.]/g, '');
+            // Ensure only one decimal point
+            var parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            $(this).val(value);
+        });
+        
+        // Show warning if amount is less than total outstanding and auto-apply is checked
+        $('form').on('submit', function(e) {
+            var amount = parseFloat($('#id_amount').val()) || 0;
+            var totalOutstanding = parseFloat('{{ total_outstanding|floatformat:2 }}') || 0;
+            var applyToOutstanding = $('#apply_to_outstanding').is(':checked');
+            
+            if (applyToOutstanding && amount < totalOutstanding) {
+                var confirmed = confirm('The amount you\'re adding (₦' + amount.toFixed(2) + ') is less than the total outstanding charges (₦' + totalOutstanding.toFixed(2) + '). The remaining outstanding balance will still be due. Do you want to continue?');
+                if (!confirmed) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

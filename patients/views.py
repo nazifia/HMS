@@ -509,6 +509,13 @@ def wallet_dashboard(request, patient_id):
     except:
         pass
     
+    # Calculate total outstanding from admissions and invoices
+    admission_outstanding = 0
+    if current_admission:
+        admission_outstanding = current_admission.get_outstanding_admission_cost()
+    
+    total_outstanding = admission_outstanding + total_outstanding
+    
     context = {
         'patient': patient,
         'wallet_stats': wallet_stats,
@@ -522,6 +529,7 @@ def wallet_dashboard(request, patient_id):
         'current_admission': current_admission,
         'outstanding_invoices': outstanding_invoices,
         'total_outstanding': total_outstanding,
+        'admission_outstanding': admission_outstanding,
         'wallet': wallet,
         'page_title': f'Wallet - {patient.get_full_name()}',
         'active_nav': 'patients',
@@ -538,22 +546,54 @@ def add_funds_to_wallet(request, patient_id):
     # Get or create wallet for patient
     wallet, created = PatientWallet.objects.get_or_create(patient=patient)
     
+    # Calculate outstanding amounts for display
+    from inpatient.models import Admission
+    from billing.models import Invoice
+    
+    active_admissions = Admission.objects.filter(
+        patient=patient,
+        status='admitted'
+    )
+    
+    admission_outstanding = sum(
+        admission.get_outstanding_admission_cost()
+        for admission in active_admissions
+    )
+    
+    outstanding_invoices = Invoice.objects.filter(
+        patient=patient,
+        status__in=['pending', 'partially_paid']
+    )
+    
+    invoice_outstanding = sum(
+        invoice.get_balance() for invoice in outstanding_invoices
+    )
+    
+    total_outstanding = admission_outstanding + invoice_outstanding
+    
     if request.method == 'POST':
         form = AddFundsForm(request.POST)
         if form.is_valid():
             amount = form.cleaned_data['amount']
             description = form.cleaned_data['description'] or 'Funds added to wallet'
             payment_method = form.cleaned_data['payment_method']
+            apply_to_outstanding = request.POST.get('apply_to_outstanding') == 'on'
             
             # Credit the wallet
             wallet.credit(
                 amount=amount,
                 description=f"{description} (Payment method: {payment_method})",
                 transaction_type='deposit',
-                user=request.user
+                user=request.user,
+                apply_to_outstanding=apply_to_outstanding
             )
             
-            messages.success(request, f'Successfully added ₦{amount} to {patient.get_full_name()}\'s wallet.')
+            if apply_to_outstanding and total_outstanding > 0:
+                amount_applied = min(amount, total_outstanding)
+                messages.success(request, f'Successfully added ₦{amount} to {patient.get_full_name()}\'s wallet. ₦{amount_applied} automatically applied to outstanding charges.')
+            else:
+                messages.success(request, f'Successfully added ₦{amount} to {patient.get_full_name()}\'s wallet.')
+            
             return redirect('patients:wallet_dashboard', patient_id=patient.id)
     else:
         form = AddFundsForm()
@@ -562,6 +602,11 @@ def add_funds_to_wallet(request, patient_id):
         'patient': patient,
         'wallet': wallet,
         'form': form,
+        'total_outstanding': total_outstanding,
+        'admission_outstanding': admission_outstanding,
+        'invoice_outstanding': invoice_outstanding,
+        'active_admissions': active_admissions,
+        'outstanding_invoices': outstanding_invoices,
         'page_title': f'Add Funds - {patient.get_full_name()}',
         'active_nav': 'patients',
     }
@@ -891,8 +936,67 @@ def wallet_payment(request, patient_id):
 
 
 @login_required
-def wallet_net_impact(request, patient_id):
+def wallet_list(request):
+    """View to display all patient wallets"""
+    wallets = PatientWallet.objects.select_related('patient').all()
+    
+    # Calculate statistics
+    total_balance = sum(wallet.balance for wallet in wallets)
+    positive_wallets = sum(1 for wallet in wallets if wallet.balance > 0)
+    zero_wallets = sum(1 for wallet in wallets if wallet.balance == 0)
+    negative_wallets = sum(1 for wallet in wallets if wallet.balance < 0)
+    
+    context = {
+        'wallets': wallets,
+        'total_balance': total_balance,
+        'positive_wallets': positive_wallets,
+        'zero_wallets': zero_wallets,
+        'negative_wallets': negative_wallets,
+        'page_title': 'All Wallets',
+        'active_nav': 'wallet',
+    }
+    
+    return render(request, 'patients/wallet_list.html', context)
+
+
+@login_required
+def wallet_net_impact(request, patient_id=None):
     """View for analyzing and applying net impact to patient wallet"""
+    # If no patient_id is provided, show the global net impact report
+    if patient_id is None:
+        # Get all wallets with their net impact
+        wallets = PatientWallet.objects.select_related('patient').all()
+        
+        # Calculate net impact for each wallet
+        wallet_data = []
+        total_net_impact = 0
+        total_balance = 0
+        
+        for wallet in wallets:
+            net_impact = wallet.get_total_wallet_impact_with_admissions()
+            wallet_data.append({
+                'wallet': wallet,
+                'net_impact': net_impact,
+                'balance': wallet.balance,
+            })
+            total_net_impact += net_impact
+            total_balance += wallet.balance
+        
+        # Calculate difference
+        difference = total_net_impact - total_balance
+        
+        context = {
+            'wallet_data': wallet_data,
+            'total_net_impact': total_net_impact,
+            'total_balance': total_balance,
+            'difference': difference,
+            'total_wallets': len(wallet_data),
+            'page_title': 'Wallet Net Impact',
+            'active_nav': 'wallet',
+        }
+        
+        return render(request, 'patients/wallet_net_impact_global.html', context)
+    
     patient = get_object_or_404(Patient, id=patient_id)
     
     # Get or create wallet for patient
