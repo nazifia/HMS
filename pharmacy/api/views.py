@@ -1,13 +1,17 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from ..models import Medication, MedicationCategory, Supplier, Prescription, PrescriptionItem
+from django.http import JsonResponse
+from ..models import Medication, MedicationCategory, Supplier, Prescription, PrescriptionItem, Dispensary, MedicationInventory
 from .serializers import (
     MedicationSerializer, MedicationCategorySerializer, SupplierSerializer,
     PrescriptionSerializer, PrescriptionItemSerializer
 )
+from ..inter_dispensary_forms import InterDispensaryTransferForm
 
 class MedicationViewSet(viewsets.ReadOnlyModelViewSet):
     """

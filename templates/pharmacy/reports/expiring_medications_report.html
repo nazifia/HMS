@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load pharmacy_tags %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -72,7 +73,7 @@
                             <td>{{ item.active_store.dispensary.name }}</td>
                             <td>{{ item.batch_number|default:"N/A" }}</td>
                             <td>{{ item.expiry_date }}</td>
-                            <td>{{ item.expiry_date|timeuntil }}</td>
+                            <td>{{ item.expiry_date|timeuntil_days }}</td>
                             <td>{{ item.stock_quantity }}</td>
                         </tr>
                         {% endfor %}

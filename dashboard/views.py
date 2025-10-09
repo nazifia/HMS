@@ -203,7 +203,7 @@ def system_overview(request):
     context['scheduled_appointments'] = Appointment.objects.filter(status='scheduled').count()
     context['completed_appointments'] = Appointment.objects.filter(status='completed').count()
     context['cancelled_appointments'] = Appointment.objects.filter(status='cancelled').count()
-    context['appointment_types'] = Appointment.objects.values('appointment_type').annotate(count=Count('appointment_type')).order_by('-count')
+    context['appointment_types'] = Appointment.objects.values('priority').annotate(count=Count('priority')).order_by('-count')
 
     # Laboratory App
     context['lab_test_categories'] = TestCategory.objects.count()

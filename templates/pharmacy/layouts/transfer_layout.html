@@ -1,0 +1,254 @@
+{% extends 'pharmacy/base_transfer.html' %}
+{% load static %}
+
+{% block transfer_content %}
+<!-- Include Transfer Navigation Widget -->
+{% include 'pharmacy/widgets/transfer_navigation.html' %}
+
+<!-- Main Content Area -->
+<div class="transfer-content">
+    {% block transfer_main_content %}
+    <!-- Main content will be inserted here -->
+    {% endblock %}
+</div>
+
+<style>
+.transfer-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    min-height: 400px;
+}
+
+/* Additional transfer-specific styles */
+.transfer-status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 20px;
+}
+
+.status-pending {
+    background-color: #ffc107;
+    color: #856404;
+}
+
+.status-in-transit {
+    background-color: #17a2b8;
+    color: #f8f9fa;
+}
+
+.status-completed {
+    background-color: #28a745;
+    color: #f8f9fa;
+}
+
+.status-cancelled {
+    background-color: #6c757d;
+    color: #f8f9fa;
+}
+
+.status-rejected {
+    background-color: #dc3545;
+    color: #f8f9fa;
+}
+
+.status-row-highlight {
+    background-color: rgba(255, 193, 7, 0.05);
+}
+
+.status-row-highlight-success {
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.status-row-highlight-info {
+    background-color: rgba(23, 162, 184, 0.05);
+}
+
+.status-row-highlight-warning {
+    background-color: rgba(255, 193, 7, 0.05);
+}
+
+.status-row-highlight-danger {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
+.transfer-card-hover {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.transfer-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.transfer-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.transfer-timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e3e6f0;
+}
+
+.transfer-timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.transfer-timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+}
+
+.inventory-indicator {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .transfer-content {
+        padding: 1rem;
+    }
+    
+    .transfer-navigation .search-box form {
+        gap: 0.5rem;
+    }
+    
+    .transfer-navigation .search-box .col-md-3,
+    .transfer-navigation .search-box .col-md-2,
+    .transfer-navigation .search-box .col-md-1 {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Loading animations */
+.transfer-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3rem;
+}
+
+/* Empty state styling */
+.transfer-empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.transfer-empty-state i {
+    font-size: 4rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.transfer-empty-state h3 {
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.transfer-empty-state p {
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}
+</style>
+
+<script>
+// Auto-initialize any transfer-specific functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips if Bootstrap tooltips are used
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Initialize popovers if Bootstrap popovers are used
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl)
+    });
+    
+    // Add smooth scroll behavior
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+});
+
+// Custom transfer-specific helpers
+window.TransferHelpers = {
+    showLoading: function(element) {
+        if (typeof element === 'string') {
+            element = document.querySelector(element);
+        }
+        if (element) {
+            element.innerHTML = '<div class="transfer-loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        }
+    },
+    
+    showEmptyState: function(element, message, icon = 'fa-exchange-alt') {
+        if (typeof element === 'string') {
+            element = document.querySelector(element);
+        }
+        if (element) {
+            element.innerHTML = `
+                <div class="transfer-empty-state">
+                    <i class="fas ${icon}"></i>
+                    <h3>${message}</h3>
+                    <p>Try adjusting your filters or create a new transfer.</p>
+                    <a href="{% url 'pharmacy:create_inter_dispensary_transfer' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create New Transfer
+                    </a>
+                </div>
+            `;
+        }
+    },
+    
+    updateBadgeCount: function(badgeElement, count) {
+        if (typeof badgeElement === 'string') {
+            badgeElement = document.querySelector(badgeElement);
+        }
+        if (badgeElement) {
+            badgeElement.textContent = count;
+            badgeElement.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+    }
+};
+</script>
+{% endblock %}

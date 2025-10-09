@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .transfer-breadcrumb {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 0;
+        margin: -1rem -1.5rem 1rem -1.5rem;
+    }
+    
+    .transfer-header {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .transfer-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .transfer-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+    }
+    
+    .btn-transfer {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 0.5rem 1.5rem;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    
+    .btn-transfer:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    
+    .action-buttons .btn {
+        margin: 0.25rem;
+    }
+    
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 11px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e3e6f0;
+    }
+    
+    .timeline-item {
+        margin-bottom: 20px;
+        position: relative;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -22px;
+        top: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+    }
+    
+    .inventory-badge {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        z-index: 10;
+    }
+    
+    .quick-stats {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-card {
+        flex: 1;
+        padding: 1rem;
+        text-align: center;
+        border-radius: 8px;
+        background: #f8f9fc;
+        border: 1px solid #e3e6f0;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #5a5f69;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Transfer Breadcrumb -->
+<nav aria-label="breadcrumb" class="transfer-breadcrumb">
+    <div class="container">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a href="{% url 'dashboard:dashboard' %}" class="text-white">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="text-white">
+                    <i class="fas fa-pills"></i> Pharmacy
+                </a>
+            </li>
+            <li class="breadcrumb-item text-white">Inter-Dispensary</li>
+            {% if request.resolved_match.kwargs %}
+                <li class="breadcrumb-item text-white">{{ title }}</li>
+            {% else %}
+                <li class="breadcrumb-item active text-white">{{ title }}</li>
+            {% endif %}
+        </ol>
+    </div>
+</nav>
+
+<!-- Quick Stats Header -->
+<div class="container mb-4">
+    <div class="transfer-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+                {% if subtitle %}
+                <p class="text-muted mb-0">{{ subtitle }}</p>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="action-buttons">
+                    {% block header_actions %}
+                    {% if show_create_button|default:true %}
+                    <a href="{% url 'pharmacy:create_inter_dispensary_transfer' %}" class="btn btn-transfer">
+                        <i class="fas fa-plus"></i> New Transfer
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'pharmacy:inter_dispensary_transfer_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list"></i> All Transfers
+                    </a>
+                    <a href="{% url 'pharmacy:transfer_statistics' %}" class="btn btn-outline-info">
+                        <i class="fas fa-chart-bar"></i> Statistics
+                    </a>
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+        
+        {% if quick_stats %}
+        <!-- Quick Stats -->
+        <div class="quick-stats mt-3">
+            {% for stat in quick_stats %}
+            <div class="stat-card">
+                <div class="stat-number">{{ stat.number }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container">
+    {% block transfer_content %}
+    <!-- Content will be inserted here -->
+    {% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-expand sidebar for transfer pages
+document.addEventListener('DOMContentLoaded', function() {
+    const pharmacySidebarItem = document.querySelector('[data-bs-target="#collapsePharmacy"]');
+    if (pharmacySidebarItem && !pharmacySidebarItem.classList.contains('collapsed')) {
+        pharmacySidebarItem.click();
+    }
+    
+    // Scroll to any transfer detail if hash provided
+    if (window.location.hash) {
+        const target = document.querySelector(window.location.hash);
+        if (target) {
+            setTimeout(() => {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+        }
+    }
+    
+    // Add loading states to forms
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function() {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+        });
+    });
+    
+    // Auto-dismiss success messages after 5 seconds
+    const successAlerts = document.querySelectorAll('.alert-success');
+    successAlerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.transition = 'opacity 0.3s';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 300);
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

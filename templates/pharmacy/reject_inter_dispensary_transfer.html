@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Reject Transfer #{{ transfer.id }}</h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                You are about to reject this transfer from {{ transfer.from_dispensary.name }} 
+                to {{ transfer.to_dispensary.name }} for {{ transfer.quantity }} units of 
+                {{ transfer.medication.name }}.
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group mb-3">
+                    <label for="{{ form.rejection_reason.id_for_label }}" class="form-label">
+                        {{ form.rejection_reason.label }}
+                    </label>
+                    {{ form.rejection_reason }}
+                    <div class="form-text">Please provide a reason for rejecting this transfer.</div>
+                </div>
+                
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-times"></i> Reject Transfer
+                </button>
+                <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Cancel
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus on rejection reason field
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('id_rejection_reason').focus();
+});
+</script>
+{% endblock %}

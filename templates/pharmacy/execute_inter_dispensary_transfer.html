@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Execute Transfer #{{ transfer.id }}</h6>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p><strong>Medication:</strong> {{ transfer.medication.name }} ({{ transfer.medication.strength }})</p>
+                    <p><strong>From:</strong> {{ transfer.from_dispensary.name }}</p>
+                    <p><strong>To:</strong> {{ transfer.to_dispensary.name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Quantity:</strong> {{ transfer.quantity }}</p>
+                    <p><strong>Status:</strong> {{ transfer.get_status_display }}</p>
+                    <p><strong>Approved By:</strong> {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}</p>
+                </div>
+            </div>
+
+            <div class="alert alert-{{ can_transfer|yesno:'success,danger' }}">
+                <i class="fas fa-{{ can_transfer|yesno:'check-circle,times-circle' }}"></i> 
+                {{ availability_message }}
+            </div>
+
+            {% if can_transfer %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    Executing this transfer will permanently move {{ transfer.quantity }} units from 
+                    {{ transfer.from_dispensary.name }} to {{ transfer.to_dispensary.name }}. 
+                    This action cannot be undone.
+                </div>
+                
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check-circle"></i> Execute Transfer
+                </button>
+                <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Cancel
+                </a>
+            </form>
+            {% else %}
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> 
+                This transfer cannot be executed in its current state.
+            </div>
+            <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Transfer
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

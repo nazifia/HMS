@@ -1,0 +1,197 @@
+<!-- Transfer Navigation Widget -->
+{% load static %}
+<div class="transfer-navigation">
+    <!-- Quick Action Buttons -->
+    <div class="quick-actions mb-4">
+        <div class="d-flex gap-2 flex-wrap">
+            {% if show_create_button|default:true %}
+            <a href="{% url 'pharmacy:create_inter_dispensary_transfer' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Transfer
+            </a>
+            {% endif %}
+            <a href="{% url 'pharmacy:transfer_statistics' %}" class="btn btn-info">
+                <i class="fas fa-chart-bar"></i> Statistics
+            </a>
+            <a href="{% url 'pharmacy:inter_dispensary_transfer_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-list"></i> All Transfers
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    {% if show_filters|default:true %}
+    <div class="filter-tabs mb-4">
+        <ul class="nav nav-pills" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if current_filter == 'all' or not current_filter %}active{% endif %}" 
+                   href="{% url 'pharmacy:inter_dispensary_transfer_list' %}">
+                    <i class="fas fa-list"></i> All Transfers
+                    {% if all_count %}
+                    <span class="badge bg-secondary">{{ all_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if current_filter == 'pending' %}active{% endif %}" 
+                   href="?status=pending">
+                    <i class="fas fa-clock"></i> Pending
+                    {% if pending_count %}
+                    <span class="badge bg-warning">{{ pending_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if current_filter == 'in_transit' %}active{% endif %}" 
+                   href="?status=in_transit">
+                    <i class="fas fa-truck"></i> In Transit
+                    {% if in_transit_count %}
+                    <span class="badge bg-info">{{ in_transit_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if current_filter == 'completed' %}active{% endif %}" 
+                   href="?status=completed">
+                    <i class="fas fa-check-circle"></i> Completed
+                    {% if completed_count %}
+                    <span class="badge bg-success">{{ completed_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if current_filter == 'my_transfers' %}active{% endif %}" 
+                   href="?show=my_transfers">
+                    <i class="fas fa-user"></i> My Transfers
+                </a>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Search Box -->
+    {% if show_search|default:true %}
+    <div class="search-box mb-4">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" name="q" placeholder="Search transfers..." 
+                           value="{{ request.GET.q }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="status">
+                    <option value="">All Status</option>
+                    <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="in_transit" {% if request.GET.status == 'in_transit' %}selected{% endif %}>In Transit</option>
+                    <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    <option value="rejected" {% if request.GET.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control" name="date_from" 
+                       value="{{ request.GET.date_from }}" placeholder="From date">
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control" name="date_to" 
+                       value="{{ request.GET.date_to }}" placeholder="To date">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'pharmacy:inter_dispensary_transfer_list' %}" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Status Overview -->
+    {% if show_status_overview|default:false %}
+    <div class="status-overview mb-4">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <div class="card small bg-light">
+                    <div class="card-body text-center">
+                        <div class="h4 text-primary">{{ total_transfers }}</div>
+                        <div class="small text-muted">Total Transfers</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card small bg-warning bg-opacity-10">
+                    <div class="card-body text-center">
+                        <div class="h4 text-warning">{{ pending_transfers }}</div>
+                        <div class="small text-muted">Pending</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card small bg-info bg-opacity-10">
+                    <div class="card-body text-center">
+                        <div class="h4 text-info">{{ in_transit_transfers }}</div>
+                        <div class="small text-muted">In Transit</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card small bg-success bg-opacity-10">
+                    <div class="card-body text-center">
+                        <div class="h4 text-success">{{ completed_transfers }}</div>
+                        <div class="small text-muted">Completed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.transfer-navigation .quick-actions {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.transfer-navigation .filter-tabs .nav-pills .nav-link {
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    margin-right: 0.5rem;
+    transition: all 0.2s;
+}
+
+.transfer-navigation .filter-tabs .nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.transfer-navigation .search-box .input-group-text {
+    background: #f8f9fc;
+    border: 1px solid #e3e6f0;
+}
+
+.transfer-navigation .status-overview .card {
+    border: none;
+    transition: transform 0.2s;
+}
+
+.transfer-navigation .status-overview .card:hover {
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .transfer-navigation .quick-actions .btn,
+    .transfer-navigation .filter-tabs .nav-link {
+        margin-bottom: 0.5rem;
+    }
+}
+</style>

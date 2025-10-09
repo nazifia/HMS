@@ -1,0 +1,215 @@
+{% extends 'pharmacy/layouts/transfer_layout.html' %}
+
+{% block transfer_main_content %}
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Transfer Statistics</h1>
+        <div>
+            <a href="{% url 'pharmacy:inter_dispensary_transfer_list' %}" class="btn btn-primary">
+                <i class="fas fa-list"></i> View Transfers
+            </a>
+            <a href="{% url 'pharmacy:create_inter_dispensary_transfer' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> New Transfer
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Transfers</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_transfers }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pending</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_transfers }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">In Transit</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ in_transit_transfers }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-truck fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Completed</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_transfers }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Statistics -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer Status Breakdown</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-4 text-center">
+                            <div class="h4 text-warning">{{ pending_transfers }}</div>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="h4 text-info">{{ in_transit_transfers }}</div>
+                            <small class="text-muted">In Transit</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="h4 text-success">{{ completed_transfers }}</div>
+                            <small class="text-muted">Completed</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-4 text-center">
+                            <div class="h4 text-secondary">{{ cancelled_transfers }}</div>
+                            <small class="text-muted">Cancelled</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="h4 text-danger">{{ rejected_transfers }}</div>
+                            <small class="text-muted">Rejected</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="h4 text-primary">{{ today_transfers }}</div>
+                            <small class="text-muted">Today</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if user_dispensary %}
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">My Dispensary Activity</h6>
+                </div>
+                <div class="card-body">
+                    <h6>{{ user_dispensary.name }}</h6>
+                    
+                    {% if outgoing_transfers %}
+                    <p class="mb-2"><strong>Recent Outgoing Transfers:</strong></p>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>To</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in outgoing_transfers %}
+                                <tr>
+                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>{{ transfer.to_dispensary.name }}</td>
+                                    <td>{{ transfer.quantity }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ transfer.status|default:'secondary' }}">
+                                            {{ transfer.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No recent outgoing transfers from your dispensary.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Transfers -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Recent Transfers (Last 7 Days)</h6>
+        </div>
+        <div class="card-body">
+            {% if recent_transfers %}
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Medication</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transfer in recent_transfers %}
+                        <tr>
+                            <td><a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}">#{{ transfer.id }}</a></td>
+                            <td>{{ transfer.medication.name }}</td>
+                            <td>{{ transfer.from_dispensary.name }}</td>
+                            <td>{{ transfer.to_dispensary.name }}</td>
+                            <td>{{ transfer.quantity }}</td>
+                            <td>
+                                <span class="badge bg-{{ transfer.status|default:'secondary' }}">
+                                    {{ transfer.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ transfer.created_at|date:"d M Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No recent transfers found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

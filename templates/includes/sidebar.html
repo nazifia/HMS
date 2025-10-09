@@ -214,6 +214,15 @@
                     <a class="collapse-item {% if '/pharmacy/pack-orders/' in request.path %}active{% endif %}" href="{% url 'pharmacy:pack_order_list' %}">Pack Orders</a>
                     <a class="collapse-item {% if request.path == '/pharmacy/pack-orders/create/' %}active{% endif %}" href="{% url 'pharmacy:create_pack_order' %}">Order Medical Pack</a>
 
+                    <!-- Inter-Dispensary Transfers -->
+                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Inter-Dispensary:</h6>
+                    <a class="collapse-item {% if '/pharmacy/transfers/inter/' in request.path %}active{% endif %}" href="{% url 'pharmacy:inter_dispensary_transfer_list' %}">Transfers <span class="badge bg-primary">New</span></a>
+                    <a class="collapse-item {% if request.path == '/pharmacy/transfers/inter/create/' %}active{% endif %}" href="{% url 'pharmacy:create_inter_dispensary_transfer' %}">Create Transfer</a>
+                    <a class="collapse-item {% if request.path == '/pharmacy/transfers/inter/statistics/' %}active{% endif %}" href="{% url 'pharmacy:transfer_statistics' %}">Transfer Statistics</a>
+                    {% endif %}
+
                     <!-- Reports for pharmacists and admins -->
                     {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
                     <div class="collapse-divider"></div>

@@ -73,10 +73,18 @@
     </div>
 
     <div class="row">
+        <!-- Include Transfer Summary Widget -->
+<div class="col-xl-4 col-md-6 mb-4">
+    {% include 'pharmacy/widgets/transfer_summary_widget.html' %}
+</div>
+
         <div class="col-lg-6">
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Recent Prescriptions</h6>
+                    <a href="{% url 'pharmacy:prescriptions' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">

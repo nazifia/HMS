@@ -47,6 +47,19 @@ def pharmacy_dashboard(request):
     # Get recent prescriptions
     recent_prescriptions = Prescription.objects.select_related('patient', 'doctor').order_by('-prescription_date')[:5]
     
+    # Get inter-dispensary transfer statistics
+    try:
+        from .models import InterDispensaryTransfer
+        total_inter_transfers = InterDispensaryTransfer.objects.count()
+        pending_transfers = InterDispensaryTransfer.objects.filter(status='pending').count()
+        recent_transfers = InterDispensaryTransfer.objects.select_related(
+            'medication', 'from_dispensary', 'to_dispensary'
+        ).order_by('-created_at')[:5]
+    except:
+        total_inter_transfers = 0
+        pending_transfers = 0
+        recent_transfers = []
+    
     context = {
         'total_medications': total_medications,
         'total_suppliers': total_suppliers,
@@ -54,6 +67,9 @@ def pharmacy_dashboard(request):
         'low_stock_items': low_stock_items,
         'recent_purchases': recent_purchases,
         'recent_prescriptions': recent_prescriptions,
+        'total_inter_transfers': total_inter_transfers,
+        'pending_transfers': pending_transfers,
+        'recent_transfers': recent_transfers,
         'page_title': 'Pharmacy Dashboard',
         'active_nav': 'pharmacy',
     }

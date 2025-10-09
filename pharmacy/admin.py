@@ -119,3 +119,38 @@ try:
         date_hierarchy = 'created_at'
 except ImportError:
     pass
+
+# Register InterDispensaryTransfer model
+try:
+    from .models import InterDispensaryTransfer
+    
+    @admin.register(InterDispensaryTransfer)
+    class InterDispensaryTransferAdmin(admin.ModelAdmin):
+        list_display = ('id', 'medication', 'from_dispensary', 'to_dispensary', 'quantity', 'status', 'requested_by', 'requested_at')
+        list_filter = ('status', 'requested_at', 'from_dispensary', 'to_dispensary', 'medication')
+        search_fields = ('medication__name', 'from_dispensary__name', 'to_dispensary__name', 'notes')
+        readonly_fields = ('created_at', 'updated_at')
+        date_hierarchy = 'requested_at'
+        
+        fieldsets = (
+            ('Transfer Information', {
+                'fields': ('medication', 'from_dispensary', 'to_dispensary', 'quantity', 'batch_number', 'expiry_date', 'unit_cost')
+            }),
+            ('Status & Approval', {
+                'fields': ('status', 'requested_by', 'approved_by', 'transferred_by', 'rejection_reason')
+            }),
+            ('Timestamps', {
+                'fields': ('requested_at', 'approved_at', 'transferred_at', 'created_at', 'updated_at')
+            }),
+            ('Notes', {
+                'fields': ('notes',)
+            }),
+        )
+        
+        def get_readonly_fields(self, request, obj=None):
+            if obj:  # editing existing object
+                return self.readonly_fields + ('requested_at', 'approved_at', 'transferred_at')
+            return self.readonly_fields
+
+except ImportError:
+    pass

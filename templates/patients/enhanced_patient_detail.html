@@ -1,0 +1,551 @@
+{% extends 'enhanced_base.html' %}
+
+{% block title %}Patient Details - {{ patient.get_full_name|default:patient.user.first_name|default:patient.user.username }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <button class="btn btn-sm btn-outline-secondary me-3" onclick="history.back()">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                {{ patient.get_full_name|default:patient.user.first_name|default:patient.user.username }}
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+                    <li class="breadcrumb-item active">Patient Details</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-2"></i>Edit Patient
+            </a>
+            {% endif %}
+            <div class="dropdown">
+                <button class="btn btn-primary-modern dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-plus me-2"></i>New
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'consultations:create_consultation' patient.id %}">
+                        <i class="fas fa-stethoscope me-2"></i>Consultation
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'pharmacy:create_prescription' patient.id %}">
+                        <i class="fas fa-prescription me-2"></i>Prescription
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'laboratory:add_test_request' patient.id %}">
+                        <i class="fas fa-flask me-2"></i>Lab Test
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'inpatient:admit_patient' patient.id %}">
+                        <i class="fas fa-hospital me-2"></i>Admit Patient
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Overview Cards -->
+<div class="row fade-in-up mb-4">
+    <!-- Basic Information Card -->
+    <div class="col-md-6">
+        <div class="content-card">
+            <h5 class="card-title mb-4">Patient Information</h5>
+            <div class="row">
+                <div class="col-md-3 text-center mb-4">
+                    {% if patient.photo %}
+                        <img src="{{ patient.photo.url }}" alt="{{ patient.get_full_name }}" class="avatar-enhanced large">
+                    {% else %}
+                        <div class="avatar-enhanced large bg-primary d-flex align-items-center justify-content-center text-white">
+                            {{ patient.user.first_name.0|upper }}{{ patient.user.last_name.0|upper }}
+                        </div>
+                    {% endif %}
+                    <div class="mt-2">
+                        <span class="badge bg-{{ patient.gender == 'M' ? 'info' : 'danger' }}">
+                            {{ patient.get_gender_display }}
+                        </span>
+                        <span class="badge bg-primary ms-1">
+                            {{ patient.age }} years
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="text-muted fw-semibold width-140">Patient ID:</td>
+                            <td><span class="badge bg-success">{{ patient.patient_id }}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Full Name:</td>
+                            <td>{{ patient.get_full_name|default:'--' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Date of Birth:</td>
+                            <td>{{ patient.date_of_birth|date:"F d, Y"|default:'--' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Blood Group:</td>
+                            <td>{{ patient.blood_group|default:'--' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Genotype:</td>
+                            <td>{{ patient.genotype|default:'--' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Phone:</td>
+                            <td>{{ patient.phone|default:'--' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Email:</td>
+                            <td>{{ patient.user.email|default:'--' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Address:</td>
+                            <td>{{ patient.address|default:'--' }}</td>
+                        </tr>
+                        {% if patient.nhis_number %}
+                        <tr>
+                            <td class="text-muted fw-semibold">NHIS Number:</td>
+                            <td><span class="badge bg-info">{{ patient.nhis_number }}</span></td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Health Records Summary -->
+    <div class="col-md-6">
+        <div class="content-card">
+            <h5 class="card-title mb-4">Health Records Summary</h5>
+            
+            <!-- Quick Stats -->
+            <div class="row mb-4">
+                <div class="col-6">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="stats-number text-primary">{{ total_visits }}</div>
+                        <div class="stats-label">Total Visits</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="stats-number text-info">{{ active_prescriptions }}</div>
+                        <div class="stats-label">Active Prescriptions</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Conditions -->
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Medical Conditions</h6>
+                {% for condition in patient.medical_conditions.all %}
+                <span class="badge bg-light text-dark me-2 mb-2">{{ condition.name }}</span>
+                {% empty %}
+                <span class="text-muted">No recorded conditions</span>
+                {% endfor %}
+            </div>
+
+            <!-- Allergies -->
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Allergies</h6>
+                {% for allergy in patient.allergies.all %}
+                <span class="badge bg-danger me-2 mb-2">{{ allergy.name }}</span>
+                {% empty %}
+                <span class="text-muted">No known allergies</span>
+                {% endfor %}
+            </div>
+
+            <!-- Insurance Status -->
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Insurance</h6>
+                {% if patient.nhis_status == 'ACTIVE' %}
+                    <span class="badge bg-success text-white">
+                        <i class="fas fa-check-circle me-1"></i>NHIS Active
+                    </span>
+                {% elif patient.nhis_status %}
+                    <span class="badge bg-warning text-dark">
+                        NHIS {{ patient.get_nhis_status_display }}
+                    </span>
+                {% else %}
+                    <span class="text-muted">No insurance</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activities -->
+<div class="row fade-in-up">
+    <!-- Recent Consultations -->
+    <div class="col-md-6 mb-4">
+        <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Recent Consultations</h5>
+                <button class="btn btn-sm btn-primary-modern" onclick="createConsultation()">
+                    <i class="fas fa-plus me-1"></i>New
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Doctor</th>
+                            <th>Reason</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for consultation in recent_consultations %}
+                        <tr>
+                            <td>{{ consultation.consultation_date|date:"M d, Y" }}</td>
+                            <td>{{ consultation.doctor.get_full_name|default:consultation.doctor.user.username }}</td>
+                            <td>{{ consultation.reason_for_visit|truncatechars:20 }}</td>
+                            <td>
+                                <a href="{% url 'consultations:detail' consultation.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                No consultations found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if recent_consultations %}
+            <div class="text-center mt-3">
+                <a href="{% url 'consultations:patient_consultations' patient.id %}" class="btn btn-outline-secondary">
+                    View All Consultations
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Prescriptions -->
+    <div class="col-md-6 mb-4">
+        <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Prescriptions</h5>
+                <button class="btn btn-sm btn-primary-modern" onclick="createPrescription()">
+                    <i class="fas fa-plus me-1"></i>New
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>#ID</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prescription in recent_prescriptions %}
+                        <tr>
+                            <td>{{ prescription.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="text-decoration-none">
+                                    {{ prescription.id }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if prescription.status == 'dispensed' %}
+                                    <span class="badge bg-success">Dispensed</span>
+                                {% elif prescription.status == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ prescription.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                No prescriptions found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if recent_prescriptions %}
+            <div class="text-center mt-3">
+                <a href="{% url 'pharmacy:patient_prescriptions' patient.id %}" class="btn btn-outline-secondary">
+                    View All Prescriptions
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Laboratory Results -->
+<div class="row fade-in-up">
+    <div class="col-md-6 mb-4">
+        <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Laboratory Results</h5>
+                <button class="btn btn-sm btn-primary-modern" onclick="requestLabTest()">
+                    <i class="fas fa-plus me-1"></i>Request Test
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Test</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for test in recent_lab_tests %}
+                        <tr>
+                            <td>{{ test.request_date|date:"M d, Y" }}</td>
+                            <td>{{ test.test.name }}</td>
+                            <td>
+                                {% if test.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif test.status == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ test.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'laboratory:test_result' test.id %}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                No lab tests found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admissions -->
+    <div class="col-md-6 mb-4">
+        <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Admissions</h5>
+                <button class="btn btn-sm btn-primary-modern" onclick="admitPatient()">
+                    <i class="fas fa-hospital me-1"></i>Admit
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Admission Date</th>
+                            <th>Ward</th>
+                            <th>Bed</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admission in recent_admissions %}
+                        <tr>
+                            <td>{{ admission.admission_date|date:"M d, Y" }}</td>
+                            <td>{{ admission.ward.name }}</td>
+                            <td>{{ admission.bed.bed_number }}</td>
+                            <td>
+                                {% if admission.discharge_date %}
+                                    <span class="badge bg-secondary">Discharged</span>
+                                {% else %}
+                                    <span class="badge bg-info">Admitted</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                No admissions found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wallet Information -->
+<div class="row fade-in-up">
+    <div class="col-12 mb-4">
+        <div class="content-card">
+            <h5 class="card-title mb-4">Wallet Information</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="stats-number text-info">₦{{ patient.wallet.balance|default:0 }}</div>
+                        <div class="stats-label">Current Balance</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="stats-number text-success">₦{{ patient.wallet.credit_limit|default:0 }}</div>
+                        <div class="stats-label">Credit Limit</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="stats-number text-warning">₦{{ patient.wallet.outstanding_balance|default:0 }}</div>
+                        <div class="stats-label">Outstanding</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <button class="btn btn-primary-modern" onclick="topUpWallet()">
+                            <i class="fas fa-plus me-2"></i>Top Up Wallet
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function createConsultation() {
+    window.location.href = `{% url 'consultations:create_consultation' patient.id %}`;
+}
+
+function createPrescription() {
+    window.location.href = `{% url 'pharmacy:create_prescription' patient.id %}`;
+}
+
+function requestLabTest() {
+    window.location.href = `{% url 'laboratory:add_test_request' patient.id %}`;
+}
+
+function admitPatient() {
+    window.location.href = `{% url 'inpatient:admit_patient' patient.id %}`;
+}
+
+function topUpWallet() {
+    HMSUI.modals.show({
+        title: 'Top Up Wallet',
+        content: `
+            <form id="walletTopUpForm">
+                <div class="mb-3">
+                    <label class="form-label">Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text">₦</span>
+                        <input type="number" class="form-control" name="amount" min="100" step="100" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Payment Method</label>
+                    <select class="form-select" name="payment_method" required>
+                        <option value="">Select method</option>
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bank">Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" name="notes" rows="3"></textarea>
+                </div>
+            </form>
+        `,
+        buttons: [
+            { text: 'Cancel', class: 'btn-secondary' },
+            { text: 'Top Up', class: 'btn-primary', action: () => processWalletTopUp() }
+        ],
+        size: 'md'
+    });
+}
+
+function processWalletTopUp() {
+    const form = document.getElementById('walletTopUpForm');
+    const formData = new FormData(form);
+    
+    HMSUI.loading.show(document.querySelector('#walletTopUpForm').parentNode);
+    
+    fetch(`/patients/${{{ patient.id }}/wallet/topup/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        HMSUI.loading.hide(document.querySelector('#walletTopUpForm').parentNode);
+        
+        if (data.success) {
+            HMSUI.notifications.show('Wallet topped up successfully!', 'success');
+            HMSUI.modals.close();
+            // Reload page to show updated balance
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            HMSUI.notifications.show(data.error || 'Failed to top up wallet', 'error');
+        }
+    })
+    .catch(error => {
+        HMSUI.loading.hide(document.querySelector('#walletTopUpForm').parentNode);
+        HMSUI.notifications.show('Error processing wallet top-up', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function getCsrfToken() {
+    const name = 'csrftoken';
+    const cookies = document.cookie.split(';');
+    
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.startsWith(name + '=')) {
+            return decodeURIComponent(cookie.substring(name.length + 1));
+        }
+    }
+    return null;
+}
+
+// Initialize any Bootstrap tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

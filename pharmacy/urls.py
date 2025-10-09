@@ -2,7 +2,9 @@ from django.urls import path, include
 from django.views.generic.base import RedirectView
 from . import views
 from . import cart_views
+from . import inter_dispensary_views
 from .api import urls as api_urls
+from .api.inventory_views import check_medication_inventory
 
 app_name = 'pharmacy'
 
@@ -169,4 +171,17 @@ urlpatterns = [
     path('cart/<int:cart_id>/generate-invoice/', cart_views.generate_invoice_from_cart, name='generate_invoice_from_cart'),
     path('cart/<int:cart_id>/complete-dispensing/', cart_views.complete_dispensing_from_cart, name='complete_dispensing_from_cart'),
     path('cart/<int:cart_id>/cancel/', cart_views.cancel_cart, name='cancel_cart'),
+
+    # Inter-Dispensary Transfer Management
+    path('transfers/inter/', inter_dispensary_views.inter_dispensary_transfer_list, name='inter_dispensary_transfer_list'),
+    path('transfers/inter/create/', inter_dispensary_views.create_inter_dispensary_transfer, name='create_inter_dispensary_transfer'),
+    path('transfers/inter/<int:transfer_id>/', inter_dispensary_views.inter_dispensary_transfer_detail, name='inter_dispensary_transfer_detail'),
+    path('transfers/inter/<int:transfer_id>/approve/', inter_dispensary_views.approve_inter_dispensary_transfer, name='approve_inter_dispensary_transfer'),
+    path('transfers/inter/<int:transfer_id>/reject/', inter_dispensary_views.reject_inter_dispensary_transfer, name='reject_inter_dispensary_transfer'),
+    path('transfers/inter/<int:transfer_id>/execute/', inter_dispensary_views.execute_inter_dispensary_transfer, name='execute_inter_dispensary_transfer'),
+    path('transfers/inter/<int:transfer_id>/cancel/', inter_dispensary_views.cancel_inter_dispensary_transfer, name='cancel_inter_dispensary_transfer'),
+    path('transfers/inter/statistics/', inter_dispensary_views.transfer_statistics, name='transfer_statistics'),
+
+    # AJAX Endpoints
+    path('api/', include('pharmacy.api.urls')),
 ]

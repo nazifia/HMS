@@ -1,0 +1,180 @@
+{% extends 'pharmacy/layouts/transfer_layout.html' %}
+
+{% block transfer_main_content %}
+
+    <!-- Transfers Table -->
+    <div class="card transfer-card">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-exchange-alt"></i> Inter-Dispensary Transfers
+                <span class="badge bg-info float-end">{{ page_obj.paginator.count }} of {{ page_obj.paginator.count }}</span>
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Medication</th>
+                            <th>From Dispensary</th>
+                            <th>To Dispensary</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Requested By</th>
+                            <th>Requested</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transfer in page_obj %}
+                        <tr {% if transfer.status == 'pending' %}class="table-warning"{% elif transfer.status == 'in_transit' %}class="table-info"{% elif transfer.status == 'completed' %}class="table-success"{% elif transfer.status == 'rejected' %}class="table-danger"{% endif %}>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <strong><a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="text-decoration-none">#{{ transfer.id }}</a></strong>
+                                    {% if transfer.batch_number %}
+                                    <br><small class="text-muted">Batch: {{ transfer.batch_number }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-pills text-muted me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ transfer.medication.name }}</div>
+                                        <small class="text-muted">{{ transfer.medication.strength }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-map-marker-alt text-muted me-2"></i>
+                                    {{ transfer.from_dispensary.name }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-flag-checkered text-muted me-2"></i>
+                                    {{ transfer.to_dispensary.name }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary status-badge">{{ transfer.quantity }}</span>
+                                {% if transfer.expiry_date %}
+                                <br><small class="text-muted">Expires: {{ transfer.expiry_date|date:"d M Y" }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transfer.status == 'pending' %}
+                                    <span class="badge bg-warning status-badge">Pending</span>
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-clock"></i> {{ transfer.created_at|timesince }}
+                                    </small>
+                                {% elif transfer.status == 'in_transit' %}
+                                    <span class="badge bg-info status-badge">In Transit</span>
+                                    {% if transfer.approved_by %}
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-user-check"></i> {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}
+                                    </small>
+                                    {% endif %}
+                                {% elif transfer.status == 'completed' %}
+                                    <span class="badge bg-success status-badge">Completed</span>
+                                    {% if transfer.transferred_by %}
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-check-circle"></i> {{ transfer.transferred_by.get_full_name|default:transfer.transferred_by.username }}
+                                    </small>
+                                    {% endif %}
+                                {% elif transfer.status == 'cancelled' %}
+                                    <span class="badge bg-secondary status-badge">Cancelled</span>
+                                {% elif transfer.status == 'rejected' %}
+                                    <span class="badge bg-danger status-badge">Rejected</span>
+                                    {% if transfer.rejection_reason %}
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-exclamation-triangle"></i> {{ transfer.rejection_reason }}
+                                    </small>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user text-muted me-2"></i>
+                                    <div>
+                                        <div>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</div>
+                                        <small class="text-muted">{{ transfer.requested_at|date:"d M Y, H:i" }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group action-buttons" role="group">
+                                    <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if transfer.status == 'pending' %}
+                                        <a href="{% url 'pharmacy:approve_inter_dispensary_transfer' transfer.id %}" class="btn btn-sm btn-outline-success" title="Approve">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        <a href="{% url 'pharmacy:reject_inter_dispensary_transfer' transfer.id %}" class="btn btn-sm btn-outline-danger" title="Reject">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                        <a href="{% url 'pharmacy:cancel_inter_dispensary_transfer' transfer.id %}" class="btn btn-sm btn-outline-secondary" title="Cancel">
+                                            <i class="fas fa-ban"></i>
+                                        </a>
+                                    {% elif transfer.status == 'in_transit' %}
+                                        <a href="{% url 'pharmacy:execute_inter_dispensary_transfer' transfer.id %}" class="btn btn-sm btn-outline-success" title="Execute">
+                                            <i class="fas fa-check-circle"></i>
+                                        </a>
+                                        <a href="{% url 'pharmacy:cancel_inter_dispensary_transfer' transfer.id %}" class="btn btn-sm btn-outline-secondary" title="Cancel">
+                                            <i class="fas fa-ban"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center">
+                <p class="text-muted">No inter-dispensary transfers found.</p>
+                <a href="{% url 'pharmacy:create_inter_dispensary_transfer' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create First Transfer
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

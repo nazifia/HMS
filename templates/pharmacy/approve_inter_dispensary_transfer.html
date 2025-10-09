@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Transfer
+            </a>
+        </div>
+    </div>
+
+    <!-- Transfer Details -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Transfer Information</h6>
+        </div>
+        <div class="card-body">
+            <table class="table table-borderless">
+                <tr>
+                    <td><strong>Transfer ID:</strong></td>
+                    <td>#{{ transfer.id }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Medication:</strong></td>
+                    <td>{{ transfer.medication.name }} ({{ transfer.medication.strength }})</td>
+                </tr>
+                <tr>
+                    <td><strong>From Dispensary:</strong></td>
+                    <td>{{ transfer.from_dispensary.name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>To Dispensary:</strong></td>
+                    <td>{{ transfer.to_dispensary.name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Quantity:</strong></td>
+                    <td>{{ transfer.quantity }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Requested By:</strong></td>
+                    <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Requested At:</strong></td>
+                    <td>{{ transfer.requested_at|date:"d M Y, H:i" }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Availability Check -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold-{{ color }}">Inventory Availability</h6>
+        </div>
+        <div class="card-body">
+            {% if can_transfer %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> {{ availability_message }}
+                </div>
+            {% else %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i> {{ availability_message }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Approval Form -->
+    {% if can_transfer %}
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Approve Transfer</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    Approving this transfer will allow it to be executed. The transfer will move 
+                    {{ transfer.quantity }} units of {{ transfer.medication.name }} from 
+                    {{ transfer.from_dispensary.name }} to {{ transfer.to_dispensary.name }}.
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Approve Transfer
+                    </button>
+                    <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                This transfer cannot be approved because the inventory is insufficient.
+            </div>
+            <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Transfer
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,321 @@
+{% extends 'enhanced_base.html' %}
+
+{% block title %}Pharmacy Dashboard{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">Pharmacy Dashboard</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'pharmacy:dashboard' %}">Pharmacy</a></li>
+                    <li class="breadcrumb-item active">Overview</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary-modern">
+                <i class="fas fa-plus me-2"></i>New Prescription
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-2"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#">Export as PDF</a></li>
+                    <li><a class="dropdown-item" href="">Export as Excel</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row fade-in-up">
+    <div class="col-md-3 mb-4">
+        <div class="stats-card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="stats-number">{{ total_medications|default:0 }}</div>
+            <div class="stats-label">Total Medications</div>
+            <i class="fas fa-pills stats-icon"></i>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="stats-card text-white" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="stats-number">{{ low_stock_medications|default:0 }}</div>
+            <div class="stats-label">Low Stock Items</div>
+            <i class="fas fa-exclamation-triangle stats-icon"></i>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="stats-card text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="stats-number">{{ pending_prescriptions|default:0 }}</div>
+            <div class="stats-label">Pending Prescriptions</div>
+            <i class="fas fa-prescription stats-icon"></i>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="stats-card text-white" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="stats-number">{{ today_sales|default:0 }}</div>
+            <div class="stats-label">Today's Sales</div>
+            <i class="fas fa-chart-line stats-icon"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions & Recent Activity -->
+<div class="row fade-in-up">
+    <!-- Quick Actions -->
+    <div class="col-md-4 mb-4">
+        <div class="content-card">
+            <h5 class="card-title mb-4">Quick Actions</h5>
+            <div class="d-grid gap-3">
+                <a href="{% url 'pharmacy:create_prescription' %}" class="btn btn-primary-modern">
+                    <i class="fas fa-plus me-2"></i>Create Prescription
+                </a>
+                <a href="{% url 'pharmacy:inventory' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-box me-2"></i>Manage Inventory
+                </a>
+                <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="btn btn-outline-info">
+                    <i class="fas fa-truck me-2"></i>Track Dispensing
+                </a>
+                <a href="{% url 'pharmacy:low_stock_medications_report' %}" class="btn btn-outline-warning">
+                    <i class="fas fa-exclamation me-2"></i>Low Stock Alert
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Prescriptions -->
+    <div class="col-md-8 mb-4">
+        <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Recent Prescriptions</h5>
+                <a href="{% url 'pharmacy:prescriptions' %}" class="text-decoration-none">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-modern">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Patient</th>
+                            <th># Prescriptions</th>
+                            <th>Status</span></th>
+                            <th>Date & Time</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prescription in recent_prescriptions %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar-small bg-primary d-flex align-items-center justify-content-center text-white me-2">
+                                        {{ prescription.patient_name.0|upper }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold">{{ prescription.patient_name }}</div>
+                                        <div class="text-muted small">{{ prescription.patient_id }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-outline-info">{{ prescription.id }}</a>
+                            </td>
+                            <td>
+                                {% if prescription.status == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% elif prescription.status == 'dispensed' %}
+                                    <span class="badge bg-success">Dispensed</span>
+                                {% elif prescription.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ prescription.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="small">
+                                    <div>{{ prescription.created_at|date:"M d, Y" }}</div>
+                                    <div class="text-muted">{{ prescription.created_at|time:"H:i" }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if prescription.status == 'pending' %}
+                                    <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success">
+                                        <i class="fas fa-pills"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-prescription fa-2x mb-2 text-muted"></i>
+                                <div>No prescriptions found</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts & Reports -->
+<div class="row fade-in-up">
+    <!-- Stock Overview -->
+    <div class="col-md-6 mb-4">
+        <div class="content-card">
+            <h5 class="card-title mb-4">Stock Overview</h5>
+            <canvas id="stockChart" width="400" height="200"></canvas>
+            <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Current Inventory Value</span>
+                    <span class="text-gradient fw-bold">₦{{ inventory_value|default:0 }}</span>
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-success" style="width: 75%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Dispensing -->
+    <div class="col-md-6 mb-4">
+        <div class="content-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="card-title mb-0">Recent Dispensing</h5>
+                <a href="{% url 'pharmacy:dispensed_items_tracker' %}" class="text-decoration-none">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Medication</th>
+                            <th>Quantity</th>
+                            <th>Patient</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dispensed in recent_dispensing %}
+                        <tr>
+                            <td>{{ dispensed.medication_name }}</td>
+                            <td>{{ dispensed.quantity }}</td>
+                            <td>{{ dispensed.patient_name|truncatechars:12 }}</td>
+                            <td>{{ dispensed.dispensed_at|time:"H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                No dispensing records today
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Notifications -->
+{% if alert_notifications %}
+<div class="row fade-in-up">
+    <div class="col-12 mb-4">
+        <div class="content-card border-start border-4 border-warning">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-exclamation-triangle text-warning fa-2x"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h5 class="mb-1">Stock Alerts</h5>
+                    <p class="mb-0">The following medications are running low on stock and need immediate attention:</p>
+                    <div class="row mt-3">
+                        {% for med in alert_notifications %}
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                <span>{{ med.name }}</span>
+                                <span class="badge bg-warning">{{ med.quantity }} units</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="ms-3">
+                    <a href="{% url 'pharmacy:low_stock_medications_report' %}" class="btn btn-warning">
+                        View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Stock Chart
+    const ctx = document.getElementById('stockChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['In Stock', 'Low Stock', 'Out of Stock'],
+                datasets: [{
+                    data: [
+                        {{ in_stock_count|default:150 }},
+                        {{ low_stock_count|default:25 }},
+                        {{ out_stock_count|default:5 }}
+                    ],
+                    backgroundColor: [
+                        '#28a745',
+                        '#ffc107',
+                        '#dc3545'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Auto-refresh data every 30 seconds
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
+});
+</script>
+{% endblock %}

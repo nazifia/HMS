@@ -440,3 +440,11 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 WALLET_LOW_BALANCE_THRESHOLD = Decimal(os.environ.get('WALLET_LOW_BALANCE_THRESHOLD', '100.00'))
 SESSION_MAX_AGE_DAYS = int(os.environ.get('SESSION_MAX_AGE_DAYS', '30'))
 SESSION_SECURITY_LONG_THRESHOLD = int(os.environ.get('SESSION_SECURITY_LONG_THRESHOLD', '7200'))
+
+# Crispy Forms Configuration
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
+CRISPY_ALLOWED_TEMPLATE_PACKS = ['bootstrap5']
+
+# Inter-Dispensary Transfer Settings
+MAX_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal('1000.00')
+MIN_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal('1.00')

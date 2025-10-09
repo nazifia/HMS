@@ -1413,3 +1413,206 @@ class MedicalPackItem(models.Model):
         # Item cannot be both critical and optional
         if self.is_critical and self.is_optional:
             raise ValidationError('Item cannot be both critical and optional.')
+
+
+class InterDispensaryTransfer(models.Model):
+    """Model to track transfers of medications between dispensaries"""
+    TRANSFER_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_transit', 'In Transit'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+        ('rejected', 'Rejected'),
+    ]
+
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='inter_dispensary_transfers')
+    from_dispensary = models.ForeignKey('Dispensary', on_delete=models.CASCADE, related_name='outgoing_inter_transfers')
+    to_dispensary = models.ForeignKey('Dispensary', on_delete=models.CASCADE, related_name='incoming_inter_transfers')
+    quantity = models.IntegerField()
+    batch_number = models.CharField(max_length=50, blank=True, null=True)
+    expiry_date = models.DateField(blank=True, null=True)
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=20, choices=TRANSFER_STATUS_CHOICES, default='pending')
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='requested_inter_transfers')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_inter_transfers')
+    transferred_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='executed_inter_transfers')
+    rejection_reason = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    transferred_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Inter-Dispensary Transfer'
+        verbose_name_plural = 'Inter-Dispensary Transfers'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['from_dispensary', 'status']),
+            models.Index(fields=['to_dispensary', 'status']),
+            models.Index(fields=['medication', 'status']),
+        ]
+
+    def __str__(self):
+        return f"Inter-Dispensary Transfer: {self.quantity} {self.medication.name} from {self.from_dispensary.name} to {self.to_dispensary.name}"
+
+    def can_approve(self):
+        """Check if transfer can be approved"""
+        return self.status == 'pending'
+
+    def can_reject(self):
+        """Check if transfer can be rejected"""
+        return self.status == 'pending'
+
+    def can_execute(self):
+        """Check if transfer can be executed"""
+        return self.status in ['pending', 'in_transit'] and self.approved_by is not None
+
+    def is_self_transfer(self):
+        """Check if this is a self-transfer (same dispensary)"""
+        return self.from_dispensary == self.to_dispensary
+
+    def check_availability(self):
+        """Check if sufficient stock exists in source dispensary"""
+        if self.is_self_transfer():
+            return False, "Cannot transfer to same dispensary"
+        
+        # Check if medication inventory exists and has sufficient quantity
+        inventory = MedicationInventory.objects.filter(
+            medication=self.medication,
+            dispensary=self.from_dispensary,
+            stock_quantity__gte=self.quantity
+        ).first()
+        
+        if not inventory:
+            return False, f"Insufficient stock. Available: 0, Required: {self.quantity}"
+        
+        if inventory.stock_quantity < self.quantity:
+            return False, f"Insufficient stock. Available: {inventory.stock_quantity}, Required: {self.quantity}"
+        
+        return True, "Transfer can be executed"
+
+    def approve_transfer(self, approving_user):
+        """Approve the transfer"""
+        if not self.can_approve():
+            raise ValueError("Transfer cannot be approved in current status")
+        
+        if self.is_self_transfer():
+            raise ValueError("Cannot approve self-transfer")
+        
+        # Check availability
+        can_transfer, message = self.check_availability()
+        if not can_transfer:
+            raise ValueError(message)
+        
+        self.status = 'in_transit'
+        self.approved_by = approving_user
+        self.approved_at = timezone.now()
+        self.save()
+
+    def reject_transfer(self, rejecting_user, reason=None):
+        """Reject the transfer"""
+        if not self.can_reject():
+            raise ValueError("Transfer cannot be rejected in current status")
+        
+        self.status = 'rejected'
+        self.approved_by = rejecting_user
+        self.approved_at = timezone.now()
+        self.rejection_reason = reason or "Transfer rejected"
+        self.save()
+
+    def execute_transfer(self, executing_user):
+        """Execute the transfer by moving stock from source to destination dispensary"""
+        if not self.can_execute():
+            raise ValueError("Transfer cannot be executed in current status")
+        
+        if self.is_self_transfer():
+            raise ValueError("Cannot execute self-transfer")
+        
+        with transaction.atomic():
+            # Check availability again
+            can_transfer, message = self.check_availability()
+            if not can_transfer:
+                raise ValueError(message)
+            
+            # Find source inventory
+            source_inventory = MedicationInventory.objects.get(
+                medication=self.medication,
+                dispensary=self.from_dispensary
+            )
+            
+            # Find or create destination inventory
+            dest_inventory, created = MedicationInventory.objects.get_or_create(
+                medication=self.medication,
+                dispensary=self.to_dispensary,
+                defaults={
+                    'stock_quantity': 0,
+                    'reorder_level': self.medication.reorder_level
+                }
+            )
+            
+            # Update quantities
+            source_inventory.stock_quantity -= self.quantity
+            source_inventory.save()
+            
+            dest_inventory.stock_quantity += self.quantity
+            dest_inventory.save()
+            
+            # Update transfer status
+            self.status = 'completed'
+            self.transferred_by = executing_user
+            self.transferred_at = timezone.now()
+            self.save()
+            
+            # Create audit log
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=executing_user,
+                    action="INTER_DISPENSARY_TRANSFER_EXECUTED",
+                    details=f"Transferred {self.quantity} units of {self.medication.name} from {self.from_dispensary.name} to {self.to_dispensary.name}"
+                )
+            except ImportError:
+                # AuditLog not available, skip logging
+                pass
+
+    @classmethod
+    def create_transfer(cls, medication, from_dispensary, to_dispensary, quantity, requested_by, **kwargs):
+        """Create a new inter-dispensary transfer with validation"""
+        if from_dispensary == to_dispensary:
+            raise ValueError("Cannot transfer to same dispensary")
+        
+        # Check if sufficient stock exists
+        can_transfer, message = cls.check_transfer_feasibility(medication, from_dispensary, quantity)
+        if not can_transfer:
+            raise ValueError(message)
+        
+        # Create the transfer
+        transfer = cls.objects.create(
+            medication=medication,
+            from_dispensary=from_dispensary,
+            to_dispensary=to_dispensary,
+            quantity=quantity,
+            requested_by=requested_by,
+            **kwargs
+        )
+        
+        return transfer
+
+    @staticmethod
+    def check_transfer_feasibility(medication, from_dispensary, quantity):
+        """Check if a transfer is feasible"""
+        inventory = MedicationInventory.objects.filter(
+            medication=medication,
+            dispensary=from_dispensary
+        ).first()
+        
+        if not inventory:
+            return False, f"No inventory found for {medication.name} in {from_dispensary.name}"
+        
+        if inventory.stock_quantity < quantity:
+            return False, f"Insufficient stock. Available: {inventory.stock_quantity}, Required: {quantity}"
+        
+        return True, "Transfer is feasible"

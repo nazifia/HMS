@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-warning">Cancel Transfer #{{ transfer.id }}</h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                You are about to cancel this transfer from {{ transfer.from_dispensary.name }} 
+                to {{ transfer.to_dispensary.name }} for {{ transfer.quantity }} units of 
+                {{ transfer.medication.name }}.
+            </div>
+
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h6>Transfer Details</h6>
+                    <p><strong>Medication:</strong> {{ transfer.medication.name }} ({{ transfer.medication.strength }})</p>
+                    <p><strong>Quantity:</strong> {{ transfer.quantity }}</p>
+                    <p><strong>From:</strong> {{ transfer.from_dispensary.name }}</p>
+                    <p><strong>To:</strong> {{ transfer.to_dispensary.name }}</p>
+                    <p><strong>Status:</strong> {{ transfer.get_status_display }}</p>
+                </div>
+            </div>
+
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                <div class="form-group">
+                    <p>Are you sure you want to cancel this transfer?</p>
+                </div>
+                
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-ban"></i> Yes, Cancel Transfer
+                </button>
+                <a href="{% url 'pharmacy:inter_dispensary_transfer_detail' transfer.id %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> No, Go Back
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
