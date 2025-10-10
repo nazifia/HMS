@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Add Dispensary - {{ page_title }}{% endblock %}
+{% block title %}Edit {{ dispensary.name }} -{{ page_title }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -37,10 +37,10 @@
             <div class="dispensary-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h1 class="mb-2">Add New Dispensary</h1>
+                        <h1 class="mb-2">Edit Dispensary</h1>
                         <p class="mb-0">
                             <i class="fas fa-clinic-medical me-2"></i>
-                            Create a new pharmacy dispensary
+                            {{ dispensary.name }}
                         </p>
                     </div>
                     <div>
@@ -53,7 +53,7 @@
 
             <!-- Main Form -->
             <div class="form-section">
-                <h5 class="mb-4">Dispensary Information</h5>
+                <h5 class="mb-4">Basic Information</h5>
                 <form method="post">
                     {% csrf_token %}
                     
@@ -63,7 +63,7 @@
                                 <label for="{{ form.name.id_for_label }}" class="form-label">
                                     <i class="fas fa-hospital me-2"></i>Dispensary Name *
                                 </label>
-                                {{ form.name|add_class:"form-control"|add_placeholder:"Enter dispensary name" }}
+                                {{ form.name|add_class:"form-control" }}
                                 {% if form.name.errors %}
                                     <div class="form-text text-danger">
                                         {{ form.name.errors }}
@@ -121,7 +121,7 @@
                             </label>
                         </div>
                         <div class="form-text text-muted">
-                            Only active dispensaries appear in the dispensary list
+                            Inactive dispensaries won't appear in lists but their data is preserved
                         </div>
                         {% if form.is_active.errors %}
                             <div class="form-text text-danger">
@@ -130,72 +130,110 @@
                         {% endif %}
                     </div>
 
-                    <div class="manager-info">
-                        <h6><i class="fas fa-info-circle me-2"></i>Manager Assignment</h6>
-                        <p class="mb-0 small">
-                            When you assign a manager, that user will have full permission to edit this dispensary and its inventory. 
-                            Only administrators can change the manager after assignment.
-                        </p>
-                    </div>
+                    {% if dispensary.manager %}
+                        <div class="manager-info">
+                            <h6><i class="fas fa-info-circle me-2"></i>Current Manager</h6>
+                            <p class="mb-0">
+                                <strong>{{ dispensary.manager.get_full_name|default:dispensary.manager.username }}</strong><br>
+                                {% if dispensary.manager.email %}
+                                    <i class="fas fa-envelope me-1"></i>{{ dispensary.manager.email }}<br>
+                                {% endif %}
+                                {% if dispensary.manager.phone_number %}
+                                    <i class="fas fa-phone me-1"></i>{{ dispensary.manager.phone_number }}
+                                {% endif %}
+                            </p>
+                            {% if dispensary.manager != current_user and not current_user.is_superuser %}
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    You can only edit manager information if you are the assigned manager or a system administrator.
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
 
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Create Dispensary
+                                <i class="fas fa-save me-2"></i>Save Changes
                             </button>
-                            <a href="{% url 'pharmacy:dispensary_list' %}" 
+                            <a href="{% url 'pharmacy:dispensary_inventory' dispensary.id %}" 
                                class="btn btn-outline-secondary ms-2">
-                                <i class="fas fa-arrow-left me-2"></i>Back to List
+                                <i class="fas fa-boxes me-2"></i>View Inventory
                             </a>
                         </div>
+                        {% if current_user == dispensary.manager or current_user.is_superuser %}
+                            <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" 
+                               class="btn btn-outline-danger"
+                               onclick="return confirm('Are you sure you want to deactivate this dispensary? This action can be reversed by making the dispensary active again.')">
+                                <i class="fas fa-trash me-2"></i>Deactivate Dispensary
+                            </a>
+                        {% endif %}
                     </div>
                 </form>
             </div>
+
+            <!-- Active Store Info -->
+            {% if dispensary.active_store %}
+                <div class="form-section">
+                    <h5 class="mb-4">
+                        <i class="fas fa-store me-2"></i>Active Store Information
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Store Name:</strong> {{ dispensary.active_store.name }}</p>
+                            <p><strong>Location:</strong> {{ dispensary.active_store.location|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Capacity:</strong> {{ dispensary.active_store.capacity }} units</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge {{ dispensary.active_store.is_active|yesno:'bg-success bg-secondary' }}">
+                                    {{ dispensary.active_store.is_active|yesno:'Active Inactive' }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    {% if dispensary.active_store.description %}
+                        <p class="mb-0"><strong>Description:</strong> {{ dispensary.active_store.description }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
         </div>
 
         <!-- Sidebar -->
         <div class="col-12 col-lg-4">
             <div class="form-section">
-                <h6><i class="fas fa-lightbulb me-2"></i>Tips</h6>
+                <h6><i class="fas fa-info-circle me-2"></i>Permissions Guide</h6>
                 <div class="small text-muted">
                     <ul class="list-unstyled mb-0">
                         <li class="mb-2">
-                            <i class="fas fa-check text-success me-2"></i>
-                            Descriptive names help with organization
+                            <i class="fas fa-crown text-warning me-2"></i>
+                            <strong>Administrators:</strong> Full access to all dispensaries
                         </li>
                         <li class="mb-2">
-                            <i class="fas fa-check text-success me-2"></i>
-                            Location helps staff find the dispensary
+                            <i class="fas fa-user-tie text-primary me-2"></i>
+                            <strong>Managers:</strong> Full access to assigned dispensaries only
                         </li>
                         <li class="mb-2">
-                            <i class="fas fa-check text-success me-2"></i>
-                            Assigning a manager gives them full control
+                            <i class="fas fa-users text-info me-2"></i>
+                            <strong>Staff:</strong> Read-only access to dispensary information
                         </li>
                         <li class="mb-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            An active store will be created automatically
+                            <i class="fas fa-lock text-secondary me-2"></i>
+                            <strong>Others:</strong> Limited or no access
                         </li>
                     </ul>
                 </div>
             </div>
 
             <div class="form-section">
-                <h6><i class="fas fa-shield-alt me-2"></i>Permissions</h6>
+                <h6><i class="fas fa-clock me-2"></i>Activity Log</h6>
                 <div class="small text-muted">
-                    <ul class="list-unstyled mb-0">
-                        <li class="mb-2">
-                            <i class="fas fa-crown text-warning me-2"></i>
-                            <strong>Admin:</strong> Full access to all dispensaries
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-user-tie text-primary me-2"></i>
-                            <strong>Manager:</strong> Full access to this dispensary
-                        </li>
-                        <li class="mb-0">
-                            <i class="fas fa-eye text-info me-2"></i>
-                            <strong>Staff:</strong> Read-only access
-                        </li>
-                    </ul>
+                    <p class="mb-1"><strong>Created:</strong> {{ dispensary.created_at|date:"M d, Y H:i" }}</p>
+                    {{ dispensary.updated_at|date:"M d, Y H:i" }}</strong></p>
+                    {% if dispensary.manager %}
+                        <p class="mb-0"><strong>Current Manager:</strong><br>
+                        {{ dispensary.manager.get_full_name|default:dispensary.manager.username }}</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -206,6 +244,16 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+    // Auto-save feature (optional - uncomment if needed)
+    // var autoSaveTimer;
+    // $('form input, form select, form textarea').on('change', function() {
+    //     clearTimeout(autoSaveTimer);
+    //     autoSaveTimer = setTimeout(function() {
+    //         // Auto-save logic here if needed
+    //         console.log('Auto-save triggered');
+    //     }, 2000);
+    // });
+    
     // Form validation visual feedback
     $('#id_name').on('input', function() {
         if ($(this).val().trim().length < 3) {
@@ -217,17 +265,10 @@ $(document).ready(function() {
     
     // Manager selection help
     $('#id_manager').on('change', function() {
-        var managerName = $(this).find('option:selected').text();
         if ($(this).val()) {
-            $('.manager-info .mb-0').html(
-                '<strong>Manager Selected:</strong> ' + managerName + '<br>' +
-                'This person will have full permission to manage this dispensary.'
-            );
+            $('#manager-help').show();
         } else {
-            $('.manager-info .mb-0').html(
-                '<strong>Manager Assignment:</strong><br>' +
-                'When you assign a manager, that user will have full permission to manage this dispensary.'
-            );
+            $('#manager-help').hide();
         }
     });
 });

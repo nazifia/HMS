@@ -3430,15 +3430,56 @@ def dispensed_items_export(request):
     return response
 
 
+def user_has_dispensary_edit_permission(user, dispensary=None):
+    """Check if user has permission to edit dispensaries"""
+    # Superusers and admins have full access
+    if user.is_superuser:
+        return True
+    
+    # Check if user has admin role
+    user_roles = user.roles.values_list('name', flat=True) if hasattr(user, 'roles') else []
+    if 'admin' in user_roles:
+        return True
+    
+    # If checking specific dispensary, check if user is the manager
+    if dispensary and dispensary.manager == user:
+        return True
+    
+    return False
+
+
+def user_can_edit_dispensary(user, dispensary):
+    """Enhanced permission check for dispensary editing"""
+    return user_has_dispensary_edit_permission(user, dispensary)
+
+
+def user_has_inventory_edit_permission(user, dispensary):
+    """Check if user has permission to edit medication inventory"""
+    return user_has_dispensary_edit_permission(user, dispensary)
+
+
 @login_required
 def dispensary_list(request):
     """View for listing dispensaries"""
     dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
     
+    # Check edit permissions for template
+    can_edit = user_has_dispensary_edit_permission(request.user)
+    can_view_all = can_edit or request.user.is_staff  # Staff can view, managers can edit their assigned
+    
+    # Pre-calculate individual permissions for each dispensary
+    dispensary_permissions = {}
+    for dispensary in dispensaries:
+        dispensary_permissions[dispensary.id] = user_can_edit_dispensary(request.user, dispensary)
+    
     context = {
         'dispensaries': dispensaries,
         'page_title': 'Dispensary List',
         'active_nav': 'pharmacy',
+        'can_edit': can_edit,
+        'can_view_all': can_view_all,
+        'current_user': request.user,
+        'dispensary_permissions': dispensary_permissions,
     }
     
     return render(request, 'pharmacy/dispensary_list.html', context)
@@ -3448,6 +3489,11 @@ def dispensary_list(request):
 def edit_dispensary(request, dispensary_id):
     """View for editing a dispensary and its associated active store"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    
+    # Check permission
+    if not user_can_edit_dispensary(request.user, dispensary):
+        messages.error(request, 'You do not have permission to edit this dispensary.')
+        return redirect('pharmacy:dispensary_list')
 
     # Get or create the associated active store
     active_store = getattr(dispensary, 'active_store', None)
@@ -3498,6 +3544,11 @@ def edit_dispensary(request, dispensary_id):
 @login_required
 def add_dispensary(request):
     """View for adding a new dispensary with automatic active store creation"""
+    # Check permission - only admins and superusers can add dispensaries
+    if not user_has_dispensary_edit_permission(request.user):
+        messages.error(request, 'You do not have permission to add dispensaries.')
+        return redirect('pharmacy:dispensary_list')
+    
     if request.method == 'POST':
         form = DispensaryForm(request.POST)
         if form.is_valid():
@@ -3534,6 +3585,11 @@ def delete_dispensary(request, dispensary_id):
     """View for deleting a dispensary"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
     
+    # Check permission
+    if not user_can_edit_dispensary(request.user, dispensary):
+        messages.error(request, 'You do not have permission to delete this dispensary.')
+        return redirect('pharmacy:dispensary_list')
+    
     if request.method == 'POST':
         dispensary.is_active = False
         dispensary.save()
@@ -3553,6 +3609,14 @@ def delete_dispensary(request, dispensary_id):
 def dispensary_inventory(request, dispensary_id):
     """View for dispensary inventory"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    
+    # Check permission for viewing inventory (viewership is more permissive than editing)
+    if not (user_has_inventory_edit_permission(request.user, dispensary) or request.user.is_staff):
+        messages.error(request, 'You do not have permission to view this dispensary inventory.')
+        return redirect('pharmacy:dispensary_list')
+    
+    # Check edit permissions for template
+    can_edit_inventory = user_has_inventory_edit_permission(request.user, dispensary)
     
     # Get inventory items from ActiveStoreInventory (new) and MedicationInventory (legacy)
     active_store_items = ActiveStoreInventory.objects.filter(
@@ -3591,11 +3655,33 @@ def dispensary_inventory(request, dispensary_id):
     # Optional: sort by medication name for consistent display
     inventory_items.sort(key=lambda x: (x['medication'].name.lower() if x['medication'] and x['medication'].name else ''))
     
+    # Calculate inventory statistics
+    total_items = len(inventory_items)
+    in_stock_count = sum(1 for item in inventory_items if item['stock_quantity'] > 0)
+    low_stock_count = 0
+    out_of_stock_count = 0
+    
+    for item in inventory_items:
+        stock_qty = item['stock_quantity']
+        reorder_level = item['reorder_level'] or 10  # Default to 10 if not set
+        
+        if stock_qty == 0:
+            out_of_stock_count += 1
+        elif stock_qty <= reorder_level:
+            low_stock_count += 1
+    
     context = {
         'dispensary': dispensary,
-    'inventory_items': inventory_items,
+        'inventory_items': inventory_items,
         'page_title': f'{dispensary.name} Inventory',
         'active_nav': 'pharmacy',
+        'can_edit_inventory': can_edit_inventory,
+        'current_user': request.user,
+        'total_items': total_items,
+        'in_stock_count': in_stock_count,
+        'low_stock_count': low_stock_count,
+        'out_of_stock_count': out_of_stock_count,
+        'today': timezone.now().date(),
     }
     
     return render(request, 'pharmacy/dispensary_inventory.html', context)
@@ -3605,6 +3691,12 @@ def dispensary_inventory(request, dispensary_id):
 def add_dispensary_inventory_item(request, dispensary_id):
     """View for adding a dispensary inventory item"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    
+    # Check permission
+    if not user_has_inventory_edit_permission(request.user, dispensary):
+        messages.error(request, 'You do not have permission to add inventory items to this dispensary.')
+        return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+    
     # Prefer creating an ActiveStoreInventory tied to the dispensary's active store if present
     active_store = getattr(dispensary, 'active_store', None)
     if request.method == 'POST':
@@ -3648,6 +3740,12 @@ def add_dispensary_inventory_item(request, dispensary_id):
 def edit_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
     """View for editing a dispensary inventory item"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    
+    # Check permission
+    if not user_has_inventory_edit_permission(request.user, dispensary):
+        messages.error(request, 'You do not have permission to edit inventory items in this dispensary.')
+        return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+    
     # Support both ActiveStoreInventory (new) and MedicationInventory (legacy)
     inventory_item = None
     source = None
@@ -3692,6 +3790,12 @@ def edit_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
 def delete_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
     """View for deleting a dispensary inventory item"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    
+    # Check permission
+    if not user_has_inventory_edit_permission(request.user, dispensary):
+        messages.error(request, 'You do not have permission to delete inventory items in this dispensary.')
+        return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+    
     # Support both ActiveStoreInventory (new) and MedicationInventory (legacy)
     inventory_item = None
     source = None

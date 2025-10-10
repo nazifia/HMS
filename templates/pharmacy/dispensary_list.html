@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dispensary List - {{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dispensary-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .dispensary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .dispensary-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+    }
+    .dispensary-body {
+        padding: 1.5rem;
+    }
+    .manager-badge {
+        background-color: #28a745;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+    }
+    .action-buttons .btn {
+        margin-right: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    .no-dispensaries {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    /* Responsive styling */
+    @media (max-width: 768px) {
+        .dispensary-body {
+            padding: 1rem;
+        }
+        
+        .action-buttons .btn {
+            display: block;
+            width: 100%;
+            margin: 0.25rem 0;
+        }
+        
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        
+        .btn-group .btn {
+            flex: 1;
+            margin: 0 0.25rem;
+            min-width: 80px;
+        }
+        
+        .card-header h1 {
+            font-size: 1.5rem;
+        }
+        
+        .card-header p {
+            font-size: 0.9rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .dispensary-header {
+            padding: 0.75rem 1rem;
+        }
+        
+        .dispensary-header h1 {
+            font-size: 1.25rem;
+        }
+        
+        .dispensary-header p {
+            font-size: 0.85rem;
+        }
+        
+        .action-buttons {
+            margin-top: 1rem;
+        }
+        
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.375rem 0.5rem;
+        }
+    }
+    
+    /* Loading animation */
+    .card {
+        animation: fadeInUp 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Sticky header on scroll */
+    .page-header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    @media (max-width: 768px) {
+        .page-header {
+            position: relative;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="page-header d-flex justify-content-between align-items-center py-3 mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Dispensary Management</h1>
+                    <p class="text-muted mb-0 small">Manage pharmacy dispensaries and their inventories</p>
+                </div>
+                <div class="d-flex align-items-center">
+                    {% if can_edit %}
+                        <a href="{% url 'pharmacy:add_dispensary' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>
+                            <span class="d-none d-md-inline">Add New Dispensary</span>
+                            <span class="d-md-none">Add</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Dispensaries List -->
+            {% if dispensaries %}
+                <div class="row g-4">
+                    {% for dispensary in dispensaries %}
+                        <div class="col-xs-12 col-sm-6 col-lg-4 mb-4">
+                            <div class="dispensary-card h-100">
+                                <div class="dispensary-header">
+                                    <h5 class="mb-0">{{ dispensary.name }}</h5>
+                                    <small class="d-block">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{ dispensary.location|default:"No location specified" }}
+                                    </small>
+                                    {% if dispensary.manager %}
+                                        <div class="mt-2">
+                                            <span class="badge bg-light text-dark">
+                                                <i class="fas fa-user-tie me-1"></i>
+                                                {{ dispensary.manager.get_full_name|default:dispensary.manager.username }}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        <span class="badge {{ dispensary.is_active|yesno:'bg-success bg-secondary' }}">
+                                            {{ dispensary.is_active|yesno:'Active Inactive' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="dispensary-body">
+                                    {% if dispensary.description %}
+                                        <p class="text-muted mb-3 small">{{ dispensary.description|truncatewords:20 }}</p>
+                                    {% endif %}
+
+                                    <div class="action-buttons">
+                                        <div class="btn-group d-block d-sm-flex" role="group">
+                                            <a href="{% url 'pharmacy:dispensary_inventory' dispensary.id %}" 
+                                               class="btn btn-outline-primary btn-sm flex-fill">
+                                                <i class="fas fa-boxes me-1"></i>
+                                                <span class="d-none d-sm-inline">View</span>
+                                                <span class="d-sm-none">Inv</span>
+                                            </a>
+                                            
+                                            {% if can_edit %}
+                                                <a href="{% url 'pharmacy:edit_dispensary' dispensary.id %}" 
+                                                   class="btn btn-outline-secondary btn-sm flex-fill">
+                                                    <i class="fas fa-edit me-1"></i>
+                                                    <span class="d-none d-sm-inline">Edit</span>
+                                                    <span class="d-sm-none">Ed</span>
+                                                </a>
+                                                {% if current_user.id == dispensary.manager.id or current_user.is_superuser %}
+                                                    <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" 
+                                                       class="btn btn-outline-danger btn-sm flex-fill"
+                                                       onclick="return confirm('Are you sure you want to deactivate {{ dispensary.name }}?')">
+                                                        <i class="fas fa-trash me-1"></i>
+                                                        <span class="d-none d-sm-inline">Delete</span>
+                                                        <span class="d-sm-none">Del</span>
+                                                    </a>
+                                                {% endif %}
+                                            {% else %}
+                                                <div class="alert alert-info alert-sm my-2 py-2">
+                                                    <small class="mb-0">
+                                                        <i class="fas fa-lock me-1"></i>
+                                                        Limited access
+                                                    </small>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Created: {{ dispensary.created_at|date:"M d, Y" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-dispensaries">
+                    <div class="text-center py-5">
+                        <i class="fas fa-clinic-medical fa-4x mb-3 text-muted"></i>
+                        <h4 class="mb-3">No Dispensaries Found</h4>
+                        <p class="mb-4 px-3">There are no dispensaries configured in the system.</p>
+                        {% if can_edit %}
+                            <a href="{% url 'pharmacy:add_dispensary' %}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-plus me-2"></i>
+                                <span class="d-none d-md-inline">Add First Dispensary</span>
+                                <span class="d-md-none">Add</span>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add some interactive features
+$(document).ready(function() {
+    // Enhanced card hover effects
+    $('.dispensary-card').on('mouseenter', function() {
+        $(this).find('.btn-group, .btn').addClass('btn-shadow');
+    }).on('mouseleave', function() {
+        $(this).find('.btn-group, .btn').removeClass('btn-shadow');
+    });
+    
+    // Confirmation for delete actions
+    $('.btn-danger').on('click', function(e) {
+        if (!confirm('Are you sure you want to proceed with this action?')) {
+            e.preventDefault();
+        }
+    });
+    
+    // Handle navbar toggle on mobile
+    $('.navbar-toggler').on('click', function() {
+        $('.navbar-collapse').toggleClass('show');
+    });
+    
+    // Auto-hide navbar on mobile after click outside
+    $(document).on('click', function(e) {
+        if (!$('.navbar-toggler').is(e.target) && $('.navbar-collapse').hasClass('show')) {
+            $('.navbar-collapse').removeClass('show');
+        }
+    });
+});
+</script>
+{% endblock %}
