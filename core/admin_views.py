@@ -1,308 +1,420 @@
 """
-Admin views for monitoring system operations including admission charges and sessions.
+Admin views for enhanced permissions and activity logging
 """
 
-import logging
-from decimal import Decimal
-from datetime import datetime, timedelta
-from django.shortcuts import render, redirect
-from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.views.generic import ListView, DetailView
+from django.utils.decorators import method_decorator
+from django.db.models import Q, Count, Avg
 from django.utils import timezone
-from django.db.models import Sum, Count, Q
-from django.http import JsonResponse, HttpResponse
-from django.core.paginator import Paginator
-from django.contrib.sessions.models import Session
+from datetime import timedelta
+from django.http import JsonResponse, HttpResponseForbidden
+from django.urls import reverse_lazy
 
-from inpatient.models import Admission
-from patients.models import WalletTransaction, PatientWallet
-from inpatient.tasks import process_daily_admission_charges, process_single_admission_charge
+from core.permissions import RolePermissionChecker, permission_required, get_client_ip
+from core.decorators import admin_required, role_required
+from core.activity_log import ActivityLog
+from accounts.models import CustomUser, CustomUserProfile, Role
 
-logger = logging.getLogger(__name__)
+User = get_user_model()
 
+def is_admin(user):
+    """Check if user is admin"""
+    return user.is_superuser or (hasattr(user, 'profile') and user.profile.role == 'admin')
 
-@staff_member_required
-def admission_charges_dashboard(request):
-    """
-    Dashboard for monitoring daily admission charge processing.
-    """
-    # Get date range for filtering
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=30)  # Last 30 days
+@login_required
+@user_passes_test(is_admin, login_url=reverse_lazy('dashboard:dashboard'))
+def admin_dashboard(request):
+    """Enhanced admin dashboard with activity overview"""
     
-    if request.GET.get('start_date'):
+    # Get basic stats
+    total_users = User.objects.count()
+    active_users = User.objects.filter(is_active=True).count()
+    recent_logins = User.objects.filter(last_login__gte=timezone.now() - timedelta(days=1)).count()
+    
+    # Get activity stats
+    today = timezone.now().date()
+    today_activities = ActivityLog.objects.filter(timestamp__date=today)
+    
+    # Activity by category
+    activity_by_category = today_activities.values('category').annotate(
+        count=Count('id')
+    ).order_by('-count')[:5]
+    
+    # Recent activities
+    recent_activities = ActivityLog.objects.select_related('user').order_by('-timestamp')[:10]
+    
+    # Failed login attempts (last 24 hours)
+    failed_logins = ActivityLog.objects.filter(
+        action_type='failed_login',
+        timestamp__gte=timezone.now() - timedelta(hours=24)
+    ).count()
+    
+    # Permission denied events (last 24 hours)
+    permission_denied = ActivityLog.objects.filter(
+        action_type='permission_denied',
+        timestamp__gte=timezone.now() - timedelta(hours=24)
+    ).count()
+    
+    context = {
+        'total_users': total_users,
+        'active_users': active_users,
+        'recent_logins': recent_logins,
+        'total_activities_today': today_activities.count(),
+        'activity_by_category': activity_by_category,
+        'recent_activities': recent_activities,
+        'failed_logins': failed_logins,
+        'permission_denied': permission_denied,
+        'page_title': 'Admin Dashboard',
+    }
+    
+    return render(request, 'admin/admin_dashboard.html', context)
+
+@login_required
+@user_passes_test(is_admin, login_url=reverse_lazy('dashboard:dashboard'))
+def activity_log_view(request):
+    """View and search activity logs"""
+    
+    # Get filter parameters
+    search = request.GET.get('search', '')
+    category = request.GET.get('category', '')
+    action_type = request.GET.get('action_type', '')
+    level = request.GET.get('level', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Base queryset
+    logs = ActivityLog.objects.select_related('user').order_by('-timestamp')
+    
+    # Apply filters
+    if search:
+        logs = logs.filter(
+            Q(description__icontains=search) |
+            Q(user__username__icontains=search) |
+            Q(user__first_name__icontains=search) |
+            Q(user__last_name__icontains=search)
+        )
+    
+    if category:
+        logs = logs.filter(category=category)
+    
+    if action_type:
+        logs = logs.filter(action_type=action_type)
+    
+    if level:
+        logs = logs.filter(level=level)
+    
+    if date_from:
         try:
-            start_date = datetime.strptime(request.GET['start_date'], '%Y-%m-%d').date()
+            date_from = timezone.datetime.strptime(date_from, '%Y-%m-%d').date()
+            logs = logs.filter(timestamp__date__gte=date_from)
         except ValueError:
             pass
     
-    if request.GET.get('end_date'):
+    if date_to:
         try:
-            end_date = datetime.strptime(request.GET['end_date'], '%Y-%m-%d').date()
+            date_to = timezone.datetime.strptime(date_to, '%Y-%m-%d').date()
+            logs = logs.filter(timestamp__date__lte=date_to)
         except ValueError:
             pass
     
-    # Get admission charge statistics
-    daily_charges = WalletTransaction.objects.filter(
-        transaction_type='daily_admission_charge',
-        created_at__date__range=[start_date, end_date]
-    ).select_related('wallet__patient', 'admission__bed__ward')
-    
-    # Calculate summary statistics
-    total_charges = daily_charges.aggregate(
-        total_amount=Sum('amount'),
-        total_count=Count('id')
-    )
-    
-    # Group by date
-    daily_stats = {}
-    for charge in daily_charges:
-        date = charge.created_at.date()
-        if date not in daily_stats:
-            daily_stats[date] = {
-                'date': date,
-                'count': 0,
-                'amount': Decimal('0.00'),
-                'patients': set()
-            }
-        daily_stats[date]['count'] += 1
-        daily_stats[date]['amount'] += charge.amount
-        daily_stats[date]['patients'].add(charge.wallet.patient.get_full_name())
-    
-    # Convert to list and sort
-    daily_stats_list = []
-    for date, stats in daily_stats.items():
-        stats['patient_count'] = len(stats['patients'])
-        stats['patients'] = list(stats['patients'])
-        daily_stats_list.append(stats)
-    
-    daily_stats_list.sort(key=lambda x: x['date'], reverse=True)
-    
-    # Get current active admissions
-    active_admissions = Admission.objects.filter(
-        status='admitted',
-        discharge_date__isnull=True
-    ).select_related('patient', 'bed__ward').count()
-    
-    # Get failed charges (negative wallet balances)
-    negative_wallets = PatientWallet.objects.filter(
-        balance__lt=0,
-        is_active=True
-    ).select_related('patient').count()
+    # Pagination
+    from django.core.paginator import Paginator
+    page = request.GET.get('page', 1)
+    paginator = Paginator(logs, 50)  # 50 logs per page
+    logs_page = paginator.get_page(page)
     
     context = {
-        'start_date': start_date,
-        'end_date': end_date,
-        'total_charges': total_charges,
-        'daily_stats': daily_stats_list,
-        'active_admissions': active_admissions,
-        'negative_wallets': negative_wallets,
-        'date_range_days': (end_date - start_date).days + 1
+        'logs': logs_page,
+        'categories': ActivityLog.CATEGORY_CHOICES,
+        'action_types': ActivityLog.ACTION_TYPES,
+        'levels': ActivityLog.LEVEL_CHOICES,
+        'current_filters': {
+            'search': search,
+            'category': category,
+            'action_type': action_type,
+            'level': level,
+            'date_from': date_from,
+            'date_to': date_to,
+        },
+        'page_title': 'Activity Log',
     }
     
-    return render(request, 'admin/admission_charges_dashboard.html', context)
+    return render(request, 'admin/activity_log.html', context)
 
+@login_required
+@user_passes_test(is_admin, login_url=reverse_lazy('dashboard:dashboard'))
+def permission_management(request):
+    """Manage user permissions and roles"""
+    
+    # Get all roles with user counts
+    roles = Role.objects.annotate(user_count=Count('customuser_roles'))
+    
+    # Role statistics
+    total_permissions = Permission.objects.count()
+    
+    context = {
+        'roles': roles,
+        'total_permissions': total_permissions,
+        'page_title': 'Permission Management',
+    }
+    
+    return render(request, 'admin/permission_management.html', context)
 
-@staff_member_required
-def session_monitoring_dashboard(request):
-    """
-    Dashboard for monitoring user sessions and security.
-    """
-    now = timezone.now()
+@login_required
+@user_passes_test(is_admin, login_url=reverse_lazy('dashboard:dashboard'))
+def user_permissions_detail(request, user_id):
+    """View and edit user permissions"""
     
-    # Session statistics
-    total_sessions = Session.objects.count()
-    active_sessions = Session.objects.filter(expire_date__gt=now).count()
-    expired_sessions = total_sessions - active_sessions
+    user = get_object_or_404(User.objects.select_related('profile'), id=user_id)
     
-    # Recent session activity (last 24 hours)
-    yesterday = now - timedelta(days=1)
-    recent_sessions = Session.objects.filter(
-        expire_date__gte=yesterday
+    # Get permission checker
+    checker = RolePermissionChecker(user)
+    
+    # Get all permissions by category
+    from core.permissions import APP_PERMISSIONS
+    user_permissions = checker.get_permissions_by_category('all') if hasattr(checker, 'get_permissions_by_category') else set()
+    
+    context = {
+        'target_user': user,
+        'user_roles': user.roles.all(),
+        'user_permissions': user_permissions,
+        'app_permissions': APP_PERMISSIONS,
+        'page_title': f'User Permissions - {user.get_full_name()}',
+    }
+    
+    return render(request, 'admin/user_permissions_detail.html', context)
+
+@login_required
+@user_passes_test(is_admin, login_url=reverse_lazy('dashboard:dashboard'))
+def security_overview(request):
+    """Security monitoring and alerts"""
+    
+    # Security stats (last 24 hours)
+    last_24h = timezone.now() - timedelta(hours=24)
+    
+    failed_logins_count = ActivityLog.objects.filter(
+        action_type='failed_login',
+        timestamp__gte=last_24h
     ).count()
     
-    # Long-running sessions (potentially suspicious)
-    long_session_threshold = 3 * 3600  # 3 hours
-    long_sessions = Session.objects.filter(
-        expire_date__gt=now + timedelta(seconds=long_session_threshold)
+    permission_denied_count = ActivityLog.objects.filter(
+        action_type='permission_denied',
+        timestamp__gte=last_24h
     ).count()
     
-    # Session breakdown by age
-    one_hour_ago = now - timedelta(hours=1)
-    one_day_ago = now - timedelta(days=1)
-    one_week_ago = now - timedelta(weeks=1)
+    suspicious_activities = ActivityLog.objects.filter(
+        timestamp__gte=last_24h,
+        level__in=['error', 'critical']
+    ).count()
     
-    session_stats = {
-        'total': total_sessions,
-        'active': active_sessions,
-        'expired': expired_sessions,
-        'recent_24h': recent_sessions,
-        'long_running': long_sessions,
-        'active_1h': Session.objects.filter(expire_date__gte=one_hour_ago).count(),
-        'active_1d': Session.objects.filter(expire_date__gte=one_day_ago).count(),
-        'active_1w': Session.objects.filter(expire_date__gte=one_week_ago).count(),
-    }
+    # Recent security events
+    security_events = ActivityLog.objects.filter(
+        Q(action_type='failed_login') |
+        Q(action_type='permission_denied') |
+        Q(category='security'),
+        timestamp__gte=last_24h
+    ).select_related('user').order_by('-timestamp')[:20]
     
-    # Recent transactions for activity monitoring
-    recent_activity = WalletTransaction.objects.filter(
-        created_at__gte=yesterday
-    ).select_related('wallet__patient', 'created_by').order_by('-created_at')[:50]
-    
-    context = {
-        'session_stats': session_stats,
-        'recent_activity': recent_activity,
-        'current_time': now,
-    }
-    
-    return render(request, 'admin/session_monitoring_dashboard.html', context)
-
-
-@staff_member_required
-def manual_charge_processing(request):
-    """
-    Interface for manually processing admission charges.
-    """
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        
-        if action == 'process_today':
-            # Process charges for today
-            try:
-                result = process_daily_admission_charges.delay()
-                messages.success(request, f"Daily charge processing started. Task ID: {result.id}")
-            except Exception as e:
-                messages.error(request, f"Failed to start charge processing: {str(e)}")
-        
-        elif action == 'process_date':
-            # Process charges for specific date
-            target_date = request.POST.get('target_date')
-            try:
-                result = process_daily_admission_charges.delay(target_date)
-                messages.success(request, f"Charge processing started for {target_date}. Task ID: {result.id}")
-            except Exception as e:
-                messages.error(request, f"Failed to start charge processing for {target_date}: {str(e)}")
-        
-        elif action == 'process_admission':
-            # Process charge for specific admission
-            admission_id = request.POST.get('admission_id')
-            charge_date = request.POST.get('charge_date')
-            try:
-                result = process_single_admission_charge.delay(int(admission_id), charge_date)
-                messages.success(request, f"Single admission charge processing started. Task ID: {result.id}")
-            except Exception as e:
-                messages.error(request, f"Failed to process admission charge: {str(e)}")
-        
-        return redirect('admin:manual_charge_processing')
-    
-    # Get active admissions for manual processing
-    active_admissions = Admission.objects.filter(
-        status='admitted',
-        discharge_date__isnull=True
-    ).select_related('patient', 'bed__ward', 'attending_doctor')[:100]
+    # User session information
+    active_sessions = ActivityLog.objects.filter(
+        action_type='login',
+        success=True,
+        timestamp__gte=timezone.now() - timedelta(hours=2)
+    ).values('user__username', 'ip_address').annotate(
+        last_activity=Max('timestamp')
+    ).order_by('-last_activity')
     
     context = {
-        'active_admissions': active_admissions,
-        'today': timezone.now().date(),
+        'failed_logins_count': failed_logins_count,
+        'permission_denied_count': permission_denied_count,
+        'suspicious_activities': suspicious_activities,
+        'security_events': security_events,
+        'active_sessions': active_sessions,
+        'page_title': 'Security Overview',
     }
     
-    return render(request, 'admin/manual_charge_processing.html', context)
+    return render(request, 'admin/security_overview.html', context)
 
-
-@staff_member_required
-def wallet_management_dashboard(request):
-    """
-    Dashboard for managing patient wallets and transactions.
-    """
-    # Wallet statistics
-    total_wallets = PatientWallet.objects.count()
-    active_wallets = PatientWallet.objects.filter(is_active=True).count()
+@login_required
+@user_passes_test(is_admin, login_url=reverse_lazy('dashboard:dashboard'))
+def user_activity_timeline(request, user_id):
+    """View detailed activity timeline for a specific user"""
     
-    # Balance statistics
-    wallet_stats = PatientWallet.objects.aggregate(
-        total_balance=Sum('balance'),
-        avg_balance=Sum('balance') / Count('id') if Count('id') > 0 else 0
-    )
+    user = get_object_or_404(User, id=user_id)
     
-    # Low/negative balance wallets
-    low_balance_threshold = Decimal('100.00')
-    low_balance_wallets = PatientWallet.objects.filter(
-        balance__lt=low_balance_threshold,
-        is_active=True
-    ).select_related('patient').order_by('balance')[:20]
+    # Get user activities
+    activities = ActivityLog.objects.filter(user=user).select_related(
+        'content_type'
+    ).order_by('-timestamp')
     
-    negative_balance_wallets = PatientWallet.objects.filter(
-        balance__lt=0,
-        is_active=True
-    ).select_related('patient').order_by('balance')[:20]
+    # Filter by date range if provided
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
     
-    # Recent large transactions
-    large_transaction_threshold = Decimal('1000.00')
-    recent_large_transactions = WalletTransaction.objects.filter(
-        amount__gte=large_transaction_threshold,
-        created_at__gte=timezone.now() - timedelta(days=7)
-    ).select_related('wallet__patient', 'created_by').order_by('-created_at')[:20]
+    if date_from:
+        try:
+            date_from = timezone.datetime.strptime(date_from, '%Y-%m-%d').date()
+            activities = activities.filter(timestamp__date__gte=date_from)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to = timezone.datetime.strptime(date_to, '%Y-%m-%d').date()
+            activities = activities.filter(timestamp__date__lte=date_to)
+        except ValueError:
+            pass
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    page = request.GET.get('page', 1)
+    paginator = Paginator(activities, 100)
+    activities_page = paginator.get_page(page)
+    
+    # Statistics
+    total_activities = activities.count()
+    today_activities = activities.filter(timestamp__date=timezone.now().date()).count()
+    
+    # Activity breakdown by category
+    activity_by_category = activities.values('category').annotate(
+        count=Count('id')
+    ).order_by('-count')
     
     context = {
-        'total_wallets': total_wallets,
-        'active_wallets': active_wallets,
-        'wallet_stats': wallet_stats,
-        'low_balance_wallets': low_balance_wallets,
-        'negative_balance_wallets': negative_balance_wallets,
-        'recent_large_transactions': recent_large_transactions,
-        'low_balance_threshold': low_balance_threshold,
+        'target_user': user,
+        'activities': activities_page,
+        'total_activities': total_activities,
+        'today_activities': today_activities,
+        'activity_by_category': activity_by_category,
+        'page_title': f'Activity Timeline - {user.get_full_name()}',
     }
     
-    return render(request, 'admin/wallet_management_dashboard.html', context)
+    return render(request, 'admin/user_activity_timeline.html', context)
 
-
-@staff_member_required
-def system_health_check(request):
-    """
-    System health check for monitoring overall system status.
-    """
-    health_status = {
-        'timestamp': timezone.now(),
-        'status': 'healthy',
-        'issues': []
+@login_required
+@user_passes_test(is_admin, login_url=reverse_lazy('dashboard:dashboard'))
+def audit_report(request):
+    """Generate audit reports"""
+    
+    # Get time periods for reports
+    today = timezone.now().date()
+    this_week = today - timedelta(days=7)
+    this_month = today - timedelta(days=30)
+    
+    # Generate statistics for different periods
+    report_data = {
+        'today': {
+            'logins': ActivityLog.objects.filter(action_type='login', timestamp__date=today).count(),
+            'failed_logins': ActivityLog.objects.filter(action_type='failed_login', timestamp__date=today).count(),
+            'user_actions': ActivityLog.objects.filter(~Q(action_type__in=['login', 'logout']), timestamp__date=today).count(),
+            'permission_denied': ActivityLog.objects.filter(action_type='permission_denied', timestamp__date=today).count(),
+        },
+        'this_week': {
+            'logins': ActivityLog.objects.filter(action_type='login', timestamp__date__gte=this_week).count(),
+            'failed_logins': ActivityLog.objects.filter(action_type='failed_login', timestamp__date__gte=this_week).count(),
+            'user_actions': ActivityLog.objects.filter(~Q(action_type__in=['login', 'logout']), timestamp__date__gte=this_week).count(),
+            'permission_denied': ActivityLog.objects.filter(action_type='permission_denied', timestamp__date__gte=this_week).count(),
+        },
+        'this_month': {
+            'logins': ActivityLog.objects.filter(action_type='login', timestamp__date__gte=this_month).count(),
+            'failed_logins': ActivityLog.objects.filter(action_type='failed_login', timestamp__date__gte=this_month).count(),
+            'user_actions': ActivityLog.objects.filter(~Q(action_type__in=['login', 'logout']), timestamp__date__gte=this_month).count(),
+            'permission_denied': ActivityLog.objects.filter(action_type='permission_denied', timestamp__date__gte=this_month).count(),
+        },
     }
+    
+    # Top users by activity
+    top_users = ActivityLog.objects.values('user__username', 'user__first_name', 'user__last_name').filter(
+        timestamp__gte=this_week,
+        user__isnull=False
+    ).annotate(activity_count=Count('id')).order_by('-activity_count')[:10]
+    
+    # Most active categories
+    top_categories = ActivityLog.objects.filter(
+        timestamp__gte=this_week
+    ).values('category').annotate(count=Count('id')).order_by('-count')[:10]
+    
+    # Security events
+    security_events = ActivityLog.objects.filter(
+        timestamp__gte=this_week,
+        category='security'
+    ).count()
+    
+    context = {
+        'report_data': report_data,
+        'top_users': top_users,
+        'top_categories': top_categories,
+        'security_events': security_events,
+        'page_title': 'Audit Report',
+    }
+    
+    return render(request, 'admin/audit_report.html', context)
+
+# API Endpoints for AJAX
+@login_required
+@user_passes_test(is_admin)
+def api_activity_stats(request):
+    """API endpoint for activity statistics"""
+    
+    time_period = request.GET.get('period', 'today')
+    
+    if time_period == 'today':
+        start_date = timezone.now().date()
+    elif time_period == 'week':
+        start_date = timezone.now().date() - timedelta(days=7)
+    elif time_period == 'month':
+        start_date = timezone.now().date() - timedelta(days=30)
+    else:
+        start_date = timezone.now().date() - timedelta(days=1)
+    
+    activities = ActivityLog.objects.filter(timestamp__date__gte=start_date)
+    
+    stats = {
+        'total': activities.count(),
+        'logins': activities.filter(action_type='login').count(),
+        'failed_logins': activities.filter(action_type='failed_login').count(),
+        'permission_denied': activities.filter(action_type='permission_denied').count(),
+        'errors': activities.filter(level='error').count(),
+        'warnings': activities.filter(level='warning').count(),
+    }
+    
+    return JsonResponse(stats)
+
+@login_required
+@user_passes_test(is_admin)
+def api_user_permissions(request):
+    """API endpoint for user permissions"""
+    
+    user_id = request.GET.get('user_id')
+    if not user_id:
+        return JsonResponse({'error': 'User ID required'}, status=400)
     
     try:
-        # Check database connectivity
-        PatientWallet.objects.count()
+        user = User.objects.get(id=user_id)
+        checker = RolePermissionChecker(user)
         
-        # Check for stuck admissions (admitted for too long without charges)
-        old_admissions = Admission.objects.filter(
-            status='admitted',
-            admission_date__lt=timezone.now() - timedelta(days=7),
-            wallet_transactions__isnull=True
-        ).count()
+        permissions = checker.get_user_permissions()
+        categories = {}
         
-        if old_admissions > 0:
-            health_status['issues'].append(f"{old_admissions} old admissions without charges")
+        for permission in permissions:
+            # Categorize permissions
+            category = permission.split('_')[0] + '_management'
+            if category not in categories:
+                categories[category] = []
+            categories[category].append(permission)
         
-        # Check for excessive negative balances
-        excessive_negative = PatientWallet.objects.filter(
-            balance__lt=-1000
-        ).count()
+        return JsonResponse({
+            'user_id': user_id,
+            'username': user.username,
+            'full_name': user.get_full_name(),
+            'roles': list(user.roles.values_list('name', flat=True)),
+            'permissions_by_category': categories,
+            'total_permissions': len(permissions),
+        })
         
-        if excessive_negative > 0:
-            health_status['issues'].append(f"{excessive_negative} wallets with excessive negative balances")
-        
-        # Check session health
-        expired_sessions = Session.objects.filter(expire_date__lt=timezone.now()).count()
-        if expired_sessions > 1000:
-            health_status['issues'].append(f"{expired_sessions} expired sessions need cleanup")
-        
-        # Determine overall status
-        if health_status['issues']:
-            health_status['status'] = 'warning' if len(health_status['issues']) < 3 else 'critical'
-        
-    except Exception as e:
-        health_status['status'] = 'error'
-        health_status['issues'].append(f"Database connectivity issue: {str(e)}")
-    
-    if request.GET.get('format') == 'json':
-        return JsonResponse(health_status, json_dumps_params={'default': str})
-    
-    context = {'health_status': health_status}
-    return render(request, 'admin/system_health_check.html', context)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)

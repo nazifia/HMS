@@ -22,8 +22,8 @@
         <div class="sidebar-user p-3 border-bottom border-secondary">
             <div class="d-flex align-items-center">
                 <div class="user-avatar">
-                    {% if user.profile and user.profile.photo %}
-                        <img src="{{ user.profile.photo.url }}" class="rounded-circle" alt="{{ user.get_full_name|default:user.username }}" width="40" height="40">
+                    {% if user.profile and user.profile.profile_picture %}
+                        <img src="{{ user.profile.profile_picture.url }}" class="rounded-circle" alt="{{ user.get_full_name|default:user.username }}" width="40" height="40">
                     {% else %}
                         <div class="avatar-placeholder bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;">
                             {{ user.username.0|upper }}
@@ -32,20 +32,74 @@
                 </div>
                 <div class="user-info ms-2 flex-grow-1">
                     <div class="text-white fw-semibold small text-truncate">{{ user.get_full_name|default:user.username }}</div>
-                    <div class="text-muted user-role small">{{ user.profile.role|default:'User' }}</div>
+                    <div class="d-flex align-items-center">
+                        {% if user.profile.role %}
+                            <span class="badge {{ user.profile.role|get_role_badge_class }} me-1" style="font-size: 0.6rem;">{{ user.profile.role|title }}</span>
+                        {% endif %}
+                        {% if user.profile.department %}
+                            <span class="text-muted user-role small">{{ user.profile.department }}</span>
+                        {% else %}
+                            <span class="text-muted user-role small">{{ user.get_role|default:'User' }}</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="dropdown">
                     <button class="btn btn-link text-white p-1" type="button" data-bs-toggle="dropdown">
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">Profile</a></li>
-                        <li><a class="dropdown-item" href="{% url 'accounts:settings' %}">Settings</a></li>
+                        <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
+                            <i class="fas fa-user me-2"></i>Profile
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'accounts:settings' %}">
+                            <i class="fas fa-cog me-2"></i>Settings
+                        </a></li>
+                        
+                        <!-- Admin Items -->
+                        {% if user.is_superuser or user|has_role:'admin' %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">Logout</a></li>
+                        <li><h6 class="dropdown-header">Admin Tools</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'core:admin_dashboard' %}">
+                            <i class="fas fa-shield-alt me-2"></i>Admin Dashboard
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:activity_log' %}">
+                            <i class="fas fa-history me-2"></i>Activity Log
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:permission_management' %}">
+                            <i class="fas fa-shield-alt me-2"></i>Permissions
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:security_overview' %}">
+                            <i class="fas fa-lock me-2"></i>Security
+                        </a></li>
+                        {% endif %}
+                        
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a></li>
                     </ul>
                 </div>
             </div>
+            
+            <!-- Session Info -->
+            {% if request.session.session_info %}
+            <div class="session-info mt-2">
+                <div class="d-flex align-items-center justify-content-between">
+                    <small class="text-muted">Session:</small>
+                    <small class="session-time-remaining {{ request.session.session_info|get_session_status_class }}">
+                        {% with remaining=request.session.session_info.time_remaining %}
+                            {% if remaining <= 60 %}
+                                Expired
+                            {% elif remaining <= 300 %}
+                                {{ remaining|div:60 }}min left
+                            {% else %}
+                                {{ remaining|div:60 }}min
+                            {% endif %}
+                        {% endwith %}
+                    </small>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Sidebar Menu -->
@@ -58,6 +112,70 @@
                         <span class="sidebar-text">Dashboard</span>
                     </a>
                 </li>
+
+                <!-- Admin Section (Admin/Superuser only) -->
+                {% if user.is_superuser or user|has_role:'admin' %}
+                <li class="nav-item">
+                    <a class="nav-link nav-link-sidebar {% if '/core/admin/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#adminMenu">
+                        <i class="fas fa-shield-alt sidebar-icon text-warning"></i>
+                        <span class="sidebar-text">Admin Tools</span>
+                        <i class="fas fa-chevron-down ms-auto sidebar-arrow"></i>
+                    </a>
+                    <div class="collapse {% if '/core/admin/' in request.path %}show{% endif %}" id="adminMenu">
+                        <ul class="nav nav-pills flex-column ms-3">
+                            <li class="nav-item">
+                                <a href="{% url 'core:admin_dashboard' %}" class="nav-link nav-link-submenu {% if request.path == '/core/admin/' %}active{% endif %}">
+                                    <i class="fas fa-tachometer-alt sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Admin Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'core:activity_log' %}" class="nav-link nav-link-submenu {% if '/core/admin/activity-log/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-history sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Activity Log</span>
+                                    {% if failed_logins or permission_denied %}
+                                    <span class="badge bg-warning ms-auto">{{ failed_logins|add:permission_denied }}</span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'core:permission_management' %}" class="nav-link nav-link-submenu {% if '/core/admin/permissions/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-shield-alt sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Permissions</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'core:security_overview' %}" class="nav-link nav-link-submenu {% if '/core/admin/security/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-lock sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Security</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'core:audit_report' %}" class="nav-link nav-link-submenu {% if '/core/admin/audit-report/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-file-alt sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Audit Reports</span>
+                                </a>
+                            </li>
+                            
+                            <li class="nav-item">
+                                <span class="sidebar-subtitle">User Management</span>
+                            </li>
+                            <li class="nav-item">
+                                <a href="#" onclick="showUserManagementModal()" class="nav-link nav-link-submenu">
+                                    <i class="fas fa-users sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Manage Users</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="#" onclick="showCreateUserModal()" class="nav-link nav-link-submenu">
+                                    <i class="fas fa-user-plus sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Create User</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
 
                 <!-- Patient Care -->
                 {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,receptionist,health_record_officer' %}

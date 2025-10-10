@@ -34,8 +34,14 @@ urlpatterns = [
     path('<int:patient_id>/wallet/adjustment/', views.wallet_adjustment, name='wallet_adjustment'),
     path('<int:patient_id>/wallet/settlement/', views.wallet_settlement, name='wallet_settlement'),
     path('<int:patient_id>/wallet/payment/', views.wallet_payment, name='wallet_payment'),
-    path('wallet/net-impact/', views.wallet_net_impact, name='wallet_net_impact'),
-    path('<int:patient_id>/wallet/net-impact/', views.wallet_net_impact, name='wallet_net_impact_patient'),
+    path('<int:patient_id>/wallet/net-impact/', views.wallet_net_impact, name='wallet_net_impact'),
+    path('wallet/net-impact/', views.wallet_net_impact_global, name='wallet_net_impact_global'),
+    # Add a catch-all pattern to handle missing patient_id parameter gracefully
+    path('wallet/net-impact/any/', views.wallet_net_impact_fallback, name='wallet_net_impact_any'),
+    # Fallback URL pattern to handle missing patient_id parameter  
+    path('wallet/net-impact/fallback/', views.wallet_net_impact_fallback, name='wallet_net_impact_fallback'),
+    # Additional fallback - direct fallback to global view
+    path('wallet/net-impact/redirect/', views.wallet_net_impact_fallback, name='wallet_net_impact_redirect'),
     path('<int:patient_id>/wallet/apply-net-impact/', views.apply_wallet_net_impact, name='apply_wallet_net_impact'),
     path('<int:patient_id>/nhia/register/', views.register_nhia_patient, name='register_nhia_patient'),
     path('<int:patient_id>/nhia/edit/', views.edit_nhia_patient, name='edit_nhia_patient'),

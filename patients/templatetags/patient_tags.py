@@ -1,6 +1,7 @@
 from django import template
 from django.utils.safestring import mark_safe
 from django.utils import timezone
+from django.urls import reverse, NoReverseMatch
 
 register = template.Library()
 
@@ -240,3 +241,43 @@ def current_patient_quick_actions(context):
     '''.format(patient_id=patient_id)
 
     return mark_safe(actions_html)
+
+
+@register.simple_tag
+def safe_wallet_net_impact_url(patient_id):
+    """
+    Safely generate the wallet net impact URL, returning fallback if patient_id is invalid
+    """
+    if patient_id is None or patient_id == '':
+        try:
+            return reverse('patients:wallet_net_impact_global')
+        except NoReverseMatch:
+            return '#'
+    
+    try:
+        return reverse('patients:wallet_net_impact', kwargs={'patient_id': patient_id})
+    except NoReverseMatch:
+        try:
+            return reverse('patients:wallet_net_impact_global')
+        except NoReverseMatch:
+            return '#'
+
+
+@register.simple_tag
+def safe_wallet_dashboard_url(patient_id):
+    """
+    Safely generate the wallet dashboard URL, returning fallback if patient_id is invalid
+    """
+    if patient_id is None or patient_id == '':
+        try:
+            return reverse('patients:wallet_list')
+        except NoReverseMatch:
+            return '#'
+    
+    try:
+        return reverse('patients:wallet_dashboard', kwargs={'patient_id': patient_id})
+    except NoReverseMatch:
+        try:
+            return reverse('patients:wallet_list')
+        except NoReverseMatch:
+            return '#'

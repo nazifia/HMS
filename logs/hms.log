@@ -1,0 +1,48 @@
+INFO 2025-10-10 17:12:47,217 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:12:49,961 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:13:19,210 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:13:19,549 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:13:24,745 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:13:25,150 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:13:33,937 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:13:33,972 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:13:39,725 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:13:41,112 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:13:48,390 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\core\logging_handlers.py changed, reloading.
+INFO 2025-10-10 17:13:48,692 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\core\logging_handlers.py changed, reloading.
+INFO 2025-10-10 17:13:53,189 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:13:54,406 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:14:33,067 __main__ test_login_fix test_authentication 31 Test log message with Unicode: ✓ ✗ ★ ♥
+WARNING 2025-10-10 17:14:36,142 accounts.backends backends authenticate 41 App authentication failed: Incorrect password for 08032194090
+INFO 2025-10-10 17:19:52,703 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\forms.py changed, reloading.
+INFO 2025-10-10 17:19:53,018 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\forms.py changed, reloading.
+INFO 2025-10-10 17:19:57,154 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:19:57,340 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:20:51,725 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\forms.py changed, reloading.
+INFO 2025-10-10 17:20:52,019 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\forms.py changed, reloading.
+INFO 2025-10-10 17:20:55,001 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:20:55,015 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:21:14,398 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\views.py changed, reloading.
+INFO 2025-10-10 17:21:14,777 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\accounts\views.py changed, reloading.
+INFO 2025-10-10 17:21:17,901 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:21:18,486 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:25:45,077 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:27:09,105 __main__ test_login_fix test_authentication 31 Test log message with Unicode: ✓ ✗ ★ ♥
+WARNING 2025-10-10 17:27:11,301 accounts.backends backends authenticate 41 App authentication failed: Incorrect password for 08032194090
+INFO 2025-10-10 17:27:59,852 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:30:42,588 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\manage.py changed, reloading.
+INFO 2025-10-10 17:30:42,600 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\manage.py changed, reloading.
+INFO 2025-10-10 17:30:45,686 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:30:45,909 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:31:18,135 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:31:18,820 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:31:21,221 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:31:22,882 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:31:35,034 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:31:35,068 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:31:40,785 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:31:41,016 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:34:04,147 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:34:04,397 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\hms\settings.py changed, reloading.
+INFO 2025-10-10 17:34:07,661 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-10 17:42:28,010 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader

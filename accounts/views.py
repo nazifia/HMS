@@ -1,3 +1,4 @@
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User, Permission
@@ -19,7 +20,9 @@ from django.db import models
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 
@@ -57,19 +60,21 @@ def is_admin(user):
 
 
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib import messages
 from django.urls import reverse
 from django.http import JsonResponse
 from .forms import CustomLoginForm
+from .auth_wrapper import safe_authenticate
 
 def custom_login_view(request):
     """
     Custom login view for application users (using phone numbers).
     Admin users should use /admin/ directly.
+    Uses safe_authenticate to prevent Windows OSError [Errno 22].
     """
-    # Redirect if already logged in
-    if request.user.is_authenticated:
+    # Redirect if already logged in - with safety check for request.user
+    if hasattr(request, 'user') and request.user.is_authenticated:
         return redirect('dashboard:dashboard')
 
     # Handle auto logout scenarios
@@ -104,8 +109,8 @@ def custom_login_view(request):
             username = form.cleaned_data['username']  # This will be phone number
             password = form.cleaned_data['password']
 
-            # Authenticate user (will use PhoneNumberBackend)
-            user = authenticate(request, username=username, password=password)
+            # Use safe authentication to prevent Windows console errors
+            user = safe_authenticate(request, username=username, password=password)
 
             if user is not None:
                 if user.is_active:
@@ -148,12 +153,12 @@ def custom_logout_view(request):
     auto_logout = request.GET.get('auto_logout', '0')
 
     # Log the logout event
-    if request.user.is_authenticated:
+    if hasattr(request, 'user') and request.user.is_authenticated:
         username = request.user.username
         user_id = request.user.id
 
-        # You could log this to audit logs here
-        print(f"User {username} (ID: {user_id}) logged out. Reason: {logout_reason}")
+        # Log to application logs instead of print to avoid Windows OSError
+        logger.info(f"User {username} (ID: {user_id}) logged out. Reason: {logout_reason}")
 
     # Perform logout
     logout(request)
@@ -1315,9 +1320,9 @@ def audit_logs(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Debugging: Print details of each log entry
+    # Debugging: Log details of each log entry (using logger instead of print to avoid Windows OSError)
     for log_entry in page_obj:
-        print(f"Audit Log ID: {log_entry.id}, Details: {log_entry.details}")
+        logger.debug(f"Audit Log ID: {log_entry.id}, Details: {log_entry.details}")
 
     context = {
         'page_obj': page_obj,

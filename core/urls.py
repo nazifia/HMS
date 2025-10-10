@@ -4,6 +4,7 @@ from . import transaction_views
 from . import revenue_views
 from . import reporting_integration
 from . import authorization_views
+from . import admin_views
 
 app_name = 'core'
 
@@ -46,4 +47,17 @@ urlpatterns = [
 
     # Test URL for URL helpers
     path('test-url-helpers/', views.test_url_helpers, name='test_url_helpers'),
+
+    # Admin Management URLs
+    path('admin/', admin_views.admin_dashboard, name='admin_dashboard'),
+    path('admin/activity-log/', admin_views.activity_log_view, name='activity_log'),
+    path('admin/permissions/', admin_views.permission_management, name='permission_management'),
+    path('admin/user-permissions/<int:user_id>/', admin_views.user_permissions_detail, name='user_permissions_detail'),
+    path('admin/security/', admin_views.security_overview, name='security_overview'),
+    path('admin/user-timeline/<int:user_id>/', admin_views.user_activity_timeline, name='user_activity_timeline'),
+    path('admin/audit-report/', admin_views.audit_report, name='audit_report'),
+    
+    # Admin API URLs
+    path('api/admin/activity-stats/', admin_views.api_activity_stats, name='api_activity_stats'),
+    path('api/admin/user-permissions/', admin_views.api_user_permissions, name='api_user_permissions'),
 ]

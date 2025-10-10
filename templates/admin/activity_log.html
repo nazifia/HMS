@@ -1,0 +1,460 @@
+{% extends 'enhanced_base.html' %}
+{% load core_tags %}
+
+{% block title %}Activity Log{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-history me-2"></i>Activity Log
+                </h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'core:admin_dashboard' %}">Admin</a></li>
+                        <li class="breadcrumb-item active">Activity Log</li>
+                    </ol>
+                </nav>
+            </div>
+            <div>
+                <button class="btn btn-outline-primary" onclick="refreshActivityLog()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                </button>
+                <button class="btn btn-primary" onclick="exportActivityLog()">
+                    <i class="fas fa-download me-2"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-primary bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Total Activities</h6>
+                            <h5 class="mb-0" id="total-activities">{{ logs.paginator.count }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-success bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Success Rate</h6>
+                            <h5 class="mb-0" id="success-rate">95%</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-warning bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Warnings</h6>
+                            <h5 class="mb-0" id="warning-count">12</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-danger bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Denied Access</h6>
+                            <h5 class="mb-0" id="denied-count">3</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0">
+                <i class="fas fa-filter me-2"></i>Filters
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" id="filter-form">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-control" name="search" 
+                               value="{{ current_filters.search }}" placeholder="Search users or actions...">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" name="category">
+                            <option value="">All Categories</option>
+                            {% for cat_value, cat_label in categories %}
+                                <option value="{{ cat_value }}" {% if current_filters.category == cat_value %}selected{% endif %}>
+                                    {{ cat_label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Action Type</label>
+                        <select class="form-select" name="action_type">
+                            <option value="">All Actions</option>
+                            {% for action_value, action_label in action_types %}
+                                <option value="{{ action_value }}" {% if current_filters.action_type == action_value %}selected{% endif %}>
+                                    {{ action_label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Level</label>
+                        <select class="form-select" name="level">
+                            <option value="">All Levels</option>
+                            {% for level_value, level_label in levels %}
+                                <option value="{{ level_value }}" {% if current_filters.level == level_value %}selected{% endif %}>
+                                    {{ level_label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Date Range</label>
+                        <div class="input-group">
+                            <input type="date" class="form-control" name="date_from" 
+                                   value="{{ current_filters.date_from }}" placeholder="From">
+                            <input type="date" class="form-control" name="date_to" 
+                                   value="{{ current_filters.date_to }}" placeholder="To">
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-2"></i>Apply Filters
+                        </button>
+                        <a href="{% url 'core:activity_log' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Activity Log Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>Activity Records
+                <span class="badge bg-secondary ms-2">{{ logs.paginator.count }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Category</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>IP Address</th>
+                            <th>Level</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr class="activity-log-item">
+                            <td>
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i>
+                                    {{ log.timestamp|date:"M d, Y H:i:s" }}
+                                </small>
+                            </td>
+                            <td>
+                                {% if log.user %}
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar-small bg-primary d-flex align-items-center justify-content-center text-white me-2">
+                                            {{ log.user.username.0|upper }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold">{{ log.user.get_full_name|default:log.user.username }}</div>
+                                            <small class="text-muted">{{ log.user|get_user_roles }}</small>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">System</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {{ log.category|get_activity_category_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <i class="{{ log.action_type|action_type_icon }} me-2"></i>
+                                {{ log.action_type|get_action_type_display }}
+                            </td>
+                            <td>
+                                {% if log.description|length > 80 %}
+                                    {{ log.description|truncate_chars:80 }}
+                                    <a href="#" class="text-primary" data-bs-toggle="tooltip" title="{{ log.description }}">view more</a>
+                                {% else %}
+                                    {{ log.description }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <code>{{ log.ip_address|default:"N/A" }}</code>
+                            </td>
+                            <td>
+                                <span class="badge {{ log.level|activity_log_level_badge }}">
+                                    {{ log.level|upper }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if log.success %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Success
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times me-1"></i>Failed
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="fas fa-inbox fa-2x text-muted mb-3 d-block"></i>
+                                No activity records found matching the current filters.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if logs.has_other_pages %}
+            <div class="card-footer bg-white border-0">
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 justify-content-center">
+                        {% if logs.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ logs.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ logs.number }} of {{ logs.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if logs.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ logs.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ logs.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Last</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay d-none">
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading activity logs...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Activity Log Management
+function refreshActivityLog() {
+    showLoading();
+    setTimeout(() => {
+        location.reload();
+    }, 500);
+}
+
+function exportActivityLog() {
+    const form = document.getElementById('filter-form');
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    
+    const exportUrl = `{% url 'core:activity_log' %}?export=true&${params.toString()}`;
+    window.open(exportUrl, '_blank');
+}
+
+function showLoading() {
+    document.getElementById('loading-overlay').classList.remove('d-none');
+}
+
+function hideLoading() {
+    document.getElementById('loading-overlay').classList.add('d-none');
+}
+
+// Auto-refresh functionality
+let autoRefreshInterval;
+
+function startAutoRefresh() {
+    autoRefreshInterval = setInterval(() => {
+        console.log('Auto-refreshing activity log...');
+        refreshActivityLog();
+    }, 60000); // Refresh every minute
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Start auto-refresh if not on mobile
+    if (window.innerWidth > 768) {
+        startAutoRefresh();
+    }
+    
+    // Stop auto-refresh when tab is not visible
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else {
+            startAutoRefresh();
+        }
+    });
+});
+
+// Real-time updates using WebSocket (if available)
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}/ws/activity-log/`;
+
+try {
+    const socket = new WebSocket(wsUrl);
+    
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.type === 'activity_update') {
+            console.log('New activity detected:', data);
+            // Show notification or update badge
+            updateActivityBadge();
+        }
+    };
+    
+    socket.onclose = function() {
+        console.log('WebSocket connection closed');
+    };
+} catch (error) {
+    console.log('WebSocket not available, falling back to polling');
+}
+
+function updateActivityBadge() {
+    // Update activity count badge
+    const badge = document.querySelector('.notification-badge');
+    if (badge) {
+        const currentCount = parseInt(badge.textContent) || 0;
+        badge.textContent = currentCount + 1;
+        badge.classList.add('animate-pulse');
+        setTimeout(() => {
+            badge.classList.remove('animate-pulse');
+        }, 2000);
+    }
+}
+</script>
+
+<style>
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    text-align: center;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.activity-log-item {
+    transition: background-color 0.2s ease;
+}
+
+.activity-log-item:hover {
+    background-color: #f8f9fa;
+}
+
+.icon-box {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+</style>
+{% endblock %}

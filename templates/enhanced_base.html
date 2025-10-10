@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Hospital Management System{% endblock %}</title>
+    <title>{% block title %}Hospital Management System - Enhanced{% endblock %}</title>
 
     <!-- Bootstrap 5.3.0 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -20,9 +20,11 @@
     
     <!-- Custom CSS -->
     {% load static %}
+    {% load core_tags %}
     <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
     <link rel="stylesheet" href="{% static 'css/patient_search.css' %}">
     <link rel="stylesheet" href="{% static 'css/enhanced_ui.css' %}">
+    <link rel="stylesheet" href="{% static 'css/role_based_ui.css' %}">
     
     {% block extra_css %}{% endblock %}
     
@@ -421,10 +423,28 @@
                         <span class="notification-badge">3</span>
                     </div>
 
+                    <!-- Role Display Badge -->
+                    {% if user.profile.role %}
+                        <span class="badge bg-primary me-2">{{ user.profile.role|title }}</span>
+                    {% endif %}
+                    
+                    <!-- Activity Log Link (for admins/privileged users) -->
+                    {% if user.is_superuser or 'admin' in user.user_roles %}
+                        <button class="btn btn-outline-secondary btn-sm me-2" onclick="showActivityLog()" title="Activity Log">
+                            <i class="fas fa-history"></i>
+                        </button>
+                    {% endif %}
+                    
+                    <!-- Notifications -->
+                    <div class="notification-bell">
+                        <i class="fas fa-bell text-muted"></i>
+                        <span class="notification-badge">3</span>
+                    </div>
+
                     <!-- User Dropdown -->
                     <div class="dropdown user-dropdown" data-bs-toggle="dropdown">
-                        {% if user.profile and user.profile.photo %}
-                            <img src="{{ user.profile.photo.url }}" alt="{{ user.get_full_name|default:user.username }}" class="user-avatar-small">
+                        {% if user.profile.profile_picture %}
+                            <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.get_full_name|default:user.username }}" class="user-avatar-small">
                         {% else %}
                             <div class="user-avatar-small bg-primary d-flex align-items-center justify-content-center text-white">
                                 {{ user.username.0|upper }}
@@ -437,7 +457,14 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">{{ user.profile.role|default:'User' }}</h6></li>
+                        <li>
+                            <h6 class="dropdown-header d-flex align-items-center justify-content-between">
+                                <span>{{ user.get_role|default:'User' }}</span>
+                                {% if user.profile.department %}
+                                    <small class="badge bg-light text-dark">{{ user.profile.department }}</small>
+                                {% endif %}
+                            </h6>
+                        </li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
                             <i class="fas fa-user me-2"></i>Profile
@@ -445,6 +472,21 @@
                         <li><a class="dropdown-item" href="{% url 'accounts:settings' %}">
                             <i class="fas fa-cog me-2"></i>Settings
                         </a></li>
+                        
+                        <!-- Admin-only options -->
+                        {% if user.is_superuser or 'admin' in user.user_roles %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_activity_log' %}">
+                            <i class="fas fa-history me-2"></i>Activity Log
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_permissions' %}">
+                            <i class="fas fa-shield-alt me-2"></i>Permissions
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_user_management' %}">
+                            <i class="fas fa-users me-2"></i>User Management
+                        </a></li>
+                        {% endif %}
+                        
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">
                             <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -620,6 +662,596 @@
                 console.log('Service Worker registration failed:', error);
             });
         }
+
+        // Activity Log Modal Functions
+        function showActivityLog() {
+            loadActivityLogContent();
+            const modal = new bootstrap.Modal(document.getElementById('activityLogModal'));
+            modal.show();
+        }
+
+        function loadActivityLogContent() {
+            const loading = document.getElementById('activity-loading');
+            const content = document.getElementById('activity-log-content');
+            
+            loading.style.display = 'block';
+            content.innerHTML = '';
+            
+            // Simulate loading activity data
+            setTimeout(() => {
+                content.innerHTML = `
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><small>2 min ago</small></td>
+                                    <td>John Doe</td>
+                                    <td><span class="badge bg-success">Login</span></td>
+                                    <td>User logged in successfully</td>
+                                    <td><i class="fas fa-check-circle text-success"></i></td>
+                                </tr>
+                                <tr>
+                                    <td><small>5 min ago</small></td>
+                                    <td>Dr. Smith</td>
+                                    <td><span class="badge bg-info">View</span></td>
+                                    <td>Viewed patient record</td>
+                                    <td><i class="fas fa-check-circle text-success"></i></td>
+                                </tr>
+                                <tr>
+                                    <td><small>8 min ago</small></td>
+                                    <td>Nurse Johnson</td>
+                                    <td><span class="badge bg-warning">Update</span></td>
+                                    <td>Updated patient vitals</td>
+                                    <td><i class="fas fa-check-circle text-success"></i></td>
+                                </tr>
+                                <tr>
+                                    <td><small>15 min ago</small></td>
+                                    <td>Unknown</td>
+                                    <td><span class="badge bg-danger">Failed Login</span></td>
+                                    <td>Invalid credentials attempted</td>
+                                    <td><i class="fas fa-times-circle text-danger"></i></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                loading.style.display = 'none';
+            }, 1000);
+        }
+
+        function refreshActivityModal() {
+            loadActivityLogContent();
+        }
+
+        function exportActivityLog() {
+            alert('Export functionality would be implemented here');
+        }
+
+        function showQuickActivityLog() {
+            loadQuickActivityContent();
+            const modal = new bootstrap.Modal(document.getElementById('quickActivityModal'));
+            modal.show();
+        }
+
+        function loadQuickActivityContent() {
+            const container = document.getElementById('quick-activity-content');
+            
+            container.innerHTML = `
+                <div class="p-3">
+                    <div class="activity-timeline">
+                        <div class="activity-item d-flex align-items-start mb-3 p-3 border rounded">
+                            <div class="activity-icon me-3">
+                                <i class="fas fa-check-circle text-success"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">Dr. Smith</div>
+                                        <div class="text-muted small">Viewed patient record</div>
+                                    </div>
+                                    <small class="text-muted">2 min ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-item d-flex align-items-start mb-3 p-3 border rounded">
+                            <div class="activity-icon me-3">
+                                <i class="fas fa-edit text-info"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">Nurse Johnson</div>
+                                        <div class="text-muted small">Updated patient vitals</div>
+                                    </div>
+                                    <small class="text-muted">5 min ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-item d-flex align-items-start mb-3 p-3 border rounded">
+                            <div class="activity-icon me-3">
+                                <i class="fas fa-sign-in-alt text-success"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">Dr. Williams</div>
+                                        <div class="text-muted small">Logged in</div>
+                                    </div>
+                                    <small class="text-muted">10 min ago</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showFullActivityLog() {
+            bootstrap.Modal.getInstance(document.getElementById('quickActivityModal')).hide();
+            showActivityLog();
+        }
+
+        // User Management Functions
+        function showUserManagementModal() {
+            loadUsersData();
+            const modal = new bootstrap.Modal(document.getElementById('userManagementModal'));
+            modal.show();
+        }
+
+        function loadUsersData() {
+            const tbody = document.getElementById('users-table-body');
+            
+            // Simulate loading user data
+            tbody.innerHTML = `
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 12px;">
+                                JD
+                            </div>
+                            <div>
+                                <div class="fw-semibold">John Doe</div>
+                                <small class="text-muted">john.doe@hospital.com</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-success">Admin</span></td>
+                    <td>Administration</td>
+                    <td><span class="badge bg-success">Active</span></td>
+                    <td>2 hours ago</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="editUser(1)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteUser(1)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-placeholder bg-info text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 12px;">
+                                DS
+                            </div>
+                            <div>
+                                <div class="fw-semibold">Dr. Sarah Smith</div>
+                                <small class="text-muted">sarah.smith@hospital.com</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-primary">Doctor</span></td>
+                    <td>General Medicine</td>
+                    <td><span class="badge bg-success">Active</span></td>
+                    <td>30 min ago</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="editUser(2)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteUser(2)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function showCreateUserModal() {
+            // Load departments via AJAX (simulated)
+            const departmentSelect = document.getElementById('new-user-department');
+            departmentSelect.innerHTML = `
+                <option value="">Select Department</option>
+                <option value="administration">Administration</option>
+                <option value="general_medicine">General Medicine</option>
+                <option value="pharmacy">Pharmacy</option>
+                <option value="laboratory">Laboratory</option>
+                <option value="radiology">Radiology</option>
+                <option value="billing">Billing</option>
+            `;
+            
+            // Close user management modal if open and show create user modal
+            const userMgmtModal = bootstrap.Modal.getInstance(document.getElementById('userManagementModal'));
+            if (userMgmtModal) {
+                userMgmtModal.hide();
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
+            modal.show();
+        }
+
+        function createNewUser() {
+            const form = document.getElementById('create-user-form');
+            
+            // Simple validation
+            const username = document.getElementById('new-user-username').value;
+            const firstName = document.getElementById('new-user-first_name').value;
+            const lastName = document.getElementById('new-user-last_name').value;
+            const phone = document.getElementById('new-user-phone').value;
+            const role = document.getElementById('new-user-role').value;
+            
+            if (!username || !firstName || !lastName || !phone || !role) {
+                alert('Please fill in all required fields marked with *');
+                return;
+            }
+            
+            // Simulate user creation
+            alert('User created successfully! (This would be implemented with actual API call)');
+            
+            // Close modal and refresh user list
+            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+            showUserManagementModal();
+        }
+
+        function editUser(userId) {
+            alert(`Edit user ${userId} functionality would be implemented here`);
+        }
+
+        function deleteUser(userId) {
+            if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+                alert(`User ${userId} deleted successfully! (This would be implemented with actual API call)`);
+                loadUsersData();
+            }
+        }
+
+        // Filter functions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup filter listeners
+            const roleFilter = document.getElementById('activity-role-filter');
+            const categoryFilter = document.getElementById('activity-category-filter');
+            
+            if (roleFilter) {
+                roleFilter.addEventListener('change', function() {
+                    loadActivityLogContent();
+                });
+            }
+            
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', function() {
+                    loadActivityLogContent();
+                });
+            }
+            
+            // Setup user filters
+            const userSearch = document.getElementById('user-search');
+            const userRoleFilter = document.getElementById('user-role-filter-modal');
+            const userStatusFilter = document.getElementById('user-status-filter-modal');
+            
+            if (userSearch) {
+                userSearch.addEventListener('input', function() {
+                    loadUsersData();
+                });
+            }
+            
+            if (userRoleFilter) {
+                userRoleFilter.addEventListener('change', function() {
+                    loadUsersData();
+                });
+            }
+            
+            if (userStatusFilter) {
+                userStatusFilter.addEventListener('change', function() {
+                    loadUsersData();
+                });
+            }
+        });
+
+        // Add notification badge functionality
+        function updateNotificationCount() {
+            const badge = document.querySelector('.notification-badge');
+            if (badge) {
+                // Simulate notification updates
+                setInterval(() => {
+                    const currentCount = parseInt(badge.textContent) || 0;
+                    badge.textContent = Math.max(0, currentCount + Math.floor(Math.random() * 3) - 1);
+                }, 30000); // Update every 30 seconds
+            }
+        }
+
+        // Initialize notification updates when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationCount();
+        });
     </script>
+
+    <!-- Activity Log & User Management Modals -->
+    <!-- Modal for Activity Log -->
+    <div class="modal fade" id="activityLogModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-history me-2"></i>Activity Log
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="activity-log-container">
+                        <!-- Loading indicator -->
+                        <div class="data-loading" id="activity-loading">
+                            <div class="loader"></div>
+                            <p>Loading activity log...</p>
+                        </div>
+                        
+                        <!-- Content loaded via AJAX -->
+                        <div id="activity-log-content">
+                            <!-- Will be populated by AJAX -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <div>
+                            <select class="form-select form-select-sm" id="activity-role-filter" style="width: 150px;">
+                                <option value="">All Roles</option>
+                                <option value="admin">Admin</option>
+                                <option value="doctor">Doctor</option>
+                                <option value="nurse">Nurse</option>
+                                <option value="pharmacist">Pharmacist</option>
+                            </select>
+                            <select class="form-select form-select-sm ms-2" id="activity-category-filter" style="width: 150px;">
+                                <option value="">All Categories</option>
+                                <option value="authentication">Authentication</option>
+                                <option value="user_management">User Management</option>
+                                <option value="patient_management">Patient Management</option>
+                                <option value="billing">Billing</option>
+                                <option value="pharmacy">Pharmacy</option>
+                                <option value="security">Security</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary" onclick="refreshActivityModal()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" onclick="exportActivityLog()">
+                                <i class="fas fa-download me-2"></i>Export
+                            </button>
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Modal -->
+    <div class="modal fade" id="userManagementModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-users me-2"></i>User Management
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="user-search" placeholder="Search users...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="user-role-filter-modal">
+                                <option value="">All Roles</option>
+                                <option value="admin">Admin</option>
+                                <option value="doctor">Doctor</option>
+                                <option value="nurse">Nurse</option>
+                                <option value="pharmacist">Pharmacist</option>
+                                <option value="receptionist">Receptionist</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="user-status-filter-modal">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="users-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Will be populated via AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="showCreateUserModal()">
+                        <i class="fas fa-user-plus me-2"></i>Create New User
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div class="modal fade" id="createUserModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-plus me-2"></i>Create New User
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-user-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-username" class="form-label">Username *</label>
+                                    <input type="text" class="form-control" id="new-user-username" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="new-user-email">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-first_name" class="form-label">First Name *</label>
+                                    <input type="text" class="form-control" id="new-user-first_name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-last_name" class="form-label">Last Name *</label>
+                                    <input type="text" class="form-control" id="new-user-last_name" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-phone" class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="new-user-phone" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-role" class="form-label">Role *</label>
+                                    <select class="form-select" id="new-user-role" required>
+                                        <option value="">Select Role</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="doctor">Doctor</option>
+                                        <option value="nurse">Nurse</option>
+                                        <option value="pharmacist">Pharmacist</option>
+                                        <option value="lab_technician">Lab Technician</option>
+                                        <option value="radiology_staff">Radiology Staff</option>
+                                        <option value="accountant">Accountant</option>
+                                        <option value="receptionist">Receptionist</option>
+                                        <option value="health_record_officer">Health Record Officer</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-password" class="form-label">Password *</label>
+                                    <input type="password" class="form-control" id="new-user-password" required>
+                                    <div class="form-text">Leave blank to generate random password</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new-user-department" class="form-label">Department</label>
+                                    <select class="form-select" id="new-user-department">
+                                        <option value="">Select Department</option>
+                                        <!-- Departments will be loaded via AJAX -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="new-user-active" checked>
+                                    <label class="form-check-label" for="new-user-active">
+                                        Active
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="new-user-address" class="form-label">Address</label>
+                                    <textarea class="form-control" id="new-user-address" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="createNewUser()">
+                        <i class="fas fa-user-plus me-2"></i>Create User
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Activity Log Modal (Compact View) -->
+    <div class="modal fade" id="quickActivityModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-gradient bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-history me-2"></i>Recent Activities
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div id="quick-activity-content" style="max-height: 500px; overflow-y: auto;">
+                        <!-- Will be populated via AJAX -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" onclick="showFullActivityLog()">
+                        <i class="fas fa-expand me-2"></i>View Full Log
+                    </button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

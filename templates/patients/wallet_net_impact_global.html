@@ -129,12 +129,17 @@
                                     ₦{{ item.net_impact|add:item.balance|floatformat:2 }}
                                 </td>
                                 <td>
-                                    <a href="{% url 'patients:wallet_dashboard' item.wallet.patient.id %}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    <a href="{% url 'patients:wallet_net_impact' item.wallet.patient.id %}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-calculator"></i> Calculate
-                                    </a>
+                                    {% load patient_tags %}
+                                    {% if item.wallet.patient %}
+                                        <a href="{% safe_wallet_dashboard_url item.wallet.patient.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <a href="{% safe_wallet_net_impact_url item.wallet.patient.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-calculator"></i> Calculate
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">No patient associated</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

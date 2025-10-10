@@ -15,7 +15,7 @@ User = CustomUser
 
 class CustomLoginForm(AuthenticationForm):
     """
-    Custom login form.
+    Custom login form with Windows OSError handling.
     Uses Django's AuthenticationForm as a base for better integration.
     The 'username' field from AuthenticationForm will be used for CustomUser.USERNAME_FIELD (phone_number).
     """
@@ -26,14 +26,45 @@ class CustomLoginForm(AuthenticationForm):
     )
     # Password field is inherited from AuthenticationForm
 
-    # If you want to allow login with *either* phone_number or username,
-    # you'd need a custom authentication backend. The form itself doesn't handle that.
-    # For now, this form submits what's entered in 'username' field as the 'username'
-    # parameter to the `authenticate` function.
-
     def clean(self):
-        cleaned_data = super().clean()
-        return cleaned_data
+        """
+        Override clean to handle OSError [Errno 22] on Windows.
+        Uses safe_authenticate wrapper to prevent console encoding errors.
+        """
+        username = self.cleaned_data.get('username')
+        password = self.cleaned_data.get('password')
+
+        if username is not None and password:
+            try:
+                # Use safe authentication wrapper to prevent OSError
+                from accounts.auth_wrapper import safe_authenticate
+
+                # Safely authenticate without risking console errors
+                self.user_cache = safe_authenticate(
+                    self.request,
+                    username=username,
+                    password=password
+                )
+
+                if self.user_cache is None:
+                    raise self.get_invalid_login_error()
+                else:
+                    self.confirm_login_allowed(self.user_cache)
+
+            except forms.ValidationError:
+                # Re-raise validation errors as-is
+                raise
+            except Exception as e:
+                # Log any other unexpected errors
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Unexpected error during form authentication: {e}", exc_info=True)
+                raise forms.ValidationError(
+                    "An unexpected error occurred. Please try again.",
+                    code='unexpected_error',
+                )
+
+        return self.cleaned_data
 
 
 class CustomUserCreationForm(UserCreationForm):

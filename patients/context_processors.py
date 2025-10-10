@@ -16,7 +16,13 @@ def current_patient_context(request):
     """
     patient_context = None
 
-    # Check if there's a patient ID in the session
+    # Check if there's a patient ID in the session - with safety check
+    if not hasattr(request, 'session'):
+        return {
+            'current_patient': patient_context,
+            'has_current_patient': patient_context is not None,
+        }
+    
     patient_id = request.session.get('current_patient_id')
 
     if patient_id:

@@ -960,43 +960,53 @@ def wallet_list(request):
 
 
 @login_required
-def wallet_net_impact(request, patient_id=None):
+def wallet_net_impact_fallback(request):
+    """Fallback view for wallet_net_impact URL when no patient_id is provided"""
+    # When no patient_id is provided, redirect to the global net impact view
+    return redirect('patients:wallet_net_impact_global')
+
+
+@login_required
+def wallet_net_impact_global(request):
     """View for analyzing and applying net impact to patient wallet"""
-    # If no patient_id is provided, show the global net impact report
-    if patient_id is None:
-        # Get all wallets with their net impact
-        wallets = PatientWallet.objects.select_related('patient').all()
-        
-        # Calculate net impact for each wallet
-        wallet_data = []
-        total_net_impact = 0
-        total_balance = 0
-        
-        for wallet in wallets:
-            net_impact = wallet.get_total_wallet_impact_with_admissions()
-            wallet_data.append({
-                'wallet': wallet,
-                'net_impact': net_impact,
-                'balance': wallet.balance,
-            })
-            total_net_impact += net_impact
-            total_balance += wallet.balance
-        
-        # Calculate difference
-        difference = total_net_impact - total_balance
-        
-        context = {
-            'wallet_data': wallet_data,
-            'total_net_impact': total_net_impact,
-            'total_balance': total_balance,
-            'difference': difference,
-            'total_wallets': len(wallet_data),
-            'page_title': 'Wallet Net Impact',
-            'active_nav': 'wallet',
-        }
-        
-        return render(request, 'patients/wallet_net_impact_global.html', context)
+    # Show the global net impact report
+    # Get all wallets with their net impact
+    wallets = PatientWallet.objects.select_related('patient').filter(patient__isnull=False)
     
+    # Calculate net impact for each wallet
+    wallet_data = []
+    total_net_impact = 0
+    total_balance = 0
+    
+    for wallet in wallets:
+        net_impact = wallet.get_total_wallet_impact_with_admissions()
+        wallet_data.append({
+            'wallet': wallet,
+            'net_impact': net_impact,
+            'balance': wallet.balance,
+        })
+        total_net_impact += net_impact
+        total_balance += wallet.balance
+    
+    # Calculate difference
+    difference = total_net_impact - total_balance
+    
+    context = {
+        'wallet_data': wallet_data,
+        'total_net_impact': total_net_impact,
+        'total_balance': total_balance,
+        'difference': difference,
+        'total_wallets': len(wallet_data),
+        'page_title': 'Wallet Net Impact',
+        'active_nav': 'wallet',
+    }
+    
+    return render(request, 'patients/wallet_net_impact_global.html', context)
+
+
+@login_required
+def wallet_net_impact(request, patient_id):
+    """View for showing patient's wallet net impact analysis"""
     patient = get_object_or_404(Patient, id=patient_id)
     
     # Get or create wallet for patient

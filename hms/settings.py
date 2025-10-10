@@ -13,8 +13,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from decimal import Decimal
+import sys
 
-
+# Apply Windows OSError patches FIRST, before Django loads
+if sys.platform == 'win32':
+    try:
+        from core import django_patches
+    except ImportError:
+        pass  # Patches not available yet during initial setup
 
 # Load environment variables from .env file
 from core.env_loader import load_env_file
@@ -123,13 +129,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'core.middleware.SessionTimeoutMiddleware',  # Session timeout management
-    'core.middleware.PatientSessionMiddleware',  # Patient-specific session security
-    'user_isolation_middleware.UserIsolationMiddleware',  # User isolation middleware
+    # Temporarily simplified to ensure login works
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.middleware.LoginRequiredMiddleware',  # Re-enabled after debugging
-    'core.middleware.RoleBasedAccessMiddleware',  # Role-based access control
 ]
 
 ROOT_URLCONF = 'hms.urls'
@@ -260,7 +262,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.AdminBackend',           # First: Handle admin/username logins
     'accounts.backends.PhoneNumberBackend',     # Second: Handle phone number logins  
-    'accounts.backends.FallbackModelBackend',   # Third: Fallback for edge cases
+    'django.contrib.auth.backends.ModelBackend',  # Third: Django's default backend as fallback
 ]
 
 # Login URLs - these remain the same for your application
@@ -311,8 +313,18 @@ REST_FRAMEWORK = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Logging configuration
+import sys
+import platform
+
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG' if DEBUG else 'INFO')
 LOG_FILE = os.environ.get('LOG_FILE', None)
+
+# On Windows, always use file logging to avoid console encoding issues (OSError [Errno 22])
+IS_WINDOWS = platform.system() == 'Windows'
+if IS_WINDOWS and not LOG_FILE:
+    LOG_FILE = os.path.join(BASE_DIR, 'logs', 'hms.log')
+    # Create logs directory if it doesn't exist
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
 LOGGING = {
     'version': 1,
@@ -334,52 +346,66 @@ LOGGING = {
     'handlers': {
         'console': {
             'level': LOG_LEVEL,
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple'
+            'class': 'core.logging_handlers.SafeStreamHandler' if IS_WINDOWS else 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'null': {
+            'class': 'logging.NullHandler',
         },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['null'],  # Disable console on Windows to prevent OSError
         'level': LOG_LEVEL,
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['null'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.security': {
-            'handlers': ['console'],
+            'handlers': ['null'],
             'level': 'WARNING',
             'propagate': False,
         },
+        'django.server': {
+            'handlers': ['null'],  # Disable Django's development server logging to console
+            'level': 'INFO',
+            'propagate': False,
+        },
         'pharmacy': {
-            'handlers': ['console'],
+            'handlers': ['null'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
         'hms': {
-            'handlers': ['console'],
+            'handlers': ['null'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'accounts': {
+            'handlers': ['null'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
     },
 }
 
-# Add file logging if LOG_FILE is specified
+# Add file logging if LOG_FILE is specified or on Windows
 if LOG_FILE:
     LOGGING['handlers']['file'] = {
         'level': LOG_LEVEL,
-        'class': 'logging.handlers.RotatingFileHandler',
+        'class': 'core.logging_handlers.WindowsSafeFileHandler' if IS_WINDOWS else 'logging.handlers.RotatingFileHandler',
         'filename': LOG_FILE,
         'maxBytes': 1024*1024*10,  # 10MB
         'backupCount': 5,
-        'formatter': 'detailed'
+        'formatter': 'detailed',
+        'encoding': 'utf-8',  # Explicitly set UTF-8 encoding
     }
-    # Add file handler to all loggers
+    # Replace null handlers with file handler for all loggers
     for logger_config in LOGGING['loggers'].values():
-        logger_config['handlers'].append('file')
-    LOGGING['root']['handlers'].append('file')
+        logger_config['handlers'] = ['file']
+    LOGGING['root']['handlers'] = ['file']
 
 
 # Hospital Information

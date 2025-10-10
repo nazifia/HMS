@@ -1,31 +1,109 @@
-{% extends 'base.html' %}
+{% extends 'enhanced_base.html' %}
 {% load static %}
+{% load core_tags %}
 
 {% block title %}{{ patient.get_full_name }} - Patient Details{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Patient Details</h1>
-        <div>
-            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-sm">
-                <i class="fas fa-edit fa-sm text-white-50"></i> Edit Patient
-            </a>
-            <a href="{% url 'patients:list' %}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
-            </a>
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-user-injured me-2"></i>{{ patient.get_full_name }}
+                    {% if user|has_permission:'access_sensitive_data' %}
+                        <sup class="text-muted" title="You have access to sensitive data">
+                            <i class="fas fa-shield-alt"></i>
+                        </sup>
+                    {% endif %}
+                </h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+                        <li class="breadcrumb-item active">{{ patient.get_full_name }}</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="d-flex gap-2">
+                {% if user|has_permission:'edit_patient' or user.is_superuser %}
+                    <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>Edit Patient
+                    </a>
+                {% endif %}
+                {% if user|has_permission:'delete_patient' or user.is_superuser %}
+                    <button class="btn btn-danger" onclick="confirmDeletePatient()">
+                        <i class="fas fa-trash me-2"></i>Delete
+                    </button>
+                    {% get_permission_indicator user 'delete_patient' %}
+                {% endif %}
+                {% if not user|has_permission:'edit_patient' and not user.is_superuser %}
+                    <div class="text-muted">
+                        <i class="fas fa-lock me-2"></i>Limited access - Contact admin for editing
+                    </div>
+                {% endif %}
+                <a href="{% url 'patients:list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- Content Row -->
     <div class="row">
+        <!-- Role-based action panel -->
+        <div class="col-12 mb-3">
+            {% if user.is_authenticated %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar-small bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                        {{ user.username.0|upper }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
+                                        <div class="text-muted small">
+                                            <span class="badge {{ user.profile.role|get_role_badge_class }}">{{ user.profile.role|default:'Guest' }}</span>
+                                            {% if user.profile.department %}
+                                                <span class="ms-1">{{ user.profile.department }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                {% get_permission_indicator user 'access_sensitive_data' %}
+                                <div class="btn-group btn-group-sm ms-2">
+                                    {% if user|has_any_permission:'create_patient,view_patients' %}
+                                        <button class="btn btn-outline-primary" onclick="showActivityLog()" title="View Activity">
+                                            <i class="fas fa-history"></i>
+                                        </button>
+                                    {% endif %}
+                                    {% if user|has_permission:'create_prescription' %}
+                                        <a href="#" onclick="createPrescription()" class="btn btn-success" title="Create Prescription">
+                                            <i class="fas fa-prescription"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
         <!-- Patient Information Card -->
         <div class="col-xl-4 col-lg-5">
-            <div class="card shadow mb-4">
+            <div class="card border-0 shadow-sm mb-4">
                 <!-- Card Header -->
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
                     <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                    {% if user|has_permission:'access_sensitive_data' %}
+                        <span class="badge bg-info">Full Access</span>
+                    {% endif %}
                 </div>
                 <!-- Card Body -->
                 <div class="card-body">
@@ -121,55 +199,146 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <!-- Functional quick actions -->
+                        <!-- Permission-based quick actions -->
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-warning btn-block">
-                                <i class="fas fa-flask"></i> Order Lab Tests
-                            </a>
+                            {% if user|has_permission:'create_test_request' or user.is_superuser %}
+                                <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-warning btn-block">
+                                    <i class="fas fa-flask"></i> Order Lab Tests
+                                </a>
+                            {% else %}
+                                <button class="btn btn-warning btn-block disabled" {% if not user|has_permission:'create_test_request' %}title="Permission required"{% endif %}>
+                                    <i class="fas fa-flask me-2"></i>Order Lab Tests
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'create_test_request' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'radiology:order' patient.id %}" class="btn btn-info btn-block">
-                                <i class="fas fa-x-ray"></i> Order Radiology
-                            </a>
+                            {% if user|has_permission:'create_radiology_request' or user.is_superuser %}
+                                <a href="{% url 'radiology:order' patient.id %}" class="btn btn-info btn-block">
+                                    <i class="fas fa-x-ray"></i> Order Radiology
+                                </a>
+                            {% else %}
+                                <button class="btn btn-info btn-block disabled" {% if not user|has_permission:'create_radiology_request' %}title="Permission required"{% endif %}>
+                                    <i class="fas fa-x-ray me-2"></i>Order Radiology
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'create_radiology_request' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <button type="button" class="btn btn-success btn-block" data-bs-toggle="modal" data-bs-target="#consultationModal">
-                                <i class="fas fa-stethoscope"></i> New Consultation
-                            </button>
+                            {% if user|has_permission:'create_appointment' or user.is_superuser %}
+                                <button type="button" class="btn btn-success btn-block" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                                    <i class="fas fa-stethoscope"></i> New Consultation
+                                </button>
+                            {% else %}
+                                <button class="btn btn-success btn-block disabled" title="Permission required">
+                                    <i class="fas fa-stethoscope me-2"></i>New Consultation
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'create_appointment' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'consultations:create_referral' patient.id %}" class="btn btn-danger btn-block">
-                                <i class="fas fa-user-md"></i> Refer Patient
-                            </a>
+                            {% if user|has_permission:'refer_patient' or user.is_superuser %}
+                                <a href="{% url 'consultations:create_referral' patient.id %}" class="btn btn-danger btn-block">
+                                    <i class="fas fa-user-md"></i> Refer Patient
+                                </a>
+                            {% else %}
+                                <button class="btn btn-danger btn-block disabled" title="Permission required">
+                                    <i class="fas fa-user-md me-2"></i>Refer Patient
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'refer_patient' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'inpatient:create_admission' %}?patient_id={{ patient.id }}" class="btn btn-secondary btn-block">
-                                <i class="fas fa-procedures"></i> Admit Patient
-                            </a>
+                            {% if user|has_permission:'manage_patient_admission' or user.is_superuser %}
+                                <a href="{% url 'inpatient:create_admission' %}?patient_id={{ patient.id }}" class="btn btn-secondary btn-block">
+                                    <i class="fas fa-procedures"></i> Admit Patient
+                                </a>
+                            {% else %}
+                                <button class="btn btn-secondary btn-block disabled" title="Permission required">
+                                    <i class="fas fa-procedures me-2"></i>Admit Patient
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'manage_patient_admission' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'appointments:create' %}?patient={{ patient.id }}" class="btn btn-primary btn-block">
-                                <i class="fas fa-calendar-plus"></i> New Appointment
-                            </a>
+                            {% if user|has_permission:'create_appointment' or user.is_superuser %}
+                                <a href="{% url 'appointments:create' %}?patient={{ patient.id }}" class="btn btn-primary btn-block">
+                                    <i class="fas fa-calendar-plus"></i> New Appointment
+                                </a>
+                            {% else %}
+                                <button class="btn btn-primary btn-block disabled" title="Permission required">
+                                    <i class="fas fa-calendar-plus me-2"></i>New Appointment
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'create_appointment' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'billing:create' %}?patient={{ patient.id }}" class="btn btn-success btn-block">
-                                <i class="fas fa-file-invoice-dollar"></i> New Invoice
-                            </a>
+                            {% if user|has_permission:'create_invoice' or user.is_superuser %}
+                                <a href="{% url 'billing:create' %}?patient={{ patient.id }}" class="btn btn-success btn-block">
+                                    <i class="fas fa-file-invoice-dollar"></i> New Invoice
+                                </a>
+                            {% else %}
+                                <button class="btn btn-success btn-block disabled" title="Permission required">
+                                    <i class="fas fa-file-invoice-dollar me-2"></i>New Invoice
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'create_invoice' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <button type="button" class="btn btn-secondary btn-block" data-bs-toggle="modal" data-bs-target="#vitalsModal">
-                                <i class="fas fa-heartbeat"></i> Record Vitals
-                            </button>
+                            {% if user|has_permission:'manage_vitals' or user.is_superuser %}
+                                <button type="button" class="btn btn-secondary btn-block" data-bs-toggle="modal" data-bs-target="#vitalsModal">
+                                    <i class="fas fa-heartbeat"></i> Record Vitals
+                                </button>
+                            {% else %}
+                                <button class="btn btn-secondary btn-block disabled" title="Permission required">
+                                    <i class="fas fa-heartbeat me-2"></i>Record Vitals
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'manage_vitals' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'laboratory:patient_tests' patient.id %}" class="btn btn-info btn-block">
-                                <i class="fas fa-vials"></i> View Lab Test Results
-                            </a>
+                            {% if user|has_permission:'view_tests' or user.is_superuser %}
+                                <a href="{% url 'laboratory:patient_tests' patient.id %}" class="btn btn-info btn-block">
+                                    <i class="fas fa-vials"></i> View Lab Test Results
+                                </a>
+                            {% else %}
+                                <button class="btn btn-info btn-block disabled" title="Permission required">
+                                    <i class="fas fa-vials me-2"></i>View Lab Results
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'view_tests' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <button type="button" class="btn btn-warning btn-block" data-bs-toggle="modal" data-bs-target="#prescriptionModal">
-                                <i class="fas fa-pills"></i> Prescribe Medication
+                            {% if user|has_permission:'create_prescription' or user.is_superuser %}
+                                <button type="button" class="btn btn-warning btn-block" data-bs-toggle="modal" data-bs-target="#prescriptionModal">
+                                    <i class="fas fa-pills"></i> Prescribe Medication
+                                </button>
+                            {% else %}
+                                <button class="btn btn-warning btn-block disabled" title="Permission required">
+                                    <i class="fas fa-pills me-2"></i>Prescribe Medication
+                                    <span class="permission-indicator">
+                                        {% get_permission_indicator user 'create_prescription' %}
+                                    </span>
+                                </button>
+                            {% endif %}
                             </button>
                         </div>
                         <div class="col-md-6 mb-3">

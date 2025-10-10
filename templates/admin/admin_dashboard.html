@@ -1,0 +1,479 @@
+{% extends 'enhanced_base.html' %}
+{% load core_tags %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-shield-alt me-2 text-primary"></i>Admin Dashboard
+                </h1>
+                <p class="text-muted mb-0">System administration and security monitoring</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                </button>
+                <a href="{% url 'core:audit_report' %}" class="btn btn-primary">
+                    <i class="fas fa-file-alt me-2"></i>Audit Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-primary bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Total Users</h6>
+                            <h3 class="mb-0">{{ total_users }}</h3>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-primary" style="width: {{ active_users|mul:100|div:total_users }}%"></div>
+                    </div>
+                    <small class="text-muted">{{ active_users }} active users</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-success bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Today's Activities</h6>
+                            <h3 class="mb-0">{{ total_activities_today }}</h3>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-clock text-muted me-2"></i>
+                        <small class="text-muted">{{ recent_logins }} recent logins</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-warning bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Failed Logins</h6>
+                            <h3 class="mb-0 text-warning">{{ failed_logins }}</h3>
+                        </div>
+                    </div>
+                    <small class="text-muted">Last 24 hours</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-danger bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Access Denied</h6>
+                            <h3 class="mb-0 text-danger">{{ permission_denied }}</h3>
+                        </div>
+                    </div>
+                    <small class="text-muted">Permission issues</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts and Activity -->
+    <div class="row">
+        <!-- Activity Categories Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Activity by Category
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="activity-chart-container">
+                        <canvas id="activityChart" height="300"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        {% for item in activity_by_category %}
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2">
+                                    <span class="badge bg-light text-dark">{{ item.category|title }}</span>
+                                </div>
+                                <small class="text-muted">{{ item.count }} activities</small>
+                            </div>
+                            <div class="progress" style="width: 60px; height: 4px;">
+                                <div class="progress-bar bg-primary" style="width: {{ item.count|mul:100|div:total_activities_today }}%"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center">No activity data available for today.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activities -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Activities
+                    </h5>
+                    <a href="{% url 'core:activity_log' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="activity-timeline">
+                        {% for activity in recent_activities %}
+                        <div class="activity-item d-flex p-3 border-bottom">
+                            <div class="activity-time me-3">
+                                <small class="text-muted">{{ activity.timestamp|date:"H:i" }}</small>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-start">
+                                    <div class="activity-icon me-3">
+                                        {% if activity.success %}
+                                            <i class="fas fa-check-circle text-success"></i>
+                                        {% else %}
+                                            <i class="fas fa-exclamation-circle text-danger"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="activity-user">
+                                            {% if activity.user %}
+                                                <strong>{{ activity.user.get_full_name|default:activity.user.username }}</strong>
+                                            {% else %}
+                                                <strong>System</strong>
+                                            {% endif %}
+                                        </div>
+                                        <div class="activity-action">
+                                            <i class="{{ activity.action_type|action_type_icon }} text-muted me-1"></i>
+                                            {{ activity.action_type|get_action_type_display }}
+                                        </div>
+                                        <div class="activity-description text-muted small">
+                                            {{ activity.description|truncate_chars:80 }}
+                                        </div>
+                                    </div>
+                                    <div class="activity-category">
+                                        <span class="badge bg-light text-dark">{{ activity.category|title }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="p-4 text-center">
+                            <i class="fas fa-inbox text-muted mb-3 d-block fa-2x"></i>
+                            <p class="text-muted">No recent activities found.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="{% url 'core:activity_log' %}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-history fa-2x mb-2"></i>
+                                <span>View Activity Log</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'core:permission_management' %}" class="btn btn-outline-success w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-shield-alt fa-2x mb-2"></i>
+                                <span>Manage Permissions</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'core:security_overview' %}" class="btn btn-outline-warning w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-lock fa-2x mb-2"></i>
+                                <span>Security Overview</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'core:audit_report' %}" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-file-alt fa-2x mb-2"></i>
+                                <span>Audit Reports</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-heartbeat me-2"></i>System Health
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="health-metric">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="text-muted">Database</span>
+                                    <span class="badge bg-success">Healthy</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-success" style="width: 95%"></div>
+                                </div>
+                                <small class="text-muted">95% operational</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="health-metric">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="text-muted">Cache</span>
+                                    <span class="badge bg-success">Healthy</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-success" style="width: 88%"></div>
+                                </div>
+                                <small class="text-muted">88% hit rate</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="health-metric">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="text-muted">Sessions</span>
+                                    <span class="badge bg-warning">Warning</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" style="width: 72%"></div>
+                                </div>
+                                <small class="text-muted">72% utilization</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bell me-2"></i>System Alerts
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="alerts-list">
+                        <div class="alert-item d-flex p-3 border-bottom">
+                            <div class="alert-icon me-3">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="alert-title">High failed login rate</div>
+                                <div class="alert-description small text-muted">15 failed attempts in last hour</div>
+                            </div>
+                            <div class="alert-time small text-muted">2m ago</div>
+                        </div>
+                        <div class="alert-item d-flex p-3 border-bottom">
+                            <div class="alert-icon me-3">
+                                <i class="fas fa-info-circle text-info"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="alert-title">Database backup completed</div>
+                                <div class="alert-description small text-muted">Daily backup successful</div>
+                            </div>
+                            <div class="alert-time small text-muted">1h ago</div>
+                        </div>
+                        <div class="alert-item d-flex p-3">
+                            <div class="alert-icon me-3">
+                                <i class="fas fa-check-circle text-success"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="alert-title">System check completed</div>
+                                <div class="alert-description small text-muted">All systems operational</div>
+                            </div>
+                            <div class="alert-time small text-muted">2h ago</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.health-metric {
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+}
+
+.activity-timeline {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    transition: background-color 0.2s ease;
+}
+
+.activity-item:hover {
+    background-color: #f8f9fa;
+}
+
+.activity-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.alerts-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    transition: background-color 0.2s ease;
+}
+
+.alert-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Chart.js configuration
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize activity chart if data available
+    const activityChart = document.getElementById('activityChart');
+    if (activityChart && {{ activity_by_category|length }} > 0) {
+        const ctx = activityChart.getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [{% for item in activity_by_category %}'{{ item.category|title }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                datasets: [{
+                    data: [{% for item in activity_by_category %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: [
+                        '#667eea',
+                        '#764ba2',
+                        '#f093fb',
+                        '#4facfe',
+                        '#00f2fe',
+                        '#43e97b',
+                        '#38f9d7',
+                        '#fa709a',
+                        '#fee140',
+                        '#30cfd0'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+
+// Refresh dashboard with loading
+function refreshDashboard() {
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = `
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Refreshing dashboard...</p>
+        </div>
+    `;
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+        location.reload();
+    }, 500);
+}
+
+// Auto-refresh dashboard every 5 minutes
+setInterval(() => {
+    console.log('Auto-refreshing admin dashboard...');
+    refreshDashboard();
+}, 300000);
+</script>
+{% endblock %}
