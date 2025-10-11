@@ -200,6 +200,7 @@
                         <tr>
                             <th>Code</th>
                             <th>Patient</th>
+                            <th>Patient ID</th>
                             <th>Service Type</th>
                             <th>Amount</th>
                             <th>Expiry Date</th>
@@ -213,8 +214,9 @@
                         <tr>
                             <td><strong>{{ code.code }}</strong></td>
                             <td>{{ code.patient.get_full_name }}</td>
+                            <td><code>{{ code.patient.patient_id }}</code></td>
                             <td>{{ code.get_service_type_display }}</td>
-                            <td>GH₵ {{ code.amount|floatformat:2 }}</td>
+                            <td>₦ {{ code.amount|floatformat:2 }}</td>
                             <td>
                                 {{ code.expiry_date|date:"Y-m-d" }}
                                 {% if code.expiry_date < today %}

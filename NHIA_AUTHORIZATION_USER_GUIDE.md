@@ -156,7 +156,7 @@ You'll see:
 **Step 3:** Fill in the form
 ```
 ┌─────────────────────────────────────────┐
-│ Amount Covered: [500.00        ] GH₵   │
+│ Amount Covered: [500.00        ] ₦   │
 │                                         │
 │ Validity Period: [30 Days      ▼]      │
 │                                         │

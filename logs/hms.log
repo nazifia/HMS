@@ -1730,3 +1730,224 @@ INFO 2025-10-11 17:36:06,854 django.server basehttp log_message 213 "GET /accoun
 INFO 2025-10-11 17:37:10,673 django.server basehttp log_message 213 "GET /accounts/activity-dashboard/ HTTP/1.1" 200 75951
 INFO 2025-10-11 17:37:25,922 django.server basehttp log_message 213 "GET /accounts/api/system-status/ HTTP/1.1" 200 143
 INFO 2025-10-11 17:37:31,707 django.server basehttp log_message 213 "GET /accounts/alerts/ HTTP/1.1" 200 177202
+INFO 2025-10-11 17:38:02,039 django.server basehttp log_message 213 "GET /accounts/alerts/ HTTP/1.1" 200 177202
+INFO 2025-10-11 17:38:37,118 django.server basehttp log_message 213 "GET /accounts/alerts/ HTTP/1.1" 200 177209
+INFO 2025-10-11 17:39:05,240 django.server basehttp log_message 213 "GET /accounts/api/system-status/ HTTP/1.1" 200 144
+INFO 2025-10-11 17:39:06,618 django.server basehttp handle_error 81 - Broken pipe from ('127.0.0.1', 55298)
+DEBUG 2025-10-11 17:39:07,754 accounts.views views audit_logs 1325 Audit Log ID: 44, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,754 accounts.views views audit_logs 1325 Audit Log ID: 43, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,754 accounts.views views audit_logs 1325 Audit Log ID: 42, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,754 accounts.views views audit_logs 1325 Audit Log ID: 41, Details: {'filters': {'search': 'nazi', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,754 accounts.views views audit_logs 1325 Audit Log ID: 40, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 39, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 38, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 37, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 36, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 35, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 34, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 33, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,755 accounts.views views audit_logs 1325 Audit Log ID: 32, Details: {'filters': {'search': '', 'role': '', 'is_active': None}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 31, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 30, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 29, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 28, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 27, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 26, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 25, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 24, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,756 accounts.views views audit_logs 1325 Audit Log ID: 23, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,757 accounts.views views audit_logs 1325 Audit Log ID: 22, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,757 accounts.views views audit_logs 1325 Audit Log ID: 21, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+DEBUG 2025-10-11 17:39:07,757 accounts.views views audit_logs 1325 Audit Log ID: 20, Details: {'filters': {'search': '', 'role': '', 'is_active': ''}}
+INFO 2025-10-11 17:39:10,073 django.server basehttp log_message 213 "GET /accounts/audit-logs/ HTTP/1.1" 200 143210
+INFO 2025-10-11 17:39:21,192 django.server basehttp log_message 213 "GET /accounts/role-demo/ HTTP/1.1" 200 115864
+INFO 2025-10-11 17:39:25,716 django.server basehttp log_message 213 "GET /accounts/alerts/ HTTP/1.1" 200 177209
+INFO 2025-10-11 17:39:36,799 django.server basehttp log_message 213 "GET / HTTP/1.1" 200 62834
+INFO 2025-10-11 18:02:19,148 django.server basehttp log_message 213 "GET / HTTP/1.1" 200 31713
+INFO 2025-10-11 20:06:56,349 django.server basehttp log_message 213 "GET /accounts/login/ HTTP/1.1" 200 30083
+INFO 2025-10-11 20:07:09,186 django.server basehttp log_message 213 "POST /accounts/login/ HTTP/1.1" 302 0
+INFO 2025-10-11 20:07:10,264 django.server basehttp log_message 213 "GET /dashboard/ HTTP/1.1" 200 86874
+INFO 2025-10-11 20:19:26,696 accounts.views views custom_logout_view 161 User superuser (ID: 2) logged out. Reason: manual
+INFO 2025-10-11 20:19:26,716 django.server basehttp log_message 213 "POST /accounts/logout/ HTTP/1.1" 200 119
+INFO 2025-10-11 20:19:26,764 django.server basehttp log_message 213 "GET /accounts/login/?auto_logout=1&reason=inactivity HTTP/1.1" 200 31940
+INFO 2025-10-11 20:22:47,495 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-11 20:22:58,520 django.server basehttp log_message 213 "POST /accounts/login/?auto_logout=1&reason=inactivity HTTP/1.1" 302 0
+INFO 2025-10-11 20:22:58,645 django.server basehttp log_message 213 "GET /dashboard/ HTTP/1.1" 200 87396
+INFO 2025-10-11 20:23:17,732 django.server basehttp log_message 213 "GET /pharmacy/prescriptions/ HTTP/1.1" 200 123796
+INFO 2025-10-11 20:23:33,539 django.server basehttp log_message 213 "GET /core/authorization/dashboard/ HTTP/1.1" 200 69959
+INFO 2025-10-11 20:23:41,206 django.server basehttp log_message 213 "GET /core/authorization/generate/surgery/2/ HTTP/1.1" 200 72646
+INFO 2025-10-11 20:30:51,603 accounts.views views custom_logout_view 161 User superuser (ID: 2) logged out. Reason: manual
+INFO 2025-10-11 20:30:51,623 django.server basehttp log_message 213 "POST /accounts/logout/ HTTP/1.1" 200 119
+INFO 2025-10-11 20:31:19,571 django.server basehttp log_message 213 "GET /core/authorization/generate/surgery/2/ HTTP/1.1" 302 0
+INFO 2025-10-11 20:31:19,586 django.server basehttp log_message 213 "GET /accounts/login/?next=/core/authorization/generate/surgery/2/ HTTP/1.1" 200 30083
+INFO 2025-10-11 20:31:29,115 django.server basehttp log_message 213 "POST /accounts/login/?next=/core/authorization/generate/surgery/2/ HTTP/1.1" 302 0
+INFO 2025-10-11 20:31:29,223 django.server basehttp log_message 213 "GET /core/authorization/generate/surgery/2/ HTTP/1.1" 200 73111
+INFO 2025-10-11 20:32:33,312 django.server basehttp log_message 213 "POST /core/authorization/generate/surgery/2/ HTTP/1.1" 302 0
+INFO 2025-10-11 20:32:33,427 django.server basehttp log_message 213 "GET /desk-office/authorization-dashboard/ HTTP/1.1" 200 71952
+INFO 2025-10-11 20:33:11,434 django.server basehttp log_message 213 "GET /core/authorization/dashboard/ HTTP/1.1" 200 67201
+INFO 2025-10-11 20:33:17,642 django.server basehttp log_message 213 "GET /desk-office/authorization-dashboard/ HTTP/1.1" 200 71428
+INFO 2025-10-11 20:33:20,780 django.server basehttp log_message 213 "GET /core/authorization/dashboard/ HTTP/1.1" 200 67201
+INFO 2025-10-11 20:33:29,304 django.server basehttp log_message 213 "GET /desk-office/authorization-dashboard/ HTTP/1.1" 200 71428
+INFO 2025-10-11 20:33:57,361 django.server basehttp log_message 213 "GET /desk-office/generate-code/ HTTP/1.1" 200 61058
+INFO 2025-10-11 20:33:57,594 django.server basehttp log_message 213 "GET /static/js/desk_office.js HTTP/1.1" 200 2249
+INFO 2025-10-11 20:41:41,134 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py changed, reloading.
+INFO 2025-10-11 20:41:41,137 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py changed, reloading.
+INFO 2025-10-11 20:41:41,243 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py changed, reloading.
+INFO 2025-10-11 20:41:44,602 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-11 20:41:45,216 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-11 20:41:45,216 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-11 20:42:05,155 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py changed, reloading.
+INFO 2025-10-11 20:42:07,100 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+ERROR 2025-10-11 20:44:10,250 django.request log log_response 248 Internal Server Error: /desk-office/authorization-dashboard/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py", line 166, in authorization_dashboard
+    return render(request, 'desk_office/authorization_dashboard.html', context)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader.py", line 15, in get_template
+    return engine.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\backends\django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\loader_tags.py", line 234, in do_block
+    nodelist = parser.parse(("endblock",))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 962, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\defaulttags.py", line 862, in do_for
+    nodelist_loop = parser.parse(
+        (
+    ...<2 lines>...
+        )
+    )
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 489, in parse
+    raise self.error(token, e)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 487, in parse
+    filter_expression = self.compile_filter(token.contents)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 609, in compile_filter
+    return FilterExpression(token, self)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\template\base.py", line 710, in __init__
+    raise TemplateSyntaxError(
+    ...<2 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' if code.status == 'active' else 'secondary'' from ''success' if code.status == 'active' else 'secondary''
+ERROR 2025-10-11 20:44:10,292 django.server basehttp log_message 213 "GET /desk-office/authorization-dashboard/ HTTP/1.1" 500 345964
+INFO 2025-10-11 20:46:44,593 django.server basehttp log_message 213 "GET /desk-office/authorization-dashboard/ HTTP/1.1" 200 78617
+ERROR 2025-10-11 20:47:25,039 django.request log log_response 248 Internal Server Error: /desk-office/authorization-dashboard/
+Traceback (most recent call last):
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py", line 50, in authorization_dashboard
+    ).filter(
+      ~~~~~~^
+        Q(first_name__icontains=search_query) |
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        Q(phone_number__icontains=search_query)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).select_related('user_profile').order_by('first_name', 'last_name')
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1481, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1499, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\query.py", line 1506, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1643, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1675, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1500, in build_filter
+    return self._add_q(
+           ~~~~~~~~~~~^
+        filter_expr,
+        ^^^^^^^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1675, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1523, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1330, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\MY_PRODUCTS\HMS\venv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'nhia_number' into field. Choices are: address, admissions, allergies, anc_records, appointments, authorization_codes, authorizationcode, blood_group, chronic_diseases, city, consultations, country, created_at, current_medications, date_of_birth, dental_records, doctor_reviews, email, emergency_contact_name, emergency_contact_phone, emergency_contact_relation, ent_records, family_planning_records, first_name, gender, gynae_emergency_records, icu_records, id, id_document, insurance_expiry_date, insurance_policy_number, insurance_provider, invoice, invoices, is_active, labor_records, last_name, marital_status, medical_histories, nhia_info, notes, occupation, oncology_records, ophthalmic_records, pack_orders, patient_id, patient_type, phone_number, photo, postal_code, prescriptions, primary_doctor, primary_doctor_id, radiology_orders, referrals, registration_date, retainership_info, scbu_records, state, surgeries, test_requests, updated_at, vitals, waiting_entries, wallet
+ERROR 2025-10-11 20:47:25,073 django.server basehttp log_message 213 "POST /desk-office/authorization-dashboard/ HTTP/1.1" 500 156068
+INFO 2025-10-11 20:48:48,583 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py changed, reloading.
+INFO 2025-10-11 20:48:50,761 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader

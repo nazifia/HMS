@@ -143,6 +143,255 @@
         </div>
     </div>
 
+    <!-- Patient Search and Authorization Generation -->
+    <div class="row mb-4">
+        <div class="col-xl-8 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-search me-2"></i>
+                        Patient Search & Authorization Generation
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- Patient Search Form -->
+                    <div class="row">
+                        <div class="col-12">
+                            <form method="post" class="mb-4">
+                                {% csrf_token %}
+                                <div class="input-group">
+                                    {{ patient_search_form.search }}
+                                    <div class="input-group-append">
+                                        <button type="submit" name="search_patients" class="btn btn-primary">
+                                            <i class="fas fa-search"></i> Search Patients
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Search Results -->
+                    {% if search_results %}
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-users me-2"></i>
+                                Found {{ search_results.paginator.count }} NHIA patients matching "{{ search_query }}"
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Patient ID</th>
+                                            <th>Name</th>
+                                            <th>NHIA Number</th>
+                                            <th>Phone</th>
+                                            <th>Age</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for patient in search_results %}
+                                        <tr>
+                                            <td><code>{{ patient.patient_id }}</code></td>
+                                            <td>{{ patient.get_full_name }}</td>
+                                            <td><code>{{ patient.nhia_info.nhia_reg_number|default:"N/A" }}</code></td>
+                                            <td>{{ patient.phone_number }}</td>
+                                            <td>{{ patient.get_age }}</td>
+                                            <td>
+                                                <a href="?patient_id={{ patient.id }}" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-check-circle"></i> Select
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">
+                                                <i class="fas fa-info-circle"></i> No NHIA patients found matching your search.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Pagination -->
+                            {% if search_results.has_other_pages %}
+                                <nav aria-label="Patient search pagination">
+                                    <ul class="pagination justify-content-center">
+                                        {% if search_results.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ search_results.previous_page_number }}">Previous</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">Previous</span>
+                                            </li>
+                                        {% endif %}
+                                        
+                                        {% for num in search_results.paginator.page_range %}
+                                            {% if search_results.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ num }}</span>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                        
+                                        {% if search_results.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ search_results.next_page_number }}">Next</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">Next</span>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Selected Patient and Authorization Form -->
+                    {% if selected_patient %}
+                        <div class="border-top pt-4 mb-4">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-user-check me-2"></i>
+                                Selected Patient: {{ selected_patient.get_full_name }}
+                            </h6>
+                            
+                            <!-- Patient Summary Card -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body py-3">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <small class="text-muted">Patient ID:</small><br>
+                                                    <strong>{{ selected_patient.patient_id }}</strong>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small class="text-muted">NHIA Number:</small><br>
+                                                    <strong><code>{{ selected_patient.nhia_info.nhia_reg_number|default:"N/A" }}</code></strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Authorization Code Form -->
+                            <form method="post" id="auth-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ authorization_form.service_type.id_for_label }}" class="form-label">
+                                            Service Type <span class="text-danger">*</span>
+                                        </label>
+                                        {{ authorization_form.service_type }}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ authorization_form.department.id_for_label }}" class="form-label">
+                                            Department <span class="text-danger">*</span>
+                                        </label>
+                                        {{ authorization_form.department }}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label for="{{ authorization_form.service_description.id_for_label }}" class="form-label">
+                                            Service Description
+                                        </label>
+                                        {{ authorization_form.service_description }}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-12">
+                                        <button type="submit" name="generate_code" class="btn btn-primary">
+                                            <i class="fas fa-plus-circle me-2"></i>Generate Authorization Code
+                                        </button>
+                                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-secondary ml-2">
+                                            <i class="fas fa-times me-2"></i>Clear Selection
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="col-xl-4 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Quick Stats
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Pending</div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Active Codes</div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800">
+                                {{ recent_codes|length }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Authorization Codes -->
+                    {% if recent_codes %}
+                        <h6 class="text-muted mb-3">Recent Authorization Codes</h6>
+                        <div class="list-group list-group-flush">
+                            {% for code in recent_codes %}
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="text-muted">{{ code.generated_at|date:"H:i" }}</small><br>
+                                            <strong><code>{{ code.code }}</code></strong><br>
+                                            <small>{{ code.patient.get_full_name }}</small>
+                                        </div>
+                                        {% if code.status == 'active' %}
+                                        <span class="badge badge-success">
+                                    {% else %}
+                                        <span class="badge badge-secondary">
+                                    {% endif %}
+                                            {{ code.get_status_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <!-- Pending Consultations -->
         <div class="col-lg-6 mb-4">
@@ -272,7 +521,13 @@
                                         <td>{{ code.get_service_type_display }}</td>
                                         <td>₦ {{ code.amount }}</td>
                                         <td>
-                                            <span class="badge bg-{% if code.status == 'active' %}success{% elif code.status == 'used' %}secondary{% else %}danger{% endif %}">
+                                            {% if code.status == 'active' %}
+                                                <span class="badge bg-success">
+                                            {% elif code.status == 'used' %}
+                                                <span class="badge bg-secondary">
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                            {% endif %}
                                                 {{ code.get_status_display }}
                                             </span>
                                         </td>

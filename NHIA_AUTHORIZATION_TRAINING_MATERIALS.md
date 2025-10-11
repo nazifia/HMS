@@ -352,7 +352,7 @@ A: Usually 30 days, but check the specific code's expiry date in the system.
 ### For Desk Office Staff
 
 **Q: How do I know how much to set as "Amount Covered"?**
-A: This should be based on the expected cost of services. For general consultations, 500-1000 GH₵ is typical. For specialist referrals or complex cases, it may be higher.
+A: This should be based on the expected cost of services. For general consultations, 500-1000 ₦ is typical. For specialist referrals or complex cases, it may be higher.
 
 **Q: Can I cancel an authorization code?**
 A: Yes, you can update the code status to 'cancelled' in the admin panel if needed.

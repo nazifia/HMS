@@ -7,12 +7,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.core.paginator import Paginator
 from consultations.models import Consultation, Referral
 from pharmacy.models import Prescription
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from nhia.models import AuthorizationCode
 from patients.models import Patient
+from .forms import PatientSearchForm, AuthorizationCodeForm
 import string
 import random
 
@@ -29,6 +31,72 @@ def authorization_dashboard(request):
     """
     Dashboard showing all pending authorization requests across the system
     """
+    # Initialize patient search form and variables
+    patient_search_form = PatientSearchForm()
+    search_results = None
+    search_query = None
+    selected_patient = None
+    authorization_form = None
+    
+    # Handle patient search
+    if request.method == 'POST' and 'search_patients' in request.POST:
+        patient_search_form = PatientSearchForm(request.POST)
+        if patient_search_form.is_valid():
+            search_query = patient_search_form.cleaned_data.get('search')
+            if search_query:
+                # Search for NHIA patients by name, patient ID, or NHIA number
+                patients = Patient.objects.filter(
+                    patient_type='nhia'
+                ).filter(
+                    Q(first_name__icontains=search_query) |
+                    Q(last_name__icontains=search_query) |
+                    Q(patient_id__icontains=search_query) |
+                    Q(nhia_info__nhia_reg_number__icontains=search_query) |
+                    Q(phone_number__icontains=search_query)
+                ).select_related('nhia_info').order_by('first_name', 'last_name')
+                
+                # Pagination for search results
+                paginator = Paginator(patients, 10)
+                page_number = request.GET.get('page')
+                search_results = paginator.get_page(page_number)
+    
+    # Handle patient selection
+    elif request.method == 'GET' and 'patient_id' in request.GET:
+        try:
+            selected_patient = Patient.objects.get(id=request.GET.get('patient_id'), patient_type='nhia')
+            authorization_form = AuthorizationCodeForm(patient=selected_patient)
+            messages.info(request, f'Selected patient: {selected_patient.get_full_name()}')
+        except Patient.DoesNotExist:
+            messages.error(request, 'Selected patient not found or is not an NHIA patient.')
+    
+    # Handle authorization code generation
+    elif request.method == 'POST' and 'generate_code' in request.POST:
+        try:
+            patient_id = request.POST.get('patient_id')
+            selected_patient = Patient.objects.get(id=patient_id, patient_type='nhia')
+            authorization_form = AuthorizationCodeForm(request.POST, patient=selected_patient)
+            
+            if authorization_form.is_valid():
+                auth_code = authorization_form.save(commit=False)
+                auth_code.generated_by = request.user
+                
+                # Generate unique code if not provided
+                if not getattr(auth_code, 'code', None):
+                    while True:
+                        auth_code.code = generate_authorization_code_string()
+                        if not AuthorizationCode.objects.filter(code=auth_code.code).exists():
+                            break
+                
+                auth_code.save()
+                messages.success(request, f'Authorization code {auth_code.code} generated successfully for {selected_patient.get_full_name()}.')
+                
+                # Clear form and patient selection
+                return redirect('desk_office:authorization_dashboard')
+        except Patient.DoesNotExist:
+            messages.error(request, 'Selected patient not found or is not an NHIA patient.')
+        except Exception as e:
+            messages.error(request, f'Error generating authorization code: {str(e)}')
+    
     # Get all consultations requiring authorization
     pending_consultations = Consultation.objects.filter(
         requires_authorization=True,
@@ -86,6 +154,11 @@ def authorization_dashboard(request):
         'pending_radiology': pending_radiology[:10],
         'stats': stats,
         'recent_codes': recent_codes,
+        'patient_search_form': patient_search_form,
+        'search_results': search_results,
+        'search_query': search_query,
+        'selected_patient': selected_patient,
+        'authorization_form': authorization_form,
         'page_title': 'NHIA Authorization Dashboard',
         'active_nav': 'desk_office',
     }
