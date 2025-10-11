@@ -104,8 +104,6 @@ urlpatterns = [
     path('api/medications/', views.medication_api, name='medication_api'),
     path('api/', include(api_urls)),
 
-    
-
     # Dispensed Items Tracking
     path('dispensed-items/', views.dispensed_items_tracker, name='dispensed_items_tracker'),
     path('dispensed-items/<int:log_id>/', views.dispensed_item_detail, name='dispensed_item_detail'),
@@ -181,7 +179,4 @@ urlpatterns = [
     path('transfers/inter/<int:transfer_id>/execute/', inter_dispensary_views.execute_inter_dispensary_transfer, name='execute_inter_dispensary_transfer'),
     path('transfers/inter/<int:transfer_id>/cancel/', inter_dispensary_views.cancel_inter_dispensary_transfer, name='cancel_inter_dispensary_transfer'),
     path('transfers/inter/statistics/', inter_dispensary_views.transfer_statistics, name='transfer_statistics'),
-
-    # AJAX Endpoints
-    path('api/', include('pharmacy.api.urls')),
 ]

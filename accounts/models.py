@@ -336,3 +336,150 @@ class Department(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# User Activity Monitoring Models
+class UserActivity(models.Model):
+    """Tracks all user activities in the system"""
+    
+    ACTION_TYPES = [
+        ('login', 'Login'),
+        ('logout', 'Logout'),
+        ('view', 'View'),
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+        ('export', 'Export'),
+        ('search', 'Search'),
+        ('download', 'Download'),
+        ('print', 'Print'),
+        ('authorize', 'Authorize'),
+        ('access_denied', 'Access Denied'),
+        ('error', 'Error'),
+        ('other', 'Other'),
+    ]
+    
+    ACTIVITY_LEVELS = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    
+    user = models.ForeignKey('CustomUser', on_delete=models.SET_NULL, null=True, blank=True)
+    action_type = models.CharField(max_length=20, choices=ACTION_TYPES)
+    activity_level = models.CharField(max_length=10, choices=ACTIVITY_LEVELS, default='low')
+    
+    # Activity details
+    description = models.CharField(max_length=500)
+    module = models.CharField(max_length=100, blank=True)
+    object_type = models.CharField(max_length=100, blank=True)
+    object_id = models.CharField(max_length=100, blank=True)
+    object_repr = models.CharField(max_length=500, blank=True)
+    
+    # Request details
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    session_key = models.CharField(max_length=100, blank=True)
+    
+    # Response details
+    status_code = models.IntegerField(null=True, blank=True)
+    response_time_ms = models.IntegerField(null=True, blank=True)
+    
+    # Additional data
+    additional_data = models.JSONField(default=dict, blank=True)
+    
+    # Timestamp
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'User Activity'
+        verbose_name_plural = 'User Activities'
+        ordering = ['-timestamp']
+    
+    def __str__(self):
+        user_str = str(self.user) if self.user else 'Anonymous'
+        return f"{user_str} - {self.get_action_type_display()} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+
+
+class ActivityAlert(models.Model):
+    """Alerts for suspicious activity patterns"""
+    
+    SEVERITY_LEVELS = [
+        ('info', 'Info'),
+        ('warning', 'Warning'),
+        ('error', 'Error'),
+        ('critical', 'Critical'),
+    ]
+    
+    ALERT_TYPES = [
+        ('multiple_failed_logins', 'Multiple Failed Logins'),
+        ('unusual_access_time', 'Unusual Access Time'),
+        ('suspicious_ip', 'Suspicious IP Address'),
+        ('privilege_escalation', 'Privilege Escalation'),
+        ('bulk_operations', 'Bulk Operations'),
+        ('high_frequency_requests', 'High Frequency Requests'),
+        ('unauthorized_access', 'Unauthorized Access'),
+        ('system_error', 'System Error'),
+        ('other', 'Other'),
+    ]
+    
+    user = models.ForeignKey('CustomUser', on_delete=models.SET_NULL, null=True, blank=True)
+    alert_type = models.CharField(max_length=30, choices=ALERT_TYPES)
+    severity = models.CharField(max_length=10, choices=SEVERITY_LEVELS)
+    message = models.TextField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    
+    # Alert details
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    # Status
+    is_resolved = models.BooleanField(default=False)
+    resolved_by = models.ForeignKey('CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_alerts')
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolution_notes = models.TextField(blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Activity Alert'
+        verbose_name_plural = 'Activity Alerts'
+        ordering = ['-created_at', '-severity']
+    
+    def __str__(self):
+        return f"{self.get_alert_type_display()} - {self.get_severity_display()} - {self.user}"
+
+
+class UserSession(models.Model):
+    """Track user sessions for monitoring"""
+    
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, null=True, blank=True)
+    session_key = models.CharField(max_length=100, unique=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField(blank=True)
+    
+    # Session tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    
+    # Session details
+    page_views = models.IntegerField(default=0)
+    total_requests = models.IntegerField(default=0)
+    average_response_time = models.FloatField(null=True, blank=True)
+    
+    # Session end
+    ended_at = models.DateTimeField(null=True, blank=True)
+    ended_reason = models.CharField(max_length=100, blank=True)
+    
+    class Meta:
+        verbose_name = 'User Session'
+        verbose_name_plural = 'User Sessions'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        if self.user:
+            return f"{self.user.username} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+        return f"Anonymous - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"

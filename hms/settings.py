@@ -129,7 +129,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # Temporarily simplified to ensure login works
+    # User Activity Monitoring Middleware
+    'accounts.middleware.UserActivityMiddleware',
+    'accounts.middleware.LoginTrackingMiddleware',
+    # Other middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

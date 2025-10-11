@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Activity Details #{{ activity.id }} - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.activity-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.activity-level-low { background-color: #28a745; }
+.activity-level-medium { background-color: #ffc107; }
+.activity-level-high { background-color: #dc3545; }
+.activity-level-critical { background-color: #6f42c1; }
+
+.detail-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-item {
+    border-left: 4px solid #007bff;
+    padding-left: 1rem;
+}
+
+.info-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+}
+
+.related-activity {
+    border-left: 3px solid #e9ecef;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s;
+}
+
+.related-activity:hover {
+    border-left-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.json-display {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #007bff;
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.timeline-content {
+    position: relative;
+    padding-left: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="activity-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="mb-2">Activity Details</h1>
+                <p class="mb-0">ID: #{{ activity.id }} • {{ activity.timestamp|date:"F d, Y H:i:s" }}</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <span class="badge activity-level-{{ activity.activity_level }} fs-6">
+                    {{ activity.get_activity_level_display }}
+                </span>
+                <span class="badge bg-secondary fs-6 ms-2">
+                    {{ activity.get_action_type_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <!-- Main Activity Details -->
+        <div class="col-lg-8">
+            <div class="detail-card">
+                <h4 class="mb-4">Activity Information</h4>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">User</div>
+                        <div class="info-value">
+                            {% if activity.user %}
+                                <div class="d-flex align-items-center">
+                                    {% if activity.user.profile.profile_picture %}
+                                        <img src="{{ activity.user.profile.profile_picture.url }}" class="user-avatar me-3" alt="{{ activity.user.username }}">
+                                    {% else %}
+                                        <div class="user-avatar bg-primary text-white me-3 d-flex align-items-center justify-content-center">
+                                            {{ activity.user.username|first|upper }}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <strong>{{ activity.user.username }}</strong><br>
+                                        <span class="text-muted">{{ activity.user.get_full_name }}</span>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Anonymous</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Action Type</div>
+                        <div class="info-value">
+                            <span class="badge bg-primary">{{ activity.get_action_type_display }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Activity Level</div>
+                        <div class="info-value">
+                            <span class="badge activity-level-{{ activity.activity_level }}">
+                                {{ activity.get_activity_level_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Module</div>
+                        <div class="info-value">{{ activity.module|default:"Unknown" }}</div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Description</div>
+                        <div class="info-value">{{ activity.description }}</div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Timestamp</div>
+                        <div class="info-value">{{ activity.timestamp|date:"F d, Y H:i:s T" }}</div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">IP Address</div>
+                        <div class="info-value">
+                            <code>{{ activity.ip_address|default:"N/A" }}</code>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Response Status</div>
+                        <div class="info-value">
+                            {% if activity.status_code %}
+                                <span class="badge {% if activity.status_code >= 400 %}bg-danger{% elif activity.status_code >= 300 %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ activity.status_code }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Response Time</div>
+                        <div class="info-value">
+                            {% if activity.response_time_ms %}
+                                {{ activity.response_time_ms }}ms
+                                {% if activity.response_time_ms > 1000 %}
+                                    <span class="badge bg-warning ms-2">Slow</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Session Key</div>
+                        <div class="info-value">
+                            <code class="small">{{ activity.session_key|default:"N/A" }}</code>
+                        </div>
+                    </div>
+                    
+                    {% if activity.object_type %}
+                    <div class="info-item">
+                        <div class="info-label">Target Object</div>
+                        <div class="info-value">
+                            {{ activity.object_type }}: {{ activity.object_id }}
+                            {% if activity.object_repr %}
+                                <br><small class="text-muted">{{ activity.object_repr }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Additional Data -->
+            {% if activity.additional_data %}
+            <div class="detail-card">
+                <h5 class="mb-3">Additional Data</h5>
+                <div class="json-display">
+                    {{ activity.get_additional_data_display|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- User Agent -->
+            {% if activity.user_agent %}
+            <div class="detail-card">
+                <h5 class="mb-3">User Agent</h5>
+                <div class="text-monospace small text-muted">
+                    {{ activity.user_agent }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Side Panel -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="detail-card">
+                <h5 class="mb-3">Quick Actions</h5>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'accounts:user_activity_list' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Activities
+                    </a>
+                    {% if activity.user %}
+                        <a href="{% url 'accounts:user_activity_list' %}?user={{ activity.user.id }}" class="btn btn-outline-info">
+                            <i class="fas fa-user me-2"></i>View User Activities
+                        </a>
+                    {% endif %}
+                    {% if activity.session_key %}
+                        <a href="{% url 'accounts:session_detail' activity.session_key %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-desktop me-2"></i>View Session
+                        </a>
+                    {% endif %}
+                    {% if activity.alerts.exists %}
+                        <a href="{% url 'accounts:activity_alerts' %}?related_activities={{ activity.id }}" class="btn btn-outline-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>View Related Alerts
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Related Activities -->
+            {% if related_activities %}
+            <div class="detail-card">
+                <h5 class="mb-3">Related Activities</h5>
+                <p class="text-muted small mb-3">
+                    Activities from the same user session
+                </p>
+                
+                {% for related in related_activities %}
+                <div class="related-activity">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <small class="text-muted">{{ related.timestamp|timesince }} ago</small><br>
+                            <strong>{{ related.description|truncatechars:60 }}</strong><br>
+                            <small class="text-muted">{{ related.get_action_type_display }} • {{ related.response_time_ms }}ms</small>
+                        </div>
+                        <a href="{% url 'accounts:activity_detail' related.id %}" class="btn btn-sm btn-outline-primary">
+                            View
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                {% if related_activities|length >= 10 %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'accounts:user_activity_list' %}?session_key={{ activity.session_key }}" 
+                       class="btn btn-sm btn-outline-secondary">
+                        View All Activities
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Session Information -->
+            <div class="detail-card">
+                <h5 class="mb-3">Session Context</h5>
+                <div class="info-item mb-3">
+                    <div class="info-label">User Agent</div>
+                    <div class="info-value small">
+                        {% if activity.user_agent %}
+                            {{ activity.user_agent|truncatechars:50 }}
+                        {% else %}
+                            <span class="text-muted">Not recorded</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="info-item mb-3">
+                    <div class="info-label">IP Address</div>
+                    <div class="info-value">
+                        <code>{{ activity.ip_address|default:"N/A" }}</code>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Session Key</div>
+                    <div class="info-value">
+                        <code class="small">{{ activity.session_key|default:"N/A" }}</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Format and prettify JSON data
+document.addEventListener('DOMContentLoaded', function() {
+    const jsonElements = document.querySelectorAll('.json-display');
+    jsonElements.forEach(function(element) {
+        try {
+            const content = element.textContent.trim();
+            if (content.startsWith('{') || content.startsWith('[')) {
+                const formatted = JSON.stringify(JSON.parse(content), null, 2);
+                element.textContent = formatted;
+            }
+        } catch (e) {
+            // Content is not valid JSON, leave as is
+        }
+    });
+});
+</script>
+{% endblock %}

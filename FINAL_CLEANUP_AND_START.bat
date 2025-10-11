@@ -47,7 +47,16 @@ if not exist logs mkdir logs
 echo ✓ Logs directory ready
 echo.
 
-echo Step 7: Setting environment variables...
+echo Step 7: Running migrations...
+python manage.py migrate --run-syncdb 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo ⚠ WARNING: Migrations had issues, trying without syncdb...
+    python manage.py migrate
+)
+echo ✓ Migrations complete
+echo.
+
+echo Step 8: Setting environment variables...
 set PYTHONIOENCODING=utf-8
 set PYTHONUTF8=1
 set PYTHONLEGACYWINDOWSSTDIO=0

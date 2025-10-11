@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}User Sessions - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.session-card {
+    border-left: 4px solid #007bff;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+}
+
+.session-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.session-active { border-left-color: #28a745; }
+.session-ended { border-left-color: #dc3545; }
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.status-active { background-color: #28a745; animation: pulse 2s infinite; }
+.status-ended { background-color: #6c757d; }
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.session-stats {
+    display: flex;
+    justify-content: space-around;
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.session-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.ip-address {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.session-duration {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.user-agent {
+    font-size: 0.75rem;
+    color: #6c757d;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">User Sessions</h1>
+            <p class="text-muted">
+                Monitor active and historical user sessions
+                {% if sessions_count %}• <strong>{{ sessions_count }}</strong> total{% endif %}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'accounts:activity_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Session Statistics -->
+    <div class="session-stats">
+        <div class="stat-item">
+            <div class="stat-value">{{ total_sessions|default:"0" }}</div>
+            <div class="stat-label">Total Sessions</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ active_sessions|default:"0" }}</div>
+            <div class="stat-label">Currently Active</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value avg-duration">--</div>
+            <div class="stat-label">Avg Duration</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ page_obj|length }}</div>
+            <div class="stat-label">Showing</div>
+        </div>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">User</label>
+                        <select name="user" class="form-select">
+                            <option value="">All Users</option>
+                            <option value="">{{ form.user.field.empty_label }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="ended" {% if status == 'ended' %}selected{% endif %}>Ended</option>
+                            <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-2"></i>Filter
+                        </button>
+                        <a href="?status=active" class="btn btn-outline-secondary ms-2">
+                            <i class="fas fa-times me-2"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sessions List -->
+    <div class="row">
+        <div class="col-12">
+            {% if page_obj %}
+                {% for session in page_obj %}
+                <div class="card session-card {% if session.is_active %}session-active{% else %}session-ended{% endif %}">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <!-- Session Info -->
+                            <div class="col-lg-4">
+                                <div class="d-flex align-items-center">
+                                    {% if session.is_active %}
+                                    <div class="session-icon bg-success text-white me-3">
+                                {% else %}
+                                    <div class="session-icon bg-secondary text-white me-3">
+                                {% endif %}
+                                        {% if session.is_active %}
+                                            <i class="fas fa-desktop"></i>
+                                        {% else %}
+                                            <i class="fas fa-desktop"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h6 class="card-title mb-1">
+                                            {% if session.is_active %}
+                                                <span class="status-indicator status-active"></span>
+                                            {% else %}
+                                                <span class="status-indicator status-ended"></span>
+                                            {% endif %}
+                                            {% if session.user %}
+                                                {{ session.user.username }}
+                                            {% else %}
+                                                Anonymous Session
+                                            {% endif %}
+                                        </h6>
+                                        <small class="text-muted">
+                                            Started {{ session.created_at|timesince }} ago
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Session Details -->
+                            <div class="col-lg-4">
+                                <div class="session-details">
+                                    <div class="mb-2">
+                                        <strong>IP Address:</strong> 
+                                        <code class="ip-address">{{ session.ip_address }}</code>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>Duration:</strong> 
+                                        <span class="session-duration">{{ session.duration_minutes }} minutes</span>
+                                    </div>
+                                    <div>
+                                        <strong>Requests:</strong> 
+                                        {{ session.total_requests }} page views, {{ session.total_requests }} total
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Last Activity & Actions -->
+                            <div class="col-lg-4 text-end">
+                                <div class="mb-2">
+                                    <small class="text-muted d-block mb-1">
+                                        Last activity {{ session.last_activity|timesince }} ago
+                                    </small>
+                                    {% if session.is_currently_active %}
+                                    <span class="badge bg-success">
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                {% endif %}
+                                        {{ session.last_activity|date:"G:i" }}
+                                    </span>
+                                </div>
+                                
+                                <div class="btn-group-sm">
+                                    <a href="{% url 'accounts:session_detail' session.session_key %}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye"></i> Details
+                                    </a>
+                                    
+                                    {% if session.user %}
+                                    <a href="{% url 'accounts:user_activity_list' %}?user={{ session.user.id }}" 
+                                       class="btn btn-outline-info btn-sm">
+                                        <i class="fas fa-user"></i> User
+                                    </a>
+                                    {% endif %}
+                                    
+                                    {% if session.is_active and request.user.is_superuser %}
+                                        <button type="button" class="btn btn-outline-warning btn-sm" 
+                                                onclick="endSession('{{ session.session_key }}')">
+                                            <i class="fas fa-sign-out-alt"></i> End
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- User Agent (Collapsible) -->
+                        {% if session.user_agent %}
+                        <div class="collapse mt-3" id="ua-{{ session.session_key }}">
+                            <div class="card-body bg-light">
+                                <h6 class="small text-muted mb-2">User Agent:</h6>
+                                <code class="user-agent">{{ session.user_agent }}</code>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Session Stats Bar -->
+                        <div class="progress mt-2" style="height: 4px;">
+                            {% if session.average_response_time %}
+                                <div class="progress-bar" 
+                                     style="width: {{ session.average_response_time|default:0 }}%;">
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Show User Agent Toggle -->
+                        {% if session.user_agent %}
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-info" 
+                                    data-bs-toggle="collapse" data-bs-target="#ua-{{ session.session_key }}">
+                                <i class="fas fa-info-circle me-1"></i> User Agent
+                            </button>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Ended Reason -->
+                        {% if not session.is_active and session.ended_reason %}
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <strong>Ended:</strong> {{ session.ended_reason }} 
+                                ({{ session.ended_at|date:"M d, H:i" }})
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-laptop fa-4x text-muted mb-3"></i>
+                    <h3>No Sessions Found</h3>
+                    <p class="text-muted">
+                        {% if status == 'active' %}
+                            No currently active sessions found.
+                        {% elif status == 'ended' %}
+                            No ended sessions found matching your criteria.
+                        {% else %}
+                            No sessions found in the system.
+                        {% endif %}
+                    </p>
+                    <a href="?status=active" class="btn btn-primary">Show Active Sessions</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Session pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1&status={{ status }}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status }}">Previous</a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&status={{ status }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status }}">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Calculate average duration
+document.addEventListener('DOMContentLoaded', function() {
+    const totalSessions = {{ page_obj.paginator.count|default:"0" }};
+    if (totalSessions > 0) {
+        // This would require more complex calculation, showing placeholder
+        const avgDurationElement = document.querySelector('.avg-duration');
+        if (avgDurationElement) {
+            avgDurationElement.textContent = '--'; // Placeholder
+        }
+    }
+});
+
+// End session function (requires AJAX implementation)
+function endSession(sessionKey) {
+    if (confirm('Are you sure you want to end this session?')) {
+        // In a real implementation, this would make an AJAX call
+        console.log('Ending session:', sessionKey);
+    }
+}
+
+// Auto-refresh active sessions every 30 seconds
+{% if status == 'active' %}
+setInterval(function() {
+    window.location.reload();
+}, 30000);
+{% endif %}
+
+// Smooth scroll for user agent collapse
+document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
+    button.addEventListener('click', function() {
+        const target = this.getAttribute('data-bs-target');
+        const element = document.querySelector(target);
+        if (element) {
+            setTimeout(() => {
+                element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 200);
+        }
+    });
+});
+</script>
+{% endblock %}

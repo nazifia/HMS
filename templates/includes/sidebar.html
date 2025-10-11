@@ -484,13 +484,18 @@
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Privilege Management:</h6>
                     <a class="collapse-item {% if 'role_demo' in request.path %}active{% endif %}" href="{% url 'accounts:role_demo' %}">Role System Demo</a>
+                    <a class="collapse-item {% if 'activity-dashboard' in request.path %}active{% endif %}" href="{% url 'accounts:activity_dashboard' %}">Activity Monitor</a>
+                    <a class="collapse-item {% if 'activity_alerts' in request.path %}active{% endif %}" href="{% url 'accounts:activity_alerts' %}">Activity Alerts</a>
+                    <a class="collapse-item {% if 'user_sessions' in request.path %}active{% endif %}" href="{% url 'accounts:user_sessions' %}">User Sessions</a>
+                    <a class="collapse-item {% if 'live_monitor' in request.path %}active{% endif %}" href="{% url 'accounts:live_monitor' %}">Live Monitor</a>
+                    <a class="collapse-item {% if 'activity_statistics' in request.path %}active{% endif %}" href="{% url 'accounts:activity_statistics' %}">Activity Statistics</a>
                     <a class="collapse-item {% if 'role_management' in request.path %}active{% endif %}" href="{% url 'accounts:role_management' %}">Manage Roles</a>
                     <a class="collapse-item {% if 'create_role' in request.path %}active{% endif %}" href="{% url 'accounts:create_role' %}">Create Role</a>
                     <a class="collapse-item {% if 'permission_management' in request.path %}active{% endif %}" href="{% url 'accounts:permission_management' %}">Permissions</a>
 
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Monitoring:</h6>
-                    <a class="collapse-item {% if 'audit_logs' in request.path %}active{% endif %}" href="{% url 'accounts:audit_logs' %}">Audit Logs</a>
+                    <a class="collapse-item {% if 'alerts' in request.path %}active{% endif %}" href="{% url 'accounts:activity_alerts' %}">Activity Alerts</a>
                 </div>
             </div>
         </li>

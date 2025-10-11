@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Activity Monitor Dashboard - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.activity-level-low { background-color: #d4edda; }
+.activity-level-medium { background-color: #fff3cd; }
+.activity-level-high { background-color: #f8d7da; }
+.activity-level-critical { background-color: #f5c6cb; }
+
+.metric-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.activity-level-bar {
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.alert-item {
+    border-left: 4px solid #dc3545;
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: #fff5f5;
+    border-radius: 4px;
+}
+
+.alert-severity-critical { border-left-color: #dc3545; }
+.alert-severity-error { border-left-color: #fd7e14; }
+.alert-severity-warning { border-left-color: #ffc107; }
+.alert-severity-info { border-left-color: #17a2b8; }
+
+.session-item {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.session-item:hover {
+    background-color: #f8f9fa;
+}
+
+.activity-chart {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.time-range-selector .btn {
+    margin-right: 5px;
+}
+
+.time-range-selector .btn.active {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.live-indicator {
+    width: 8px;
+    height: 8px;
+    background-color: #28a745;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Activity Monitor Dashboard</h1>
+            <p class="text-muted">Real-time monitoring of user activities and system events</p>
+        </div>
+        <div class="d-flex align-items-center">
+            <span class="live-indicator me-2"></span>
+            <span class="text-muted me-3">Live</span>
+            <div class="time-range-selector btn-group" role="group">
+                <a href="?time_range=1h" class="btn btn-sm {% if time_range == '1h' %}active{% endif %}">1H</a>
+                <a href="?time_range=24h" class="btn btn-sm {% if time_range == '24h' %}active{% endif %}">24H</a>
+                <a href="?time_range=7d" class="btn btn-sm {% if time_range == '7d' %}active{% endif %}">7D</a>
+                <a href="?time_range=30d" class="btn btn-sm {% if time_range == '30d' %}active{% endif %}">30D</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="metric-value">{{ total_activities|default:"0" }}</div>
+                        <div class="metric-label">Total Activities</div>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fas fa-chart-line fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="metric-value">{{ active_users|default:"0" }}</div>
+                        <div class="metric-label">Active Users</div>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fas fa-users fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="metric-value">{{ recent_alerts|length }}</div>
+                        <div class="metric-label">Open Alerts</div>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="metric-value">{{ active_sessions|length }}</div>
+                        <div class="metric-label">Active Sessions</div>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fas fa-desktop fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Activity Chart -->
+        <div class="col-xl-8 mb-4">
+            <div class="activity-chart">
+                <h5 class="mb-3">Activity Timeline</h5>
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Levels -->
+        <div class="col-xl-4 mb-4">
+            <div class="metric-card">
+                <h5 class="mb-3">Activity Levels</h5>
+                {% for level in activity_levels %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>{{ level.activity_level|title }}</span>
+                    {% if level.activity_level == 'low' %}
+                        <span class="badge bg-success">{{ level.count }}</span>
+                    {% elif level.activity_level == 'medium' %}
+                        <span class="badge bg-warning">{{ level.count }}</span>
+                    {% else %}
+                        <span class="badge bg-danger">{{ level.count }}</span>
+                    {% endif %}
+                </div>
+                <div class="progress mb-3" style="height: 8px;">
+                    <div class="progress-bar activity-level-{{ level.activity_level }}" 
+                         style="width: {% if activity_levels %}{{ level.count }}{% endif %}%">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Top Activities -->
+        <div class="col-xl-4 mb-4">
+            <div class="metric-card">
+                <h5 class="mb-3">Top Activities</h5>
+                {% for activity in top_activities %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>{{ activity.action_type|title }}</span>
+                    <span class="badge bg-primary">{{ activity.count }}</span>
+                </div>
+                <div class="progress mb-3" style="height: 4px;">
+                    <div class="progress-bar" style="width: {% if top_activities %}{{ activity.count }}{% endif %}%">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="col-xl-4 mb-4">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Recent Alerts</h5>
+                    <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                {% if recent_alerts %}
+                    {% for alert in recent_alerts %}
+                    <div class="alert-item alert-severity-{{ alert.severity }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ alert.get_alert_type_display }}</strong>
+                                <div class="text-muted small">{{ alert.message|truncatechars:100 }}</div>
+                                <small class="text-muted">{{ alert.created_at|timesince }} ago</small>
+                            </div>
+                            <a href="{% url 'accounts:resolve_alert' alert.id %}" class="btn btn-xs.btn-outline-success">Resolve</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-check-circle fa-3x mb-2"></i>
+                    <p>No recent alerts</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="col-xl-4 mb-4">
+            <div class="metric-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Active Sessions</h5>
+                    <a href="{% url 'accounts:user_sessions' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                {% if active_sessions %}
+                    {% for session in active_sessions %}
+                    <div class="session-item">
+                        <div>
+                            <strong>{{ session.user.username|default:"Anonymous" }}</strong>
+                            <div class="text-muted small">
+                                {{ session.ip_address }} • {{ session.last_activity|timesince }} ago
+                            </div>
+                        </div>
+                        <a href="{% url 'accounts:session_detail' session.session_key %}" class="btn btn-xs.btn-outline-info">Details</a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-user-slash fa-3x mb-2"></i>
+                    <p>No active sessions</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Activity Timeline Chart
+const ctx = document.getElementById('activityChart').getContext('2d');
+const chartData = {{ chart_data|safe }};
+
+const activityChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: chartData.map(item => item.time),
+        datasets: [{
+            label: 'Activities',
+            data: chartData.map(item => item.count),
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+        }
+    }
+});
+
+// Auto-refresh dashboard every 30 seconds
+setInterval(function() {
+    location.reload();
+}, 30000);
+
+// Real-time updates for live sessions
+setInterval(function() {
+    // Fetch latest system status
+    fetch('{% url "accounts:api_system_status" %}')
+        .then(response => response.json())
+        .then(data => {
+            // Update metrics dynamically
+            const activeUsersElement = document.querySelector('.metric-value');
+            if (activeUsersElement) {
+                activeUsersElement.textContent = data.active_users;
+            }
+        })
+        .catch(error => console.log('Error fetching system status:', error));
+}, 15000);
+</script>
+{% endblock %}

@@ -3,6 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 from . import views
 from . import session_views
+from . import urls_activity
 from .forms import CustomLoginForm, PhoneNumberPasswordResetForm
 
 app_name = 'accounts'
@@ -71,3 +72,6 @@ urlpatterns = [
      path('audit-logs/', views.audit_logs, name='audit_logs'),
      path('role-demo/', views.role_demo, name='role_demo'),
 ]
+
+# Activity Monitoring URLs
+urlpatterns += urls_activity.urlpatterns

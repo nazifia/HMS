@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Activity Alerts - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.alert-severity-critical { border-left-color: #dc3545; background-color: #fff5f5; }
+.alert-severity-error { border-left-color: #fd7e14; background-color: #fff8e6; }
+.alert-severity-warning { border-left-color: #ffc107; background-color: #fffbf0; }
+.alert-severity-info { border-left-color: #17a2b8; background-color: #f0ffff; }
+
+.alert-card {
+    border-left: 4px solid;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+}
+
+.alert-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.severity-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+.resolution-section {
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.alert-actions .btn {
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Activity Alerts</h1>
+            <p class="text-muted">
+                Security alerts and suspicious activity monitoring
+                {% if alerts_count %}• <strong>{{ alerts_count }}</strong> total{% endif %}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'accounts:activity_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">User</label>
+                        {{ form.user }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Alert Type</label>
+                        {{ form.alert_type }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Severity</label>
+                        {{ form.severity }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Status</label>
+                        {{ form.is_resolved }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Filter
+                            </button>
+                            <a href="?" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Clear
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alerts List -->
+    <div class="row">
+        <div class="col-12">
+            {% if page_obj %}
+                {% for alert in page_obj %}
+                <div class="card alert-card alert-severity-{{ alert.severity }}">
+                    <div class="card-body">
+                        <div class="row align-items-start">
+                            <div class="col-md-8">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <h5 class="card-title mb-0 me-3">
+                                                {{ alert.get_alert_type_display }}
+                                            </h5>
+                                            <span class="severity-badge bg-{{ 
+                                                'danger' if alert.severity == 'critical' 
+                                                else 'warning' if alert.severity == 'error' 
+                                                else 'info' if alert.severity == 'warning' 
+                                                else 'secondary' 
+                                            }}">
+                                                {{ alert.get_severity_display|upper }}
+                                            </span>
+                                            {% if alert.is_resolved %}
+                                                <span class="badge bg-success ms-2">Resolved</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <p class="card-text">{{ alert.message }}</p>
+                                        
+                                        <div class="row text-muted small">
+                                            <div class="col-md-4">
+                                                <i class="fas fa-user me-2"></i>
+                                                {% if alert.user %}
+                                                    {{ alert.user.username }}
+                                                    {% if alert.user.get_full_name %}
+                                                        ({{ alert.user.get_full_name }})
+                                                    {% endif %}
+                                                {% else %}
+                                                    System
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <i class="fas fa-clock me-2"></i>
+                                                {{ alert.created_at|date:"M d, Y H:i" }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <i class="fas fa-network-wired me-2"></i>
+                                                {{ alert.ip_address|default:"N/A" }}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Related Activities -->
+                                        {% if alert.related_activities.exists %}
+                                        <div class="mt-3">
+                                            <small class="text-muted d-block mb-2">Related Activities:</small>
+                                            <div class="btn-group-sm">
+                                                {% for activity in alert.related_activities.all %}
+                                                    <a href="{% url 'accounts:activity_detail' activity.id %}" 
+                                                       class="btn btn-outline-primary btn-sm me-1 mb-1">
+                                                        {{ activity.get_action_type_display }}
+                                                    </a>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 text-end">
+                                <div class="alert-actions">
+                                    {% if not alert.is_resolved %}
+                                        <a href="{% url 'accounts:resolve_alert' alert.id %}" 
+                                           class="btn btn-success btn-sm">
+                                            <i class="fas fa-check me-1"></i>Resolve
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <a href="{% url 'accounts:user_activity_list' %}?user={{ alert.user.id|default:'' }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-user me-1"></i>User Activity
+                                    </a>
+                                    
+                                    <button type="button" class="btn btn-outline-info btn-sm" 
+                                            data-bs-toggle="collapse" data-bs-target="#details-{{ alert.id }}">
+                                        <i class="fas fa-info-circle me-1"></i>Details
+                                    </button>
+                                </div>
+                                
+                                {% if alert.is_resolved %}
+                                    <div class="resolution-section mt-3">
+                                        <small class="text-muted">
+                                            Resolved by {{ alert.resolved_by.username }} on 
+                                            {{ alert.resolved_at|date:"M d, H:i" }}
+                                            {% if alert.resolution_notes %}
+                                                <br>{{ alert.resolution_notes }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Collapsible Details -->
+                        <div class="collapse mt-3" id="details-{{ alert.id }}">
+                            <div class="card card-body bg-light">
+                                <h6>Alert Details</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Alert Type:</strong> {{ alert.get_alert_type_display }}<br>
+                                        <strong>Severity:</strong> {{ alert.get_severity_display }}<br>
+                                        <strong>Status:</strong> Resolved {% if alert.is_resolved %}by {{ alert.resolved_by.username }}{% else %}No{% endif %}<br>
+                                        <strong>IP Address:</strong> {{ alert.ip_address|default:"N/A" }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Created:</strong> {{ alert.created_at|date:"M d, Y H:i:s T" }}<br>
+                                        <strong>Updated:</strong> {{ alert.updated_at|date:"M d, Y H:i:s T" }}<br>
+                                        <strong>Alert ID:</strong> #{{ alert.id }}<br>
+                                        <strong>User:</strong> 
+                                        {% if alert.user %}
+                                            {{ alert.user.username }}
+                                        {% else %}
+                                            System
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                {% if alert.metadata %}
+                                <div class="mt-3">
+                                    <strong>Metadata:</strong>
+                                    <pre class="mt-2 bg-white p-2 rounded small">{{ alert.metadata|pprint }}</pre>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Resolution Form -->
+                                {% if not alert.is_resolved %}
+                                <div class="mt-3">
+                                    <h6>Resolve Alert</h6>
+                                    <form method="post" action="{% url 'accounts:resolve_alert' alert.id %}">
+                                        {% csrf_token %}
+                                        <div class="mb-3">
+                                            <label for="resolution_notes" class="form-label">Resolution Notes</label>
+                                            <textarea name="resolution_notes" id="resolution_notes" 
+                                                      class="form-control" rows="3" 
+                                                      placeholder="Add notes about how this alert was resolved..."></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-check me-2"></i>Mark as Resolved
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                    <h3>No Alerts Found</h3>
+                    <p class="text-muted">
+                        {% if request.GET %}
+                            No alerts match your current filters.
+                        {% else %}
+                            No activity alerts have been generated yet.
+                        {% endif %}
+                    </p>
+                    {% if request.GET %}
+                        <a href="?filter_all" class="btn btn-primary">Clear Filters</a>
+                    {% else %}
+                        <a href="{% url 'accounts:activity_dashboard' %}" class="btn btn-primary">
+                            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Alert pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1&{{ request.GET.urlencode }}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">Previous</a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&{{ request.GET.urlencode }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode }}">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh for unresolved alerts every 30 seconds
+setInterval(function() {
+    const unresolvedCount = document.querySelectorAll('.alert-card:not(.alert-resolved)').length;
+    if (unresolvedCount > 0) {
+        // Only auto-refresh if there are unresolved alerts
+        window.location.reload();
+    }
+}, 30000);
+
+// Smooth scroll to details when clicking details button
+document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
+    button.addEventListener('click', function() {
+        const target = this.getAttribute('data-bs-target');
+        const element = document.querySelector(target);
+        if (element) {
+            setTimeout(() => {
+                element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 200);
+        }
+    });
+});
+</script>
+{% endblock %}

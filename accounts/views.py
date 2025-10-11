@@ -1340,13 +1340,13 @@ def role_demo(request):
     """Demo view showing the role system in action"""
     # Get all roles with user counts
     roles = Role.objects.annotate(
-        user_count=Count('customuser_roles')
-    ).prefetch_related('permissions', 'customuser_roles__profile')
+        user_count=Count('customuser_role')
+    ).prefetch_related('permissions')
 
     # Get users by role
     users_by_role = {}
     for role in roles:
-        users_by_role[role.name] = role.customuser_roles.select_related('profile').all()
+        users_by_role[role.name] = User.objects.filter(roles=role).select_related('profile').all()
 
     # Get role statistics
     total_roles = roles.count()

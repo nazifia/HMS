@@ -1,0 +1,610 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Live Activity Monitor - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.live-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+}
+
+.live-indicator-large {
+    width: 16px;
+    height: 16px;
+    background-color: #28a745;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+    margin-right: 10px;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+.activity-stream {
+    max-height: 600px;
+    overflow-y: auto;
+    border-right: 1px solid #eee;
+}
+
+.activity-item {
+    border-left: 4px solid transparent;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+.activity-item.new-activity {
+    animation: slideIn 0.5s forwards;
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.activity-level-low { border-left-color: #28a745; background-color: #f8fff8; }
+.activity-level-medium { border-left-color: #ffc107; background-color: #fffdf5; }
+.activity-level-high { border-left-color: #dc3545; background-color: #fff5f5; }
+.activity-level-critical { border-left-color: #6f42c1; background-color: #f5f5ff; }
+
+.session-card {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s;
+}
+
+.session-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.alert-card {
+    border-left: 4px solid #dc3545;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background-color: #fff5f5;
+}
+
+.alert-severity-critical { border-left-color: #dc3545; }
+.alert-severity-error { border-left-color: #fd7e14; }
+.alert-severity-warning { border-left-color: #ffc107; }
+.alert-severity-info { border-left-color: #17a2b8; }
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.metric-tile {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid #e9ecef;
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.timestamp {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.activity-description {
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+}
+
+.user-info {
+    font-weight: 500;
+}
+
+.ip-address {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.system-stats {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+}
+
+.filter-panel {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filter-chip {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-chip.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Live Header -->
+<div class="live-header">
+    <div class="container">
+        <div class="d-flex align-items-center">
+            <span class="live-indicator-large"></span>
+            <h1 class="mb-0 me-3">Live Activity Monitor</h1>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3">Auto-refreshing</span>
+                <button id="pause-btn" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-pause me-1"></i>Pause
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- System Stats -->
+    <div class="system-stats">
+        <div class="metrics-grid mb-4">
+            <div class="metric-tile">
+                <div class="metric-value" id="active-users-count">-</div>
+                <div class="metric-label">Active Users</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-value" id="activities-count">-</div>
+                <div class="metric-label">Activities (1h)</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-value" id="sessions-count">-</div>
+                <div class="metric-label">Active Sessions</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-value" id="alerts-count">{{ open_alerts|length }}</div>
+                <div class="metric-label">Open Alerts</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-value" id="risk-count">-</div>
+                <div class="metric-label">Risk Activities</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-value" id="failed-count">-</div>
+                <div class="metric-label">Failed Attempts</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center">
+                    <span class="me-3">Filter by level:</span>
+                    <button class="badge bg-light text-dark filter-chip me-2" 
+                            data-level="low">
+                        Low
+                    </button>
+                    <button class="badge bg-light text-dark filter-chip me-2" 
+                            data-level="medium">
+                        Medium
+                    </button>
+                    <button class="badge bg-light text-dark filter-chip me-2" 
+                            data-level="high">
+                        High
+                    </button>
+                    <button class="badge bg-light text-dark filter-chip me-2" 
+                            data-level="critical">
+                        Critical
+                    </button>
+                    <button class="badge bg-primary filter-chip me-2" data-level="all">
+                        All
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <span class="text-muted" id="last-update">
+                    Last updated: Just now
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Activity Stream -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-stream me-2"></i>Live Activity Stream
+                    </h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearStream()">
+                        <i class="fas fa-eraser me-1"></i>Clear
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="activity-stream" id="activity-stream">
+                        {% for activity in recent_activities %}
+                        <div class="activity-item activity-level-{{ activity.activity_level }}" data-level="{{ activity.activity_level }}">
+                            <div class="d-flex align-items-start">
+                                {% if activity.user.profile.profile_picture %}
+                                    <img src="{{ activity.user.profile.profile_picture.url }}" 
+                                         class="user-avatar me-3" alt="{{ activity.user.username }}">
+                                {% else %}
+                                    <div class="user-avatar bg-primary text-white me-3 d-flex align-items-center justify-content-center">
+                                        {{ activity.user.username|first|upper }}
+                                    </div>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <div class="user-info">
+                                        <strong>{{ activity.user.username }}</strong>
+                                        <span class="badge bg-secondary ms-2">{{ activity.get_action_type_display }}</span>
+                                        <span class="badge activity-level-{{ activity.activity_level }} ms-2">
+                                            {{ activity.get_activity_level_display }}
+                                        </span>
+                                    </div>
+                                    <div class="activity-description">
+                                        {{ activity.description|truncatechars:80 }}
+                                    </div>
+                                    <div class="d-flex align-items-center text-muted">
+                                        <span class="timestamp">{{ activity.timestamp|timesince }} ago</span>
+                                        {% if activity.ip_address %}
+                                            <span class="ms-3">
+                                                <i class="fas fa-network-wired"></i>
+                                                <code class="ip-address">{{ activity.ip_address }}</code>
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="ms-3">
+                                    {% if activity.status_code >= 400 %}
+                                        <i class="fas fa-exclamation-triangle text-danger"></i>
+                                    {% endif %}
+                                    {% if activity.activity_level in 'high,critical' %}
+                                        <i class="fas fa-exclamation-triangle text-danger ms-1"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% if not recent_activities %}
+                        <div class="empty-state">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <p>No recent activities found.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <!-- Active Sessions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-desktop me-2"></i>Active Sessions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="sessions-container" id="sessions-container">
+                        {% for session in active_sessions %}
+                        <div class="session-card">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="d-flex align-items-start">
+                                    <div class="session-icon bg-success text-white me-2">
+                                        <i class="fas fa-desktop"></i>
+                                    </div>
+                                    <div>
+                                        <div class="user-info">
+                                            <strong>{{ session.user.username|default:"Anonymous" }}</strong>
+                                        </div>
+                                        <small class="text-muted">
+                                            {{ session.ip_address }} • Active {{ session.last_activity|timesince }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <a href="{% url 'accounts:session_detail' session.session_key %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    Details
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% if not active_sessions %}
+                        <div class="empty-state">
+                            <i class="fas fa-laptop fa-2x mb-2"></i>
+                            <p class="small">No active sessions.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Open Alerts -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Open Alerts
+                    </h5>
+                    <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="alerts-container" id="alerts-container">
+                        {% for alert in open_alerts %}
+                        <div class="alert-card alert-severity-{{ alert.severity }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="user-info">
+                                        <strong>{{ alert.get_alert_type_display }}</strong>
+                                        <span class="badge bg-{{ 
+                                            'danger' if alert.severity == 'critical' 
+                                            else 'warning' if alert.severity == 'error' 
+                                            else 'info' if alert.severity == 'warning' 
+                                            else 'secondary' 
+                                        }} ms-2">
+                                            {{ alert.get_severity_display|upper }}
+                                        </span>
+                                    </div>
+                                    <div class="small text-muted">{{ alert.message|truncatechars:60 }}</div>
+                                    <div class="small text-muted">{{ alert.created_at|timesince }} ago</div>
+                                </div>
+                                <a href="{% url 'accounts:resolve_alert' alert.id %}" 
+                                   class="btn btn-sm btn-outline-success">
+                                    Resolve
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% if not open_alerts %}
+                        <div class="empty-state">
+                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                            <p class="small">No open alerts.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let isPaused = false;
+let refreshInterval;
+
+// Live refresh function
+function refreshData() {
+    if (isPaused) return;
+    
+    // Update last update timestamp
+    document.getElementById('last-update').textContent = 'Last updated: Just now';
+    
+    // Fetch system stats
+    fetch('{% url "accounts:api_system_status" %}')
+        .then(response => response.json())
+        .then(data => {
+            updateMetrics(data);
+        })
+        .catch(error => console.log('Error fetching system status:', error));
+    
+    // Fetch recent activities
+    fetch('{% url "accounts:api_recent_activities" %}?limit=20')
+        .then(response => response.json())
+        .then(activities => {
+            updateActivityStream(activities);
+        })
+        .catch(error => console.log('Error fetching activities:', error));
+}
+
+// Update metrics display
+function updateMetrics(data) {
+    document.getElementById('active-users-count').textContent = data.active_users;
+    document.getElementById('activities-count').textContent = data.total_activities_last_hour;
+    document.getElementById('sessions-count').textContent = data.active_sessions;
+    document.getElementById('risk-count').textContent = data.high_risk_activities;
+    document.getElementById('failed-count').textContent = data.failed_attempts;
+}
+
+// Update activity stream with animation
+function updateActivityStream(activities) {
+    const stream = document.getElementById('activity-stream');
+    const currentActivityCount = stream.children.length - 1; // -1 to exclude empty state
+    
+    // Add new activities with animation
+    activities.slice(0, 5).forEach((activity, index) => {
+        const existingItems = stream.querySelectorAll('.activity-item');
+        const existing = Array.from(existingItems).find(item => 
+            item.textContent.includes(activity.user) && 
+            item.textContent.includes(activity.description.substring(0, 20))
+        );
+        
+        if (!existing) {
+            const activityHtml = createActivityElement(activity);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = activityHtml;
+            const newElement = tempDiv.firstElementChild;
+            
+            stream.insertBefore(newElement, existingItems[index] || stream.firstChild);
+            
+            // Add animation class
+            setTimeout(() => {
+                newElement.classList.add('new-activity');
+            }, 100);
+            
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                newElement.classList.remove('new-activity');
+            }, 600);
+        }
+    });
+    
+    // Remove old activities if stream is too long
+    const maxActivities = 50;
+    const items = stream.querySelectorAll('.activity-item');
+    if (items.length > maxActivities) {
+        for (let i = maxActivities; i < items.length; i++) {
+            items[i].remove();
+        }
+    }
+    
+    // Remove empty state if there are activities
+    const emptyState = stream.querySelector('.empty-state');
+    if (emptyState && activities.length > 0) {
+        emptyState.remove();
+    }
+}
+
+// Create activity element HTML
+function createActivityElement(activity) {
+    const levelColors = {
+        'low': '#28a745',
+        'medium': '#ffc107', 
+        'high': '#dc3545',
+        'critical': '#6f42c1'
+    };
+    
+    return `
+        <div class="activity-item activity-level-${activity.activity_level}" data-level="${activity.activity_level}">
+            <div class="d-flex align-items-start">
+                <div class="user-avatar bg-primary text-white me-3 d-flex align-items-center justify-content-center">
+                    ${activity.user ? activity.user.charAt(0).toUpperCase() : '?'}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="user-info">
+                        <strong>${activity.user || 'Anonymous'}</strong>
+                        <span class="badge bg-secondary ms-2">${activity.action_type}</span>
+                        <span class="badge bg-${activity.activity_level === 'low' ? 'success' : activity.activity_level === 'medium' ? 'warning' : activity.activity_level === 'high' ? 'danger' : 'primary'} ms-2">
+                            ${activity.activity_level}
+                        </span>
+                    </div>
+                    <div class="activity-description">${activity.description}</div>
+                    <div class="d-flex align-items-center text-muted">
+                        <span class="timestamp">${activity.timestamp}</span>
+                        ${activity.ip_address ? `
+                            <span class="ms-3">
+                                <i class="fas fa-network-wired"></i>
+                                <code class="ip-address">${activity.ip_address}</code>
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="ms-3">
+                    ${activity.status_code >= 400 ? '<i class="fas fa-exclamation-triangle text-danger"></i>' : ''}
+                    ${['high', 'critical'].includes(activity.activity_level) ? '<i class="fas fa-exclamation-triangle text-danger ms-1"></i>' : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Pause/Resume button
+document.getElementById('pause-btn').addEventListener('click', function() {
+    isPaused = !isPaused;
+    this.innerHTML = isPaused ? '<i class="fas fa-play me-1"></i>Resume' : '<i class="fas fa-pause me-1"></i>Pause';
+    this.classList.toggle('btn-outline-light');
+    this.classList.toggle('btn-light');
+    
+    if (!isPaused) {
+        refreshData();
+    }
+});
+
+// Filter functionality
+document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+        const level = this.getAttribute('data-level');
+        
+        // Update active state
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter activities
+        const activities = document.querySelectorAll('.activity-item');
+        if (level === 'all') {
+            activities.forEach(a => a.style.display = 'block');
+        } else {
+            activities.forEach(a => {
+                const activityLevel = a.getAttribute('data-level');
+                a.style.display = activityLevel === level ? 'block' : 'none';
+            });
+        }
+    });
+});
+
+// Clear stream function
+function clearStream() {
+    const stream = document.getElementById('activity-stream');
+    const activities = stream.querySelectorAll('.activity-item');
+    activities.forEach(activity => {
+        activity.style.opacity = '0';
+        activity.style.transform = 'translateX(20px)';
+        setTimeout(() => activity.remove(), 300);
+    });
+}
+
+// Set active filter
+document.querySelector('[data-level="all"]').classList.add('active');
+
+// Start auto-refresh
+refreshInterval = setInterval(refreshData, 5000);
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+{% endblock %}

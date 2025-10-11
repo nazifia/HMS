@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.session-detail-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+}
+
+.session-info {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.session-active { color: #28a745; }
+.session-ended { color: #dc3545; }
+
+.activity-timeline {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    border-left: 4px solid #007bff;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background: white;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.activity-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.activity-login { border-left-color: #28a745; }
+.activity-logout { border-left-color: #dc3545; }
+.activity-view { border-left-color: #17a2b8; }
+.activity-create { border-left-color: #28a745; }
+.activity-update { border-left-color: #ffc107; }
+.activity-delete { border-left-color: #dc3545; }
+.activity-error { border-left-color: #dc3545; }
+activity-access_denied { border-left-color: #dc3545; }
+
+.level-low { background-color: #d4edda; }
+.level-medium { background-color: #fff3cd; }
+.level-high { background-color: #f8d7da; }
+.level-critical { background-color: #f8d7da; }
+
+.badge-custom {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Session Details</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'accounts:user_sessions' %}">User Sessions</a></li>
+                            <li class="breadcrumb-item active">{{ page_title }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:user_sessions' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Sessions
+                    </a>
+                </div>
+            </div>
+
+            <!-- Session Information -->
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="session-info">
+                        <h5 class="mb-3">Session Information</h5>
+                        
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">Session Key:</div>
+                            <div class="col-sm-8">
+                                <code>{{ session.session_key }}</code>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">User:</div>
+                            <div class="col-sm-8">
+                                {% if session.user %}
+                                    <a href="#" class="text-decoration-none">
+                                        {{ session.user.get_full_name|default:session.user.username }}
+                                    </a>
+                                    <span class="text-muted">({{ session.user.username }})</span>
+                                {% else %}
+                                    <span class="text-muted">Anonymous User</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">Status:</div>
+                            <div class="col-sm-8">
+                                {% if session.is_active %}
+                                    <span class="badge badge-success session-active">
+                                        <i class="fas fa-circle mr-1"></i>Active
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-secondary session-ended">
+                                        <i class="fas fa-times-circle mr-1"></i>Ended
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">IP Address:</div>
+                            <div class="col-sm-8">
+                                <code>{{ session.ip_address|default:"N/A" }}</code>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">Created:</div>
+                            <div class="col-sm-8">
+                                {{ session.created_at|date:"Y-m-d H:i:s" }}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">Last Activity:</div>
+                            <div class="col-sm-8">
+                                {{ session.last_activity|date:"Y-m-d H:i:s" }}
+                            </div>
+                        </div>
+
+                        {% if session.ended_at %}
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">Ended:</div>
+                            <div class="col-sm-8">
+                                {{ session.ended_at|date:"Y-m-d H:i:s" }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if session.ended_reason %}
+                        <div class="row mb-3">
+                            <div class="col-sm-4 font-weight-bold">End Reason:</div>
+                            <div class="col-sm-8">
+                                {{ session.ended_reason }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <!-- Session Statistics -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ session.total_requests }}</div>
+                            <div class="stat-label">Total Requests</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ session.page_views }}</div>
+                            <div class="stat-label">Page Views</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">
+                                {% if session.average_response_time %}
+                                    {{ session.average_response_time|floatformat:0 }}ms
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                            <div class="stat-label">Avg Response Time</div>
+                        </div>
+                    </div>
+
+                    <!-- User Agent Information -->
+                    {% if session.user_agent %}
+                    <div class="session-info">
+                        <h5 class="mb-3">User Agent</h5>
+                        <div class="text-muted small">
+                            {{ session.user_agent|truncatewords:30 }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Session Activities -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Session Activities ({{ session_activities|length }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="activity-timeline">
+                                {% for activity in session_activities %}
+                                <div class="activity-item activity-{{ activity.action_type }}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="d-flex align-items-center mb-2">
+                                                {% if activity.activity_level == 'low' %}
+                                                    <span class="badge badge-custom bg-success">
+                                                {% elif activity.activity_level == 'medium' %}
+                                                    <span class="badge badge-custom bg-warning">
+                                                {% elif activity.activity_level == 'high' %}
+                                                    <span class="badge badge-custom bg-danger">
+                                                {% else %}
+                                                    <span class="badge badge-custom bg-dark">
+                                                {% endif %}
+                                                    {{ activity.get_activity_level_display }}
+                                                </span>
+                                                <span class="badge badge-custom bg-primary ml-2">
+                                                    {{ activity.get_action_type_display }}
+                                                </span>
+                                                {% if activity.module %}
+                                                <span class="badge badge-custom bg-info ml-2">
+                                                    {{ activity.module|upper }}
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                            <h6 class="mb-1">{{ activity.description }}</h6>
+                                            {% if activity.object_type and activity.object_repr %}
+                                            <p class="text-muted mb-2 small">
+                                                <strong>{{ activity.object_type }}:</strong> {{ activity.object_repr }}
+                                            </p>
+                                            {% endif %}
+                                            <div class="text-muted small">
+                                                <i class="far fa-clock mr-1"></i>
+                                                {{ activity.timestamp|date:"Y-m-d H:i:s" }}
+                                                {% if activity.status_code %}
+                                                <span class="ml-3">
+                                                    <i class="fas fa-server mr-1"></i>
+                                                    Status: {{ activity.status_code }}
+                                                </span>
+                                                {% endif %}
+                                                {% if activity.response_time_ms %}
+                                                <span class="ml-3">
+                                                    <i class="fas fa-stopwatch mr-1"></i>
+                                                    {{ activity.response_time_ms }}ms
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% if activity.user %}
+                                        <div class="text-right">
+                                            <small class="text-muted">{{ activity.user.username }}</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                    <p>No activities recorded for this session.</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh for active sessions
+{% if session.is_active %}
+setInterval(function() {
+    location.reload();
+}, 30000); // Refresh every 30 seconds for active sessions
+{% endif %}
+
+// Smooth scrolling for activity timeline
+document.querySelector('.activity-timeline')?.addEventListener('wheel', function(e) {
+    if (e.deltaY !== 0) {
+        e.preventDefault();
+        this.scrollTop += e.deltaY;
+    }
+});
+</script>
+{% endblock %}
