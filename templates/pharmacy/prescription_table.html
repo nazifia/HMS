@@ -1,0 +1,222 @@
+<table class="table table-hover" id="prescriptions-table">
+    <thead class="table-light">
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Patient</th>
+            <th>Patient Number</th>
+            <th>Doctor</th>
+            <th>Diagnosis</th>
+            <th>Status</th>
+            <th>Payment</th>
+            <th>Dispensing</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prescription in page_obj %}
+            {% with dispensing_info=prescription.get_dispensing_status_info %}
+            {% with progress=prescription.get_dispensing_progress %}
+            {% with payment_info=prescription.get_payment_status_display_info %}
+            <tr class="{% if prescription.is_from_surgery_pack %}surgery-pack-row{% elif prescription.status == 'pending' %}table-warning{% elif prescription.status == 'processing' %}table-info{% elif prescription.status == 'completed' %}table-success{% elif prescription.status == 'cancelled' %}table-danger{% endif %}">
+                <td>
+                    <strong>#{{ prescription.id }}</strong>
+                    {% if prescription.is_from_surgery_pack %}
+                        <br><small class="badge bg-warning text-dark">
+                            <i class="fas fa-scalpel"></i> Surgery Pack
+                        </small>
+                    {% endif %}
+                </td>
+                <td>
+                    <small>{{ prescription.prescription_date|date:"M d, Y" }}</small>
+                    {% if prescription.created_at %}
+                    <br>
+                    <small class="text-muted">{{ prescription.created_at|date:"h:i A" }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'patients:detail' prescription.patient.id %}" class="text-decoration-none">
+                        <strong>{{ prescription.patient.get_full_name }}</strong>
+                    </a>
+                    {% if prescription.patient.patient_type == 'nhia' %}
+                        <br><small class="badge bg-info">NHIA</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">{{ prescription.patient.patient_id }}</span>
+                        <button class="copy-patient-id"
+                                title="Copy Patient Number"
+                                data-patient-id="{{ prescription.patient.patient_id }}"
+                                onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. {{ prescription.doctor.get_full_name }}</small>
+                </td>
+                <td>
+                    <small>{{ prescription.diagnosis|truncatechars:30 }}</small>
+                </td>
+                <td>
+                    {% if prescription.status == 'pending' %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    {% elif prescription.status == 'approved' %}
+                        <span class="badge bg-info">Approved</span>
+                    {% elif prescription.status == 'processing' %}
+                        <span class="badge bg-primary">Processing</span>
+                    {% elif prescription.status == 'dispensed' %}
+                        <span class="badge bg-success">Dispensed</span>
+                    {% elif prescription.status == 'partially_dispensed' %}
+                        <span class="badge bg-warning">Partial</span>
+                    {% elif prescription.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                    {% elif prescription.status == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                    {% elif prescription.status == 'on_hold' %}
+                        <span class="badge bg-secondary">On Hold</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if payment_info.status == 'paid' %}
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    {% elif payment_info.status == 'waived' %}
+                        <span class="badge badge-payment-waived">
+                            <i class="fas fa-info-circle"></i> Waived
+                        </span>
+                    {% else %}
+                        <span class="badge badge-payment-unpaid">
+                            <i class="fas fa-exclamation-circle"></i> Unpaid
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if dispensing_info.status == 'fully_dispensed' %}
+                        <span class="badge badge-dispensing-full">
+                            <i class="fas fa-check-circle"></i> Full
+                        </span>
+                    {% elif dispensing_info.status == 'partially_dispensed' %}
+                        <span class="badge badge-dispensing-partial">
+                            <i class="fas fa-clock"></i> Partial
+                        </span>
+                        <div class="dispensing-progress">
+                            <div class="dispensing-progress-bar" style="width: {{ progress.progress_percentage }}%; background-color: #ffc107;"></div>
+                        </div>
+                        <small class="text-muted">{{ progress.progress_percentage }}%</small>
+                    {% else %}
+                        <span class="badge badge-dispensing-none">
+                            <i class="fas fa-times-circle"></i> None
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}"
+                           class="btn btn-info btn-sm"
+                           title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        {% if prescription.status != 'completed' and prescription.status != 'cancelled' and prescription.status != 'dispensed' %}
+                            <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}"
+                               class="btn btn-success btn-sm"
+                               title="Dispense Medication">
+                                <i class="fas fa-prescription-bottle-alt"></i>
+                            </a>
+                        {% endif %}
+                        {% if prescription.invoice %}
+                            <a href="{% url 'billing:detail' prescription.invoice.id %}"
+                               class="btn btn-primary btn-sm"
+                               title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endwith %}
+            {% endwith %}
+            {% endwith %}
+        {% empty %}
+            <tr>
+                <td colspan="10" class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No prescriptions found.</p>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Pagination component -->
+<div id="pagination-container">
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#prescriptions-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#prescriptions-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                    </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" hx-get="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                               hx-target="#prescriptions-table-container"
+                               hx-push-url="true">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#prescriptions-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#prescriptions-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>

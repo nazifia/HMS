@@ -22,8 +22,9 @@ urlpatterns = [
     path('prescriptions/patient/<int:patient_id>/', views.patient_prescriptions_view, name='patient_prescriptions'),
     path('api/medications/autocomplete/', views.medication_autocomplete_view, name='medication_autocomplete'),
 
-    # Patient search URL
+    # Patient search URLs
     path('api/patients/search/', views.search_patients, name='patient_search'),
+    path('api/patients/search-ajax/', views.patient_search_ajax, name='patient_search_ajax'),
 
     # Revenue Point Breakdown URLs
     path('revenue/dashboard/', revenue_views.revenue_point_dashboard, name='revenue_point_dashboard'),
@@ -47,6 +48,7 @@ urlpatterns = [
 
     # Test URL for URL helpers
     path('test-url-helpers/', views.test_url_helpers, name='test_url_helpers'),
+    path('test-performance/', views.test_performance, name='test_performance'),
 
     # Admin Management URLs
     path('admin/', admin_views.admin_dashboard, name='admin_dashboard'),

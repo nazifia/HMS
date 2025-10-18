@@ -17,45 +17,135 @@
     </div>
 </div>
 
-<div class="row mb-4">
+<div class="row mb-4" x-data="{
+    search: '',
+    typing: false,
+    timeout: null,
+    performSearch() {
+        this.typing = true;
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(() => {
+            this.typing = false;
+            // Trigger HTMX search
+            if (typeof htmx !== 'undefined') {
+                const form = document.getElementById('search-form');
+                if (form) {
+                    // Build URL with current form data
+                    const formData = new FormData(form);
+                    const params = new URLSearchParams(formData);
+                    htmx.trigger(form, 'search', {
+                        target: '#patient-table-container'
+                    });
+                }
+            }
+        }, 300);
+    },
+    clearFilters() {
+        const form = document.getElementById('search-form');
+        if (form) {
+            form.reset();
+            // Manually trigger a search with cleared form
+            this.search = '';
+            this.performSearch();
+        }
+    }
+}">
     <div class="col-12">
         <div class="card">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Search & Filter</h5>
             </div>
             <div class="card-body">
-                <form method="get" action="{% url 'patients:list' %}" class="row g-3">
+                <form
+                    id="search-form"
+                    method="get"
+                    action="{% url 'patients:list' %}"
+                    class="row g-3"
+                    hx-get="{% url 'patients:list' %}"
+                    hx-target="#patient-table-container"
+                    hx-trigger="submit, search"
+                    hx-indicator=".search-loading">
                     <div class="col-md-4">
                         <label for="id_search" class="form-label">Search</label>
-                        {{ search_form.search|add_class:"form-control" }}
+                        <input type="text" name="{{ search_form.search.name }}" id="{{ search_form.search.id_for_label }}" 
+                               class="form-control" value="{{ search_form.search.value|default:'' }}" 
+                               @input.debounce.300ms="performSearch()" placeholder="Search patients..." x-model="search">
+                        <span x-show="typing" class="text-muted small">Typing...</span>
                     </div>
                     <div class="col-md-2">
                         <label for="id_gender" class="form-label">Gender</label>
-                        {{ search_form.gender|add_class:"form-select" }}
+                        <select name="{{ search_form.gender.name }}" id="{{ search_form.gender.id_for_label }}" class="form-select" @change="performSearch()">
+                            <option value="">All</option>
+                            <option value="M" {% if search_form.gender.value == 'M' %}selected{% endif %}>Male</option>
+                            <option value="F" {% if search_form.gender.value == 'F' %}selected{% endif %}>Female</option>
+                            <option value="O" {% if search_form.gender.value == 'O' %}selected{% endif %}>Other</option>
+                        </select>
                     </div>
                     <div class="col-md-2">
                         <label for="id_blood_group" class="form-label">Blood Group</label>
-                        {{ search_form.blood_group|add_class:"form-select" }}
+                        <select name="{{ search_form.blood_group.name }}" id="{{ search_form.blood_group.id_for_label }}" class="form-select" @change="performSearch()">
+                            <option value="">All</option>
+                            <option value="A+" {% if search_form.blood_group.value == 'A+' %}selected{% endif %}>A+</option>
+                            <option value="A-" {% if search_form.blood_group.value == 'A-' %}selected{% endif %}>A-</option>
+                            <option value="B+" {% if search_form.blood_group.value == 'B+' %}selected{% endif %}>B+</option>
+                            <option value="B-" {% if search_form.blood_group.value == 'B-' %}selected{% endif %}>B-</option>
+                            <option value="AB+" {% if search_form.blood_group.value == 'AB+' %}selected{% endif %}>AB+</option>
+                            <option value="AB-" {% if search_form.blood_group.value == 'AB-' %}selected{% endif %}>AB-</option>
+                            <option value="O+" {% if search_form.blood_group.value == 'O+' %}selected{% endif %}>O+</option>
+                            <option value="O-" {% if search_form.blood_group.value == 'O-' %}selected{% endif %}>O-</option>
+                        </select>
                     </div>
                     <div class="col-md-4">
                         <label for="id_city" class="form-label">City</label>
-                        {{ search_form.city|add_class:"form-control" }}
+                        <input type="text" name="{{ search_form.city.name }}" id="{{ search_form.city.id_for_label }}" 
+                               class="form-control" value="{{ search_form.city.value|default:'' }}" 
+                               @input.debounce.300ms="performSearch()" placeholder="City">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="id_patient_type" class="form-label">Patient Type</label>
+                        <select name="{{ search_form.patient_type.name }}" id="{{ search_form.patient_type.id_for_label }}" class="form-select" @change="performSearch()">
+                            <option value="">All Types</option>
+                            <option value="regular" {% if search_form.patient_type.value == 'regular' %}selected{% endif %}>Regular</option>
+                            <option value="nhia" {% if search_form.patient_type.value == 'nhia' %}selected{% endif %}>NHIA</option>
+                            <option value="private" {% if search_form.patient_type.value == 'private' %}selected{% endif %}>Private Pay</option>
+                            <option value="insurance" {% if search_form.patient_type.value == 'insurance' %}selected{% endif %}>Private Insurance</option>
+                            <option value="corporate" {% if search_form.patient_type.value == 'corporate' %}selected{% endif %}>Corporate</option>
+                            <option value="staff" {% if search_form.patient_type.value == 'staff' %}selected{% endif %}>Staff</option>
+                            <option value="dependant" {% if search_form.patient_type.value == 'dependant' %}selected{% endif %}>Dependant</option>
+                            <option value="emergency" {% if search_form.patient_type.value == 'emergency' %}selected{% endif %}>Emergency</option>
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <label for="id_date_from" class="form-label">Registration Date From</label>
-                        {{ search_form.date_from|add_class:"form-control" }}
+                        <input type="date" name="{{ search_form.date_from.name }}" id="{{ search_form.date_from.id_for_label }}" 
+                               class="form-control" value="{{ search_form.date_from.value|default:'' }}" 
+                               @change="performSearch()">
                     </div>
                     <div class="col-md-3">
                         <label for="id_date_to" class="form-label">Registration Date To</label>
-                        {{ search_form.date_to|add_class:"form-control" }}
+                        <input type="date" name="{{ search_form.date_to.name }}" id="{{ search_form.date_to.id_for_label }}" 
+                               class="form-control" value="{{ search_form.date_to.value|default:'' }}" 
+                               @change="performSearch()">
                     </div>
                     <div class="col-md-6 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary me-2">
                             <i class="fas fa-search me-1"></i> Search
                         </button>
-                        <a href="{% url 'patients:list' %}" class="btn btn-secondary">
+                        <button 
+                            type="button" 
+                            @click="clearFilters()"
+                            hx-get="{% url 'patients:list' %}"
+                            hx-target="#patient-table-container"
+                            hx-indicator=".search-loading"
+                            class="btn btn-secondary">
                             <i class="fas fa-redo me-1"></i> Reset
-                        </a>
+                        </button>
+                        <div class="search-loading htmx-indicator ms-2">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                        <div class="search-loading htmx-indicator ms-2">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -68,149 +158,123 @@
         <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Patients</h5>
-                <span class="badge bg-light text-dark">Total: {{ total_patients }}</span>
+                <span class="badge bg-light text-dark" id="patient-count">Total: {{ total_patients }}</span>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped">
-                        <thead>
-                            <tr>
-                                <th>Photo</th>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Gender</th>
-                                <th>Age</th>
-                                <th>Phone</th>
-                                <th>Registration Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for patient in page_obj %}
-                                <tr>
-                                    <td class="text-center">
-                                        {% patient_image patient size="small" %}
-                                    </td>
-                                    <td>{{ patient.patient_id }}</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div>
-                                                <strong>{{ patient.get_full_name }}</strong>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        {% if patient.is_active %}
-                                            <span class="badge bg-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ patient.get_gender_display }}</td>
-                                    <td>{{ patient.get_age }}</td>
-                                    <td>{{ patient.phone_number }}</td>
-                                    <td>{{ patient.registration_date|date:"d M Y g:i A" }}</td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-info" data-bs-toggle="tooltip" title="View Details">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary" data-bs-toggle="tooltip" title="Edit Patient">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success" data-bs-toggle="tooltip" title="View Wallet">
-                                                <i class="fas fa-wallet"></i>
-                                            </a>
-                                            <form action="{% url 'patients:toggle_active' patient.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to {{ patient.is_active|yesno:'deactivate,reactivate' }} this patient?');">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-{% if patient.is_active %}warning{% else %}info{% endif %}" data-bs-toggle="tooltip" title="{{ patient.is_active|yesno:'Deactivate,Reactivate' }}">
-                                                    <i class="fas fa-{% if patient.is_active %}ban{% else %}check-circle{% endif %}"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% empty %}
-                                <tr>
-                                    <td colspan="8" class="text-center">No patients found.</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div id="patient-table-container" class="table-responsive">
+                    {% include 'patients/patient_table.html' %}
                 </div>
 
-                {% if page_obj.has_other_pages %}
-                <nav aria-label="Page navigation" class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                                    <i class="fas fa-angle-double-left"></i>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                                    <i class="fas fa-angle-left"></i>
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
-                            </li>
-                            <li class="page-item disabled">
-                                <span class="page-link"><i class="fas fa-angle-left"></i></span>
-                            </li>
-                        {% endif %}
-
-                        {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                                <li class="page-item active">
-                                    <span class="page-link">{{ num }}</span>
-                                </li>
-                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
-                                </li>
-                            {% endif %}
-                        {% endfor %}
-
-                        {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                                    <i class="fas fa-angle-right"></i>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                                    <i class="fas fa-angle-double-right"></i>
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link"><i class="fas fa-angle-right"></i></span>
-                            </li>
-                            <li class="page-item disabled">
-                                <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-                {% endif %}
+                
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
+
+
 {% block extra_js %}
 <script>
+    // Alpine.js data components are initialized inline with x-data
+
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+
+        // Enhanced HTMX behavior for patient table
+        if (typeof htmx !== 'undefined') {
+            htmx.on('htmx:afterSwap', function(evt) {
+                // Re-initialize tooltips after content swap
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+
+                // Update patient count if available
+                const patientCount = evt.detail.elt.querySelector('#patient-count');
+                if (patientCount) {
+                    const fullName = evt.detail.target.querySelector('#patient-count');
+                    if (fullName) {
+                        fullName.textContent = patientCount.textContent;
+                    }
+                }
+            });
+
+            htmx.on('htmx:beforeRequest', function(evt) {
+                // Show loading state on table
+                const target = evt.target;
+                if (target && target.id === 'patient-table') {
+                    target.style.opacity = '0.6';
+                }
+            });
+
+            htmx.on('htmx:afterRequest', function(evt) {
+                // Hide loading state
+                const target = evt.target;
+                if (target && target.id === 'patient-table') {
+                    target.style.opacity = '1';
+                }
+            });
+        }
+
+        // Quick keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + K to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                const searchInput = document.getElementById('id_search');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }
+        });
     });
 </script>
+
+<style>
+    .htmx-indicator {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    
+    .htmx-indicator.htmx-request {
+        opacity: 1;
+    }
+    
+    .htmx-request .table {
+        opacity: 0.6;
+    }
+    
+    /* Enhanced loading states */
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Pagination loading effects */
+    #patient-table {
+        transition: opacity 0.2s ease-in-out;
+    }
+    
+    #patient-table.htmx-request {
+        opacity: 0.7;
+    }
+    
+    /* Search input enhancements */
+    #id_search:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .search-loading {
+        color: #007bff;
+    }
+</style>
 {% endblock %}

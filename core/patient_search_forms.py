@@ -37,6 +37,20 @@ class PatientSearchForm(forms.Form):
 class EnhancedPatientSearchForm(PatientSearchForm):
     """Enhanced patient search form with additional filters"""
     
+    gender = forms.ChoiceField(
+        choices=[('', 'All Genders')] + list(Patient.GENDER_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Filter by gender'
+    )
+    
+    blood_group = forms.ChoiceField(
+        choices=[('', 'All Blood Groups')] + list(Patient.BLOOD_GROUP_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Filter by blood group'
+    )
+    
     patient_type = forms.ChoiceField(
         choices=[('', 'All Types')] + list(Patient.PATIENT_TYPE_CHOICES),
         required=False,
@@ -44,11 +58,15 @@ class EnhancedPatientSearchForm(PatientSearchForm):
         help_text='Filter by patient type'
     )
     
-    gender = forms.ChoiceField(
-        choices=[('', 'All Genders')] + list(Patient.GENDER_CHOICES),
+    city = forms.CharField(
         required=False,
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        help_text='Filter by gender'
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Filter by city...',
+            'autocomplete': 'off'
+        }),
+        help_text='Filter by city'
     )
     
     date_from = forms.DateField(

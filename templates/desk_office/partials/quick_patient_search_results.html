@@ -1,0 +1,39 @@
+{% if patients %}
+    <div class="list-group">
+        {% for patient in patients %}
+            <label class="list-group-item list-group-item-action">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="selected_patient" value="{{ patient.id }}" 
+                           onchange="document.getElementById('quickGenerateBtn').disabled = false">
+                    <div class="d-flex w-100 justify-content-between">
+                        <div>
+                            <h6 class="mb-1">{{ patient.get_full_name }}</h6>
+                            <p class="mb-1">
+                                <small class="text-muted">
+                                    <i class="fas fa-id-card"></i> {{ patient.patient_id }} | 
+                                    <i class="fas fa-phone"></i> {{ patient.phone_number }} | 
+                                    <i class="fas fa-birthday-cake"></i> {{ patient.age }} years
+                                </small>
+                            </p>
+                            {% if patient.nhia_info %}
+                                <p class="mb-0">
+                                    <small class="text-info">
+                                        <i class="fas fa-shield-alt"></i> NHIA: {{ patient.nhia_info.nhia_reg_number }}
+                                    </small>
+                                </p>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-primary rounded-pill">{{ patient.get_patient_type_display|title }}</span><br>
+                            <span class="badge bg-secondary rounded-pill">{{ patient.get_gender_display }}</span>
+                        </div>
+                    </div>
+                </div>
+            </label>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No NHIA patients found
+    </div>
+{% endif %}

@@ -1,0 +1,138 @@
+{% load patient_tags static%}
+<table class="table table-hover table-striped" id="patients-table">
+    <thead>
+        <tr>
+            <th>Photo</th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Age</th>
+            <th>Phone</th>
+            <th>Registration Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for patient in page_obj %}
+            <tr>
+                <td class="text-center">
+                    {% patient_image patient size="small" %}
+                </td>
+                <td>{{ patient.patient_id }}</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <strong>{{ patient.get_full_name }}</strong>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ patient.get_gender_display }}</td>
+                <td>{{ patient.get_age }}</td>
+                <td>{{ patient.phone_number }}</td>
+                <td>{{ patient.registration_date|date:"d M Y" }}</td>
+                <td>
+                    {% if patient.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-danger">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{% url 'patients:detail' patient.id %}" class="btn btn-info" data-bs-toggle="tooltip" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary" data-bs-toggle="tooltip" title="Edit Patient">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success" data-bs-toggle="tooltip" title="View Wallet">
+                            <i class="fas fa-wallet"></i>
+                        </a>
+                        <form action="{% url 'patients:toggle_active' patient.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to {{ patient.is_active|yesno:'deactivate,reactivate' }} this patient?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-{% if patient.is_active %}warning{% else %}info{% endif %}" data-bs-toggle="tooltip" title="{{ patient.is_active|yesno:'Deactivate,Reactivate' }}">
+                                <i class="fas fa-{% if patient.is_active %}ban{% else %}check-circle{% endif %}"></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="9" class="text-center">No patients found.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Pagination component -->
+<div id="pagination-container">
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#patient-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#patient-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" hx-get="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                               hx-target="#patient-table-container"
+                               hx-push-url="true">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#patient-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           hx-target="#patient-table-container"
+                           hx-push-url="true">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>

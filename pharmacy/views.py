@@ -1623,7 +1623,11 @@ def prescription_list(request):
         'active_nav': 'pharmacy',
         'title': title,
     }
-    
+
+    # If this is an HTMX request, return only the table partial
+    if request.headers.get('HX-Request'):
+        return render(request, 'pharmacy/prescription_table.html', context)
+
     return render(request, 'pharmacy/prescription_list.html', context)
 import datetime
 

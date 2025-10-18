@@ -22,23 +22,25 @@ from datetime import datetime, timedelta
 @login_required
 def patient_list(request):
     """View for listing all patients with search and pagination"""
-    from .forms import PatientSearchForm
-    
-    # Initialize search form
-    search_form = PatientSearchForm(request.GET or None)
-    
+    from core.patient_search_forms import EnhancedPatientSearchForm
+
     # Get all active patients
     patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-    
-    # Apply search filters if form is valid
-    if search_form.is_valid():
-        search_query = search_form.cleaned_data.get('search')
-        gender = search_form.cleaned_data.get('gender')
-        blood_group = search_form.cleaned_data.get('blood_group')
-        city = search_form.cleaned_data.get('city')
-        date_from = search_form.cleaned_data.get('date_from')
-        date_to = search_form.cleaned_data.get('date_to')
-        
+
+    # Initialize search form with GET data if present
+    search_form = EnhancedPatientSearchForm(request.GET if request.GET else None)
+
+    # Apply search filters - check if any GET parameters exist
+    if request.GET:
+        # Get search parameters directly from request.GET for more reliable filtering
+        search_query = request.GET.get('search', '').strip()
+        gender = request.GET.get('gender', '').strip()
+        blood_group = request.GET.get('blood_group', '').strip()
+        patient_type = request.GET.get('patient_type', '').strip()
+        city = request.GET.get('city', '').strip()
+        date_from = request.GET.get('date_from', '').strip()
+        date_to = request.GET.get('date_to', '').strip()
+
         # Apply search query filter
         if search_query:
             patients = patients.filter(
@@ -48,27 +50,39 @@ def patient_list(request):
                 Q(phone_number__icontains=search_query) |
                 Q(email__icontains=search_query)
             )
-        
+
         # Apply additional filters
         if gender:
             patients = patients.filter(gender=gender)
         if blood_group:
             patients = patients.filter(blood_group=blood_group)
+        if patient_type:
+            patients = patients.filter(patient_type=patient_type)
         if city:
             patients = patients.filter(city__icontains=city)
         if date_from:
-            patients = patients.filter(registration_date__gte=date_from)
+            try:
+                from datetime import datetime
+                date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+                patients = patients.filter(registration_date__gte=date_from_obj)
+            except ValueError:
+                pass
         if date_to:
-            patients = patients.filter(registration_date__lte=date_to)
-    
+            try:
+                from datetime import datetime
+                date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+                patients = patients.filter(registration_date__lte=date_to_obj)
+            except ValueError:
+                pass
+
     # Get total count for display
     total_patients = patients.count()
-    
+
     # Pagination
     paginator = Paginator(patients, 15)  # Show 15 patients per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
         'page_obj': page_obj,
         'search_form': search_form,
@@ -76,8 +90,14 @@ def patient_list(request):
         'page_title': 'Patient List',
         'active_nav': 'patients',
     }
-    
+
+    # If this is an HTMX request, return only the table partial
+    if request.headers.get('HX-Request'):
+        return render(request, 'patients/patient_table.html', context)
+
     return render(request, 'patients/patient_list.html', context)
+    
+
 
 
 @login_required

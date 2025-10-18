@@ -1,0 +1,4375 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescriptions - Hospital Management System</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
+
+    <!-- Custom CSS -->
+    
+
+
+    <link rel="stylesheet" href="/static/css/style_new.css">
+    <link rel="stylesheet" href="/static/css/patient_search.css">
+
+    
+<style>
+    .search-form .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .search-form .btn {
+        margin-right: 0.5rem;
+    }
+
+    .prescription-card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .prescription-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .form-control:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+
+    /* Patient ID styling */
+    .patient-id-container {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .patient-id-display {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: #2c3e50;
+        background-color: #f8f9fa;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    .copy-patient-id {
+        color: #6c757d;
+        font-size: 0.75rem;
+        transition: color 0.2s;
+        cursor: pointer;
+        border: none;
+        background: none;
+        padding: 0.15rem 0.3rem;
+    }
+
+    .copy-patient-id:hover {
+        color: #007bff;
+    }
+
+    .copy-patient-id.copied {
+        color: #28a745;
+    }
+
+    /* Progress bar styling */
+    .dispensing-progress {
+        width: 100%;
+        height: 6px;
+        background-color: #e9ecef;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 0.25rem;
+    }
+
+    .dispensing-progress-bar {
+        height: 100%;
+        background-color: #28a745;
+        transition: width 0.3s ease;
+    }
+
+    /* Enhanced table styling */
+    .table th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    /* Surgery pack indicator */
+    .surgery-pack-row {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107;
+    }
+
+    /* Status badges */
+    .badge-payment-paid {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .badge-payment-unpaid {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .badge-payment-waived {
+        background-color: #17a2b8;
+        color: white;
+    }
+
+    .badge-dispensing-full {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .badge-dispensing-partial {
+        background-color: #ffc107;
+        color: #000;
+    }
+
+    .badge-dispensing-none {
+        background-color: #6c757d;
+        color: white;
+    }
+</style>
+
+    <style>
+        /* Main layout for sidebar and content */
+        html, body {
+            height: 100%;
+            overflow-x: hidden; /* Allow horizontal scrolling if needed */
+            overflow-y: auto; /* Allow vertical scrolling */
+        }
+        #wrapper {
+            display: flex;
+            min-height: 100vh;
+            width: 100vw;
+            background: #f8f9fc;
+            overflow-x: hidden; /* Keep horizontal hidden if desired, but allow vertical */
+            overflow-y: auto; /* Allow vertical scrolling */
+        }
+
+        /* Content Wrapper */
+        #content-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            width: 100%;
+            min-width: 0;
+            background: #f8f9fc;
+            overflow-y: auto; /* Changed from hidden to auto */
+            height: 100vh;
+        }
+
+        /* Main Content Area */
+        #content {
+            flex: 1 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 80px; /* Space for footer */
+            overflow-y: auto;
+            height: 100vh;
+        }
+
+        /* Container Fluid for content padding */
+        .container-fluid {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        /* Topbar custom style */
+        .topbar {
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            border-radius: 0 0 12px 12px;
+            padding: 0.5rem 2rem;
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+        .topbar .navbar-brand {
+            font-weight: 700;
+            color: #00bfff !important;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+        }
+        .topbar .nav-link, .topbar .fa {
+            color: #23272b !important;
+            font-size: 1.1rem;
+        }
+        .topbar .nav-link:hover {
+            color: #00bfff !important;
+        }
+        /* Footer custom style */
+        footer, .footer {
+            flex-shrink: 0;
+            background: #fff;
+            color: #23272b;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+            border-radius: 12px 12px 0 0;
+            padding: 1rem 2rem;
+            text-align: center;
+            font-size: 1rem;
+            margin-top: auto;
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+        }
+        /* Responsive tweaks */
+        @media (max-width: 991.98px) {
+            .topbar, footer, .footer {
+                padding: 0.5rem 1rem;
+                border-radius: 0;
+            }
+        }
+        @media (max-width: 600px) {
+            .topbar, footer, .footer {
+                padding: 0.5rem 0.5rem;
+                font-size: 0.95rem;
+            }
+            .topbar .navbar-brand {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Auto Logout Modal Styles */
+        #logoutWarningModal .modal-content {
+            border: 2px solid #ffc107;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+        }
+
+        #logoutWarningModal #countdownTimer {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        #logoutModal .modal-content {
+            border: none;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .modal-backdrop.show {
+            opacity: 0.15;  /* Reduced from 0.3 to 0.15 */
+        }
+
+        /* Global Modal Z-Index Override */
+        #logoutWarningModal, #logoutModal {
+            z-index: 50010 !important;
+        }
+
+        #logoutWarningModal .modal-backdrop, #logoutModal .modal-backdrop {
+            z-index: 50000 !important;
+        }
+
+        /* Session Status Indicator */
+        #sessionStatus {
+            cursor: default;
+            font-size: 0.9rem;
+        }
+
+        #sessionIndicator {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+    <script>
+        // Sidebar toggle for mobile - handled by sidebar.js
+    </script>
+    
+    
+    <!-- Additional head content here -->
+    
+<style>                      .htmx-indicator{opacity:0}                      .htmx-request .htmx-indicator{opacity:1; transition: opacity 200ms ease-in;}                      .htmx-request.htmx-indicator{opacity:1; transition: opacity 200ms ease-in;}                    </style></head>
+<body id="page-top">
+
+    <!-- Page Wrapper -->
+    <div id="wrapper">
+        <!-- Sidebar -->
+        
+            <!-- Sidebar -->
+<div class="d-flex flex-column bg-dark sidebar vh-100" style="width:250px;min-height:100vh;overflow-y:auto;">
+    <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;">
+
+        <!-- Sidebar - Brand -->
+        <a class="sidebar-brand d-flex align-items-center justify-content-center mt-3 mb-4" href="/">
+            <div class="sidebar-brand-icon">
+                <i class="fas fa-hospital text-white"></i>
+            </div>
+            <div class="sidebar-brand-text mx-3 text-white">HMS</div>
+        </a>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider my-0">
+
+        <!-- Nav Item - Dashboard (Available to all authenticated users) -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/dashboard/">
+                <i class="fas fa-fw fa-tachometer-alt text-white"></i>
+                <span class="text-white">Dashboard</span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Patient Care
+        </div>
+
+        <!-- Nav Item - Patients (Available to doctors, nurses, receptionists, health record officers, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePatients" aria-expanded="false" aria-controls="collapsePatients">
+                <i class="fas fa-fw fa-user-injured text-white"></i>
+                <span class="text-white">Patients</span>
+            </a>
+            <div id="collapsePatients" class="collapse " aria-labelledby="headingPatients" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Patient Management:</h6>
+                    <a class="collapse-item " href="/patients/">All Patients</a>
+                    
+                    <a class="collapse-item " href="/patients/register/">Register Patient</a>
+                    <a class="collapse-item " href="/nhia/register-independent/">Register NHIA Patient</a>
+                    <a class="collapse-item " href="/nhia/register-patient/">Add Patient to NHIA</a>
+                    <a class="collapse-item " href="/retainership/register-independent/">Register Retainership Patient</a>
+                    
+                    <a class="collapse-item " href="/nhia/patients/">NHIA Patients</a>
+                    
+                    <!-- Retainership Patients: always visible, styled like NHIA -->
+                    <a class="collapse-item " href="/retainership/patients/">Retainership Patients</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Doctors (Available to all users) -->
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDoctors" aria-expanded="false" aria-controls="collapseDoctors">
+                <i class="fas fa-fw fa-user-md text-white"></i>
+                <span class="text-white">Doctors</span>
+            </a>
+            <div id="collapseDoctors" class="collapse " aria-labelledby="headingDoctors" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Doctor Management:</h6>
+                    <a class="collapse-item " href="/doctors/">All Doctors</a>
+
+                    <!-- Application admin-only doctor management options -->
+                    <a class="collapse-item " href="/doctors/admin/doctors/">Manage Doctors</a>
+                    <a class="collapse-item " href="/doctors/admin/doctors/add/">Add New Doctor</a>
+                    <a class="collapse-item " href="/doctors/admin/specializations/">Specializations</a>
+                    <a class="collapse-item " href="/doctors/admin/leave-requests/">Leave Requests</a>
+
+                    <!-- Doctor-specific options -->
+                    
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - Inpatient Management (Available to nurses, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseInpatient" aria-expanded="false" aria-controls="collapseInpatient">
+                <i class="fas fa-fw fa-hospital-alt text-white"></i>
+                <span class="text-white">Inpatient</span>
+            </a>
+            <div id="collapseInpatient" class="collapse " aria-labelledby="headingInpatient" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Inpatient Management:</h6>
+                    <a class="collapse-item " href="/inpatient/admissions/">Admissions</a>
+                    <a class="collapse-item " href="/inpatient/wards/">Wards</a>
+                    <a class="collapse-item " href="/inpatient/beds/">Beds</a>
+                    <a class="collapse-item " href="/inpatient/bed-dashboard/">Bed Dashboard</a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Reports:</h6>
+                    <a class="collapse-item " href="/inpatient/reports/bed-occupancy/">Bed Occupancy Report</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Appointments (Available to doctors, receptionists, health record officers, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAppointments" aria-expanded="false" aria-controls="collapseAppointments">
+                <i class="fas fa-fw fa-calendar-check text-white"></i>
+                <span class="text-white">Appointments</span>
+            </a>
+            <div id="collapseAppointments" class="collapse " aria-labelledby="headingAppointments" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Appointment Management:</h6>
+                    <a class="collapse-item " href="/appointments/">All Appointments</a>
+
+                    <!-- Only receptionists, health record officers, and admins can create appointments -->
+                    
+                    <a class="collapse-item " href="/appointments/create/">Schedule Appointment</a>
+                    
+
+                    <!-- Doctor-specific appointment views -->
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Consulting Rooms and Waiting List (Available to receptionists, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultingRooms" aria-expanded="false" aria-controls="collapseConsultingRooms">
+                <i class="fas fa-fw fa-door-open text-white"></i>
+                <span class="text-white">Consulting Rooms</span>
+            </a>
+            <div id="collapseConsultingRooms" class="collapse " aria-labelledby="headingConsultingRooms" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Room Management:</h6>
+                    <a class="collapse-item " href="/consultations/consulting-rooms/">All Rooms</a>
+
+                    
+                    <a class="collapse-item " href="/consultations/consulting-rooms/create/">Add New Room</a>
+                    
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Patient Management:</h6>
+
+                    
+                    <a class="collapse-item " href="/consultations/waiting-list/">Waiting List</a>
+                    <a class="collapse-item " href="/consultations/waiting-list/add/">Add to Waiting List</a>
+                    
+
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Medical Services
+        </div>
+
+        <!-- Nav Item - Pharmacy (Available to pharmacists, doctors, and admins) -->
+        
+        <li class="nav-item active">
+            <a class="nav-link " href="#" data-bs-toggle="collapse" data-bs-target="#collapsePharmacy" aria-expanded="true" aria-controls="collapsePharmacy">
+                <i class="fas fa-fw fa-pills text-white"></i>
+                <span class="text-white">Pharmacy</span>
+            </a>
+            <div id="collapsePharmacy" class="collapse show" aria-labelledby="headingPharmacy" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Pharmacy Management:</h6>
+
+                    <!-- Inventory management for pharmacists and admins -->
+                    
+                    <a class="collapse-item " href="/pharmacy/inventory/">Inventory</a>
+                    
+
+                    <!-- Prescriptions for all pharmacy users -->
+                    <a class="collapse-item active" href="/pharmacy/prescriptions/">Prescriptions</a>
+
+                    <!-- Dispensed Items Tracker -->
+                    <a class="collapse-item " href="/pharmacy/dispensed-items/">Dispensed Items Tracker</a>
+
+                    <!-- Medical Pack Management Section -->
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Medical Packs:</h6>
+                    <a class="collapse-item " href="/pharmacy/packs/">All Medical Packs</a>
+                    <a class="collapse-item " href="/pharmacy/packs/create/">Create New Pack</a>
+                    <a class="collapse-item " href="/pharmacy/pack-orders/">Pack Orders</a>
+                    <a class="collapse-item " href="/pharmacy/pack-orders/create/">Order Medical Pack</a>
+
+                    <!-- Inter-Dispensary Transfers -->
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Inter-Dispensary:</h6>
+                    <a class="collapse-item " href="/pharmacy/transfers/inter/">Transfers <span class="badge bg-primary">New</span></a>
+                    <a class="collapse-item " href="/pharmacy/transfers/inter/create/">Create Transfer</a>
+                    <a class="collapse-item " href="/pharmacy/transfers/inter/statistics/">Transfer Statistics</a>
+                    
+
+                    <!-- Reports for pharmacists and admins -->
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Reports:</h6>
+                    <a class="collapse-item " href="/pharmacy/reports/expiring-medications/">Expiring Medications</a>
+                    <a class="collapse-item " href="/pharmacy/reports/low-stock/">Low Stock Report</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Dispensary Management (Available to pharmacists and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDispensary" aria-expanded="false" aria-controls="collapseDispensary">
+                <i class="fas fa-fw fa-store-alt text-white"></i>
+                <span class="text-white">Dispensaries</span>
+            </a>
+            <div id="collapseDispensary" class="collapse " aria-labelledby="headingDispensary" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Dispensary Management:</h6>
+                    <a class="collapse-item " href="/pharmacy/dispensaries/">Manage Dispensaries</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Pharmacy Reports - Temporarily disabled -->
+        <!-- <li class="nav-item ">
+            <a class="nav-link" href="/reporting/pharmacy/sales-report/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Pharmacy Report Dashboard</span>
+            </a>
+        </li> -->
+
+        <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="false" aria-controls="collapseLaboratory">
+                <i class="fas fa-fw fa-flask text-white"></i>
+                <span class="text-white">Laboratory</span>
+            </a>
+            <div id="collapseLaboratory" class="collapse " aria-labelledby="headingLaboratory" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Lab Management:</h6>
+
+                    <!-- Test catalog visible to all lab users -->
+                    <a class="collapse-item " href="/laboratory/tests/">Tests</a>
+
+                    <!-- Test requests for all lab users -->
+                    <a class="collapse-item " href="/laboratory/requests/">Test Requests</a>
+
+                    <!-- Results visible to all lab users -->
+                    <a class="collapse-item " href="/laboratory/results/">Results</a>
+
+                    <!-- Lab technician specific options -->
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Lab Technician:</h6>
+                    <a class="collapse-item " href="/laboratory/requests/">Enter Results</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Laboratory Report Dashboard -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/laboratory/sales-report/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Lab Report Dashboard</span>
+            </a>
+        </li>
+
+        <!-- Nav Item - Radiology (Available to radiology staff, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link" href="/radiology/">
+                <i class="fas fa-fw fa-x-ray text-white"></i>
+                <span class="text-white">Radiology</span>
+            </a>
+        </li>
+        
+        <!-- End Radiology Nav Item -->
+
+        <!-- Nav Item - Radiology Report Dashboard -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/radiology/sales-report/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Radiology Report Dashboard</span>
+            </a>
+        </li>
+
+        <!-- New Medical Modules -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseMedicalModules" aria-expanded="false" aria-controls="collapseMedicalModules">
+                <i class="fas fa-fw fa-stethoscope text-white"></i>
+                <span class="text-white">Medical Modules</span>
+            </a>
+            <div id="collapseMedicalModules" class="collapse " aria-labelledby="headingMedicalModules" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Specialized Modules:</h6>
+                    <a class="collapse-item " href="/ent/">ENT</a>
+                    <a class="collapse-item " href="/ophthalmic/">Ophthalmic</a>
+                    <a class="collapse-item " href="/oncology/">Oncology</a>
+                    <a class="collapse-item " href="/scbu/">SCBU</a>
+                    <a class="collapse-item " href="/anc/">ANC</a>
+                    <a class="collapse-item " href="/labor/">Labor</a>
+                    <a class="collapse-item " href="/icu/">ICU</a>
+                    <a class="collapse-item " href="/family-planning/">Family Planning</a>
+                    <a class="collapse-item " href="/gynae-emergency/">Gynae Emergency</a>
+                    <a class="collapse-item " href="/dental/">Dental</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Include Theatre Module Sidebar -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTheatre" aria-expanded="false" aria-controls="collapseTheatre">
+                <i class="fas fa-fw fa-hospital-symbol text-white"></i>
+                <span class="text-white">Theatre</span>
+            </a>
+            <div id="collapseTheatre" class="collapse " aria-labelledby="headingTheatre" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Theatre Management:</h6>
+                    <a class="collapse-item " href="/theatre/">Dashboard</a>
+                    <a class="collapse-item " href="/theatre/surgeries/">Surgeries</a>
+                    <a class="collapse-item " href="/theatre/theatres/">Operation Theatres</a>
+                    <a class="collapse-item " href="/theatre/surgery-types/">Surgery Types</a>
+                    <a class="collapse-item " href="/theatre/teams/">Surgical Teams</a>
+                    <a class="collapse-item " href="/theatre/equipment/">Equipment</a>
+                    <a class="collapse-item " href="/theatre/equipment/maintenance/">Equipment Maintenance</a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Medical Supplies:</h6>
+                    <a class="collapse-item " href="/pharmacy/packs/?pack_type=surgery">Surgery Packs</a>
+                    <a class="collapse-item " href="/pharmacy/pack-orders/create/">Order Surgery Pack</a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Reports:</h6>
+                    <a class="collapse-item " href="/theatre/reports/surgery-report/">Surgery Report</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Divider -->
+        <hr class="sidebar-divider"> 
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Administration
+        </div>
+
+        <!-- Nav Item - Desk Office -->
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDeskOffice" aria-expanded="false" aria-controls="collapseDeskOffice">
+                <i class="fas fa-fw fa-desktop text-white"></i>
+                <span class="text-white">Desk Office</span>
+            </a>
+            <div id="collapseDeskOffice" class="collapse " aria-labelledby="headingDeskOffice" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">NHIA Authorization:</h6>
+                    <a class="collapse-item " href="/core/authorization/dashboard/">
+                        <i class="fas fa-globe me-1"></i> Universal Dashboard <span class="badge badge-success">New</span>
+                    </a>
+                    <a class="collapse-item " href="/desk-office/authorization-dashboard/">
+                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    </a>
+                    <a class="collapse-item " href="/desk-office/pending-consultations/">
+                        <i class="fas fa-stethoscope me-1"></i> Pending Consultations
+                    </a>
+                    <a class="collapse-item " href="/desk-office/pending-referrals/">
+                        <i class="fas fa-exchange-alt me-1"></i> Pending Referrals
+                    </a>
+                    <a class="collapse-item " href="/desk-office/authorization-codes/">
+                        <i class="fas fa-key me-1"></i> Authorization Codes
+                    </a>
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Legacy:</h6>
+                    <a class="collapse-item " href="/desk-office/generate-code/">
+                        <i class="fas fa-plus-circle me-1"></i> Generate Code (Old)
+                    </a>
+                    <a class="collapse-item " href="/desk-office/verify-code/">
+                        <i class="fas fa-check-circle me-1"></i> Verify Code
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - Notifications -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/core/notifications/">
+                <i class="fas fa-fw fa-bell text-white"></i>
+                <span class="text-white">Notifications</span>
+            </a>
+        </li>
+
+        <!-- Nav Item - Billing (Available to accountants, receptionists, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseBilling" aria-expanded="false" aria-controls="collapseBilling">
+                <i class="fas fa-fw fa-file-invoice-dollar text-white"></i>
+                <span class="text-white">Billing</span>
+            </a>
+            <div id="collapseBilling" class="collapse " aria-labelledby="headingBilling" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Billing Management:</h6>
+                    <a class="collapse-item " href="/billing/">Invoices</a>
+                    
+                    <a class="collapse-item " href="/billing/create/">Create Invoice</a>
+                    
+                    
+                    <a class="collapse-item " href="/billing/services/">Services</a>
+                    <a class="collapse-item " href="/billing/admission-invoices/">Admission Invoices</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Wallet Management -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseWallet" aria-expanded="false" aria-controls="collapseWallet">
+                <i class="fas fa-fw fa-wallet text-white"></i>
+                <span class="text-white">Wallet Management</span>
+            </a>
+            <div id="collapseWallet" class="collapse " aria-labelledby="headingWallet" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Wallet Operations:</h6>
+                    <a class="collapse-item " href="/patients/wallet/">All Wallets</a>
+                    <a class="collapse-item " href="/patients/wallet/net-impact/">Net Impact Report</a>
+                    <!-- Commented out Admission Net Impact link as it needs a pk parameter -->
+                    <!-- <a class="collapse-item " href="/inpatient/admissions/1/net-impact/">Admission Net Impact</a> -->
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - User & Privilege Management (Available to admins only) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseUserManagement" aria-expanded="false" aria-controls="collapseUserManagement">
+                <i class="fas fa-fw fa-users-cog text-white"></i>
+                <span class="text-white">User Management</span>
+            </a>
+            <div id="collapseUserManagement" class="collapse " aria-labelledby="headingUserManagement" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">User Administration:</h6>
+                    <a class="collapse-item " href="/accounts/user-dashboard/">All Users</a>
+                    <a class="collapse-item " href="/accounts/staff/create/">Add New User</a>
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Privilege Management:</h6>
+                    <a class="collapse-item " href="/accounts/role-demo/">Role System Demo</a>
+                    <a class="collapse-item " href="/accounts/activity-dashboard/">Activity Monitor</a>
+                    <a class="collapse-item " href="/accounts/alerts/">Activity Alerts</a>
+                    <a class="collapse-item " href="/accounts/sessions/">User Sessions</a>
+                    <a class="collapse-item " href="/accounts/live-monitor/">Live Monitor</a>
+                    <a class="collapse-item " href="/accounts/activity-statistics/">Activity Statistics</a>
+                    <a class="collapse-item " href="/accounts/roles/">Manage Roles</a>
+                    <a class="collapse-item " href="/accounts/roles/create/">Create Role</a>
+                    <a class="collapse-item " href="/accounts/permissions/">Permissions</a>
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Monitoring:</h6>
+                    <a class="collapse-item " href="/accounts/alerts/">Activity Alerts</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - HR (Available to admins only) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link" href="/hr/staff/">
+                <i class="fas fa-fw fa-users text-white"></i>
+                <span class="text-white">HR</span>
+            </a>
+        </li>
+        
+
+        <!-- Nav Item - Simple Revenue Statistics (visible to all authenticated users) -->
+        
+        <li class="nav-item ">
+            
+            
+            <a class="nav-link" href="/pharmacy/revenue/statistics/">
+                <i class="fas fa-fw fa-chart-line text-white"></i>
+                <span class="text-white">Revenue Statistics</span>
+            </a>
+        </li>
+        
+
+        <!-- Nav Item - Reports (Available to admins only) - Temporarily disabled -->
+        <!-- 
+        <li class="nav-item ">
+            <a class="nav-link" href="/reporting/dashboard/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Reports</span>
+            </a>
+        </li>
+         -->
+
+        <!-- Nav Item - Departments (Available to application admins only) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link" href="/accounts/departments/">
+                <i class="fas fa-building text-white"></i>
+                <span class="text-white">Departments</span>
+            </a>
+        </li>
+        
+
+        <!-- Divider -->
+        <hr class="sidebar-divider d-none d-md-block">
+
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle" onclick="document.querySelector('.sidebar').classList.toggle('sidebar-collapsed');">
+                <i class="fas fa-angle-left"></i>
+            </button>
+        </div>
+
+    </ul>
+</div>
+<!-- End of Sidebar -->
+
+<style>
+.sidebar.sidebar-collapsed {
+    width: 70px !important;
+    min-width: 70px !important;
+    transition: width 0.2s;
+}
+.sidebar.sidebar-collapsed .sidebar-brand-text,
+.sidebar.sidebar-collapsed span.text-white,
+.sidebar.sidebar-collapsed .sidebar-heading,
+.sidebar.sidebar-collapsed .collapse-inner,
+.sidebar.sidebar-collapsed .collapse-header {
+    display: inline !important;
+    opacity: 1 !important;
+    white-space: nowrap;
+}
+.sidebar.sidebar-collapsed .nav-link {
+    justify-content: flex-start !important;
+}
+.sidebar.sidebar-collapsed .nav-link .text-white {
+    display: inline !important;
+    opacity: 1 !important;
+}
+.sidebar .nav-link .text-white {
+    display: inline;
+    opacity: 1;
+}
+/* Make collapse menus have dark background in all states */
+.sidebar .collapse-inner {
+    background: #23272b !important;
+}
+.sidebar .collapse-inner .collapse-item {
+    color: #fff !important;
+}
+.sidebar .collapse-inner .collapse-item.active,
+.sidebar .collapse-inner .collapse-item:focus,
+.sidebar .collapse-inner .collapse-item:hover {
+    background: #0d6efd !important;
+    color: #fff !important;
+}
+.sidebar .collapse-header {
+    color: #adb5bd !important;
+    background: #23272b !important;
+}
+</style>
+
+        
+        <!-- Content Wrapper -->
+        <div id="content-wrapper" class="d-flex flex-column">
+            <!-- Main Content -->
+            <div id="content">
+                <!-- Topbar -->
+                <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                    
+                    <a class="navbar-brand" href="/dashboard/">HMS</a>
+                    <!-- Topbar Navbar -->
+                    <ul class="navbar-nav ms-auto">
+                        
+                            <!-- Session Status Indicator -->
+                            <li class="nav-item">
+                                <span class="nav-link" id="sessionStatus">
+                                    <i class="fas fa-circle text-success me-1" id="sessionIndicator"></i>
+                                    <span class="d-none d-sm-inline" id="sessionText">Active</span>
+                                </span>
+                            </li>
+
+                            <!-- Current Patient Context -->
+                            
+                            <li class="nav-item dropdown no-arrow">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="me-2 d-none d-lg-inline text-gray-600 small">admin</span>
+                                    
+                                        <i class="fas fa-user-circle fa-2x text-gray-300"></i>
+                                    
+                                </a>
+                                <!-- Dropdown - User Information -->
+                                <div class="dropdown-menu dropdown-menu-end shadow animated--grow-in" aria-labelledby="userDropdown">
+                                    <a class="dropdown-item" href="/accounts/profile/">
+                                        <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
+                                        Profile
+                                    </a>
+                                    <a class="dropdown-item" href="/accounts/profile/edit/">
+                                        <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>
+                                        Settings
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                                        <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>
+                                        Logout
+                                    </a>
+                                </div>
+                            </li>
+                        
+                    </ul>
+                </nav>
+                <!-- End of Topbar -->
+                <!-- Begin Page Content -->
+                <div class="container-fluid">
+                    
+                    
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Prescriptions</h4>
+                <a href="/pharmacy/prescriptions/create/" class="btn btn-light">
+                    <i class="fas fa-plus"></i> Create Prescription
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Prescriptions</h5>
+                                <h2 class="mb-0">55</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Pending</h5>
+                                <h2 class="mb-0">21</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Processing</h5>
+                                <h2 class="mb-0">10</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Completed</h5>
+                                <h2 class="mb-0">24</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Search and Filter Form -->
+                <div class="card mb-4" x-data="{
+    search: '',
+    typing: false,
+    timeout: null,
+    performSearch() {
+        this.typing = true;
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(() =&gt; {
+            this.typing = false;
+            // Trigger HTMX search
+            if (typeof htmx !== 'undefined') {
+                htmx.trigger(document.getElementById('prescription-search-form'), 'search');
+            }
+        }, 300);
+    },
+    clearFilters() {
+        const form = document.getElementById('prescription-search-form');
+        if (form) {
+            form.reset();
+            this.performSearch();
+        }
+    }
+}">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-search"></i> Search &amp; Filter Prescriptions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="prescription-search-form" method="get" class="search-form" hx-get="/pharmacy/prescriptions/" hx-target="#prescriptions-table-container" hx-trigger="submit, search" hx-indicator=".search-loading" style="opacity: 1;">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_search" class="form-label">Patient Search</label>
+                                        <input type="text" name="search" id="id_search" class="form-control" value="" @input.debounce.300ms="performSearch()" placeholder="Search prescriptions..." x-model="search">
+                                        <span x-show="typing" class="text-muted small" style="display: none;">Searching...</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_patient_number" class="form-label">Patient Number</label>
+                                        <input type="text" name="patient_number" id="id_patient_number" class="form-control" value="" @input.debounce.300ms="performSearch()" placeholder="Patient Number">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_medication_name" class="form-label">Medication Name</label>
+                                        <input type="text" name="medication_name" id="id_medication_name" class="form-control" value="" @input.debounce.300ms="performSearch()" placeholder="Medication Name">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_doctor" class="form-label">Doctor</label>
+                                        <select name="doctor" id="id_doctor" class="form-control" @change="performSearch()">
+    <option value="">All Doctors</option>
+    
+        <option value="7">John Smith</option>
+    
+        <option value="94">Dr. John Smith</option>
+    
+        <option value="111">Dr. Test Doctor</option>
+    
+        <option value="113">Dr. Test Doctor</option>
+    
+        <option value="115">Dr. Test Doctor</option>
+    
+</select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_status" class="form-label">Status</label>
+                                        <select name="status" id="id_status" class="form-control" @change="performSearch()">
+    <option value="">All Status</option>
+    
+        <option value="">All Statuses</option>
+    
+        <option value="pending">Pending</option>
+    
+        <option value="approved">Approved</option>
+    
+        <option value="dispensed">Dispensed</option>
+    
+        <option value="partially_dispensed">Partially Dispensed</option>
+    
+        <option value="cancelled">Cancelled</option>
+    
+        <option value="on_hold">On Hold</option>
+    
+</select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_payment_status" class="form-label">Payment Status</label>
+                                        <select name="payment_status" id="id_payment_status" class="form-control" @change="performSearch()">
+    <option value="">All Payment Status</option>
+    
+        <option value="">All Payment Statuses</option>
+    
+        <option value="unpaid">Unpaid</option>
+    
+        <option value="paid">Paid</option>
+    
+        <option value="waived">Waived</option>
+    
+</select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_date_from" class="form-label">From Date</label>
+                                        <input type="date" name="date_from" id="id_date_from" class="form-control" value="" @change="search()">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_date_to" class="form-label">To Date</label>
+                                        <input type="date" name="date_to" id="id_date_to" class="form-control" value="" @change="search()">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-group w-100">
+                                        <button type="submit" class="btn btn-primary me-2">
+                                            <i class="fas fa-search"></i> Search
+                                        </button>
+                                        <button type="button" @click="clearFilters()" hx-get="/pharmacy/prescriptions/" hx-target="#prescriptions-table-container" class="btn btn-secondary">
+                                            <i class="fas fa-redo"></i> Reset
+                                        </button>
+                                        <div class="search-loading htmx-indicator ms-2">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Prescriptions Table -->
+                <div id="prescriptions-table-container" class="table-responsive">
+
+    <!-- Page Wrapper -->
+    <div id="wrapper">
+        <!-- Sidebar -->
+        
+            <!-- Sidebar -->
+<div class="d-flex flex-column bg-dark sidebar vh-100" style="width:250px;min-height:100vh;overflow-y:auto;">
+    <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;">
+
+        <!-- Sidebar - Brand -->
+        <a class="sidebar-brand d-flex align-items-center justify-content-center mt-3 mb-4" href="/">
+            <div class="sidebar-brand-icon">
+                <i class="fas fa-hospital text-white"></i>
+            </div>
+            <div class="sidebar-brand-text mx-3 text-white">HMS</div>
+        </a>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider my-0">
+
+        <!-- Nav Item - Dashboard (Available to all authenticated users) -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/dashboard/">
+                <i class="fas fa-fw fa-tachometer-alt text-white"></i>
+                <span class="text-white">Dashboard</span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Patient Care
+        </div>
+
+        <!-- Nav Item - Patients (Available to doctors, nurses, receptionists, health record officers, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePatients" aria-expanded="false" aria-controls="collapsePatients">
+                <i class="fas fa-fw fa-user-injured text-white"></i>
+                <span class="text-white">Patients</span>
+            </a>
+            <div id="collapsePatients" class="collapse " aria-labelledby="headingPatients" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Patient Management:</h6>
+                    <a class="collapse-item " href="/patients/">All Patients</a>
+                    
+                    <a class="collapse-item " href="/patients/register/">Register Patient</a>
+                    <a class="collapse-item " href="/nhia/register-independent/">Register NHIA Patient</a>
+                    <a class="collapse-item " href="/nhia/register-patient/">Add Patient to NHIA</a>
+                    <a class="collapse-item " href="/retainership/register-independent/">Register Retainership Patient</a>
+                    
+                    <a class="collapse-item " href="/nhia/patients/">NHIA Patients</a>
+                    
+                    <!-- Retainership Patients: always visible, styled like NHIA -->
+                    <a class="collapse-item " href="/retainership/patients/">Retainership Patients</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Doctors (Available to all users) -->
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDoctors" aria-expanded="false" aria-controls="collapseDoctors">
+                <i class="fas fa-fw fa-user-md text-white"></i>
+                <span class="text-white">Doctors</span>
+            </a>
+            <div id="collapseDoctors" class="collapse " aria-labelledby="headingDoctors" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Doctor Management:</h6>
+                    <a class="collapse-item " href="/doctors/">All Doctors</a>
+
+                    <!-- Application admin-only doctor management options -->
+                    <a class="collapse-item " href="/doctors/admin/doctors/">Manage Doctors</a>
+                    <a class="collapse-item " href="/doctors/admin/doctors/add/">Add New Doctor</a>
+                    <a class="collapse-item " href="/doctors/admin/specializations/">Specializations</a>
+                    <a class="collapse-item " href="/doctors/admin/leave-requests/">Leave Requests</a>
+
+                    <!-- Doctor-specific options -->
+                    
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - Inpatient Management (Available to nurses, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseInpatient" aria-expanded="false" aria-controls="collapseInpatient">
+                <i class="fas fa-fw fa-hospital-alt text-white"></i>
+                <span class="text-white">Inpatient</span>
+            </a>
+            <div id="collapseInpatient" class="collapse " aria-labelledby="headingInpatient" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Inpatient Management:</h6>
+                    <a class="collapse-item " href="/inpatient/admissions/">Admissions</a>
+                    <a class="collapse-item " href="/inpatient/wards/">Wards</a>
+                    <a class="collapse-item " href="/inpatient/beds/">Beds</a>
+                    <a class="collapse-item " href="/inpatient/bed-dashboard/">Bed Dashboard</a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Reports:</h6>
+                    <a class="collapse-item " href="/inpatient/reports/bed-occupancy/">Bed Occupancy Report</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Appointments (Available to doctors, receptionists, health record officers, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAppointments" aria-expanded="false" aria-controls="collapseAppointments">
+                <i class="fas fa-fw fa-calendar-check text-white"></i>
+                <span class="text-white">Appointments</span>
+            </a>
+            <div id="collapseAppointments" class="collapse " aria-labelledby="headingAppointments" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Appointment Management:</h6>
+                    <a class="collapse-item " href="/appointments/">All Appointments</a>
+
+                    <!-- Only receptionists, health record officers, and admins can create appointments -->
+                    
+                    <a class="collapse-item " href="/appointments/create/">Schedule Appointment</a>
+                    
+
+                    <!-- Doctor-specific appointment views -->
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Consulting Rooms and Waiting List (Available to receptionists, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultingRooms" aria-expanded="false" aria-controls="collapseConsultingRooms">
+                <i class="fas fa-fw fa-door-open text-white"></i>
+                <span class="text-white">Consulting Rooms</span>
+            </a>
+            <div id="collapseConsultingRooms" class="collapse " aria-labelledby="headingConsultingRooms" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Room Management:</h6>
+                    <a class="collapse-item " href="/consultations/consulting-rooms/">All Rooms</a>
+
+                    
+                    <a class="collapse-item " href="/consultations/consulting-rooms/create/">Add New Room</a>
+                    
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Patient Management:</h6>
+
+                    
+                    <a class="collapse-item " href="/consultations/waiting-list/">Waiting List</a>
+                    <a class="collapse-item " href="/consultations/waiting-list/add/">Add to Waiting List</a>
+                    
+
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Medical Services
+        </div>
+
+        <!-- Nav Item - Pharmacy (Available to pharmacists, doctors, and admins) -->
+        
+        <li class="nav-item active">
+            <a class="nav-link " href="#" data-bs-toggle="collapse" data-bs-target="#collapsePharmacy" aria-expanded="true" aria-controls="collapsePharmacy">
+                <i class="fas fa-fw fa-pills text-white"></i>
+                <span class="text-white">Pharmacy</span>
+            </a>
+            <div id="collapsePharmacy" class="collapse show" aria-labelledby="headingPharmacy" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Pharmacy Management:</h6>
+
+                    <!-- Inventory management for pharmacists and admins -->
+                    
+                    <a class="collapse-item " href="/pharmacy/inventory/">Inventory</a>
+                    
+
+                    <!-- Prescriptions for all pharmacy users -->
+                    <a class="collapse-item active" href="/pharmacy/prescriptions/">Prescriptions</a>
+
+                    <!-- Dispensed Items Tracker -->
+                    <a class="collapse-item " href="/pharmacy/dispensed-items/">Dispensed Items Tracker</a>
+
+                    <!-- Medical Pack Management Section -->
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Medical Packs:</h6>
+                    <a class="collapse-item " href="/pharmacy/packs/">All Medical Packs</a>
+                    <a class="collapse-item " href="/pharmacy/packs/create/">Create New Pack</a>
+                    <a class="collapse-item " href="/pharmacy/pack-orders/">Pack Orders</a>
+                    <a class="collapse-item " href="/pharmacy/pack-orders/create/">Order Medical Pack</a>
+
+                    <!-- Inter-Dispensary Transfers -->
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Inter-Dispensary:</h6>
+                    <a class="collapse-item " href="/pharmacy/transfers/inter/">Transfers <span class="badge bg-primary">New</span></a>
+                    <a class="collapse-item " href="/pharmacy/transfers/inter/create/">Create Transfer</a>
+                    <a class="collapse-item " href="/pharmacy/transfers/inter/statistics/">Transfer Statistics</a>
+                    
+
+                    <!-- Reports for pharmacists and admins -->
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Reports:</h6>
+                    <a class="collapse-item " href="/pharmacy/reports/expiring-medications/">Expiring Medications</a>
+                    <a class="collapse-item " href="/pharmacy/reports/low-stock/">Low Stock Report</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Dispensary Management (Available to pharmacists and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDispensary" aria-expanded="false" aria-controls="collapseDispensary">
+                <i class="fas fa-fw fa-store-alt text-white"></i>
+                <span class="text-white">Dispensaries</span>
+            </a>
+            <div id="collapseDispensary" class="collapse " aria-labelledby="headingDispensary" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Dispensary Management:</h6>
+                    <a class="collapse-item " href="/pharmacy/dispensaries/">Manage Dispensaries</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Pharmacy Reports - Temporarily disabled -->
+        <!-- <li class="nav-item ">
+            <a class="nav-link" href="/reporting/pharmacy/sales-report/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Pharmacy Report Dashboard</span>
+            </a>
+        </li> -->
+
+        <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="false" aria-controls="collapseLaboratory">
+                <i class="fas fa-fw fa-flask text-white"></i>
+                <span class="text-white">Laboratory</span>
+            </a>
+            <div id="collapseLaboratory" class="collapse " aria-labelledby="headingLaboratory" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Lab Management:</h6>
+
+                    <!-- Test catalog visible to all lab users -->
+                    <a class="collapse-item " href="/laboratory/tests/">Tests</a>
+
+                    <!-- Test requests for all lab users -->
+                    <a class="collapse-item " href="/laboratory/requests/">Test Requests</a>
+
+                    <!-- Results visible to all lab users -->
+                    <a class="collapse-item " href="/laboratory/results/">Results</a>
+
+                    <!-- Lab technician specific options -->
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Lab Technician:</h6>
+                    <a class="collapse-item " href="/laboratory/requests/">Enter Results</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Laboratory Report Dashboard -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/laboratory/sales-report/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Lab Report Dashboard</span>
+            </a>
+        </li>
+
+        <!-- Nav Item - Radiology (Available to radiology staff, doctors, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link" href="/radiology/">
+                <i class="fas fa-fw fa-x-ray text-white"></i>
+                <span class="text-white">Radiology</span>
+            </a>
+        </li>
+        
+        <!-- End Radiology Nav Item -->
+
+        <!-- Nav Item - Radiology Report Dashboard -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/radiology/sales-report/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Radiology Report Dashboard</span>
+            </a>
+        </li>
+
+        <!-- New Medical Modules -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseMedicalModules" aria-expanded="false" aria-controls="collapseMedicalModules">
+                <i class="fas fa-fw fa-stethoscope text-white"></i>
+                <span class="text-white">Medical Modules</span>
+            </a>
+            <div id="collapseMedicalModules" class="collapse " aria-labelledby="headingMedicalModules" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Specialized Modules:</h6>
+                    <a class="collapse-item " href="/ent/">ENT</a>
+                    <a class="collapse-item " href="/ophthalmic/">Ophthalmic</a>
+                    <a class="collapse-item " href="/oncology/">Oncology</a>
+                    <a class="collapse-item " href="/scbu/">SCBU</a>
+                    <a class="collapse-item " href="/anc/">ANC</a>
+                    <a class="collapse-item " href="/labor/">Labor</a>
+                    <a class="collapse-item " href="/icu/">ICU</a>
+                    <a class="collapse-item " href="/family-planning/">Family Planning</a>
+                    <a class="collapse-item " href="/gynae-emergency/">Gynae Emergency</a>
+                    <a class="collapse-item " href="/dental/">Dental</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Include Theatre Module Sidebar -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTheatre" aria-expanded="false" aria-controls="collapseTheatre">
+                <i class="fas fa-fw fa-hospital-symbol text-white"></i>
+                <span class="text-white">Theatre</span>
+            </a>
+            <div id="collapseTheatre" class="collapse " aria-labelledby="headingTheatre" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Theatre Management:</h6>
+                    <a class="collapse-item " href="/theatre/">Dashboard</a>
+                    <a class="collapse-item " href="/theatre/surgeries/">Surgeries</a>
+                    <a class="collapse-item " href="/theatre/theatres/">Operation Theatres</a>
+                    <a class="collapse-item " href="/theatre/surgery-types/">Surgery Types</a>
+                    <a class="collapse-item " href="/theatre/teams/">Surgical Teams</a>
+                    <a class="collapse-item " href="/theatre/equipment/">Equipment</a>
+                    <a class="collapse-item " href="/theatre/equipment/maintenance/">Equipment Maintenance</a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Medical Supplies:</h6>
+                    <a class="collapse-item " href="/pharmacy/packs/?pack_type=surgery">Surgery Packs</a>
+                    <a class="collapse-item " href="/pharmacy/pack-orders/create/">Order Surgery Pack</a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Reports:</h6>
+                    <a class="collapse-item " href="/theatre/reports/surgery-report/">Surgery Report</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Divider -->
+        <hr class="sidebar-divider"> 
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Administration
+        </div>
+
+        <!-- Nav Item - Desk Office -->
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDeskOffice" aria-expanded="false" aria-controls="collapseDeskOffice">
+                <i class="fas fa-fw fa-desktop text-white"></i>
+                <span class="text-white">Desk Office</span>
+            </a>
+            <div id="collapseDeskOffice" class="collapse " aria-labelledby="headingDeskOffice" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">NHIA Authorization:</h6>
+                    <a class="collapse-item " href="/core/authorization/dashboard/">
+                        <i class="fas fa-globe me-1"></i> Universal Dashboard <span class="badge badge-success">New</span>
+                    </a>
+                    <a class="collapse-item " href="/desk-office/authorization-dashboard/">
+                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    </a>
+                    <a class="collapse-item " href="/desk-office/pending-consultations/">
+                        <i class="fas fa-stethoscope me-1"></i> Pending Consultations
+                    </a>
+                    <a class="collapse-item " href="/desk-office/pending-referrals/">
+                        <i class="fas fa-exchange-alt me-1"></i> Pending Referrals
+                    </a>
+                    <a class="collapse-item " href="/desk-office/authorization-codes/">
+                        <i class="fas fa-key me-1"></i> Authorization Codes
+                    </a>
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Legacy:</h6>
+                    <a class="collapse-item " href="/desk-office/generate-code/">
+                        <i class="fas fa-plus-circle me-1"></i> Generate Code (Old)
+                    </a>
+                    <a class="collapse-item " href="/desk-office/verify-code/">
+                        <i class="fas fa-check-circle me-1"></i> Verify Code
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - Notifications -->
+        <li class="nav-item ">
+            <a class="nav-link" href="/core/notifications/">
+                <i class="fas fa-fw fa-bell text-white"></i>
+                <span class="text-white">Notifications</span>
+            </a>
+        </li>
+
+        <!-- Nav Item - Billing (Available to accountants, receptionists, and admins) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseBilling" aria-expanded="false" aria-controls="collapseBilling">
+                <i class="fas fa-fw fa-file-invoice-dollar text-white"></i>
+                <span class="text-white">Billing</span>
+            </a>
+            <div id="collapseBilling" class="collapse " aria-labelledby="headingBilling" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Billing Management:</h6>
+                    <a class="collapse-item " href="/billing/">Invoices</a>
+                    
+                    <a class="collapse-item " href="/billing/create/">Create Invoice</a>
+                    
+                    
+                    <a class="collapse-item " href="/billing/services/">Services</a>
+                    <a class="collapse-item " href="/billing/admission-invoices/">Admission Invoices</a>
+                    
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - Wallet Management -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseWallet" aria-expanded="false" aria-controls="collapseWallet">
+                <i class="fas fa-fw fa-wallet text-white"></i>
+                <span class="text-white">Wallet Management</span>
+            </a>
+            <div id="collapseWallet" class="collapse " aria-labelledby="headingWallet" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Wallet Operations:</h6>
+                    <a class="collapse-item " href="/patients/wallet/">All Wallets</a>
+                    <a class="collapse-item " href="/patients/wallet/net-impact/">Net Impact Report</a>
+                    <!-- Commented out Admission Net Impact link as it needs a pk parameter -->
+                    <!-- <a class="collapse-item " href="/inpatient/admissions/1/net-impact/">Admission Net Impact</a> -->
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - User & Privilege Management (Available to admins only) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseUserManagement" aria-expanded="false" aria-controls="collapseUserManagement">
+                <i class="fas fa-fw fa-users-cog text-white"></i>
+                <span class="text-white">User Management</span>
+            </a>
+            <div id="collapseUserManagement" class="collapse " aria-labelledby="headingUserManagement" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">User Administration:</h6>
+                    <a class="collapse-item " href="/accounts/user-dashboard/">All Users</a>
+                    <a class="collapse-item " href="/accounts/staff/create/">Add New User</a>
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Privilege Management:</h6>
+                    <a class="collapse-item " href="/accounts/role-demo/">Role System Demo</a>
+                    <a class="collapse-item " href="/accounts/activity-dashboard/">Activity Monitor</a>
+                    <a class="collapse-item " href="/accounts/alerts/">Activity Alerts</a>
+                    <a class="collapse-item " href="/accounts/sessions/">User Sessions</a>
+                    <a class="collapse-item " href="/accounts/live-monitor/">Live Monitor</a>
+                    <a class="collapse-item " href="/accounts/activity-statistics/">Activity Statistics</a>
+                    <a class="collapse-item " href="/accounts/roles/">Manage Roles</a>
+                    <a class="collapse-item " href="/accounts/roles/create/">Create Role</a>
+                    <a class="collapse-item " href="/accounts/permissions/">Permissions</a>
+
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Monitoring:</h6>
+                    <a class="collapse-item " href="/accounts/alerts/">Activity Alerts</a>
+                </div>
+            </div>
+        </li>
+        
+
+        <!-- Nav Item - HR (Available to admins only) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link" href="/hr/staff/">
+                <i class="fas fa-fw fa-users text-white"></i>
+                <span class="text-white">HR</span>
+            </a>
+        </li>
+        
+
+        <!-- Nav Item - Simple Revenue Statistics (visible to all authenticated users) -->
+        
+        <li class="nav-item ">
+            
+            
+            <a class="nav-link" href="/pharmacy/revenue/statistics/">
+                <i class="fas fa-fw fa-chart-line text-white"></i>
+                <span class="text-white">Revenue Statistics</span>
+            </a>
+        </li>
+        
+
+        <!-- Nav Item - Reports (Available to admins only) - Temporarily disabled -->
+        <!-- 
+        <li class="nav-item ">
+            <a class="nav-link" href="/reporting/dashboard/">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Reports</span>
+            </a>
+        </li>
+         -->
+
+        <!-- Nav Item - Departments (Available to application admins only) -->
+        
+        <li class="nav-item ">
+            <a class="nav-link" href="/accounts/departments/">
+                <i class="fas fa-building text-white"></i>
+                <span class="text-white">Departments</span>
+            </a>
+        </li>
+        
+
+        <!-- Divider -->
+        <hr class="sidebar-divider d-none d-md-block">
+
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle" onclick="document.querySelector('.sidebar').classList.toggle('sidebar-collapsed');">
+                <i class="fas fa-angle-left"></i>
+            </button>
+        </div>
+
+    </ul>
+</div>
+<!-- End of Sidebar -->
+
+<style>
+.sidebar.sidebar-collapsed {
+    width: 70px !important;
+    min-width: 70px !important;
+    transition: width 0.2s;
+}
+.sidebar.sidebar-collapsed .sidebar-brand-text,
+.sidebar.sidebar-collapsed span.text-white,
+.sidebar.sidebar-collapsed .sidebar-heading,
+.sidebar.sidebar-collapsed .collapse-inner,
+.sidebar.sidebar-collapsed .collapse-header {
+    display: inline !important;
+    opacity: 1 !important;
+    white-space: nowrap;
+}
+.sidebar.sidebar-collapsed .nav-link {
+    justify-content: flex-start !important;
+}
+.sidebar.sidebar-collapsed .nav-link .text-white {
+    display: inline !important;
+    opacity: 1 !important;
+}
+.sidebar .nav-link .text-white {
+    display: inline;
+    opacity: 1;
+}
+/* Make collapse menus have dark background in all states */
+.sidebar .collapse-inner {
+    background: #23272b !important;
+}
+.sidebar .collapse-inner .collapse-item {
+    color: #fff !important;
+}
+.sidebar .collapse-inner .collapse-item.active,
+.sidebar .collapse-inner .collapse-item:focus,
+.sidebar .collapse-inner .collapse-item:hover {
+    background: #0d6efd !important;
+    color: #fff !important;
+}
+.sidebar .collapse-header {
+    color: #adb5bd !important;
+    background: #23272b !important;
+}
+</style>
+
+        
+        <!-- Content Wrapper -->
+        <div id="content-wrapper" class="d-flex flex-column">
+            <!-- Main Content -->
+            <div id="content">
+                <!-- Topbar -->
+                <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                    
+                    <a class="navbar-brand" href="/dashboard/">HMS</a>
+                    <!-- Topbar Navbar -->
+                    <ul class="navbar-nav ms-auto">
+                        
+                            <!-- Session Status Indicator -->
+                            <li class="nav-item">
+                                <span class="nav-link" id="sessionStatus">
+                                    <i class="fas fa-circle text-success me-1" id="sessionIndicator"></i>
+                                    <span class="d-none d-sm-inline" id="sessionText">Active</span>
+                                </span>
+                            </li>
+
+                            <!-- Current Patient Context -->
+                            
+                            <li class="nav-item dropdown no-arrow">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="me-2 d-none d-lg-inline text-gray-600 small">admin</span>
+                                    
+                                        <i class="fas fa-user-circle fa-2x text-gray-300"></i>
+                                    
+                                </a>
+                                <!-- Dropdown - User Information -->
+                                <div class="dropdown-menu dropdown-menu-end shadow animated--grow-in" aria-labelledby="userDropdown">
+                                    <a class="dropdown-item" href="/accounts/profile/">
+                                        <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
+                                        Profile
+                                    </a>
+                                    <a class="dropdown-item" href="/accounts/profile/edit/">
+                                        <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>
+                                        Settings
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                                        <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>
+                                        Logout
+                                    </a>
+                                </div>
+                            </li>
+                        
+                    </ul>
+                </nav>
+                <!-- End of Topbar -->
+                <!-- Begin Page Content -->
+                <div class="container-fluid">
+                    
+                    
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Prescriptions</h4>
+                <a href="/pharmacy/prescriptions/create/" class="btn btn-light">
+                    <i class="fas fa-plus"></i> Create Prescription
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Prescriptions</h5>
+                                <h2 class="mb-0">38</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Pending</h5>
+                                <h2 class="mb-0">18</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Processing</h5>
+                                <h2 class="mb-0">3</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Completed</h5>
+                                <h2 class="mb-0">17</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Search and Filter Form -->
+                <div class="card mb-4" x-data="{
+    search: '',
+    typing: false,
+    timeout: null,
+    performSearch() {
+        this.typing = true;
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(() =&gt; {
+            this.typing = false;
+            // Trigger HTMX search
+            if (typeof htmx !== 'undefined') {
+                htmx.trigger(document.getElementById('prescription-search-form'), 'search');
+            }
+        }, 300);
+    },
+    clearFilters() {
+        const form = document.getElementById('prescription-search-form');
+        if (form) {
+            form.reset();
+            this.performSearch();
+        }
+    }
+}">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-search"></i> Search &amp; Filter Prescriptions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="prescription-search-form" method="get" class="search-form" hx-get="/pharmacy/prescriptions/" hx-target="#prescriptions-table-container" hx-trigger="submit, search" hx-indicator=".search-loading">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_search" class="form-label">Patient Search</label>
+                                        <input type="text" name="search" id="id_search" class="form-control" value="test" @input.debounce.300ms="performSearch()" placeholder="Search prescriptions..." x-model="search">
+                                        <span x-show="typing" class="text-muted small" style="display: none;">Searching...</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_patient_number" class="form-label">Patient Number</label>
+                                        <input type="text" name="patient_number" id="id_patient_number" class="form-control" value="" @input.debounce.300ms="performSearch()" placeholder="Patient Number">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_medication_name" class="form-label">Medication Name</label>
+                                        <input type="text" name="medication_name" id="id_medication_name" class="form-control" value="" @input.debounce.300ms="performSearch()" placeholder="Medication Name">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="id_doctor" class="form-label">Doctor</label>
+                                        <select name="doctor" id="id_doctor" class="form-control" @change="performSearch()">
+    <option value="">All Doctors</option>
+    
+        <option value="7">John Smith</option>
+    
+        <option value="94">Dr. John Smith</option>
+    
+        <option value="111">Dr. Test Doctor</option>
+    
+        <option value="113">Dr. Test Doctor</option>
+    
+        <option value="115">Dr. Test Doctor</option>
+    
+</select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_status" class="form-label">Status</label>
+                                        <select name="status" id="id_status" class="form-control" @change="performSearch()">
+    <option value="">All Status</option>
+    
+        <option value="" selected="">All Statuses</option>
+    
+        <option value="pending">Pending</option>
+    
+        <option value="approved">Approved</option>
+    
+        <option value="dispensed">Dispensed</option>
+    
+        <option value="partially_dispensed">Partially Dispensed</option>
+    
+        <option value="cancelled">Cancelled</option>
+    
+        <option value="on_hold">On Hold</option>
+    
+</select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_payment_status" class="form-label">Payment Status</label>
+                                        <select name="payment_status" id="id_payment_status" class="form-control" @change="performSearch()">
+    <option value="">All Payment Status</option>
+    
+        <option value="" selected="">All Payment Statuses</option>
+    
+        <option value="unpaid">Unpaid</option>
+    
+        <option value="paid">Paid</option>
+    
+        <option value="waived">Waived</option>
+    
+</select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_date_from" class="form-label">From Date</label>
+                                        <input type="date" name="date_from" id="id_date_from" class="form-control" value="" @change="search()">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_date_to" class="form-label">To Date</label>
+                                        <input type="date" name="date_to" id="id_date_to" class="form-control" value="" @change="search()">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-group w-100">
+                                        <button type="submit" class="btn btn-primary me-2">
+                                            <i class="fas fa-search"></i> Search
+                                        </button>
+                                        <button type="button" @click="clearFilters()" hx-get="/pharmacy/prescriptions/" hx-target="#prescriptions-table-container" class="btn btn-secondary">
+                                            <i class="fas fa-redo"></i> Reset
+                                        </button>
+                                        <div class="search-loading htmx-indicator ms-2">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Prescriptions Table -->
+                <div id="prescriptions-table-container" class="table-responsive">
+                    <table class="table table-hover" id="prescriptions-table">
+    <thead class="table-light">
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Patient</th>
+            <th>Patient Number</th>
+            <th>Doctor</th>
+            <th>Diagnosis</th>
+            <th>Status</th>
+            <th>Payment</th>
+            <th>Dispensing</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#81</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 06, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">06:58 PM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/51/" class="text-decoration-none">
+                        <strong>Test Admission</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">0477940267</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="0477940267" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>None</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-success">Dispensed</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-full">
+                            <i class="fas fa-check-circle"></i> Full
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/81/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#80</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 06, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">05:12 PM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/51/" class="text-decoration-none">
+                        <strong>Test Admission</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">0477940267</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="0477940267" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>Malaria</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-success">Dispensed</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-full">
+                            <i class="fas fa-check-circle"></i> Full
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/80/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#79</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 05, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">05:52 PM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/42/" class="text-decoration-none">
+                        <strong>Test Patient1</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">TEST001</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="TEST001" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>None</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-success">Dispensed</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-full">
+                            <i class="fas fa-check-circle"></i> Full
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/79/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        
+                            <a href="/billing/101/" class="btn btn-primary btn-sm" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#77</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 05, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">05:02 PM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/42/" class="text-decoration-none">
+                        <strong>Test Patient1</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">TEST001</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="TEST001" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. Dr. John Smith</small>
+                </td>
+                <td>
+                    <small>None</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-success">Dispensed</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-full">
+                            <i class="fas fa-check-circle"></i> Full
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/77/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        
+                            <a href="/billing/100/" class="btn btn-primary btn-sm" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="surgery-pack-row">
+                <td>
+                    <strong>#76</strong>
+                    
+                        <br><small class="badge bg-warning text-dark">
+                            <i class="fas fa-scalpel"></i> Surgery Pack
+                        </small>
+                    
+                </td>
+                <td>
+                    <small>Oct 05, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">08:38 AM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/64/" class="text-decoration-none">
+                        <strong>Test MultiInventory</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">0921070121</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="0921070121" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>None</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-info">Approved</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-none">
+                            <i class="fas fa-times-circle"></i> None
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/76/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                            <a href="/pharmacy/prescriptions/76/dispense/" class="btn btn-success btn-sm" title="Dispense Medication">
+                                <i class="fas fa-prescription-bottle-alt"></i>
+                            </a>
+                        
+                        
+                            <a href="/billing/97/" class="btn btn-primary btn-sm" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#70</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 04, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">07:28 PM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/66/" class="text-decoration-none">
+                        <strong>Test MultiInventory</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">0609733788</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="0609733788" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>None</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-info">Approved</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-unpaid">
+                            <i class="fas fa-exclamation-circle"></i> Unpaid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-none">
+                            <i class="fas fa-times-circle"></i> None
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/70/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                            <a href="/pharmacy/prescriptions/70/dispense/" class="btn btn-success btn-sm" title="Dispense Medication">
+                                <i class="fas fa-prescription-bottle-alt"></i>
+                            </a>
+                        
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#57</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 04, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">06:45 AM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/68/" class="text-decoration-none">
+                        <strong>Template TestNHIA</strong>
+                    </a>
+                    
+                        <br><small class="badge bg-info">NHIA</small>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">4683971632</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="4683971632" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>Template test condition</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-success">Dispensed</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-full">
+                            <i class="fas fa-check-circle"></i> Full
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/57/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        
+                            <a href="/billing/89/" class="btn btn-primary btn-sm" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="table-warning">
+                <td>
+                    <strong>#56</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 04, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">06:40 AM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/7/" class="text-decoration-none">
+                        <strong>AMIR AHMAD</strong>
+                    </a>
+                    
+                        <br><small class="badge bg-info">NHIA</small>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">4095966608</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="4095966608" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. Dr. Test Doctor</small>
+                </td>
+                <td>
+                    <small>None</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-none">
+                            <i class="fas fa-times-circle"></i> None
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/56/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                            <a href="/pharmacy/prescriptions/56/dispense/" class="btn btn-success btn-sm" title="Dispense Medication">
+                                <i class="fas fa-prescription-bottle-alt"></i>
+                            </a>
+                        
+                        
+                            <a href="/billing/85/" class="btn btn-primary btn-sm" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#54</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 04, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">06:34 AM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/66/" class="text-decoration-none">
+                        <strong>Test MultiInventory</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">0609733788</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="0609733788" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>Test condition for multiple i…</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-warning">Partial</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-partial">
+                            <i class="fas fa-clock"></i> Partial
+                        </span>
+                        <div class="dispensing-progress">
+                            <div class="dispensing-progress-bar" style="width: 0.0%; background-color: #ffc107;"></div>
+                        </div>
+                        <small class="text-muted">0.0%</small>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/54/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                            <a href="/pharmacy/prescriptions/54/dispense/" class="btn btn-success btn-sm" title="Dispense Medication">
+                                <i class="fas fa-prescription-bottle-alt"></i>
+                            </a>
+                        
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+            
+            
+            
+            <tr class="">
+                <td>
+                    <strong>#53</strong>
+                    
+                </td>
+                <td>
+                    <small>Oct 04, 2025</small>
+                    
+                    <br>
+                    <small class="text-muted">06:34 AM</small>
+                    
+                </td>
+                <td>
+                    <a href="/patients/64/" class="text-decoration-none">
+                        <strong>Test MultiInventory</strong>
+                    </a>
+                    
+                </td>
+                <td>
+                    <div class="patient-id-container">
+                        <span class="patient-id-display">0921070121</span>
+                        <button class="copy-patient-id" title="Copy Patient Number" data-patient-id="0921070121" onclick="copyPatientId(this, event)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <small>Dr. NAZIFI AHMAD</small>
+                </td>
+                <td>
+                    <small>Test condition for multiple i…</small>
+                </td>
+                <td>
+                    
+                        <span class="badge bg-success">Dispensed</span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-payment-paid">
+                            <i class="fas fa-check-circle"></i> Paid
+                        </span>
+                    
+                </td>
+                <td>
+                    
+                        <span class="badge badge-dispensing-full">
+                            <i class="fas fa-check-circle"></i> Full
+                        </span>
+                    
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/pharmacy/prescriptions/53/" class="btn btn-info btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        
+                            <a href="/billing/91/" class="btn btn-primary btn-sm" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </a>
+                        
+                    </div>
+                </td>
+            </tr>
+            
+            
+            
+        
+    </tbody>
+</table>
+
+<!-- Pagination component -->
+<div id="pagination-container">
+    
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                    </li>
+                
+                
+                
+                    
+                        <li class="page-item active">
+                            <span class="page-link">1</span>
+                        </li>
+                    
+                
+                    
+                        <li class="page-item">
+                            <a class="page-link" hx-get="?page=2&amp;search=test&amp;patient_number=&amp;medication_name=&amp;doctor=&amp;status=&amp;payment_status=&amp;date_from=&amp;date_to=" hx-target="#prescriptions-table-container" hx-push-url="true">2</a>
+                        </li>
+                    
+                
+                    
+                        <li class="page-item">
+                            <a class="page-link" hx-get="?page=3&amp;search=test&amp;patient_number=&amp;medication_name=&amp;doctor=&amp;status=&amp;payment_status=&amp;date_from=&amp;date_to=" hx-target="#prescriptions-table-container" hx-push-url="true">3</a>
+                        </li>
+                    
+                
+                    
+                
+                
+                
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page=2&amp;search=test&amp;patient_number=&amp;medication_name=&amp;doctor=&amp;status=&amp;payment_status=&amp;date_from=&amp;date_to=" hx-target="#prescriptions-table-container" hx-push-url="true">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" hx-get="?page=4&amp;search=test&amp;patient_number=&amp;medication_name=&amp;doctor=&amp;status=&amp;payment_status=&amp;date_from=&amp;date_to=" hx-target="#prescriptions-table-container" hx-push-url="true">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                
+            </ul>
+        </nav>
+    
+</div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+                <!-- /.container-fluid -->
+            </div>
+            <!-- End of Main Content -->
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>© 2025 Hospital Management System. All rights reserved.</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Logout Modal-->
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" action="/accounts/logout/" style="display:inline;">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="zBZHOn4xbq9u5kNcf8MFZ8u8fTAcS7Xn67VywygXOmwGj31Z0AwjZaztUglruXxp">
+                        <button type="submit" class="btn btn-primary">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    
+    <!-- Alpine.js -->
+    <script defer="" src="https://unpkg.com/alpinejs@3.13.8/dist/cdn.min.js"></script>
+
+    <!-- jQuery - Load FIRST before any scripts that use it -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Modal Fix Script -->
+    <script>
+        $(document).ready(function() {
+            // Ensure modals work properly with custom CSS
+            $('.modal').on('show.bs.modal', function (e) {
+                $('body').addClass('modal-open');
+                $('#wrapper').addClass('modal-open');
+
+                // Ensure modal is properly positioned
+                $(this).css({
+                    'display': 'block',
+                    'pointer-events': 'auto'
+                });
+
+                // Initialize Select2 for elements in the modal
+                $(this).find('.select2').select2({
+                    dropdownParent: $(this),
+                    theme: 'bootstrap-5'
+                });
+            });
+
+            $('.modal').on('shown.bs.modal', function (e) {
+                // Ensure modal content is interactive
+                $(this).find('.modal-content').css('pointer-events', 'auto');
+                $(this).find('button, input, select, textarea, a').css('pointer-events', 'auto');
+
+                // Focus on first input after modal is fully shown
+                setTimeout(() => {
+                    $(this).find('input, select, textarea').first().focus();
+                }, 100);
+            });
+
+            $('.modal').on('hidden.bs.modal', function (e) {
+                $('body').removeClass('modal-open');
+                $('#wrapper').removeClass('modal-open');
+
+                // Reset pointer events
+                $(this).css('pointer-events', '');
+
+                // Destroy Select2 instances to prevent memory leaks
+                $(this).find('.select2').each(function() {
+                    if ($(this).hasClass('select2-hidden-accessible')) {
+                        $(this).select2('destroy');
+                    }
+                });
+            });
+
+            // Fix for modal backdrop click issues
+            $('.modal').on('click', function(e) {
+                if (e.target === this) {
+                    $(this).modal('hide');
+                }
+            });
+
+            // Handle clicks outside modal content to close modal
+            $(document).on('click', '.modal', function(e) {
+                if ($(e.target).hasClass('modal')) {
+                    $(this).modal('hide');
+                }
+            });
+
+            // Ensure modal content is clickable
+            $('.modal-content').on('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // Prevent form submission on Enter key in modal inputs (except textareas)
+            $('.modal').on('keypress', 'input:not([type="submit"])', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // Additional fix for modal interaction issues
+            $(document).on('click', '.modal-backdrop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('.modal.show').modal('hide');
+            });
+
+            // Handle ESC key to close modal
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape' && $('.modal.show').length > 0) {
+                    $('.modal.show').modal('hide');
+                }
+            });
+
+            // Ensure buttons in modals are clickable
+            $(document).on('click', '.modal button', function(e) {
+                e.stopPropagation();
+            });
+        });
+    </script>
+
+    <!-- Auto Logout for Inactive Users -->
+    <script>
+        $(document).ready(function() {
+            // Auto logout configuration
+            const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+            const WARNING_TIME = 1 * 60 * 1000; // Show warning 1 minute before logout
+
+            let inactivityTimer;
+            let warningTimer;
+            let warningShown = false;
+
+            // Events that reset the inactivity timer
+            const resetEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+
+            // Function to update session status indicator
+            function updateSessionStatus(status) {
+                const indicator = $('#sessionIndicator');
+                const text = $('#sessionText');
+
+                switch(status) {
+                    case 'active':
+                        indicator.removeClass('text-warning text-danger').addClass('text-success');
+                        text.text('Active');
+                        break;
+                    case 'warning':
+                        indicator.removeClass('text-success text-danger').addClass('text-warning');
+                        text.text('Warning');
+                        break;
+                    case 'expired':
+                        indicator.removeClass('text-success text-warning').addClass('text-danger');
+                        text.text('Expired');
+                        break;
+                }
+            }
+
+            // Function to show logout warning
+            function showLogoutWarning() {
+                if (warningShown) return;
+                warningShown = true;
+                updateSessionStatus('warning');
+
+                // Create warning modal
+                const warningModal = `
+                    <div class="modal fade" id="logoutWarningModal" tabindex="-1" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Session Timeout Warning
+                                    </h5>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                                        <h6>Your session will expire in:</h6>
+                                        <h3 class="text-danger" id="countdownTimer">01:00</h3>
+                                    </div>
+                                    <p class="text-muted">You will be automatically logged out due to inactivity. Click "Stay Logged In" to continue your session.</p>
+                                </div>
+                                <div class="modal-footer justify-content-center">
+                                    <button type="button" class="btn btn-success" id="stayLoggedInBtn">
+                                        <i class="fas fa-user-check me-1"></i>Stay Logged In
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="logoutNowBtn">
+                                        <i class="fas fa-sign-out-alt me-1"></i>Logout Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Add modal to page if it doesn't exist
+                if (!$('#logoutWarningModal').length) {
+                    $('body').append(warningModal);
+                }
+
+                // Show the modal
+                $('#logoutWarningModal').modal('show');
+
+                // Start countdown
+                let timeLeft = 60; // 60 seconds
+                const countdownInterval = setInterval(function() {
+                    timeLeft--;
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    $('#countdownTimer').text(
+                        String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0')
+                    );
+
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        performLogout();
+                    }
+                }, 1000);
+
+                // Handle stay logged in button
+                $('#stayLoggedInBtn').off('click').on('click', function() {
+                    clearInterval(countdownInterval);
+                    $('#logoutWarningModal').modal('hide');
+                    warningShown = false;
+                    updateSessionStatus('active');
+                    resetInactivityTimer();
+                });
+
+                // Handle logout now button
+                $('#logoutNowBtn').off('click').on('click', function() {
+                    clearInterval(countdownInterval);
+                    performLogout();
+                });
+
+                // Clean up when modal is hidden
+                $('#logoutWarningModal').on('hidden.bs.modal', function() {
+                    if (!warningShown) {
+                        clearInterval(countdownInterval);
+                    }
+                });
+            }
+
+            // Function to perform logout
+            function performLogout() {
+                updateSessionStatus('expired');
+
+                // Clear any existing modals
+                $('#logoutWarningModal').modal('hide');
+
+                // Show logout message
+                const logoutMessage = `
+                    <div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Session Expired
+                                    </h5>
+                                </div>
+                                <div class="modal-body text-center py-4">
+                                    <div class="mb-3">
+                                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                                        <h5>Session Timeout</h5>
+                                        <p class="text-muted">You have been automatically logged out due to inactivity.</p>
+                                        <p class="text-info">You will be redirected to the login page in <span id="redirectCountdown">3</span> seconds...</p>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-primary" onclick="redirectToLogin()">
+                                            <i class="fas fa-sign-in-alt me-2"></i>Go to Login Page Now
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                $('body').append(logoutMessage);
+                $('#logoutModal').modal('show');
+
+                // Start countdown for redirect
+                let redirectTime = 3;
+                const redirectInterval = setInterval(function() {
+                    redirectTime--;
+                    $('#redirectCountdown').text(redirectTime);
+
+                    if (redirectTime <= 0) {
+                        clearInterval(redirectInterval);
+                        redirectToLogin();
+                    }
+                }, 1000);
+            }
+
+            // Function to redirect to login page
+            function redirectToLogin() {
+                // First, try to logout via AJAX to clear server session
+                $.ajax({
+                    url: '/accounts/logout/',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() ||
+                                      $('meta[name=csrf-token]').attr('content') ||
+                                      getCookie('csrftoken')
+                    },
+                    complete: function() {
+                        // Always redirect to login page regardless of AJAX result
+                        window.location.href = '/accounts/login/?auto_logout=1&reason=inactivity';
+                    }
+                });
+            }
+
+            // Function to get CSRF cookie
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // Function to reset inactivity timer
+            function resetInactivityTimer() {
+                // Clear existing timers
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+
+                // Set warning timer (show warning 1 minute before logout)
+                warningTimer = setTimeout(function() {
+                    showLogoutWarning();
+                }, INACTIVITY_TIMEOUT - WARNING_TIME);
+
+                // Set logout timer
+                inactivityTimer = setTimeout(function() {
+                    if (!warningShown) {
+                        performLogout();
+                    }
+                }, INACTIVITY_TIMEOUT);
+            }
+
+            // Bind events to reset timer
+            resetEvents.forEach(function(event) {
+                document.addEventListener(event, function() {
+                    if (!warningShown) {
+                        resetInactivityTimer();
+                    }
+                }, true);
+            });
+
+            // Initialize the timer and session status
+            resetInactivityTimer();
+            updateSessionStatus('active');
+
+            // Handle page visibility change (when user switches tabs)
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible' && !warningShown) {
+                    resetInactivityTimer();
+                }
+            });
+
+            // Make redirectToLogin globally accessible
+            window.redirectToLogin = redirectToLogin;
+
+            // Handle browser/tab close events
+            window.addEventListener('beforeunload', function(e) {
+                if (warningShown) {
+                    // If warning is shown, prevent default browser behavior
+                    e.preventDefault();
+                    e.returnValue = 'Your session is about to expire. Are you sure you want to leave?';
+                    return e.returnValue;
+                }
+            });
+
+            // Network connectivity handling disabled (was part of PWA functionality)
+            /*
+            window.addEventListener('online', function() {
+                if (!warningShown) {
+                    resetInactivityTimer();
+                }
+            });
+
+            window.addEventListener('offline', function() {
+                // Pause timers when offline
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+            });
+            */
+
+        });
+
+        // Patient context management functions
+        function clearPatientContext() {
+            if (confirm('Are you sure you want to clear the current patient context?')) {
+                // Get CSRF token using multiple fallback methods
+                let csrfToken = '';
+
+                // Method 1: Try to get from meta tag
+                const metaToken = document.querySelector('meta[name=csrf-token]');
+                if (metaToken) {
+                    csrfToken = metaToken.getAttribute('content');
+                }
+
+                // Method 2: Try to get from hidden input field
+                if (!csrfToken) {
+                    const inputToken = document.querySelector('input[name=csrfmiddlewaretoken]');
+                    if (inputToken) {
+                        csrfToken = inputToken.value;
+                    }
+                }
+
+                // Method 3: Try to get from cookie (fallback)
+                if (!csrfToken) {
+                    const cookieValue = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('csrftoken='))
+                        ?.split('=')[1];
+                    if (cookieValue) {
+                        csrfToken = cookieValue;
+                    }
+                }
+
+                // If no CSRF token found, show error
+                if (!csrfToken) {
+                    alert('Error: CSRF token not found. Please refresh the page and try again.');
+                    return;
+                }
+
+                fetch('/patients/clear-context/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the patient context from the UI
+                        const patientContextElement = document.getElementById('currentPatientContext');
+                        if (patientContextElement) {
+                            patientContextElement.remove();
+                        }
+                        // Show success message
+                        alert('Patient context cleared successfully.');
+                        // Optionally reload the page to refresh context
+                        location.reload();
+                    } else {
+                        alert('Error clearing patient context: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error clearing patient context. Please try again.');
+                });
+            }
+        }
+    </script>
+
+    
+
+    
+<script>
+// Copy patient ID to clipboard function
+function copyPatientId(button, event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const patientId = button.getAttribute('data-patient-id');
+
+    // Create a temporary textarea to copy the text
+    const textarea = document.createElement('textarea');
+    textarea.value = patientId;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+        document.execCommand('copy');
+
+        // Visual feedback
+        const icon = button.querySelector('i');
+        const originalClass = icon.className;
+        icon.className = 'fas fa-check';
+        button.classList.add('copied');
+        button.title = 'Copied!';
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+            icon.className = originalClass;
+            button.classList.remove('copied');
+            button.title = 'Copy Patient Number';
+        }, 2000);
+
+        // Show toast notification if available
+        if (typeof showToast === 'function') {
+            showToast('Patient ID copied to clipboard', 'success');
+        }
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        if (typeof showToast === 'function') {
+            showToast('Failed to copy patient ID', 'error');
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
+// Alpine.js data components are initialized inline with x-data
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize select2 for doctor dropdown if available
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    }
+
+    // Enhanced HTMX behavior for prescription table
+    if (typeof htmx !== 'undefined') {
+        htmx.on('htmx:afterSwap', function(evt) {
+            // Re-initialize tooltips after content swap
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Re-initialize copy patient ID buttons
+            const copyButtons = document.querySelectorAll('.copy-patient-id');
+            copyButtons.forEach(button => {
+                button.onclick = function(e) {
+                    copyPatientId(this, e);
+                };
+            });
+
+            // Animate progress bars
+            const progressBars = document.querySelectorAll('.dispensing-progress-bar');
+            progressBars.forEach(bar => {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 100);
+            });
+        });
+
+        htmx.on('htmx:beforeRequest', function(evt) {
+            // Show loading state
+            const target = evt.target;
+            if (target && target.id === 'prescriptions-table-container') {
+                target.style.opacity = '0.6';
+            }
+        });
+
+        htmx.on('htmx:afterRequest', function(evt) {
+            // Hide loading state
+            const target = evt.target;
+            if (target && target.id === 'prescriptions-table-container') {
+                target.style.opacity = '1';
+            }
+        });
+    }
+
+    // Add tooltips to action buttons
+    const actionButtons = document.querySelectorAll('[title]');
+    actionButtons.forEach(button => {
+        button.setAttribute('data-bs-toggle', 'tooltip');
+    });
+
+    // Initialize tooltips if Bootstrap is available
+    if (typeof bootstrap !== 'undefined') {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+
+    // Add confirmation for delete actions
+    const deleteButtons = document.querySelectorAll('a[href*="delete"]');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to delete this prescription?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // Highlight search terms in results
+    const searchTerm = new URLSearchParams(window.location.search).get('search');
+    if (searchTerm && searchTerm.length > 0) {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach(cell => {
+                const text = cell.textContent;
+                if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    cell.innerHTML = cell.innerHTML.replace(regex, '<mark>$1</mark>');
+                }
+            });
+        });
+    }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + K to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            const searchInput = document.getElementById('id_search');
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+    });
+});
+</script>
+
+<style>
+    .htmx-indicator {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    
+    .htmx-indicator.htmx-request {
+        opacity: 1;
+    }
+    
+    .htmx-request .table {
+        opacity: 0.6;
+    }
+    
+    /* Enhanced loading states */
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Search input enhancements */
+    #id_search:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .search-loading {
+        color: #007bff;
+    }
+    
+    /* Progress bar animations */
+    .dispensing-progress-bar {
+        transition: width 0.5s ease-in-out;
+    }
+</style>
+
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- Custom JS -->
+    
+    <script src="/static/js/sidebar.js"></script>
+
+    <!-- HTMX/Alpine.js Performance Optimizations -->
+    <script>
+        // HTMX Configuration
+        if (typeof htmx !== 'undefined') {
+            htmx.config.globalViewTransitions = true;
+            htmx.config.scrollBehavior = 'smooth';
+            htmx.config.defaultSwapStyle = 'innerHTML';
+            htmx.config.defaultSwapDelay = 0;
+            htmx.config.defaultSettleDelay = 50;
+            
+            // Show loading indicators
+            htmx.on('htmx:beforeRequest', function(evt) {
+                const target = evt.target;
+                if (target) {
+                    target.style.opacity = '0.6';
+                }
+            });
+            
+            htmx.on('htmx:afterRequest', function(evt) {
+                const target = evt.target;
+                if (target) {
+                    target.style.opacity = '1';
+                }
+                // Re-initialize tooltips and other Bootstrap components
+                if (typeof bootstrap !== 'undefined') {
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                }
+            });
+            
+            // Add custom event for search
+            htmx.on('search', function(evt) {
+                const form = evt.detail.elt;
+                if (form && form.tagName === 'FORM') {
+                    // Get all form data
+                    const formData = new FormData(form);
+                    const url = new URL(form.action || window.location.pathname);
+                    
+                    // Add form data to URL
+                    for (let [key, value] of formData.entries()) {
+                        if (value) {
+                            url.searchParams.set(key, value);
+                        }
+                    }
+                    
+                    // Trigger HTMX request
+                    htmx.ajax('GET', url, {
+                        target: form.getAttribute('hx-target') || '#patient-table-container',
+                        swap: form.getAttribute('hx-swap') || 'innerHTML',
+                        select: form.getAttribute('hx-select') || 'body'
+                    });
+                }
+            });
+        }
+        
+        // Alpine.js Global Utilities
+        if (typeof Alpine !== 'undefined') {
+            Alpine.data('loading', () => ({
+                loading: false,
+                show() { this.loading = true; },
+                hide() { this.loading = false; }
+            }));
+            
+            Alpine.data('search', () => ({
+                query: '',
+                typing: false,
+                timeout: null,
+                search() {
+                    this.typing = true;
+                    clearTimeout(this.timeout);
+                    this.timeout = setTimeout(() => {
+                        this.typing = false;
+                        // Trigger HTMX search if available
+                        const searchForm = document.getElementById('search-form');
+                        if (searchForm && typeof htmx !== 'undefined') {
+                            htmx.trigger(searchForm, 'search');
+                        }
+                    }, 500);
+                }
+            }));
+        }
+    </script>
+
+
+</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+                <!-- /.container-fluid -->
+            </div>
+            <!-- End of Main Content -->
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>© 2025 Hospital Management System. All rights reserved.</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Logout Modal-->
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" action="/accounts/logout/" style="display:inline;">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="s01oQmrBLhme45BkTmojhUn2zlxlZG2aZwXfyxD1odJqiOP7EO8XhWsneIiABwCc">
+                        <button type="submit" class="btn btn-primary">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    
+    <!-- Alpine.js -->
+    <script defer="" src="https://unpkg.com/alpinejs@3.13.8/dist/cdn.min.js"></script>
+
+    <!-- jQuery - Load FIRST before any scripts that use it -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Modal Fix Script -->
+    <script>
+        $(document).ready(function() {
+            // Ensure modals work properly with custom CSS
+            $('.modal').on('show.bs.modal', function (e) {
+                $('body').addClass('modal-open');
+                $('#wrapper').addClass('modal-open');
+
+                // Ensure modal is properly positioned
+                $(this).css({
+                    'display': 'block',
+                    'pointer-events': 'auto'
+                });
+
+                // Initialize Select2 for elements in the modal
+                $(this).find('.select2').select2({
+                    dropdownParent: $(this),
+                    theme: 'bootstrap-5'
+                });
+            });
+
+            $('.modal').on('shown.bs.modal', function (e) {
+                // Ensure modal content is interactive
+                $(this).find('.modal-content').css('pointer-events', 'auto');
+                $(this).find('button, input, select, textarea, a').css('pointer-events', 'auto');
+
+                // Focus on first input after modal is fully shown
+                setTimeout(() => {
+                    $(this).find('input, select, textarea').first().focus();
+                }, 100);
+            });
+
+            $('.modal').on('hidden.bs.modal', function (e) {
+                $('body').removeClass('modal-open');
+                $('#wrapper').removeClass('modal-open');
+
+                // Reset pointer events
+                $(this).css('pointer-events', '');
+
+                // Destroy Select2 instances to prevent memory leaks
+                $(this).find('.select2').each(function() {
+                    if ($(this).hasClass('select2-hidden-accessible')) {
+                        $(this).select2('destroy');
+                    }
+                });
+            });
+
+            // Fix for modal backdrop click issues
+            $('.modal').on('click', function(e) {
+                if (e.target === this) {
+                    $(this).modal('hide');
+                }
+            });
+
+            // Handle clicks outside modal content to close modal
+            $(document).on('click', '.modal', function(e) {
+                if ($(e.target).hasClass('modal')) {
+                    $(this).modal('hide');
+                }
+            });
+
+            // Ensure modal content is clickable
+            $('.modal-content').on('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // Prevent form submission on Enter key in modal inputs (except textareas)
+            $('.modal').on('keypress', 'input:not([type="submit"])', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // Additional fix for modal interaction issues
+            $(document).on('click', '.modal-backdrop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('.modal.show').modal('hide');
+            });
+
+            // Handle ESC key to close modal
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape' && $('.modal.show').length > 0) {
+                    $('.modal.show').modal('hide');
+                }
+            });
+
+            // Ensure buttons in modals are clickable
+            $(document).on('click', '.modal button', function(e) {
+                e.stopPropagation();
+            });
+        });
+    </script>
+
+    <!-- Auto Logout for Inactive Users -->
+    <script>
+        $(document).ready(function() {
+            // Auto logout configuration
+            const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+            const WARNING_TIME = 1 * 60 * 1000; // Show warning 1 minute before logout
+
+            let inactivityTimer;
+            let warningTimer;
+            let warningShown = false;
+
+            // Events that reset the inactivity timer
+            const resetEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+
+            // Function to update session status indicator
+            function updateSessionStatus(status) {
+                const indicator = $('#sessionIndicator');
+                const text = $('#sessionText');
+
+                switch(status) {
+                    case 'active':
+                        indicator.removeClass('text-warning text-danger').addClass('text-success');
+                        text.text('Active');
+                        break;
+                    case 'warning':
+                        indicator.removeClass('text-success text-danger').addClass('text-warning');
+                        text.text('Warning');
+                        break;
+                    case 'expired':
+                        indicator.removeClass('text-success text-warning').addClass('text-danger');
+                        text.text('Expired');
+                        break;
+                }
+            }
+
+            // Function to show logout warning
+            function showLogoutWarning() {
+                if (warningShown) return;
+                warningShown = true;
+                updateSessionStatus('warning');
+
+                // Create warning modal
+                const warningModal = `
+                    <div class="modal fade" id="logoutWarningModal" tabindex="-1" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Session Timeout Warning
+                                    </h5>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                                        <h6>Your session will expire in:</h6>
+                                        <h3 class="text-danger" id="countdownTimer">01:00</h3>
+                                    </div>
+                                    <p class="text-muted">You will be automatically logged out due to inactivity. Click "Stay Logged In" to continue your session.</p>
+                                </div>
+                                <div class="modal-footer justify-content-center">
+                                    <button type="button" class="btn btn-success" id="stayLoggedInBtn">
+                                        <i class="fas fa-user-check me-1"></i>Stay Logged In
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="logoutNowBtn">
+                                        <i class="fas fa-sign-out-alt me-1"></i>Logout Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Add modal to page if it doesn't exist
+                if (!$('#logoutWarningModal').length) {
+                    $('body').append(warningModal);
+                }
+
+                // Show the modal
+                $('#logoutWarningModal').modal('show');
+
+                // Start countdown
+                let timeLeft = 60; // 60 seconds
+                const countdownInterval = setInterval(function() {
+                    timeLeft--;
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    $('#countdownTimer').text(
+                        String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0')
+                    );
+
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        performLogout();
+                    }
+                }, 1000);
+
+                // Handle stay logged in button
+                $('#stayLoggedInBtn').off('click').on('click', function() {
+                    clearInterval(countdownInterval);
+                    $('#logoutWarningModal').modal('hide');
+                    warningShown = false;
+                    updateSessionStatus('active');
+                    resetInactivityTimer();
+                });
+
+                // Handle logout now button
+                $('#logoutNowBtn').off('click').on('click', function() {
+                    clearInterval(countdownInterval);
+                    performLogout();
+                });
+
+                // Clean up when modal is hidden
+                $('#logoutWarningModal').on('hidden.bs.modal', function() {
+                    if (!warningShown) {
+                        clearInterval(countdownInterval);
+                    }
+                });
+            }
+
+            // Function to perform logout
+            function performLogout() {
+                updateSessionStatus('expired');
+
+                // Clear any existing modals
+                $('#logoutWarningModal').modal('hide');
+
+                // Show logout message
+                const logoutMessage = `
+                    <div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Session Expired
+                                    </h5>
+                                </div>
+                                <div class="modal-body text-center py-4">
+                                    <div class="mb-3">
+                                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                                        <h5>Session Timeout</h5>
+                                        <p class="text-muted">You have been automatically logged out due to inactivity.</p>
+                                        <p class="text-info">You will be redirected to the login page in <span id="redirectCountdown">3</span> seconds...</p>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-primary" onclick="redirectToLogin()">
+                                            <i class="fas fa-sign-in-alt me-2"></i>Go to Login Page Now
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                $('body').append(logoutMessage);
+                $('#logoutModal').modal('show');
+
+                // Start countdown for redirect
+                let redirectTime = 3;
+                const redirectInterval = setInterval(function() {
+                    redirectTime--;
+                    $('#redirectCountdown').text(redirectTime);
+
+                    if (redirectTime <= 0) {
+                        clearInterval(redirectInterval);
+                        redirectToLogin();
+                    }
+                }, 1000);
+            }
+
+            // Function to redirect to login page
+            function redirectToLogin() {
+                // First, try to logout via AJAX to clear server session
+                $.ajax({
+                    url: '/accounts/logout/',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() ||
+                                      $('meta[name=csrf-token]').attr('content') ||
+                                      getCookie('csrftoken')
+                    },
+                    complete: function() {
+                        // Always redirect to login page regardless of AJAX result
+                        window.location.href = '/accounts/login/?auto_logout=1&reason=inactivity';
+                    }
+                });
+            }
+
+            // Function to get CSRF cookie
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // Function to reset inactivity timer
+            function resetInactivityTimer() {
+                // Clear existing timers
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+
+                // Set warning timer (show warning 1 minute before logout)
+                warningTimer = setTimeout(function() {
+                    showLogoutWarning();
+                }, INACTIVITY_TIMEOUT - WARNING_TIME);
+
+                // Set logout timer
+                inactivityTimer = setTimeout(function() {
+                    if (!warningShown) {
+                        performLogout();
+                    }
+                }, INACTIVITY_TIMEOUT);
+            }
+
+            // Bind events to reset timer
+            resetEvents.forEach(function(event) {
+                document.addEventListener(event, function() {
+                    if (!warningShown) {
+                        resetInactivityTimer();
+                    }
+                }, true);
+            });
+
+            // Initialize the timer and session status
+            resetInactivityTimer();
+            updateSessionStatus('active');
+
+            // Handle page visibility change (when user switches tabs)
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible' && !warningShown) {
+                    resetInactivityTimer();
+                }
+            });
+
+            // Make redirectToLogin globally accessible
+            window.redirectToLogin = redirectToLogin;
+
+            // Handle browser/tab close events
+            window.addEventListener('beforeunload', function(e) {
+                if (warningShown) {
+                    // If warning is shown, prevent default browser behavior
+                    e.preventDefault();
+                    e.returnValue = 'Your session is about to expire. Are you sure you want to leave?';
+                    return e.returnValue;
+                }
+            });
+
+            // Network connectivity handling disabled (was part of PWA functionality)
+            /*
+            window.addEventListener('online', function() {
+                if (!warningShown) {
+                    resetInactivityTimer();
+                }
+            });
+
+            window.addEventListener('offline', function() {
+                // Pause timers when offline
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+            });
+            */
+
+        });
+
+        // Patient context management functions
+        function clearPatientContext() {
+            if (confirm('Are you sure you want to clear the current patient context?')) {
+                // Get CSRF token using multiple fallback methods
+                let csrfToken = '';
+
+                // Method 1: Try to get from meta tag
+                const metaToken = document.querySelector('meta[name=csrf-token]');
+                if (metaToken) {
+                    csrfToken = metaToken.getAttribute('content');
+                }
+
+                // Method 2: Try to get from hidden input field
+                if (!csrfToken) {
+                    const inputToken = document.querySelector('input[name=csrfmiddlewaretoken]');
+                    if (inputToken) {
+                        csrfToken = inputToken.value;
+                    }
+                }
+
+                // Method 3: Try to get from cookie (fallback)
+                if (!csrfToken) {
+                    const cookieValue = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('csrftoken='))
+                        ?.split('=')[1];
+                    if (cookieValue) {
+                        csrfToken = cookieValue;
+                    }
+                }
+
+                // If no CSRF token found, show error
+                if (!csrfToken) {
+                    alert('Error: CSRF token not found. Please refresh the page and try again.');
+                    return;
+                }
+
+                fetch('/patients/clear-context/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the patient context from the UI
+                        const patientContextElement = document.getElementById('currentPatientContext');
+                        if (patientContextElement) {
+                            patientContextElement.remove();
+                        }
+                        // Show success message
+                        alert('Patient context cleared successfully.');
+                        // Optionally reload the page to refresh context
+                        location.reload();
+                    } else {
+                        alert('Error clearing patient context: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error clearing patient context. Please try again.');
+                });
+            }
+        }
+    </script>
+
+    
+
+    
+<script>
+// Copy patient ID to clipboard function
+function copyPatientId(button, event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const patientId = button.getAttribute('data-patient-id');
+
+    // Create a temporary textarea to copy the text
+    const textarea = document.createElement('textarea');
+    textarea.value = patientId;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+        document.execCommand('copy');
+
+        // Visual feedback
+        const icon = button.querySelector('i');
+        const originalClass = icon.className;
+        icon.className = 'fas fa-check';
+        button.classList.add('copied');
+        button.title = 'Copied!';
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+            icon.className = originalClass;
+            button.classList.remove('copied');
+            button.title = 'Copy Patient Number';
+        }, 2000);
+
+        // Show toast notification if available
+        if (typeof showToast === 'function') {
+            showToast('Patient ID copied to clipboard', 'success');
+        }
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        if (typeof showToast === 'function') {
+            showToast('Failed to copy patient ID', 'error');
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
+// Alpine.js data components are initialized inline with x-data
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize select2 for doctor dropdown if available
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+    }
+
+    // Enhanced HTMX behavior for prescription table
+    if (typeof htmx !== 'undefined') {
+        htmx.on('htmx:afterSwap', function(evt) {
+            // Re-initialize tooltips after content swap
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Re-initialize copy patient ID buttons
+            const copyButtons = document.querySelectorAll('.copy-patient-id');
+            copyButtons.forEach(button => {
+                button.onclick = function(e) {
+                    copyPatientId(this, e);
+                };
+            });
+
+            // Animate progress bars
+            const progressBars = document.querySelectorAll('.dispensing-progress-bar');
+            progressBars.forEach(bar => {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 100);
+            });
+        });
+
+        htmx.on('htmx:beforeRequest', function(evt) {
+            // Show loading state
+            const target = evt.target;
+            if (target && target.id === 'prescriptions-table-container') {
+                target.style.opacity = '0.6';
+            }
+        });
+
+        htmx.on('htmx:afterRequest', function(evt) {
+            // Hide loading state
+            const target = evt.target;
+            if (target && target.id === 'prescriptions-table-container') {
+                target.style.opacity = '1';
+            }
+        });
+    }
+
+    // Add tooltips to action buttons
+    const actionButtons = document.querySelectorAll('[title]');
+    actionButtons.forEach(button => {
+        button.setAttribute('data-bs-toggle', 'tooltip');
+    });
+
+    // Initialize tooltips if Bootstrap is available
+    if (typeof bootstrap !== 'undefined') {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+
+    // Add confirmation for delete actions
+    const deleteButtons = document.querySelectorAll('a[href*="delete"]');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to delete this prescription?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // Highlight search terms in results
+    const searchTerm = new URLSearchParams(window.location.search).get('search');
+    if (searchTerm && searchTerm.length > 0) {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach(cell => {
+                const text = cell.textContent;
+                if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    cell.innerHTML = cell.innerHTML.replace(regex, '<mark>$1</mark>');
+                }
+            });
+        });
+    }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + K to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            const searchInput = document.getElementById('id_search');
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+    });
+});
+</script>
+
+<style>
+    .htmx-indicator {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    
+    .htmx-indicator.htmx-request {
+        opacity: 1;
+    }
+    
+    .htmx-request .table {
+        opacity: 0.6;
+    }
+    
+    /* Enhanced loading states */
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Search input enhancements */
+    #id_search:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .search-loading {
+        color: #007bff;
+    }
+    
+    /* Progress bar animations */
+    .dispensing-progress-bar {
+        transition: width 0.5s ease-in-out;
+    }
+</style>
+
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- Custom JS -->
+    
+    <script src="/static/js/sidebar.js"></script>
+
+    <!-- HTMX/Alpine.js Performance Optimizations -->
+    <script>
+        // HTMX Configuration
+        if (typeof htmx !== 'undefined') {
+            htmx.config.globalViewTransitions = true;
+            htmx.config.scrollBehavior = 'smooth';
+            htmx.config.defaultSwapStyle = 'innerHTML';
+            htmx.config.defaultSwapDelay = 0;
+            htmx.config.defaultSettleDelay = 50;
+            
+            // Show loading indicators
+            htmx.on('htmx:beforeRequest', function(evt) {
+                const target = evt.target;
+                if (target) {
+                    target.style.opacity = '0.6';
+                }
+            });
+            
+            htmx.on('htmx:afterRequest', function(evt) {
+                const target = evt.target;
+                if (target) {
+                    target.style.opacity = '1';
+                }
+                // Re-initialize tooltips and other Bootstrap components
+                if (typeof bootstrap !== 'undefined') {
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                }
+            });
+            
+            // Add custom event for search
+            htmx.on('search', function(evt) {
+                const form = evt.detail.elt;
+                if (form && form.tagName === 'FORM') {
+                    // Get all form data
+                    const formData = new FormData(form);
+                    const url = new URL(form.action || window.location.pathname);
+                    
+                    // Add form data to URL
+                    for (let [key, value] of formData.entries()) {
+                        if (value) {
+                            url.searchParams.set(key, value);
+                        }
+                    }
+                    
+                    // Trigger HTMX request
+                    htmx.ajax('GET', url, {
+                        target: form.getAttribute('hx-target') || '#patient-table-container',
+                        swap: form.getAttribute('hx-swap') || 'innerHTML',
+                        select: form.getAttribute('hx-select') || 'body'
+                    });
+                }
+            });
+        }
+        
+        // Alpine.js Global Utilities
+        if (typeof Alpine !== 'undefined') {
+            Alpine.data('loading', () => ({
+                loading: false,
+                show() { this.loading = true; },
+                hide() { this.loading = false; }
+            }));
+            
+            Alpine.data('search', () => ({
+                query: '',
+                typing: false,
+                timeout: null,
+                search() {
+                    this.typing = true;
+                    clearTimeout(this.timeout);
+                    this.timeout = setTimeout(() => {
+                        this.typing = false;
+                        // Trigger HTMX search if available
+                        const searchForm = document.getElementById('search-form');
+                        if (searchForm && typeof htmx !== 'undefined') {
+                            htmx.trigger(searchForm, 'search');
+                        }
+                    }, 500);
+                }
+            }));
+        }
+    </script>
+
+
+</div></body></html>
