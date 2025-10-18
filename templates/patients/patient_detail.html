@@ -36,7 +36,7 @@
                     <button class="btn btn-danger" onclick="confirmDeletePatient()">
                         <i class="fas fa-trash me-2"></i>Delete
                     </button>
-                    {% get_permission_indicator user 'delete_patient' %}
+                    {% get_permission_indicator 'delete_patient' %}
                 {% endif %}
                 {% if not user|has_permission:'edit_patient' and not user.is_superuser %}
                     <div class="text-muted">
@@ -66,8 +66,12 @@
                                     <div>
                                         <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
                                         <div class="text-muted small">
-                                            <span class="badge {{ user.profile.role|get_role_badge_class }}">{{ user.profile.role|default:'Guest' }}</span>
-                                            {% if user.profile.department %}
+                                            {% if user.profile and user.profile.role %}
+                                                <span class="badge {{ user.profile.role|get_role_badge_class }}">{{ user.profile.role }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Guest</span>
+                                            {% endif %}
+                                            {% if user.profile and user.profile.department %}
                                                 <span class="ms-1">{{ user.profile.department }}</span>
                                             {% endif %}
                                         </div>
@@ -75,7 +79,7 @@
                                 </div>
                             </div>
                             <div class="col-md-4 text-end">
-                                {% get_permission_indicator user 'access_sensitive_data' %}
+                                {% get_permission_indicator 'access_sensitive_data' %}
                                 <div class="btn-group btn-group-sm ms-2">
                                     {% if user|has_any_permission:'create_patient,view_patients' %}
                                         <button class="btn btn-outline-primary" onclick="showActivityLog()" title="View Activity">
@@ -209,7 +213,7 @@
                                 <button class="btn btn-warning btn-block disabled" {% if not user|has_permission:'create_test_request' %}title="Permission required"{% endif %}>
                                     <i class="fas fa-flask me-2"></i>Order Lab Tests
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'create_test_request' %}
+                                        {% get_permission_indicator 'create_test_request' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -223,7 +227,7 @@
                                 <button class="btn btn-info btn-block disabled" {% if not user|has_permission:'create_radiology_request' %}title="Permission required"{% endif %}>
                                     <i class="fas fa-x-ray me-2"></i>Order Radiology
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'create_radiology_request' %}
+                                        {% get_permission_indicator 'create_radiology_request' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -237,7 +241,7 @@
                                 <button class="btn btn-success btn-block disabled" title="Permission required">
                                     <i class="fas fa-stethoscope me-2"></i>New Consultation
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'create_appointment' %}
+                                        {% get_permission_indicator 'create_appointment' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -251,7 +255,7 @@
                                 <button class="btn btn-danger btn-block disabled" title="Permission required">
                                     <i class="fas fa-user-md me-2"></i>Refer Patient
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'refer_patient' %}
+                                        {% get_permission_indicator 'refer_patient' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -265,7 +269,7 @@
                                 <button class="btn btn-secondary btn-block disabled" title="Permission required">
                                     <i class="fas fa-procedures me-2"></i>Admit Patient
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'manage_patient_admission' %}
+                                        {% get_permission_indicator 'manage_patient_admission' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -279,7 +283,7 @@
                                 <button class="btn btn-primary btn-block disabled" title="Permission required">
                                     <i class="fas fa-calendar-plus me-2"></i>New Appointment
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'create_appointment' %}
+                                        {% get_permission_indicator 'create_appointment' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -293,7 +297,7 @@
                                 <button class="btn btn-success btn-block disabled" title="Permission required">
                                     <i class="fas fa-file-invoice-dollar me-2"></i>New Invoice
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'create_invoice' %}
+                                        {% get_permission_indicator 'create_invoice' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -307,7 +311,7 @@
                                 <button class="btn btn-secondary btn-block disabled" title="Permission required">
                                     <i class="fas fa-heartbeat me-2"></i>Record Vitals
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'manage_vitals' %}
+                                        {% get_permission_indicator 'manage_vitals' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -321,7 +325,7 @@
                                 <button class="btn btn-info btn-block disabled" title="Permission required">
                                     <i class="fas fa-vials me-2"></i>View Lab Results
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'view_tests' %}
+                                        {% get_permission_indicator 'view_tests' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -335,7 +339,7 @@
                                 <button class="btn btn-warning btn-block disabled" title="Permission required">
                                     <i class="fas fa-pills me-2"></i>Prescribe Medication
                                     <span class="permission-indicator">
-                                        {% get_permission_indicator user 'create_prescription' %}
+                                        {% get_permission_indicator 'create_prescription' %}
                                     </span>
                                 </button>
                             {% endif %}
@@ -622,7 +626,7 @@
                     <a href="{% url 'pharmacy:prescriptions' %}?patient={{ patient.id }}" class="btn btn-sm btn-primary">View All</a>
                 </div>
                 <div class="card-body">
-                    {% with prescriptions=patient.prescriptions.all|dictsortreversed:"prescription_date"|slice:":5" %}
+                    {% with prescriptions=patient.prescriptions.all|dictsort:"prescription_date"|slice:":5" %}
                     {% if prescriptions %}
                         <div class="table-responsive">
                             <table class="table table-bordered" width="100%" cellspacing="0">

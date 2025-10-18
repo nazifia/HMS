@@ -53,10 +53,10 @@
                             {% if record.pain_level %}
                                 {{ record.pain_level }}/10
                                 <div class="progress mt-1">
-                                    <div class="progress-bar" role="progressbar" 
-                                         style="width: {{ record.pain_level|mul:10 }}%" 
-                                         aria-valuenow="{{ record.pain_level }}" 
-                                         aria-valuemin="0" 
+                                    <div class="progress-bar" role="progressbar"
+                                         style="width: {% widthratio record.pain_level 1 10 %}%"
+                                         aria-valuenow="{{ record.pain_level }}"
+                                         aria-valuemin="0"
                                          aria-valuemax="10">
                                         {{ record.pain_level }}
                                     </div>

@@ -40,7 +40,7 @@
                         </div>
                     </div>
                     <div class="progress" style="height: 4px;">
-                        <div class="progress-bar bg-primary" style="width: {{ active_users|mul:100|div:total_users }}%"></div>
+                        <div class="progress-bar bg-primary" style="width: {% if total_users > 0 %}{% widthratio active_users total_users 100 %}{% else %}0{% endif %}%"></div>
                     </div>
                     <small class="text-muted">{{ active_users }} active users</small>
                 </div>
@@ -126,7 +126,7 @@
                                 <small class="text-muted">{{ item.count }} activities</small>
                             </div>
                             <div class="progress" style="width: 60px; height: 4px;">
-                                <div class="progress-bar bg-primary" style="width: {{ item.count|mul:100|div:total_activities_today }}%"></div>
+                                <div class="progress-bar bg-primary" style="width: {% if total_activities_today > 0 %}{% widthratio item.count total_activities_today 100 %}{% else %}0{% endif %}%"></div>
                             </div>
                         </div>
                         {% empty %}
@@ -171,8 +171,8 @@
                                             {% endif %}
                                         </div>
                                         <div class="activity-action">
-                                            <i class="{{ activity.action_type|action_type_icon }} text-muted me-1"></i>
-                                            {{ activity.action_type|get_action_type_display }}
+                                            <i class="{% action_type_icon activity.action_type %} text-muted me-1"></i>
+                                            {% get_action_type_display activity.action_type %}
                                         </div>
                                         <div class="activity-description text-muted small">
                                             {{ activity.description|truncate_chars:80 }}

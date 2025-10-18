@@ -1951,3 +1951,13 @@ django.core.exceptions.FieldError: Cannot resolve keyword 'nhia_number' into fie
 ERROR 2025-10-11 20:47:25,073 django.server basehttp log_message 213 "POST /desk-office/authorization-dashboard/ HTTP/1.1" 500 156068
 INFO 2025-10-11 20:48:48,583 django.utils.autoreload autoreload trigger_reload 265 C:\Users\dell\Desktop\MY_PRODUCTS\HMS\desk_office\authorization_dashboard_views.py changed, reloading.
 INFO 2025-10-11 20:48:50,761 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-11 20:49:36,721 django.server basehttp log_message 213 "POST /desk-office/authorization-dashboard/ HTTP/1.1" 200 81544
+INFO 2025-10-11 20:50:07,607 django.server basehttp log_message 213 "GET /desk-office/authorization-dashboard/?patient_id=6 HTTP/1.1" 200 84737
+INFO 2025-10-11 20:51:04,476 django.server basehttp log_message 213 "GET /core/authorization/dashboard/ HTTP/1.1" 200 67201
+INFO 2025-10-11 20:59:05,477 django.server basehttp log_message 213 "GET /core/authorization/dashboard/ HTTP/1.1" 200 67493
+INFO 2025-10-11 20:59:41,851 django.server basehttp log_message 213 "GET /desk-office/authorization-dashboard/ HTTP/1.1" 200 78617
+INFO 2025-10-11 20:59:47,430 django.server basehttp log_message 213 "POST /desk-office/authorization-dashboard/ HTTP/1.1" 200 80728
+INFO 2025-10-12 06:23:10,768 django.server basehttp log_message 213 "POST /accounts/logout/ HTTP/1.1" 200 119
+INFO 2025-10-12 06:23:10,804 django.server basehttp log_message 213 "GET /accounts/login/?auto_logout=1&reason=inactivity HTTP/1.1" 200 31940
+INFO 2025-10-17 20:11:07,548 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader
+INFO 2025-10-17 20:12:15,024 django.utils.autoreload autoreload run_with_reloader 667 Watching for file changes with StatReloader

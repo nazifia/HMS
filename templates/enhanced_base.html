@@ -469,20 +469,20 @@
                         <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
                             <i class="fas fa-user me-2"></i>Profile
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'accounts:settings' %}">
+                        <li><a class="dropdown-item" href="{% url 'accounts:edit_profile' %}">
                             <i class="fas fa-cog me-2"></i>Settings
                         </a></li>
                         
                         <!-- Admin-only options -->
                         {% if user.is_superuser or 'admin' in user.user_roles %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'admin_activity_log' %}">
+                        <li><a class="dropdown-item" href="{% url 'core:activity_log' %}">
                             <i class="fas fa-history me-2"></i>Activity Log
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'admin_permissions' %}">
+                        <li><a class="dropdown-item" href="{% url 'core:permission_management' %}">
                             <i class="fas fa-shield-alt me-2"></i>Permissions
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'admin_user_management' %}">
+                        <li><a class="dropdown-item" href="{% url 'hr:staff' %}">
                             <i class="fas fa-users me-2"></i>User Management
                         </a></li>
                         {% endif %}

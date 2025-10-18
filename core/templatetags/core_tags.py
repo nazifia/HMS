@@ -20,7 +20,8 @@ def has_role(user, role_name):
     if user.is_superuser:
         return True
     
-    return role_name in user.get_role_list() if hasattr(user, 'get_role_list') else False
+    # Check if user has the role by checking the roles ManyToMany field
+    return user.roles.filter(name=role_name).exists()
 
 @register.filter
 def has_permission(user, permission_name):
@@ -33,6 +34,24 @@ def has_permission(user, permission_name):
     
     checker = RolePermissionChecker(user)
     return checker.has_permission(permission_name)
+
+@register.filter
+def has_any_permission(user, permission_names):
+    """Check if user has any of the specified permissions"""
+    if not user or not user.is_authenticated:
+        return False
+    
+    if user.is_superuser:
+        return True
+    
+    # Split comma-separated permission names
+    if isinstance(permission_names, str):
+        permission_list = [perm.strip() for perm in permission_names.split(',')]
+    else:
+        permission_list = permission_names
+    
+    checker = RolePermissionChecker(user)
+    return checker.has_any_permission(*permission_list)
 
 @register.filter
 def get_user_roles(user):

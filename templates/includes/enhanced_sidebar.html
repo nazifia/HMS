@@ -1,3 +1,4 @@
+{% load core_tags %}
 <!-- Enhanced Sidebar Navigation -->
 <div class="sidebar-wrapper">
     <!-- Sidebar -->
@@ -33,13 +34,13 @@
                 <div class="user-info ms-2 flex-grow-1">
                     <div class="text-white fw-semibold small text-truncate">{{ user.get_full_name|default:user.username }}</div>
                     <div class="d-flex align-items-center">
-                        {% if user.profile.role %}
-                            <span class="badge {{ user.profile.role|get_role_badge_class }} me-1" style="font-size: 0.6rem;">{{ user.profile.role|title }}</span>
+                        {% if user.profile and user.profile.role %}
+                            <span class="badge bg-info me-1" style="font-size: 0.6rem;">{{ user.profile.role|title }}</span>
                         {% endif %}
-                        {% if user.profile.department %}
+                        {% if user.profile and user.profile.department %}
                             <span class="text-muted user-role small">{{ user.profile.department }}</span>
                         {% else %}
-                            <span class="text-muted user-role small">{{ user.get_role|default:'User' }}</span>
+                            <span class="text-muted user-role small">User</span>
                         {% endif %}
                     </div>
                 </div>
@@ -51,7 +52,7 @@
                         <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
                             <i class="fas fa-user me-2"></i>Profile
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'accounts:settings' %}">
+                        <li><a class="dropdown-item" href="{% url 'accounts:edit_profile' %}">
                             <i class="fas fa-cog me-2"></i>Settings
                         </a></li>
                         
@@ -86,14 +87,14 @@
             <div class="session-info mt-2">
                 <div class="d-flex align-items-center justify-content-between">
                     <small class="text-muted">Session:</small>
-                    <small class="session-time-remaining {{ request.session.session_info|get_session_status_class }}">
+                    <small class="session-time-remaining {% get_session_status_class request.session.session_info %}">
                         {% with remaining=request.session.session_info.time_remaining %}
                             {% if remaining <= 60 %}
                                 Expired
                             {% elif remaining <= 300 %}
-                                {{ remaining|div:60 }}min left
+                                {% widthratio remaining 60 1 %}min left
                             {% else %}
-                                {{ remaining|div:60 }}min
+                                {% widthratio remaining 60 1 %}min
                             {% endif %}
                         {% endwith %}
                     </small>

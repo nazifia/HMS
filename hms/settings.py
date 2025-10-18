@@ -329,86 +329,9 @@ if IS_WINDOWS and not LOG_FILE:
     # Create logs directory if it doesn't exist
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {asctime} {message}',
-            'style': '{',
-        },
-        'detailed': {
-            'format': '{levelname} {asctime} {name} {module} {funcName} {lineno} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': LOG_LEVEL,
-            'class': 'core.logging_handlers.SafeStreamHandler' if IS_WINDOWS else 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'null': {
-            'class': 'logging.NullHandler',
-        },
-    },
-    'root': {
-        'handlers': ['null'],  # Disable console on Windows to prevent OSError
-        'level': LOG_LEVEL,
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['null'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'django.security': {
-            'handlers': ['null'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
-        'django.server': {
-            'handlers': ['null'],  # Disable Django's development server logging to console
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'pharmacy': {
-            'handlers': ['null'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'hms': {
-            'handlers': ['null'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'accounts': {
-            'handlers': ['null'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-    },
-}
-
-# Add file logging if LOG_FILE is specified or on Windows
-if LOG_FILE:
-    LOGGING['handlers']['file'] = {
-        'level': LOG_LEVEL,
-        'class': 'core.logging_handlers.WindowsSafeFileHandler' if IS_WINDOWS else 'logging.handlers.RotatingFileHandler',
-        'filename': LOG_FILE,
-        'maxBytes': 1024*1024*10,  # 10MB
-        'backupCount': 5,
-        'formatter': 'detailed',
-        'encoding': 'utf-8',  # Explicitly set UTF-8 encoding
-    }
-    # Replace null handlers with file handler for all loggers
-    for logger_config in LOGGING['loggers'].values():
-        logger_config['handlers'] = ['file']
-    LOGGING['root']['handlers'] = ['file']
+# Temporary fix: Disable logging to allow Django start
+LOGGING = None
+LOGGING_CONFIG = None
 
 
 # Hospital Information

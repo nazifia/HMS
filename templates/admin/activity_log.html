@@ -216,12 +216,12 @@
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark">
-                                    {{ log.category|get_activity_category_display }}
+                                    {% get_activity_category_display log.category %}
                                 </span>
                             </td>
                             <td>
-                                <i class="{{ log.action_type|action_type_icon }} me-2"></i>
-                                {{ log.action_type|get_action_type_display }}
+                                <i class="{% action_type_icon log.action_type %} me-2"></i>
+                                {% get_action_type_display log.action_type %}
                             </td>
                             <td>
                                 {% if log.description|length > 80 %}
@@ -235,7 +235,7 @@
                                 <code>{{ log.ip_address|default:"N/A" }}</code>
                             </td>
                             <td>
-                                <span class="badge {{ log.level|activity_log_level_badge }}">
+                                <span class="badge {% activity_log_level_badge log.level %}">
                                     {{ log.level|upper }}
                                 </span>
                             </td>
