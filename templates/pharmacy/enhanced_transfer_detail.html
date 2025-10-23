@@ -1,0 +1,435 @@
+{% extends 'pharmacy/layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Transfer Details #{{ transfer.id }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:enhanced_transfer_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-secondary">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Status and Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                {% if transfer.status == 'pending' %}
+                                    <span class="badge bg-warning fs-6 me-3">
+                                        <i class="fas fa-clock"></i> Pending Approval
+                                    </span>
+                                {% elif transfer.status == 'approved' %}
+                                    <span class="badge bg-info fs-6 me-3">
+                                        <i class="fas fa-check"></i> Approved
+                                    </span>
+                                {% elif transfer.status == 'in_transit' %}
+                                    <span class="badge bg-secondary fs-6 me-3">
+                                        <i class="fas fa-truck"></i> In Transit
+                                    </span>
+                                {% elif transfer.status == 'completed' %}
+                                    <span class="badge bg-success fs-6 me-3">
+                                        <i class="fas fa-check-circle"></i> Completed
+                                    </span>
+                                {% elif transfer.status == 'rejected' %}
+                                    <span class="badge bg-danger fs-6 me-3">
+                                        <i class="fas fa-times-circle"></i> Rejected
+                                    </span>
+                                {% elif transfer.status == 'cancelled' %}
+                                    <span class="badge bg-dark fs-6 me-3">
+                                        <i class="fas fa-ban"></i> Cancelled
+                                    </span>
+                                {% endif %}
+                                
+                                <div>
+                                    <strong>Created:</strong> {{ transfer.created_at|date:"F d, Y H:i" }}
+                                    {% if transfer.transferred_at %}
+                                        <br><strong>Transferred:</strong> {{ transfer.transferred_at|date:"F d, Y H:i" }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="btn-group">
+                                {% if transfer.status == 'pending' %}
+                                    <form method="post" action="{% url 'pharmacy:approve_transfer' transfer.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success" onclick="return confirm('Approve this transfer?')">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                        <i class="fas fa-times"></i> Reject
+                                    </button>
+                                {% endif %}
+                                
+                                {% if transfer.status == 'approved' %}
+                                    <form method="post" action="{% url 'pharmacy:execute_transfer' transfer.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-primary" onclick="return confirm('Execute this transfer now?')">
+                                            <i class="fas fa-truck"></i> Execute Transfer
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Transfer Details -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Medication</h6>
+                            <p><strong>{{ transfer.medication.name }}</strong></p>
+                            <p class="text-muted">{{ transfer.medication.strength }} | {{ transfer.medication.dosage_form }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Quantity</h6>
+                            <p><span class="badge bg-primary fs-6">{{ transfer.quantity }} units</span></p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Source Dispensary</h6>
+                            <p><strong>{{ transfer.from_dispensary.name }}</strong></p>
+                            <p class="text-muted">{{ transfer.from_dispensary.location|default:"No location specified" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Destination Dispensary</h6>
+                            <p><strong>{{ transfer.to_dispensary.name }}</strong></p>
+                            <p class="text-muted">{{ transfer.to_dispensary.location|default:"No location specified" }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if transfer.notes %}
+                    <hr>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted">Notes</h6>
+                            <p>{{ transfer.notes|linebreaks }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if transfer.rejection_reason %}
+                    <hr>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-danger">Rejection Reason</h6>
+                            <p class="text-danger">{{ transfer.rejection_reason|linebreaks }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Inventory Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Inventory Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Source Inventory</h6>
+                            {% if source_inventory %}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Current Stock:</span>
+                                    <strong>{{ source_inventory.stock_quantity }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Reorder Level:</span>
+                                    <span class="text-muted">{{ source_inventory.reorder_level }}</span>
+                                </div>
+                                <div class="mt-2">
+                                    {% if source_inventory.stock_quantity <= source_inventory.reorder_level %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-exclamation-triangle"></i> Low Stock
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> Adequate Stock
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No inventory record found</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Destination Inventory</h6>
+                            {% if dest_inventory %}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Current Stock:</span>
+                                    <strong>{{ dest_inventory.stock_quantity }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Reorder Level:</span>
+                                    <span class="text-muted">{{ dest_inventory.reorder_level }}</span>
+                                </div>
+                                <div class="mt-2">
+                                    {% if dest_inventory.stock_quantity <= dest_inventory.reorder_level %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation-triangle"></i> Low Stock
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-info-circle"></i> Normal Stock
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No inventory record found</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Transfer Impact Visualization -->
+                    <div class="mt-4">
+                        <h6 class="text-muted">Transfer Impact</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">Source after transfer:</small>
+                                <div class="progress" style="height: 25px;">
+                                    {% if source_inventory %}
+                                        {% with new_stock=source_inventory.stock_quantity|add:transfer.quantity %}
+                                            <div class="progress-bar bg-info" role="progressbar" 
+                                                 style="width: {{ new_stock|mul:100|div:source_inventory.reorder_level|default:100 }}%">
+                                                {{ new_stock }}
+                                            </div>
+                                        {% endwith %}
+                                    {% else %}
+                                        <div class="progress-bar bg-secondary" role="progressbar" style="width: 100%">
+                                            Unknown
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Destination after transfer:</small>
+                                <div class="progress" style="height: 25px;">
+                                    {% if dest_inventory %}
+                                        {% with new_stock=dest_inventory.stock_quantity|add:transfer.quantity %}
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: {{ new_stock|mul:100|div:dest_inventory.reorder_level|default:100 }}%">
+                                                {{ new_stock }}
+                                            </div>
+                                        {% endwith %}
+                                    {% else %}
+                                        <div class="progress-bar bg-secondary" role="progressbar" style="width: 100%">
+                                            {{ transfer.quantity }} (New)
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- People Involved -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">People Involved</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Requested By</h6>
+                        {% if transfer.requested_by %}
+                            <strong>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</strong>
+                            <br><small class="text-muted">{{ transfer.requested_by.email|default:"No email" }}</small>
+                        {% else %}
+                            <span class="text-muted">Not specified</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if transfer.approved_by %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Approved By</h6>
+                        <strong>{{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}</strong>
+                        <br><small class="text-muted">{{ transfer.approved_at|date:"F d, Y H:i" }}</small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if transfer.transferred_by %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Executed By</h6>
+                        <strong>{{ transfer.transferred_by.get_full_name|default:transfer.transferred_by.username }}</strong>
+                        <br><small class="text-muted">{{ transfer.transferred_at|date:"F d, Y H:i" }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Timeline</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6>Transfer Created</h6>
+                                <p class="text-muted">{{ transfer.created_at|naturaltime }}</p>
+                            </div>
+                        </div>
+                        
+                        {% if transfer.approved_at %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-info"></div>
+                            <div class="timeline-content">
+                                <h6>Transfer Approved</h6>
+                                <p class="text-muted">{{ transfer.approved_at|naturaltime }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if transfer.transferred_at %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6>Transfer Executed</h6>
+                                <p class="text-muted">{{ transfer.transferred_at|naturaltime }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Transfers -->
+            {% if related_transfers %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-secondary">Recent Similar Transfers</h6>
+                </div>
+                <div class="card-body">
+                    {% for related in related_transfers %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <div>
+                            <small class="text-muted">#{{ related.id }}</small>
+                            <br>
+                            <strong>{{ related.quantity }}x {{ related.medication.name }}</strong>
+                            <br>
+                            <small>{{ related.from_dispensary.name }} → {{ related.to_dispensary.name }}</small>
+                        </div>
+                        <span class="badge {% if related.status == 'completed' %}bg-success{% elif related.status == 'pending' %}bg-warning{% else %}bg-secondary{% endif %}">
+                            {{ related.status }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Transfer #{{ transfer.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:reject_transfer' transfer.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        You are about to reject transfer of {{ transfer.quantity }} {{ transfer.medication.name }} 
+                        from {{ transfer.from_dispensary.name }} to {{ transfer.to_dispensary.name }}.
+                    </div>
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">
+                            Rejection Reason <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" 
+                                  id="rejection_reason" 
+                                  name="rejection_reason" 
+                                  rows="4" 
+                                  required
+                                  placeholder="Please provide a reason for rejecting this transfer"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -24px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.timeline-content h6 {
+    margin-bottom: 2px;
+}
+
+.timeline-content p {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

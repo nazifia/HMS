@@ -1,84 +1,98 @@
 #!/usr/bin/env python
+"""
+Test script to verify template syntax is correct
+"""
 import os
 import sys
 import django
 
+# Add the project directory to Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 # Setup Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hms.settings')
-sys.path.insert(0, os.path.dirname(__file__))
-
 django.setup()
 
-from django.template import loader, Context
-from django.contrib.auth import get_user_model
-import datetime
+from django.template import Template, Context
+from django.template.loader import get_template
+from django.template.exceptions import TemplateSyntaxError
 
-# Test template rendering
-try:
-    # Create a mock user
-    User = get_user_model()
-    mock_user = User(username='testuser', is_staff=False, is_superuser=False)
-    mock_user.id = 1
-    
-    # Create a mock dispensary
-    class MockDispensary:
-        def __init__(self):
-            self.id = 1
-            self.name = "Test Dispensary"
-            self.location = "Test Location"
-            self.description = "Test Description"
-            self.manager = None
-            self.is_active = True
-            self.created_at = datetime.date(2025, 1, 1)
-    
-    class MockMedication:
-        def __init__(self):
-            self.id = 1
-            self.name = "Test Medication"
-            self.generic_name = "Generic"
-            self.strength = "500mg"
-    
-    class MockInventoryItem:
-        def __init__(self):
-            self.id = 1
-            self.medication = MockMedication()
-            self.stock_quantity = 10
-            self.reorder_level = 5
-            self.expiry_date = datetime.date(2025, 12, 31)
-            self.batch_number = "BATCH001"
-    
-    dispensary = MockDispensary()
-    
-    # Test dispensary inventory template
-    context = {
-        'dispensary': dispensary,
-        'inventory_items': [MockInventoryItem()],
-        'can_edit_inventory': False,
-        'current_user': mock_user,
-        'total_items': 1,
-        'in_stock_count': 1,
-        'low_stock_count': 0,
-        'out_of_stock_count': 0,
-        'today': datetime.date(2025, 1, 15),
-    }
-    
-    # Test both templates
-    templates_to_test = [
-        'pharmacy/dispensary_list.html',
-        'pharmacy/dispensary_inventory.html'
-    ]
-    
-    for template_name in templates_to_test:
-        try:
-            template = loader.get_template(template_name)
-            rendered = template.render(context)
-            print(f"[OK] {template_name} rendered successfully!")
-        except Exception as e:
-            print(f"[ERROR] {template_name} error: {e}")
-            import traceback
-            traceback.print_exc()
 
-except Exception as e:
-    print(f"General error: {e}")
-    import traceback
-    traceback.print_exc()
+def test_active_store_template():
+    """Test if the active store template has correct syntax"""
+    print("Testing active store template syntax...")
+    
+    try:
+        # Try to load and compile the template
+        template_path = 'pharmacy/active_store_detail.html'
+        template = get_template(template_path)
+        print("✓ Template loads successfully")
+        
+        # Test basic rendering with minimal context
+        context = {
+            'active_store': {
+                'id': 1,
+                'name': 'Test Active Store'
+            },
+            'dispensary': {
+                'id': 1,
+                'name': 'Test Dispensary'
+            },
+            'inventory_items': [],
+            'bulk_stores': [],
+            'available_bulk_medications': [],
+            'bulk_transfer_form': None,
+            'dispensary_transfer_form': None,
+            'pending_dispensary_transfers': [],
+            'page_title': 'Test Page'
+        }
+        
+        # Try to render the template
+        rendered = template.render(context)
+        print("✓ Template renders successfully")
+        print(f"✓ Template length: {len(rendered)} characters")
+        
+        # Check for key elements
+        if 'Transfer to Dispensary' in rendered:
+            print("✓ Dispensary transfer section found")
+        else:
+            print("✗ Dispensary transfer section missing")
+            return False
+            
+        if 'id_medication' in rendered:
+            print("✓ Medication field ID found")
+        else:
+            print("✗ Medication field ID missing")
+            return False
+            
+        if 'id_quantity' in rendered:
+            print("✓ Quantity field ID found")
+        else:
+            print("✗ Quantity field ID missing")
+            return False
+        
+        return True
+        
+    except TemplateSyntaxError as e:
+        print(f"✗ TemplateSyntaxError: {e}")
+        return False
+    except Exception as e:
+        print(f"✗ Error: {e}")
+        return False
+
+
+if __name__ == '__main__':
+    print("=" * 60)
+    print("TEMPLATE SYNTAX TEST")
+    print("=" * 60)
+    
+    success = test_active_store_template()
+    
+    print("\n" + "=" * 60)
+    if success:
+        print("🎉 TEMPLATE SYNTAX TEST PASSED!")
+        print("\nThe template should now render correctly.")
+    else:
+        print("❌ TEMPLATE SYNTAX TEST FAILED!")
+        print("Please check the template for syntax errors.")
+    print("=" * 60)

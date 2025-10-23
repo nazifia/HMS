@@ -3,6 +3,7 @@ from django.views.generic.base import RedirectView
 from . import views
 from . import cart_views
 from . import inter_dispensary_views
+from . import enhanced_transfer_views
 from .api import urls as api_urls
 from .api.inventory_views import check_medication_inventory
 
@@ -170,7 +171,31 @@ urlpatterns = [
     path('cart/<int:cart_id>/complete-dispensing/', cart_views.complete_dispensing_from_cart, name='complete_dispensing_from_cart'),
     path('cart/<int:cart_id>/cancel/', cart_views.cancel_cart, name='cancel_cart'),
 
-    # Inter-Dispensary Transfer Management
+    # Enhanced Transfer Management
+    path('transfers/', enhanced_transfer_views.enhanced_transfer_dashboard, name='enhanced_transfer_dashboard'),
+    path('transfers/list/', enhanced_transfer_views.enhanced_transfer_list, name='enhanced_transfer_list'),
+    path('transfers/single/create/', enhanced_transfer_views.create_single_transfer, name='create_single_transfer'),
+    path('transfers/bulk/create/', enhanced_transfer_views.create_bulk_transfer, name='create_bulk_transfer'),
+    path('transfers/<int:transfer_id>/', enhanced_transfer_views.enhanced_transfer_detail, name='enhanced_transfer_detail'),
+    path('transfers/<int:transfer_id>/approve/', enhanced_transfer_views.approve_transfer, name='approve_transfer'),
+    path('transfers/<int:transfer_id>/reject/', enhanced_transfer_views.reject_transfer, name='reject_transfer'),
+    path('transfers/<int:transfer_id>/execute/', enhanced_transfer_views.execute_transfer, name='execute_transfer'),
+    path('transfers/bulk/approve/', enhanced_transfer_views.approve_bulk_transfers, name='approve_bulk_transfers'),
+    path('transfers/reports/', enhanced_transfer_views.transfer_reports, name='transfer_reports'),
+
+    # API endpoints for transfers
+    path('api/check_inventory/', enhanced_transfer_views.check_inventory_api, name='check_inventory_api'),
+    path('api/inventory-check/', enhanced_transfer_views.get_medication_inventory_ajax, name='get_medication_inventory_ajax'),
+
+    # Active store and dispensary transfer endpoints
+    path('api/active-store-inventory/<int:dispensary_id>/<int:medication_id>/', 
+         views.active_store_inventory_detail_ajax, name='active_store_inventory_detail_ajax'),
+    path('dispensary-transfer/<int:transfer_id>/approve/', 
+         views.approve_dispensary_transfer, name='approve_dispensary_transfer'),
+    path('dispensary-transfer/<int:transfer_id>/cancel/', 
+         views.cancel_dispensary_transfer, name='cancel_dispensary_transfer'),
+
+    # Inter-Dispensary Transfer Management (Legacy)
     path('transfers/inter/', inter_dispensary_views.inter_dispensary_transfer_list, name='inter_dispensary_transfer_list'),
     path('transfers/inter/create/', inter_dispensary_views.create_inter_dispensary_transfer, name='create_inter_dispensary_transfer'),
     path('transfers/inter/<int:transfer_id>/', inter_dispensary_views.inter_dispensary_transfer_detail, name='inter_dispensary_transfer_detail'),

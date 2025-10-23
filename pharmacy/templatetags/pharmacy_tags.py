@@ -1,8 +1,76 @@
 from django import template
 from django.utils.safestring import mark_safe
 from django.utils import timezone
+from django.forms import BoundField
 
 register = template.Library()
+
+@register.filter(name='add_class')
+def add_class(field, css_class):
+    """
+    Add a CSS class to a Django form field
+    Usage: {{ form.field|add_class:"form-control" }}
+    """
+    if hasattr(field, 'as_widget') and isinstance(field, BoundField):
+        return field.as_widget(attrs={"class": css_class})
+    elif hasattr(field, 'as_widget'):
+        try:
+            return field.as_widget(attrs={"class": css_class})
+        except (AttributeError, TypeError):
+            return field
+    else:
+        return field
+
+@register.filter(name='add_placeholder')
+def add_placeholder(field, placeholder_text):
+    """
+    Add a placeholder to a Django form field
+    Usage: {{ form.field|add_placeholder:"Enter text here" }}
+    """
+    if hasattr(field, 'as_widget') and isinstance(field, BoundField):
+        current_attrs = field.field.widget.attrs.copy()
+        current_attrs['placeholder'] = placeholder_text
+        return field.as_widget(attrs=current_attrs)
+    elif hasattr(field, 'as_widget'):
+        try:
+            current_attrs = getattr(field.field.widget, 'attrs', {}).copy()
+            current_attrs['placeholder'] = placeholder_text
+            return field.as_widget(attrs=current_attrs)
+        except (AttributeError, TypeError):
+            return field
+    else:
+        return field
+
+@register.filter(name='add_rows')
+def add_rows(field, rows):
+    """
+    Add rows attribute to a Django form field (for textareas)
+    Usage: {{ form.field|add_rows:"3" }}
+    """
+    if hasattr(field, 'as_widget') and isinstance(field, BoundField):
+        current_attrs = field.field.widget.attrs.copy()
+        current_attrs['rows'] = rows
+        return field.as_widget(attrs=current_attrs)
+    elif hasattr(field, 'as_widget'):
+        try:
+            current_attrs = getattr(field.field.widget, 'attrs', {}).copy()
+            current_attrs['rows'] = rows
+            return field.as_widget(attrs=current_attrs)
+        except (AttributeError, TypeError):
+            return field
+    else:
+        return field
+
+@register.filter
+def add(value, arg):
+    """
+    Add two numbers together in template
+    Usage: {{ value|add:arg }}
+    """
+    try:
+        return int(value) + int(arg)
+    except (ValueError, TypeError):
+        return 0
 
 @register.filter
 def div(value, arg):

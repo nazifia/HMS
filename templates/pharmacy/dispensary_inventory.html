@@ -254,6 +254,32 @@
             margin-bottom: 0.5rem;
         }
     }
+    
+    /* Search styling */
+    .search-loading {
+        display: none;
+    }
+    
+    .htmx-indicator {
+        display: none;
+    }
+    
+    .htmx-request .search-loading {
+        display: inline-block;
+    }
+    
+    .search-container {
+        position: relative;
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
 </style>
 {% endblock %}
 
@@ -295,9 +321,64 @@
                 </div>
             </div>
 
+            <!-- Search Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="m-0">
+                                <i class="fas fa-search"></i> Search Inventory
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="medication-search" 
+                                               name="search" 
+                                               placeholder="Search by medication name, generic name, or brand name..."
+                                               hx-get="/pharmacy/api/search_medication_inventory/?dispensary_id={{ dispensary.id }}"
+                                               hx-target="#inventory-results"
+                                               hx-trigger="keyup changed delay:300ms"
+                                               hx-indicator=".search-loading">
+                                        <div class="search-loading htmx-indicator spinner-border spinner-border-sm text-primary ms-2" role="status">
+                                            <span class="visually-hidden">Searching...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary"
+                                            onclick="clearSearch()">
+                                        <i class="fas fa-times"></i> Clear Search
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-primary"
+                                            onclick="refreshInventory()">
+                                        <i class="fas fa-sync"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Start typing to search medications. Results will appear instantly.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Inventory Items -->
-            {% if inventory_items %}
-                <div class="row">
+            <div id="inventory-results" class="fade-in">
+                {% if inventory_items %}
+                    <div class="row">
                     <div class="col-12">
                         {% for item in inventory_items %}
                             <div class="inventory-card">
@@ -376,13 +457,16 @@
                                             <div class="action-buttons">
                                                 {% if can_edit_inventory %}
                                                     <div class="btn-group d-block d-sm-flex flex-wrap gap-2 w-100">
-                                                        <a href="#" class="btn btn-outline-primary btn-sm" title="View Details">
+                                                        <a href="{% url 'pharmacy:medication_detail' item.medication.id %}" 
+                                                           class="btn btn-outline-primary btn-sm" title="View Details">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
-                                                        <a href="#" class="btn btn-outline-secondary btn-sm" title="Edit">
+                                                        <a href="{% url 'pharmacy:edit_dispensary_inventory_item' dispensary.id item.id %}" 
+                                                           class="btn btn-outline-secondary btn-sm" title="Edit">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <a href="#" class="btn btn-outline-danger btn-sm" 
+                                                        <a href="{% url 'pharmacy:delete_dispensary_inventory_item' dispensary.id item.id %}" 
+                                                           class="btn btn-outline-danger btn-sm" 
                                                            title="Delete"
                                                            onclick="return confirm('Are you sure you want to delete this inventory item?')">
                                                             <i class="fas fa-trash"></i>
@@ -485,22 +569,21 @@
                         </div>
                     </div>
                 </div>
-            {% endif %}
-            {% endif %}
 
-            {% else %}
-                <div class="no-inventory">
-                    <i class="fas fa-boxes fa-3x mb-3 text-muted"></i>
-                    <h4>No Inventory Items Found</h4>
-                    <p class="mb-3">This dispensary currently has no inventory items configured.</p>
-                    {% if can_edit_inventory %}
-                        <a href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}" 
-                           class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>Add First Inventory Item
-                        </a>
-                    {% endif %}
-                </div>
-            {% endif %}
+                {% else %}
+                    <div class="no-inventory">
+                        <i class="fas fa-boxes fa-3x mb-3 text-muted"></i>
+                        <h4>No Inventory Items Found</h4>
+                        <p class="mb-3">This dispensary currently has no inventory items configured.</p>
+                        {% if can_edit_inventory %}
+                            <a href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}" 
+                               class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Add First Inventory Item
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -537,6 +620,26 @@ $(document).ready(function() {
     
     // Initialize on page load
     updateStockIndicators();
+    
+    // Search functionality
+    window.clearSearch = function() {
+        const searchInput = document.getElementById('medication-search');
+        searchInput.value = '';
+        // Trigger a search with empty value to show all items
+        htmx.trigger(searchInput, 'keyup');
+    };
+    
+    window.refreshInventory = function() {
+        location.reload();
+    };
+    
+    // HTMX event handlers for search
+    if (typeof htmx !== 'undefined') {
+        htmx.on('htmx:afterRequest', function(evt) {
+            // Update stock indicators after search results are loaded
+            setTimeout(updateStockIndicators, 100);
+        });
+    }
 });
 </script>
 {% endblock %}

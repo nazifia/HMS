@@ -1,0 +1,502 @@
+{% extends 'pharmacy/layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Medication Transfers</h1>
+        <div class="btn-group">
+            <a href="{% url 'pharmacy:create_single_transfer' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Transfer
+            </a>
+            <a href="{% url 'pharmacy:enhanced_transfer_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1">Total</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ transfer_stats.pending|add:transfer_stats.approved|add:transfer_stats.in_transit|add:transfer_stats.completed|add:transfer_stats.cancelled|add:transfer_stats.rejected }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+            <div class="card bg-warning text-white shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1">Pending</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ transfer_stats.pending }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+            <div class="card bg-info text-white shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1">Approved</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ transfer_stats.approved }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+            <div class="card bg-secondary text-white shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1">In Transit</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ transfer_stats.in_transit }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1">Completed</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ transfer_stats.completed }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1">Rejected</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ transfer_stats.rejected }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search and Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" id="filterForm">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {{ form.search_term|as_crispy_field }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.from_dispensary|as_crispy_field }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.to_dispensary|as_crispy_field }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.status|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {{ form.date_from|as_crispy_field }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.date_to|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{% url 'pharmacy:enhanced_transfer_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    {% if page_obj %}
+    <div class="card shadow mb-4" id="bulkActionsBar" style="display: none;">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <span id="selectedCount">0</span> transfers selected
+                </div>
+                <div class="col-md-4 text-end">
+                    <button type="button" class="btn btn-success btn-sm" id="bulkApproveBtn">
+                        <i class="fas fa-check"></i> Approve Selected
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" id="bulkRejectBtn">
+                        <i class="fas fa-times"></i> Reject Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Transfers Table -->
+    <div class="card shadow">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Transfer List</h6>
+            <div>
+                <label class="me-2">
+                    <input type="checkbox" id="selectAll"> Select All
+                </label>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="exportBtn">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="transfersTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" id="headerSelectAll">
+                                </th>
+                                <th>Transfer ID</th>
+                                <th>Medication</th>
+                                <th>From → To</th>
+                                <th>Quantity</th>
+                                <th>Status</th>
+                                <th>Requested By</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transfer in page_obj %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="transfer-checkbox" value="{{ transfer.id }}" 
+                                           data-status="{{ transfer.status }}">
+                                </td>
+                                <td>
+                                    <strong>#{{ transfer.id }}</strong>
+                                    {% if transfer.notes %}
+                                    <br><small class="text-muted"><i class="fas fa-sticky-note"></i> Has notes</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ transfer.medication.name }}</strong>
+                                    <br><small class="text-muted">{{ transfer.medication.strength }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="text-start">
+                                            <small class="text-muted d-block">From:</small>
+                                            <strong>{{ transfer.from_dispensary.name }}</strong>
+                                        </div>
+                                        <div class="mx-2">
+                                            <i class="fas fa-arrow-right text-muted"></i>
+                                        </div>
+                                        <div class="text-start">
+                                            <small class="text-muted d-block">To:</small>
+                                            <strong>{{ transfer.to_dispensary.name }}</strong>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ transfer.quantity }}</span>
+                                </td>
+                                <td>
+                                    {% if transfer.status == 'pending' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock"></i> Pending
+                                        </span>
+                                    {% elif transfer.status == 'approved' %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-check"></i> Approved
+                                        </span>
+                                    {% elif transfer.status == 'in_transit' %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-truck"></i> In Transit
+                                        </span>
+                                    {% elif transfer.status == 'completed' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> Completed
+                                        </span>
+                                    {% elif transfer.status == 'rejected' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle"></i> Rejected
+                                        </span>
+                                    {% elif transfer.status == 'cancelled' %}
+                                        <span class="badge bg-dark">
+                                            <i class="fas fa-ban"></i> Cancelled
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if transfer.requested_by %}
+                                        {{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ transfer.created_at|date:"M d, Y" }}</small><br>
+                                    <small class="text-muted">{{ transfer.created_at|time:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'pharmacy:enhanced_transfer_detail' transfer.id %}" 
+                                           class="btn btn-outline-info" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        {% if transfer.status == 'pending' %}
+                                            <form method="post" action="{% url 'pharmacy:approve_transfer' transfer.id %}" 
+                                                  style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-success" 
+                                                        title="Approve Transfer"
+                                                        onclick="return confirm('Approve this transfer?')">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </form>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    title="Reject Transfer"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#rejectModal{{ transfer.id }}">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        {% endif %}
+                                        
+                                        {% if transfer.status == 'approved' %}
+                                            <form method="post" action="{% url 'pharmacy:execute_transfer' transfer.id %}" 
+                                                  style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-primary" 
+                                                        title="Execute Transfer"
+                                                        onclick="return confirm('Execute this transfer?')">
+                                                    <i class="fas fa-truck"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div class="text-muted">
+                        Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} 
+                        of {{ page_obj.paginator.count }} transfers
+                    </div>
+                    <nav>
+                        <ul class="pagination mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Previous</span>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Next</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No transfers found</h5>
+                    <p class="text-muted">
+                        {% if request.GET %}
+                            Try adjusting your search criteria or <a href="{% url 'pharmacy:enhanced_transfer_list' %}">clear all filters</a>.
+                        {% else %}
+                            <a href="{% url 'pharmacy:create_single_transfer' %}">Create your first transfer</a> to get started.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modals -->
+{% for transfer in page_obj %}
+    {% if transfer.status == 'pending' %}
+    <div class="modal fade" id="rejectModal{{ transfer.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reject Transfer #{{ transfer.id }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="{% url 'pharmacy:reject_transfer' transfer.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            You are about to reject transfer of {{ transfer.quantity }} {{ transfer.medication.name }} 
+                            from {{ transfer.from_dispensary.name }} to {{ transfer.to_dispensary.name }}.
+                        </div>
+                        <div class="mb-3">
+                            <label for="rejection_reason{{ transfer.id }}" class="form-label">
+                                Rejection Reason <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" 
+                                      id="rejection_reason{{ transfer.id }}" 
+                                      name="rejection_reason" 
+                                      rows="3" 
+                                      required
+                                      placeholder="Please provide a reason for rejecting this transfer"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Reject Transfer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Checkbox selection logic
+    const headerCheckbox = document.getElementById('headerSelectAll');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const transferCheckboxes = document.querySelectorAll('.transfer-checkbox');
+    const bulkActionsBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    function updateBulkActionsBar() {
+        const checkedBoxes = document.querySelectorAll('.transfer-checkbox:checked');
+        const count = checkedBoxes.length;
+        
+        selectedCount.textContent = count;
+        
+        if (count > 0) {
+            bulkActionsBar.style.display = 'block';
+        } else {
+            bulkActionsBar.style.display = 'none';
+        }
+        
+        // Update header checkbox state
+        if (transferCheckboxes.length === 0) {
+            headerCheckbox.checked = false;
+            headerCheckbox.indeterminate = false;
+        } else if (count === 0) {
+            headerCheckbox.checked = false;
+            headerCheckbox.indeterminate = false;
+        } else if (count === transferCheckboxes.length) {
+            headerCheckbox.checked = true;
+            headerCheckbox.indeterminate = false;
+        } else {
+            headerCheckbox.checked = false;
+            headerCheckbox.indeterminate = true;
+        }
+    }
+    
+    // Header checkbox event
+    headerCheckbox?.addEventListener('change', function() {
+        transferCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateBulkActionsBar();
+    });
+    
+    // Select all checkbox event
+    selectAllCheckbox?.addEventListener('change', function() {
+        transferCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateBulkActionsBar();
+    });
+    
+    // Individual checkbox events
+    transferCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActionsBar);
+    });
+    
+    // Bulk approve button
+    document.getElementById('bulkApproveBtn')?.addEventListener('click', function() {
+        const selectedIds = Array.from(document.querySelectorAll('.transfer-checkbox:checked'))
+            .map(cb => cb.value);
+        
+        if (selectedIds.length === 0) {
+            alert('Please select at least one transfer to approve.');
+            return;
+        }
+        
+        if (confirm(`Are you sure you want to approve ${selectedIds.length} transfer(s)?`)) {
+            fetch('{% url "pharmacy:approve_bulk_transfers" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: 'transfer_ids=' + selectedIds.join('&transfer_ids=')
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.errors && data.errors.length > 0) {
+                    alert('Some transfers could not be approved:\n' + data.errors.join('\n'));
+                } else {
+                    alert(data.message);
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while approving transfers.');
+            });
+        }
+    });
+    
+    // Export functionality
+    document.getElementById('exportBtn')?.addEventListener('click', function() {
+        // Get current filter parameters
+        const params = new URLSearchParams(window.location.search);
+        params.set('export', 'csv');
+        
+        // Download CSV
+        window.location.href = '{% url "pharmacy:enhanced_transfer_list" %}?' + params.toString();
+    });
+    
+    // Real-time search (optional enhancement)
+    const searchInput = document.querySelector('input[name="search_term"]');
+    let searchTimeout;
+    
+    searchInput?.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('filterForm').submit();
+        }, 500);
+    });
+});
+</script>
+{% endblock %}

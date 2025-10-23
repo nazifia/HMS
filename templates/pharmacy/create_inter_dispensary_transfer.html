@@ -33,6 +33,24 @@
             <form method="post">
                 {% csrf_token %}
                 
+                <!-- Inventory Check Section - Moved to Top -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="m-0">
+                                    <i class="fas fa-info-circle"></i> Inventory Information
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="inventory-info">
+                                    <p class="text-muted">Select medication, source dispensary, and quantity to check availability.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.medication|as_crispy_field }}
@@ -48,24 +66,6 @@
                     </div>
                     <div class="col-12 mb-3">
                         {{ form.notes|as_crispy_field }}
-                    </div>
-                </div>
-
-                <!-- Inventory Check Section -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card border-info">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="m-0">
-                                    <i class="fas fa-info-circle"></i> Inventory Information
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="inventory-info">
-                                    <p class="text-muted">Select medication, source dispensary, and quantity to check availability.</p>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

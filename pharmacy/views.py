@@ -1095,7 +1095,7 @@ def bulk_store_dashboard(request):
 
 @login_required
 def active_store_detail(request, dispensary_id):
-    """View for displaying active store details"""
+    """View for displaying active store details and managing transfers"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
     active_store = getattr(dispensary, 'active_store', None)
     
@@ -1108,10 +1108,157 @@ def active_store_detail(request, dispensary_id):
         active_store=active_store
     ).select_related('medication', 'active_store')
     
+    # Get bulk stores for transfer
+    bulk_stores = BulkStore.objects.filter(is_active=True)
+    
+    # Get medications available in bulk stores for transfer
+    available_bulk_medications = []
+    for bulk_store in bulk_stores:
+        medications = BulkStoreInventory.objects.filter(
+            bulk_store=bulk_store,
+            stock_quantity__gt=0
+        ).select_related('medication').order_by('medication__name')
+        if medications:
+            available_bulk_medications.append({
+                'bulk_store': bulk_store,
+                'medications': medications
+            })
+    
+    # Handle active store to dispensary transfer
+    dispensary_transfer_form = None
+    if request.method == 'POST' and 'dispensary_transfer' in request.POST:
+        from .forms import DispensaryTransferForm
+        dispensary_transfer_form = DispensaryTransferForm(request.POST)
+        if dispensary_transfer_form.is_valid():
+            try:
+                # Process dispensary transfer
+                medication_id = request.POST.get('medication')
+                quantity = int(request.POST.get('quantity'))
+                notes = request.POST.get('notes', '')
+                
+                medication = get_object_or_404(Medication, id=medication_id)
+                
+                # Create transfer from active store to dispensary
+                transfer = DispensaryTransfer.create_transfer(
+                    medication=medication,
+                    from_active_store=active_store,
+                    to_dispensary=dispensary,
+                    quantity=quantity,
+                    requested_by=request.user,
+                    notes=notes
+                )
+                
+                messages.success(request, f'Successfully created dispensary transfer request for {quantity} units of {medication.name}.')
+                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                
+            except ValueError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f'Error creating dispensary transfer: {str(e)}')
+        else:
+            messages.error(request, 'Invalid form data. Please check your selections.')
+
+    # Handle bulk transfer form
+    bulk_transfer_form = None
+    if request.method == 'POST' and 'bulk_transfer' in request.POST:
+        from .forms import BulkStoreTransferForm
+        bulk_transfer_form = BulkStoreTransferForm(request.POST)
+        if bulk_transfer_form.is_valid():
+            try:
+                # Process bulk transfer
+                bulk_store = bulk_transfer_form.cleaned_data['bulk_store']
+                transfer_medications = request.POST.getlist('transfer_medications')
+                transfer_quantities = request.POST.getlist('transfer_quantities')
+
+                # Validate that we have medications to transfer
+                if not transfer_medications:
+                    messages.error(request, 'Please select at least one medication to transfer.')
+                    return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+
+                transfers_created = 0
+                errors = []
+
+                with transaction.atomic():
+                    for i, medication_id in enumerate(transfer_medications):
+                        if medication_id and i < len(transfer_quantities):
+                            try:
+                                quantity = int(transfer_quantities[i])
+                                if quantity > 0:
+                                    # Get bulk inventory with validation
+                                    bulk_inventory = BulkStoreInventory.objects.filter(
+                                        bulk_store=bulk_store,
+                                        medication_id=medication_id
+                                    ).first()
+
+                                    if not bulk_inventory:
+                                        errors.append(f'Medication ID {medication_id} not found in bulk store')
+                                        continue
+
+                                    # Check if sufficient stock
+                                    if bulk_inventory.stock_quantity < quantity:
+                                        errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
+                                        continue
+
+                                    # Create transfer
+                                    transfer = MedicationTransfer.objects.create(
+                                        medication=bulk_inventory.medication,
+                                        from_bulk_store=bulk_store,
+                                        to_active_store=active_store,
+                                        quantity=quantity,
+                                        batch_number=bulk_inventory.batch_number,
+                                        expiry_date=bulk_inventory.expiry_date,
+                                        unit_cost=bulk_inventory.unit_cost,
+                                        requested_by=request.user,
+                                        status='pending'
+                                    )
+                                    transfers_created += 1
+                            except ValueError as e:
+                                errors.append(f'Invalid quantity for medication ID {medication_id}')
+                            except Exception as e:
+                                errors.append(f'Error processing medication ID {medication_id}: {str(e)}')
+
+                # Show results
+                if transfers_created > 0:
+                    messages.success(request, f'Successfully created {transfers_created} transfer request(s).')
+
+                if errors:
+                    for error in errors:
+                        messages.warning(request, error)
+
+                if transfers_created == 0 and not errors:
+                    messages.error(request, 'No transfers were created. Please check your selections.')
+
+                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+            except Exception as e:
+                messages.error(request, f'Error creating transfers: {str(e)}')
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Bulk transfer error: {str(e)}', exc_info=True)
+        else:
+            messages.error(request, 'Invalid form data. Please check your selections.')
+    else:
+        from .forms import BulkStoreTransferForm
+        bulk_transfer_form = BulkStoreTransferForm()
+    
+    # Create dispensary transfer form
+    from .dispensary_transfer_forms import DispensaryTransferForm
+    dispensary_transfer_form = DispensaryTransferForm(active_store=active_store)
+    
+    # Get pending dispensary transfers for this active store
+    pending_dispensary_transfers = DispensaryTransfer.objects.filter(
+        from_active_store=active_store,
+        status='pending'
+    ).select_related('medication', 'to_dispensary', 'requested_by')
+    
     context = {
         'active_store': active_store,
         'dispensary': dispensary,
         'inventory_items': inventory_items,
+        'bulk_stores': bulk_stores,
+        'available_bulk_medications': available_bulk_medications,
+        'bulk_transfer_form': bulk_transfer_form,
+        'dispensary_transfer_form': dispensary_transfer_form,
+        'pending_dispensary_transfers': pending_dispensary_transfers,
         'page_title': f'Active Store - {active_store.name}',
         'active_nav': 'pharmacy',
     }
@@ -1291,21 +1438,39 @@ def transfer_to_dispensary(request, dispensary_id):
     """View for transferring medications from active store to dispensary"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
     active_store = getattr(dispensary, 'active_store', None)
-    
+
     if not active_store:
         messages.error(request, f'No active store found for {dispensary.name}.')
         return redirect('pharmacy:dispensary_list')
-    
+
     if request.method == 'POST':
         try:
-            # Get form data
+            # Get form data with validation
             medication_id = request.POST.get('medication_id')
             batch_number = request.POST.get('batch_number')
-            quantity = int(request.POST.get('quantity'))
-            
+            quantity_str = request.POST.get('quantity')
+
+            # Validate inputs
+            if not medication_id:
+                messages.error(request, 'Medication ID is required.')
+                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+
+            if not quantity_str:
+                messages.error(request, 'Quantity is required.')
+                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+
+            try:
+                quantity = int(quantity_str)
+                if quantity <= 0:
+                    messages.error(request, 'Quantity must be greater than 0.')
+                    return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+            except ValueError:
+                messages.error(request, 'Invalid quantity value.')
+                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+
             # Get the medication
             medication = get_object_or_404(Medication, id=medication_id)
-            
+
             # Check if active store has sufficient quantity
             active_inventory = ActiveStoreInventory.objects.filter(
                 medication=medication,
@@ -1313,41 +1478,55 @@ def transfer_to_dispensary(request, dispensary_id):
                 batch_number=batch_number,
                 stock_quantity__gte=quantity
             ).first()
-            
+
             if not active_inventory:
-                messages.error(request, f'Insufficient stock in active store for {medication.name}.')
+                messages.error(request, f'Insufficient stock in active store for {medication.name}. Requested: {quantity}, Available: 0')
                 return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
-            
-            # Create dispensary transfer
-            dispensary_transfer = DispensaryTransfer.objects.create(
-                medication=medication,
-                from_active_store=active_store,
-                to_dispensary=dispensary,
-                quantity=quantity,
-                batch_number=batch_number,
-                expiry_date=active_inventory.expiry_date,
-                unit_cost=active_inventory.unit_cost,
-                status='pending',
-                requested_by=request.user
-            )
-            
-            # Approve and execute transfer immediately
-            dispensary_transfer.approved_by = request.user
-            dispensary_transfer.approved_at = timezone.now()
-            dispensary_transfer.status = 'in_transit'
-            dispensary_transfer.save()
-            
-            try:
+
+            # Double-check quantity
+            if active_inventory.stock_quantity < quantity:
+                messages.error(request, f'Insufficient stock in active store for {medication.name}. Requested: {quantity}, Available: {active_inventory.stock_quantity}')
+                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+
+            # Use transaction to ensure atomicity
+            with transaction.atomic():
+                # Create dispensary transfer
+                dispensary_transfer = DispensaryTransfer.objects.create(
+                    medication=medication,
+                    from_active_store=active_store,
+                    to_dispensary=dispensary,
+                    quantity=quantity,
+                    batch_number=batch_number,
+                    expiry_date=active_inventory.expiry_date,
+                    unit_cost=active_inventory.unit_cost,
+                    status='pending',
+                    requested_by=request.user
+                )
+
+                # Approve and execute transfer immediately
+                dispensary_transfer.approved_by = request.user
+                dispensary_transfer.approved_at = timezone.now()
+                dispensary_transfer.status = 'in_transit'
+                dispensary_transfer.save()
+
+                # Execute the transfer
                 dispensary_transfer.execute_transfer(request.user)
+
                 messages.success(request, f'Successfully transferred {quantity} units of {medication.name} to {dispensary.name}.')
-            except Exception as e:
-                messages.error(request, f'Error executing transfer: {str(e)}')
-                
+
+        except Medication.DoesNotExist:
+            messages.error(request, 'Medication not found.')
+        except ValueError as e:
+            messages.error(request, f'Invalid data: {str(e)}')
         except Exception as e:
             messages.error(request, f'Error processing transfer: {str(e)}')
-        
+            # Log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Transfer error: {str(e)}', exc_info=True)
+
         return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
-    
+
     # GET request - redirect to active store detail
     return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
 
@@ -1385,6 +1564,101 @@ def active_store_inventory_ajax(request, dispensary_id):
     
     # If not AJAX request, redirect to dispensary list
     return redirect('pharmacy:dispensary_list')
+
+
+def active_store_inventory_detail_ajax(request, dispensary_id, medication_id):
+    """AJAX endpoint to get specific active store inventory data for dispensary transfer"""
+    if request.method == 'GET':
+        try:
+            dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
+            active_store = getattr(dispensary, 'active_store', None)
+            
+            if not active_store:
+                return JsonResponse({'error': 'No active store found'}, status=404)
+            
+            inventory_item = ActiveStoreInventory.objects.filter(
+                active_store=active_store,
+                medication_id=medication_id
+            ).select_related('medication').first()
+            
+            if inventory_item:
+                return JsonResponse({
+                    'stock_quantity': inventory_item.stock_quantity,
+                    'batch_number': inventory_item.batch_number,
+                    'expiry_date': inventory_item.expiry_date.strftime('%Y-%m-%d') if inventory_item.expiry_date else None,
+                    'unit_cost': str(inventory_item.unit_cost),
+                    'reorder_level': inventory_item.reorder_level,
+                    'medication_name': inventory_item.medication.name
+                })
+            else:
+                return JsonResponse({
+                    'stock_quantity': 0,
+                    'batch_number': None,
+                    'expiry_date': None,
+                    'unit_cost': '0.00',
+                    'reorder_level': 0,
+                    'medication_name': 'Unknown'
+                })
+                
+        except Dispensary.DoesNotExist:
+            return JsonResponse({'error': 'Dispensary not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def approve_dispensary_transfer(request, transfer_id):
+    """Approve and execute a dispensary transfer"""
+    if request.method == 'POST':
+        try:
+            transfer = DispensaryTransfer.objects.get(id=transfer_id)
+            
+            if not transfer.can_approve():
+                messages.error(request, 'This transfer cannot be approved.')
+                return redirect('pharmacy:active_store_detail', dispensary_id=transfer.from_active_store.dispensary.id)
+            
+            # Approve and execute transfer
+            transfer.approved_by = request.user
+            transfer.approved_at = timezone.now()
+            transfer.status = 'in_transit'
+            transfer.save()
+            
+            # Execute the transfer
+            transfer.execute_transfer(request.user)
+            
+            messages.success(request, f'Dispensary transfer #{transfer.id} approved and executed successfully.')
+            
+        except DispensaryTransfer.DoesNotExist:
+            messages.error(request, 'Transfer not found.')
+        except Exception as e:
+            messages.error(request, f'Error approving transfer: {str(e)}')
+    
+    return redirect('pharmacy:active_store_detail', dispensary_id=DispensaryTransfer.objects.get(id=transfer_id).from_active_store.dispensary.id)
+
+
+@login_required
+def cancel_dispensary_transfer(request, transfer_id):
+    """Cancel a dispensary transfer"""
+    if request.method == 'POST':
+        try:
+            transfer = DispensaryTransfer.objects.get(id=transfer_id)
+            
+            if transfer.status not in ['pending', 'in_transit']:
+                messages.error(request, 'This transfer cannot be cancelled.')
+                return redirect('pharmacy:active_store_detail', dispensary_id=transfer.from_active_store.dispensary.id)
+            
+            # Cancel the transfer
+            transfer.status = 'cancelled'
+            transfer.save()
+            
+            messages.success(request, f'Dispensary transfer #{transfer.id} cancelled successfully.')
+            
+        except DispensaryTransfer.DoesNotExist:
+            messages.error(request, 'Transfer not found.')
+        except Exception as e:
+            messages.error(request, f'Error cancelling transfer: {str(e)}')
+    
+    return redirect('pharmacy:active_store_detail', dispensary_id=DispensaryTransfer.objects.get(id=transfer_id).from_active_store.dispensary.id)
 
 
 @login_required

@@ -1,0 +1,450 @@
+{% extends 'pharmacy/layouts/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            {% if is_single %}
+                Create Single Transfer
+            {% elif is_bulk %}
+                Create Bulk Transfer
+            {% else %}
+                Create Transfer
+            {% endif %}
+        </h1>
+        <a href="{% url 'pharmacy:enhanced_transfer_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Transfer Type Selector (if not already determined) -->
+    {% if not is_single and not is_bulk %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Select Transfer Type</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <a href="{% url 'pharmacy:create_single_transfer' %}" class="card h-100 text-decoration-none">
+                                <div class="card-body">
+                                    <i class="fas fa-pills fa-3x text-primary mb-3"></i>
+                                    <h5 class="card-title">Single Transfer</h5>
+                                    <p class="card-text text-muted">Transfer one medication at a time with detailed inventory validation</p>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'pharmacy:create_bulk_transfer' %}" class="card h-100 text-decoration-none">
+                                <div class="card-body">
+                                    <i class="fas fa-layer-group fa-3x text-info mb-3"></i>
+                                    <h5 class="card-title">Bulk Transfer</h5>
+                                    <p class="card-text text-muted">Transfer multiple medications in one operation</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Single Transfer Form -->
+    {% if is_single %}
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Transfer Details</h6>
+                </div>
+                <div class="card-body">
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <h5>Please correct the following errors:</h5>
+                        {% for field, errors in form.errors.items %}
+                            <strong>{{ field.label }}:</strong>
+                            {% for error in errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" id="singleTransferForm">
+                        {% csrf_token %}
+                        
+                        <!-- Inventory Check Section -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-info" id="inventoryCheckCard">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="m-0">
+                                            <i class="fas fa-info-circle"></i> Inventory Information
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="inventory-info">
+                                            <p class="text-muted">Select medication, source dispensary, and quantity to check availability.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.medication|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form.from_dispensary|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form.to_dispensary|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form.quantity|as_crispy_field }}
+                            </div>
+                            <div class="col-12 mb-3">
+                                {{ form.notes|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="fas fa-save"></i> Create Transfer
+                                </button>
+                                <a href="{% url 'pharmacy:enhanced_transfer_dashboard' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Side Panel -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Quick Tips</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Check inventory availability before creating transfer
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Ensure source and destination are different
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Add notes for special handling requirements
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Transfers require approval before execution
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Recent Transfers -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Recent Similar Transfers</h6>
+                </div>
+                <div class="card-body" id="recentTransfers">
+                    <p class="text-muted">Select a medication to see recent transfers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bulk Transfer Form -->
+    {% if is_bulk %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Bulk Transfer Details</h6>
+                </div>
+                <div class="card-body">
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" id="bulkTransferForm">
+                        {% csrf_token %}
+                        
+                        <!-- Dispensary Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                {{ form.from_dispensary|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.to_dispensary|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                {{ form.notes|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <!-- Bulk Items Section -->
+                        <div class="card border-secondary mb-4">
+                            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                                <h6 class="m-0">
+                                    <i class="fas fa-pills"></i> Medications to Transfer
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-light" id="addMoreItems">
+                                    <i class="fas fa-plus"></i> Add More Items
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="formset-container">
+                                    {{ formset.management_form }}
+                                    
+                                    {% for item_form in formset %}
+                                    <div class="row align-items-center mb-3 item-form-row">
+                                        <div class="col-md-4">
+                                            {{ item_form.medication|as_crispy_field }}
+                                        </div>
+                                        <div class="col-md-2">
+                                            {{ item_form.quantity|as_crispy_field }}
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Available Stock</label>
+                                            <input type="text" class="form-control available-stock-display" readonly>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Status</label>
+                                            <div class="stock-status">
+                                                <span class="badge bg-secondary">Not checked</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">&nbsp;</label><br>
+                                            {% if item_form.DELETE %}
+                                                {{ item_form.DELETE }}
+                                            {% endif %}
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-item">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary" id="submitBulkBtn">
+                                    <i class="fas fa-layer-group"></i> Create Bulk Transfers
+                                </button>
+                                <a href="{% url 'pharmacy:enhanced_transfer_dashboard' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Single Transfer Form Logic
+    if (document.getElementById('singleTransferForm')) {
+        const medicationSelect = document.getElementById('id_medication');
+        const fromDispensarySelect = document.getElementById('id_from_dispensary');
+        const toDispensarySelect = document.getElementById('id_to_dispensary');
+        const quantityInput = document.getElementById('id_quantity');
+        const inventoryInfo = document.getElementById('inventory-info');
+        
+        function checkInventory() {
+            const medicationId = medicationSelect.value;
+            const fromDispensaryId = fromDispensarySelect.value;
+            const quantity = quantityInput.value || 0;
+            
+            if (!medicationId || !fromDispensaryId || quantity <= 0) {
+                inventoryInfo.innerHTML = '<p class="text-muted">Select medication, source dispensary, and quantity to check availability.</p>';
+                return;
+            }
+            
+            fetch(`/pharmacy/api/check_inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        inventoryInfo.innerHTML = `<p class="text-danger">${data.error}</p>`;
+                    } else {
+                        const statusClass = data.feasible ? 'text-success' : 'text-danger';
+                        const icon = data.feasible ? 'fa-check-circle' : 'fa-times-circle';
+                        
+                        inventoryInfo.innerHTML = `
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <small class="text-muted">Available Stock:</small><br>
+                                    <strong class="${statusClass}">${data.available}</strong>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">Required:</small><br>
+                                    <strong class="text-primary">${data.required}</strong>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">Status:</small><br>
+                                    <span class="badge ${data.feasible ? 'bg-success' : 'bg-danger'}">
+                                        <i class="fas ${icon}"></i> ${data.feasible ? 'Available' : 'Insufficient'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-${data.feasible ? 'success' : 'danger'}">
+                                    <i class="fas ${icon}"></i> ${data.message}
+                                </small>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    inventoryInfo.innerHTML = '<p class="text-danger">Error checking inventory availability.</p>';
+                });
+        }
+        
+        // Add event listeners for inventory checking
+        medicationSelect.addEventListener('change', checkInventory);
+        fromDispensarySelect.addEventListener('change', checkInventory);
+        quantityInput.addEventListener('input', checkInventory);
+        
+        // Validate destination dispensaries are different
+        function validateDispensaries() {
+            if (fromDispensarySelect.value && toDispensarySelect.value) {
+                if (fromDispensarySelect.value === toDispensarySelect.value) {
+                    toDispensarySelect.setCustomValidity('Source and destination dispensaries cannot be the same.');
+                } else {
+                    toDispensarySelect.setCustomValidity('');
+                }
+            }
+        }
+        
+        fromDispensarySelect.addEventListener('change', validateDispensaries);
+        toDispensarySelect.addEventListener('change', validateDispensaries);
+    }
+    
+    // Bulk Transfer Form Logic
+    if (document.getElementById('bulkTransferForm')) {
+        const formsetContainer = document.getElementById('formset-container');
+        
+        function checkItemInventory(itemRow) {
+            const medicationSelect = itemRow.querySelector('[id$="-medication"]');
+            const quantityInput = itemRow.querySelector('[id$="-quantity"]');
+            const stockDisplay = itemRow.querySelector('.available-stock-display');
+            const statusDiv = itemRow.querySelector('.stock-status');
+            
+            if (!medicationSelect || !quantityInput || !stockDisplay || !statusDiv) return;
+            
+            const medicationId = medicationSelect.value;
+            const quantity = quantityInput.value || 0;
+            const fromDispensaryId = document.getElementById('id_from_dispensary').value;
+            
+            if (!medicationId || !fromDispensaryId || quantity <= 0) {
+                stockDisplay.value = '';
+                statusDiv.innerHTML = '<span class="badge bg-secondary">Not checked</span>';
+                return;
+            }
+            
+            fetch(`/pharmacy/api/check_inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        stockDisplay.value = 'Error';
+                        statusDiv.innerHTML = '<span class="badge bg-danger">Error</span>';
+                    } else {
+                        stockDisplay.value = data.available;
+                        const statusClass = data.feasible ? 'bg-success' : 'bg-danger';
+                        const statusText = data.feasible ? 'Available' : 'Insufficient';
+                        statusDiv.innerHTML = `<span class="badge ${statusClass}">${statusText}</span>`;
+                    }
+                })
+                .catch(error => {
+                    stockDisplay.value = 'Error';
+                    statusDiv.innerHTML = '<span class="badge bg-danger">Error</span>';
+                });
+        }
+        
+        // Add event listeners to existing form rows
+        document.querySelectorAll('.item-form-row').forEach(row => {
+            const medicationSelect = row.querySelector('[id$="-medication"]');
+            const quantityInput = row.querySelector('[id$="-quantity"]');
+            
+            if (medicationSelect) medicationSelect.addEventListener('change', () => checkItemInventory(row));
+            if (quantityInput) quantityInput.addEventListener('input', () => checkItemInventory(row));
+        });
+        
+        // Add more items functionality
+        document.getElementById('addMoreItems')?.addEventListener('click', function() {
+            // This would require implementing dynamic formset management
+            // For now, it's a placeholder
+            alert('Dynamic formset management would be implemented here.');
+        });
+        
+        // Remove item functionality
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('.item-form-row');
+                row.style.display = 'none';
+                const deleteCheckbox = row.querySelector('[id$="-DELETE"]');
+                if (deleteCheckbox) deleteCheckbox.checked = true;
+            });
+        });
+    }
+    
+    // Form submission validation
+    document.getElementById('submitBtn')?.addEventListener('click', function(e) {
+        const inventoryInfo = document.getElementById('inventory-info');
+        if (inventoryInfo && inventoryInfo.textContent.includes('Insufficient')) {
+            e.preventDefault();
+            alert('Cannot create transfer: Insufficient stock available.');
+        }
+    });
+    
+    document.getElementById('submitBulkBtn')?.addEventListener('click', function(e) {
+        const insufficientItems = document.querySelectorAll('.badge.bg-danger');
+        if (insufficientItems.length > 0) {
+            e.preventDefault();
+            alert('Cannot create bulk transfer: Some items have insufficient stock.');
+        }
+    });
+});
+</script>
+{% endblock %}

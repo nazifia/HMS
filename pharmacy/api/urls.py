@@ -15,4 +15,5 @@ router.register(r'prescription-items', views.PrescriptionItemViewSet)
 # API endpoints
 urlpatterns = router.urls + [
     path('check_inventory/', inventory_views.check_medication_inventory, name='check_medication_inventory'),
+    path('search_medication_inventory/', inventory_views.search_medication_inventory, name='search_medication_inventory'),
 ]

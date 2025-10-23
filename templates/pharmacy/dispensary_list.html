@@ -189,6 +189,14 @@
                                                 <span class="d-none d-sm-inline">View</span>
                                                 <span class="d-sm-none">Inv</span>
                                             </a>
+                                            {% if dispensary.active_store %}
+                                                <a href="{% url 'pharmacy:active_store_detail' dispensary.id %}" 
+                                                   class="btn btn-outline-info btn-sm flex-fill">
+                                                    <i class="fas fa-store me-1"></i>
+                                                    <span class="d-none d-sm-inline">Store</span>
+                                                    <span class="d-sm-none">St</span>
+                                                </a>
+                                            {% endif %}
                                             
                                             {% if can_edit %}
                                                 <a href="{% url 'pharmacy:edit_dispensary' dispensary.id %}" 
