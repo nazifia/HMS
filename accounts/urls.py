@@ -39,6 +39,7 @@ urlpatterns = [
 
     # User Management Dashboard
     path('user-dashboard/', views.user_dashboard, name='user_dashboard'),
+    path('user-dashboard/delete/<int:user_id>/', views.delete_user, name='delete_user'),
 
     # Staff Management URLs (for admin)
     path('staff/', views.staff_list, name='staff_list'),

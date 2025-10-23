@@ -171,11 +171,12 @@
         {% csrf_token %}
         <div class="row g-2 align-items-end mb-2">
             <div class="col-auto">
-                <select name="bulk_action" class="form-select">
+                <select name="bulk_action" class="form-select" id="bulkActionSelect">
                     <option value="">Bulk Action</option>
                     <option value="activate">Activate</option>
                     <option value="deactivate">Deactivate</option>
                     <option value="assign_role">Assign Role</option>
+                    <option value="delete" class="text-danger">Delete Users</option>
                 </select>
             </div>
             <div class="col-auto">
@@ -237,6 +238,12 @@
                                 <a href="{% url 'accounts:user_privileges' user_item.id %}" class="btn btn-sm btn-outline-success" title="Manage Privileges">
                                     <i class="fas fa-user-cog"></i>
                                 </a>
+                                {% if user.is_superuser and user_item != user %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Delete User" 
+                                            onclick="confirmDeleteUser({{ user_item.id }}, '{{ user_item.username|escapejs }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -294,6 +301,44 @@
     <button class="btn btn-primary scroll-to-top" id="scrollToTop" style="position: fixed; bottom: 20px; right: 20px; display: none; z-index: 1000; border-radius: 50%; width: 50px; height: 50px;">
         <i class="fas fa-arrow-up"></i>
     </button>
+
+    <!-- Delete User Confirmation Modal -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteUserModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Confirm User Deletion
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone!
+                    </div>
+                    <p>Are you sure you want to delete the user <strong id="deleteUserName"></strong>?</p>
+                    <p class="text-muted mb-0">This will permanently remove:</p>
+                    <ul class="mb-0">
+                        <li>User account and profile</li>
+                        <li>All associated data</li>
+                        <li>Login access and permissions</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <form id="deleteUserForm" method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i>Delete User
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -360,8 +405,55 @@
         const actionText = document.querySelector('select[name="bulk_action"] option:checked').textContent;
         const userCount = selectedUsers.length;
 
-        if (!confirm(`Are you sure you want to ${actionText.toLowerCase()} ${userCount} user(s)?`)) {
-            e.preventDefault();
+        // Special confirmation for delete operations
+        if (bulkAction === 'delete') {
+            if (!confirm(`⚠️ WARNING: This will permanently delete ${userCount} user(s) and all their data. This action cannot be undone!\n\nAre you absolutely sure you want to proceed?`)) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Double confirmation for delete
+            if (!confirm(`Final confirmation: You are about to delete ${userCount} user(s). Type 'DELETE' to confirm.`)) {
+                e.preventDefault();
+                return;
+            }
+        } else {
+            if (!confirm(`Are you sure you want to ${actionText.toLowerCase()} ${userCount} user(s)?`)) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    // Delete User Confirmation Function
+    function confirmDeleteUser(userId, username) {
+        document.getElementById('deleteUserName').textContent = username;
+        
+        // Set the form action to the correct delete URL
+        const deleteForm = document.getElementById('deleteUserForm');
+        deleteForm.action = `/accounts/user-dashboard/delete/${userId}/`;
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        modal.show();
+    }
+
+    // Add warning styling when delete is selected in bulk actions
+    document.addEventListener('DOMContentLoaded', function() {
+        const bulkActionSelect = document.getElementById('bulkActionSelect');
+        const applyButton = document.querySelector('button[type="submit"]');
+        
+        if (bulkActionSelect && applyButton) {
+            bulkActionSelect.addEventListener('change', function() {
+                if (this.value === 'delete') {
+                    applyButton.classList.remove('btn-warning');
+                    applyButton.classList.add('btn-danger');
+                    applyButton.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Delete Selected';
+                } else {
+                    applyButton.classList.remove('btn-danger');
+                    applyButton.classList.add('btn-warning');
+                    applyButton.innerHTML = 'Apply';
+                }
+            });
         }
     });
 </script>

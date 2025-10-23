@@ -698,16 +698,103 @@ def user_dashboard(request):
         selected_ids = request.POST.getlist('selected_users')
         if selected_ids:
             qs = User.objects.filter(id__in=selected_ids)
-            if action == 'activate':
+            
+            # Prevent deletion of superusers and self in bulk operations
+            if action == 'delete':
+                # Exclude superusers (except self) and current user from deletion
+                deletable_users = qs.exclude(
+                    Q(is_superuser=True) & ~Q(id=request.user.id)
+                ).exclude(id=request.user.id)
+                
+                deleted_count = deletable_users.count()
+                deleted_usernames = list(deletable_users.values_list('username', flat=True))
+                deleted_ids = list(deletable_users.values_list('id', flat=True))
+                
+                # Get detailed info about objects that will be deleted for audit log
+                deletion_audit_data = []
+                for user_obj in deletable_users:
+                    user_info = {
+                        'id': user_obj.id,
+                        'username': user_obj.username,
+                        'email': user_obj.email,
+                        'related_objects': {}
+                    }
+                    
+                    try:
+                        user_info['related_objects']['profile'] = str(user_obj.profile)
+                    except:
+                        user_info['related_objects']['profile'] = None
+                    
+                    user_info['related_objects']['roles_count'] = user_obj.roles.count()
+                    
+                    # Get other related counts if the models exist
+                    if hasattr(user_obj, 'user_sessions'):
+                        user_info['related_objects']['sessions_count'] = user_obj.user_sessions.count()
+                    else:
+                        user_info['related_objects']['sessions_count'] = 0
+                        
+                    if hasattr(user_obj, 'user_activities'):
+                        user_info['related_objects']['activities_count'] = user_obj.user_activities.count()
+                    else:
+                        user_info['related_objects']['activities_count'] = 0
+                        
+                    if hasattr(user_obj, 'notifications'):
+                        user_info['related_objects']['notifications_count'] = user_obj.notifications.count()
+                    else:
+                        user_info['related_objects']['notifications_count'] = 0
+                    
+                    deletion_audit_data.append(user_info)
+                
+                # Perform complete database deletion with cascade
+                deletion_result = deletable_users.delete()
+                
+                # Verify complete deletion
+                remaining_users = User.objects.filter(id__in=deleted_ids).count()
+                if remaining_users > 0:
+                    raise Exception(f"{remaining_users} users still exist in database after bulk deletion attempt")
+                
+                from django.contrib import messages
+                messages.success(request, f"Successfully deleted {deleted_count} user(s) and all associated data from database.")
+                
+                # Detailed audit log for bulk deletion
+                AuditLog.objects.create(
+                    user=request.user,
+                    action='delete',
+                    details={
+                        'action': 'bulk_user_deletion_complete',
+                        'deleted_users_count': deleted_count,
+                        'deleted_usernames': deleted_usernames,
+                        'deleted_user_ids': deleted_ids,
+                        'performed_by': request.user.username,
+                        'total_objects_deleted': deletion_result[1] if deletion_result and len(deletion_result) > 1 else 'unknown',
+                        'detailed_deletion_info': deletion_audit_data,
+                        'timestamp': timezone.now().isoformat()
+                    },
+                    timestamp=timezone.now()
+                )
+                
+                # Notify superusers about bulk deletion
+                superusers = User.objects.filter(is_superuser=True)
+                for superuser in superusers:
+                    InternalNotification.objects.create(
+                        user=superuser,
+                        message=f"Bulk user deletion performed by {request.user.username}. {deleted_count} users and all their data were permanently removed from database."
+                    )
+                
+                return redirect('accounts:user_dashboard')
+            
+            elif action == 'activate':
                 qs.update(is_active=True)
             elif action == 'deactivate':
                 qs.update(is_active=False)
+            
             # Role assignment (if provided)
             new_role = request.POST.get('assign_role')
             if action == 'assign_role' and new_role:
                 for user in qs:
                     user.get_profile.role = new_role
                     user.get_profile.save()
+            
             from django.contrib import messages
             messages.success(request, f"Bulk action '{action}' applied to {qs.count()} user(s).")
             # Audit log for user actions (view, bulk action)
@@ -719,7 +806,7 @@ def user_dashboard(request):
             )
             # Optional: send notification to superusers
             # Get all superusers to notify them about bulk actions
-            superusers = CustomUser.objects.filter(is_superuser=True)
+            superusers = User.objects.filter(is_superuser=True)
             for superuser in superusers:
                 InternalNotification.objects.create(
                     user=superuser,
@@ -758,6 +845,104 @@ def user_dashboard(request):
         'page_title': 'User Management Dashboard',
     }
     return render(request, 'accounts/user_dashboard.html', context)
+
+
+def delete_user(request, user_id):
+    """Delete a user account with proper validation and complete database removal."""
+    if not request.user.is_superuser:
+        messages.error(request, "You don't have permission to delete users.")
+        return redirect('accounts:user_dashboard')
+    
+    try:
+        user_to_delete = User.objects.get(id=user_id)
+        
+        # Prevent deletion of superusers except by themselves
+        if user_to_delete.is_superuser and user_to_delete != request.user:
+            messages.error(request, "Cannot delete another superuser.")
+            return redirect('accounts:user_dashboard')
+        
+        # Prevent self-deletion
+        if user_to_delete == request.user:
+            messages.error(request, "Cannot delete your own account.")
+            return redirect('accounts:user_dashboard')
+        
+        # Store user info for audit log before deletion
+        username = user_to_delete.username
+        email = user_to_delete.email
+        user_id_stored = user_to_delete.id
+        
+        # Get related objects before deletion for audit log
+        related_objects = {
+            'profile': None,
+            'roles': [],
+            'sessions': [],
+            'activities': [],
+            'notifications': []
+        }
+        
+        try:
+            related_objects['profile'] = user_to_delete.profile
+        except:
+            pass
+        
+        related_objects['roles'] = list(user_to_delete.roles.all())
+        related_objects['sessions'] = list(user_to_delete.user_sessions.all() if hasattr(user_to_delete, 'user_sessions') else [])
+        related_objects['activities'] = list(user_to_delete.user_activities.all() if hasattr(user_to_delete, 'user_activities') else [])
+        related_objects['notifications'] = list(user_to_delete.notifications.all() if hasattr(user_to_delete, 'notifications') else [])
+        
+        # Perform complete database deletion with cascade
+        # This will delete the user and all related objects due to CASCADE relationships
+        deletion_result = user_to_delete.delete()
+        
+        # Verify complete deletion
+        if User.objects.filter(id=user_id_stored).exists():
+            raise Exception("User still exists in database after deletion attempt")
+        
+        # Log the complete deletion with details
+        AuditLog.objects.create(
+            user=request.user,
+            action='delete',
+            details={
+                'action': 'complete_user_deletion',
+                'deleted_user': {
+                    'id': user_id_stored,
+                    'username': username,
+                    'email': email
+                },
+                'deleted_objects': {
+                    'profile': str(related_objects['profile']) if related_objects['profile'] else None,
+                    'roles_count': len(related_objects['roles']),
+                    'sessions_count': len(related_objects['sessions']),
+                    'activities_count': len(related_objects['activities']),
+                    'notifications_count': len(related_objects['notifications']),
+                    'total_objects_deleted': deletion_result[1] if deletion_result and len(deletion_result) > 1 else 'unknown'
+                },
+                'performed_by': request.user.username,
+                'timestamp': timezone.now().isoformat()
+            },
+            timestamp=timezone.now()
+        )
+        
+        messages.success(request, f"User '{username}' and all associated data have been permanently removed from the database.")
+        
+    except User.DoesNotExist:
+        messages.error(request, "User not found.")
+    except Exception as e:
+        messages.error(request, f"Error deleting user: {str(e)}")
+        # Log the error
+        AuditLog.objects.create(
+            user=request.user,
+            action='delete',
+            details={
+                'action': 'user_deletion_error',
+                'error': str(e),
+                'target_user_id': user_id,
+                'performed_by': request.user.username
+            },
+            timestamp=timezone.now()
+        )
+    
+    return redirect('accounts:user_dashboard')
 
 
 # @user_passes_test(lambda u: u.is_superuser or u.is_staff)
@@ -928,6 +1113,56 @@ def user_dashboard(request):
                 qs.update(is_active=True)
             elif action == 'deactivate':
                 qs.update(is_active=False)
+            elif action == 'delete':
+                # Prevent deletion of superusers and self in bulk operations
+                deletable_users = qs.exclude(
+                    Q(is_superuser=True) & ~Q(id=request.user.id)
+                ).exclude(id=request.user.id)
+                
+                deleted_count = deletable_users.count()
+                deleted_usernames = list(deletable_users.values_list('username', flat=True))
+                deleted_ids = list(deletable_users.values_list('id', flat=True))
+                
+                if deleted_count > 0:
+                    # Perform complete database deletion with cascade
+                    deletion_result = deletable_users.delete()
+                    
+                    # Verify complete deletion
+                    remaining_users = User.objects.filter(id__in=deleted_ids).count()
+                    if remaining_users > 0:
+                        raise Exception(f"{remaining_users} users still exist in database after bulk deletion attempt")
+                    
+                    messages.success(request, f"Successfully deleted {deleted_count} user(s) and all associated data from database.")
+                    
+                    # Detailed audit log for bulk deletion
+                    AuditLog.objects.create(
+                        user=request.user,
+                        action='delete',
+                        target_user=None,
+                        details={
+                            'action': 'bulk_user_deletion_complete',
+                            'deleted_users_count': deleted_count,
+                            'deleted_usernames': deleted_usernames,
+                            'deleted_user_ids': deleted_ids,
+                            'performed_by': request.user.username,
+                            'total_objects_deleted': deletion_result[1] if deletion_result and len(deletion_result) > 1 else 'unknown',
+                            'timestamp': timezone.now().isoformat()
+                        },
+                        timestamp=timezone.now()
+                    )
+                    
+                    # Notify superusers about bulk deletion
+                    superusers = User.objects.filter(is_superuser=True)
+                    for superuser_obj in superusers:
+                        InternalNotification.objects.create(
+                            user=superuser_obj,
+                            message=f"Bulk user deletion performed by {request.user.username}. {deleted_count} users and all their data were permanently removed from database."
+                        )
+                    
+                    return redirect('accounts:user_dashboard')
+                else:
+                    messages.warning(request, "No users available for deletion (superusers and yourself cannot be deleted).")
+                    return redirect('accounts:user_dashboard')
             elif action == 'assign_role':
                 new_role_name = request.POST.get('assign_role')
                 if new_role_name:
@@ -939,12 +1174,13 @@ def user_dashboard(request):
                     except Role.DoesNotExist:
                         messages.error(request, f"Specified role '{new_role_name}' doesn't exist")
             
-            messages.success(request, f"Bulk action '{action}' applied to {qs.count()} user(s).")
-            AuditLog.objects.create(
-                user=request.user,
-                action='user_bulk_action',
-                target_user=None,
-                details={"action": action, "applied_to_user_ids": selected_ids, "count": qs.count()},
+            if action != 'delete':  # Don't overwrite the delete message
+                messages.success(request, f"Bulk action '{action}' applied to {qs.count()} user(s).")
+                AuditLog.objects.create(
+                    user=request.user,
+                    action='user_bulk_action',
+                    target_user=None,
+                    details={"action": action, "applied_to_user_ids": selected_ids, "count": qs.count()},
                 ip_address=request.META.get('REMOTE_ADDR'),
                 timestamp=timezone.now()
             )
