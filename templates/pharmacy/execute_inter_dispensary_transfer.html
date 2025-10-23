@@ -26,7 +26,7 @@
                 <div class="col-md-6">
                     <p><strong>Quantity:</strong> {{ transfer.quantity }}</p>
                     <p><strong>Status:</strong> {{ transfer.get_status_display }}</p>
-                    <p><strong>Approved By:</strong> {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}</p>
+                    <p><strong>Approved By:</strong> {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username|default:"Unknown" }}</p>
                 </div>
             </div>
 

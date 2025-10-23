@@ -166,7 +166,7 @@
                                         <div class="mt-2">
                                             <span class="badge bg-light text-dark">
                                                 <i class="fas fa-user-tie me-1"></i>
-                                                {{ dispensary.manager.get_full_name|default:dispensary.manager.username }}
+                                                {{ dispensary.manager.get_full_name|default:dispensary.manager.username|default:"Unknown" }}
                                             </span>
                                         </div>
                                     {% endif %}

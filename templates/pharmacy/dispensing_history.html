@@ -49,7 +49,7 @@
                                         <td>{{ log.dispensed_quantity }}</td>
                                         <td>{{ log.unit_price_at_dispense|floatformat:2 }}</td>
                                         <td>{{ log.total_price_for_this_log|floatformat:2 }}</td>
-                                        <td>{{ log.dispensed_by.get_full_name|default:log.dispensed_by.username }}</td>
+                                        <td>{{ log.dispensed_by.get_full_name|default:log.dispensed_by.username|default:"Unknown" }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

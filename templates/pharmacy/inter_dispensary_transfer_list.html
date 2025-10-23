@@ -75,14 +75,14 @@
                                     <span class="badge bg-info status-badge">In Transit</span>
                                     {% if transfer.approved_by %}
                                     <small class="text-muted d-block mt-1">
-                                        <i class="fas fa-user-check"></i> {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}
+                                        <i class="fas fa-user-check"></i> {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username|default:"Unknown" }}
                                     </small>
                                     {% endif %}
                                 {% elif transfer.status == 'completed' %}
                                     <span class="badge bg-success status-badge">Completed</span>
                                     {% if transfer.transferred_by %}
                                     <small class="text-muted d-block mt-1">
-                                        <i class="fas fa-check-circle"></i> {{ transfer.transferred_by.get_full_name|default:transfer.transferred_by.username }}
+                                        <i class="fas fa-check-circle"></i> {{ transfer.transferred_by.get_full_name|default:transfer.transferred_by.username|default:"Unknown" }}
                                     </small>
                                     {% endif %}
                                 {% elif transfer.status == 'cancelled' %}
@@ -100,7 +100,11 @@
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-user text-muted me-2"></i>
                                     <div>
-                                        <div>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</div>
+                                        {% if transfer.requested_by %}
+                                            <div>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username|default:"Unknown" }}</div>
+                                        {% else %}
+                                            <div>Unknown</div>
+                                        {% endif %}
                                         <small class="text-muted">{{ transfer.requested_at|date:"d M Y, H:i" }}</small>
                                     </div>
                                 </div>

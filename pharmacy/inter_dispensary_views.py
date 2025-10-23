@@ -60,7 +60,8 @@ def inter_dispensary_transfer_list(request):
     context = {
         'page_obj': page_obj,
         'form': form,
-        'title': 'Inter-Dispensary Transfers'
+        'title': 'Inter-Dispensary Transfers',
+        'user': request.user
     }
     
     return render(request, 'pharmacy/inter_dispensary_transfer_list.html', context)
@@ -437,4 +438,5 @@ class TransferListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['form'] = InterDispensaryTransferSearchForm(self.request.GET)
         context['title'] = 'Inter-Dispensary Transfers'
+        context['user'] = self.request.user
         return context

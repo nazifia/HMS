@@ -134,7 +134,7 @@
                         <div class="manager-info">
                             <h6><i class="fas fa-info-circle me-2"></i>Current Manager</h6>
                             <p class="mb-0">
-                                <strong>{{ dispensary.manager.get_full_name|default:dispensary.manager.username }}</strong><br>
+                                <strong>{{ dispensary.manager.get_full_name|default:dispensary.manager.username|default:"Unknown" }}</strong><br>
                                 {% if dispensary.manager.email %}
                                     <i class="fas fa-envelope me-1"></i>{{ dispensary.manager.email }}<br>
                                 {% endif %}
@@ -232,7 +232,7 @@
                     {{ dispensary.updated_at|date:"M d, Y H:i" }}</strong></p>
                     {% if dispensary.manager %}
                         <p class="mb-0"><strong>Current Manager:</strong><br>
-                        {{ dispensary.manager.get_full_name|default:dispensary.manager.username }}</p>
+                        {{ dispensary.manager.get_full_name|default:dispensary.manager.username|default:"Unknown" }}</p>
                     {% endif %}
                 </div>
             </div>

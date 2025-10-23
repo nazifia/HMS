@@ -74,7 +74,7 @@
                                 <td>{{ log.prescription_item.medication.name }} ({{ log.prescription_item.medication.strength }})</td>
                                 <td>{{ log.prescription_item.prescription.patient.get_full_name }}</td>
                                 <td>{{ log.dispensed_quantity }}</td>
-                                <td>{{ log.dispensed_by.get_full_name|default:log.dispensed_by.username }}</td>
+                                <td>{{ log.dispensed_by.get_full_name|default:log.dispensed_by.username|default:"Unknown" }}</td>
                                 <td>{{ log.dispensary.name|default:"N/A" }}</td>
                                 <td>{{ log.dispensed_date|date:"M d, Y H:i" }}</td>
                                 <td>₦{{ log.total_price_for_this_log|floatformat:2 }}</td>

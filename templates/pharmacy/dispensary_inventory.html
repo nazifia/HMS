@@ -280,7 +280,7 @@
                             {% if dispensary.manager %}
                                 • 
                                 <i class="fas fa-user-tie me-1"></i>
-                                Managed by: {{ dispensary.manager.get_full_name|default:dispensary.manager.username }}
+                                Managed by: {{ dispensary.manager.get_full_name|default:dispensary.manager.username|default:"Unknown" }}
                             {% endif %}
                         </p>
                     </div>
