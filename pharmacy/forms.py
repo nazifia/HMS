@@ -1035,6 +1035,88 @@ class BulkStoreTransferForm(forms.Form):
         self.fields['bulk_store'].queryset = BulkStore.objects.filter(is_active=True)
 
 
+class DispensarySearchForm(forms.Form):
+    """Comprehensive form for searching dispensaries with multiple filters"""
+    
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by name, location, or manager...',
+            'autocomplete': 'off'
+        }),
+        label='Search'
+    )
+    
+    manager = forms.ModelChoiceField(
+        queryset=CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name'),
+        required=False,
+        empty_label="All Managers",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Manager'
+    )
+    
+    is_active = forms.ChoiceField(
+        choices=[
+            ('', 'All Status'),
+            ('true', 'Active'),
+            ('false', 'Inactive')
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Status'
+    )
+    
+    has_active_store = forms.ChoiceField(
+        choices=[
+            ('', 'All'),
+            ('true', 'With Active Store'),
+            ('false', 'Without Active Store')
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Active Store'
+    )
+    
+    location = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Filter by location...'
+        }),
+        label='Location'
+    )
+    
+    created_date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        label='Created From'
+    )
+    
+    created_date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        label='Created To'
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        created_date_from = cleaned_data.get('created_date_from')
+        created_date_to = cleaned_data.get('created_date_to')
+
+        # Validate date range
+        if created_date_from and created_date_to and created_date_from > created_date_to:
+            raise forms.ValidationError("Start date cannot be after end date.")
+
+        return cleaned_data
+
+
 # ComprehensiveRevenueFilterForm removed - use MonthFilterHelper and simple view instead
 
 

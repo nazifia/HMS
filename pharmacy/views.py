@@ -19,7 +19,7 @@ from .forms import (
     MedicationForm, MedicationCategoryForm, SupplierForm, PurchaseForm, PurchaseItemForm,
     PrescriptionForm, PrescriptionItemForm, DispensaryForm,
     MedicationInventoryForm, ActiveStoreInventoryForm, PrescriptionSearchForm,
-    MedicationSearchForm  # Add this import
+    MedicationSearchForm, DispensarySearchForm
 )
 from reporting.forms import PharmacySalesReportForm
 from django.forms import formset_factory
@@ -1127,8 +1127,8 @@ def active_store_detail(request, dispensary_id):
     # Handle active store to dispensary transfer
     dispensary_transfer_form = None
     if request.method == 'POST' and 'dispensary_transfer' in request.POST:
-        from .forms import DispensaryTransferForm
-        dispensary_transfer_form = DispensaryTransferForm(request.POST)
+        from .dispensary_transfer_forms import DispensaryTransferForm
+        dispensary_transfer_form = DispensaryTransferForm(active_store=active_store, data=request.POST)
         if dispensary_transfer_form.is_valid():
             try:
                 # Process dispensary transfer
@@ -3738,8 +3738,64 @@ def user_has_inventory_edit_permission(user, dispensary):
 
 @login_required
 def dispensary_list(request):
-    """View for listing dispensaries"""
-    dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
+    """View for listing dispensaries with comprehensive search functionality"""
+    
+    # Initialize search form with GET parameters
+    search_form = DispensarySearchForm(request.GET or None)
+    
+    # Start with base queryset
+    dispensaries = Dispensary.objects.all()
+    
+    # Apply search filters if form is valid
+    if search_form.is_valid():
+        cleaned_data = search_form.cleaned_data
+        
+        # General search (name, location, manager name)
+        search_term = cleaned_data.get('search')
+        if search_term:
+            dispensaries = dispensaries.filter(
+                models.Q(name__icontains=search_term) |
+                models.Q(location__icontains=search_term) |
+                models.Q(manager__first_name__icontains=search_term) |
+                models.Q(manager__last_name__icontains=search_term) |
+                models.Q(manager__username__icontains=search_term) |
+                models.Q(description__icontains=search_term)
+            )
+        
+        # Manager filter
+        manager = cleaned_data.get('manager')
+        if manager:
+            dispensaries = dispensaries.filter(manager=manager)
+        
+        # Status filter
+        is_active = cleaned_data.get('is_active')
+        if is_active:
+            dispensaries = dispensaries.filter(is_active=(is_active == 'true'))
+        
+        # Active store filter
+        has_active_store = cleaned_data.get('has_active_store')
+        if has_active_store:
+            if has_active_store == 'true':
+                dispensaries = dispensaries.filter(active_store__isnull=False)
+            else:
+                dispensaries = dispensaries.filter(active_store__isnull=True)
+        
+        # Location filter
+        location = cleaned_data.get('location')
+        if location:
+            dispensaries = dispensaries.filter(location__icontains=location)
+        
+        # Date range filters
+        created_date_from = cleaned_data.get('created_date_from')
+        if created_date_from:
+            dispensaries = dispensaries.filter(created_at__date__gte=created_date_from)
+        
+        created_date_to = cleaned_data.get('created_date_to')
+        if created_date_to:
+            dispensaries = dispensaries.filter(created_at__date__lte=created_date_to)
+    
+    # Order by name
+    dispensaries = dispensaries.order_by('name')
     
     # Check edit permissions for template
     can_edit = user_has_dispensary_edit_permission(request.user)
@@ -3758,6 +3814,8 @@ def dispensary_list(request):
         'can_view_all': can_view_all,
         'current_user': request.user,
         'dispensary_permissions': dispensary_permissions,
+        'search_form': search_form,
+        'search_params': request.GET.urlencode(),  # For maintaining search in pagination
     }
     
     return render(request, 'pharmacy/dispensary_list.html', context)

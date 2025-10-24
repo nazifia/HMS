@@ -1,9 +1,25 @@
+<!-- Mobile Overlay -->
+<div id="sidebar-overlay" class="sidebar-overlay"></div>
+
 <!-- Sidebar -->
-<div class="d-flex flex-column bg-dark sidebar vh-100" style="width:250px;min-height:100vh;overflow-y:auto;">
+<div class="d-flex flex-column bg-dark sidebar vh-100" id="sidebar-container" style="width:300px !important;min-height:100vh;overflow-y:auto;">
     <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;">
 
-        <!-- Sidebar - Brand -->
-        <a class="sidebar-brand d-flex align-items-center justify-content-center mt-3 mb-4" href="{% url 'home' %}">
+        <!-- Mobile Header with Hamburger Menu -->
+        <div class="d-md-none mobile-sidebar-header bg-dark d-flex align-items-center justify-content-between p-3 border-bottom border-secondary">
+            <div class="sidebar-brand d-flex align-items-center" href="{% url 'home' %}">
+                <div class="sidebar-brand-icon">
+                    <i class="fas fa-hospital text-white"></i>
+                </div>
+                <div class="sidebar-brand-text mx-2 text-white">HMS</div>
+            </div>
+            <button class="btn btn-link text-white p-0" id="mobileSidebarClose">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+
+        <!-- Desktop Sidebar - Brand -->
+        <a class="sidebar-brand d-none d-md-flex align-items-center justify-content-center mt-3 mb-4" href="{% url 'home' %}">
             <div class="sidebar-brand-icon">
                 <i class="fas fa-hospital text-white"></i>
             </div>
@@ -195,18 +211,13 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Pharmacy Management:</h6>
 
+                    <!-- Core Operations -->
+                    <a class="collapse-item {% if request.path == '/pharmacy/prescriptions/' %}active{% endif %}" href="{% url 'pharmacy:prescriptions' %}">Prescriptions</a>
+                    <a class="collapse-item {% if '/pharmacy/dispensed-items/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensed_items_tracker' %}">Dispensed Items Tracker</a>
+
                     <!-- Inventory management for pharmacists and admins -->
                     {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
                     <a class="collapse-item {% if request.path == '/pharmacy/inventory/' %}active{% endif %}" href="{% url 'pharmacy:inventory' %}">Inventory</a>
-                    {% endif %}
-
-                    <!-- Prescriptions for all pharmacy users -->
-                    <a class="collapse-item {% if request.path == '/pharmacy/prescriptions/' %}active{% endif %}" href="{% url 'pharmacy:prescriptions' %}">Prescriptions</a>
-
-                    <!-- Dispensed Items Tracker -->
-                    <a class="collapse-item {% if '/pharmacy/dispensed-items/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensed_items_tracker' %}">Dispensed Items Tracker</a>
-
-                    <!-- Medical Pack Management Section -->
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Medical Packs:</h6>
                     <a class="collapse-item {% if '/pharmacy/packs/' in request.path %}active{% endif %}" href="{% url 'pharmacy:medical_pack_list' %}">All Medical Packs</a>
@@ -214,17 +225,12 @@
                     <a class="collapse-item {% if '/pharmacy/pack-orders/' in request.path %}active{% endif %}" href="{% url 'pharmacy:pack_order_list' %}">Pack Orders</a>
                     <a class="collapse-item {% if request.path == '/pharmacy/pack-orders/create/' %}active{% endif %}" href="{% url 'pharmacy:create_pack_order' %}">Order Medical Pack</a>
 
-                    <!-- Inter-Dispensary Transfers -->
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Inter-Dispensary:</h6>
                     <a class="collapse-item {% if '/pharmacy/transfers/inter/' in request.path %}active{% endif %}" href="{% url 'pharmacy:inter_dispensary_transfer_list' %}">Transfers <span class="badge bg-primary">New</span></a>
                     <a class="collapse-item {% if request.path == '/pharmacy/transfers/inter/create/' %}active{% endif %}" href="{% url 'pharmacy:create_inter_dispensary_transfer' %}">Create Transfer</a>
                     <a class="collapse-item {% if request.path == '/pharmacy/transfers/inter/statistics/' %}active{% endif %}" href="{% url 'pharmacy:transfer_statistics' %}">Transfer Statistics</a>
-                    {% endif %}
 
-                    <!-- Reports for pharmacists and admins -->
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Reports:</h6>
                     <a class="collapse-item {% if request.path == '/pharmacy/expiring-medications/' %}active{% endif %}" href="{% url 'pharmacy:expiring_medications_report' %}">Expiring Medications</a>
@@ -309,15 +315,6 @@
             </a>
         </li>
         {% endif %}
-        <!-- End Radiology Nav Item -->
-
-        <!-- Nav Item - Radiology Report Dashboard -->
-        <li class="nav-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}">
-            <a class="nav-link" href="{% url 'radiology:sales_report' %}">
-                <i class="fas fa-fw fa-chart-bar text-white"></i>
-                <span class="text-white">Radiology Report Dashboard</span>
-            </a>
-        </li>
 
         <!-- New Medical Modules -->
         {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
@@ -523,6 +520,14 @@
         </li>
         {% endif %}
 
+        <!-- Nav Item - Radiology Report Dashboard -->
+        <li class="nav-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'radiology:sales_report' %}">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Radiology Report Dashboard</span>
+            </a>
+        </li>
+
         <!-- Nav Item - Reports (Available to admins only) - Temporarily disabled -->
         <!-- {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
         <li class="nav-item {% if '/reporting/' in request.path %}active{% endif %}">
@@ -558,6 +563,7 @@
 <!-- End of Sidebar -->
 
 <style>
+/* Desktop sidebar collapsed state */
 .sidebar.sidebar-collapsed {
     width: 70px !important;
     min-width: 70px !important;
@@ -583,6 +589,49 @@
     display: inline;
     opacity: 1;
 }
+
+/* Mobile sidebar styles */
+@media (max-width: 767.98px) {
+    .sidebar, #sidebar-container {
+        position: fixed;
+        top: 0;
+        left: -300px;
+        z-index: 1050 !important;
+        transition: left 0.3s ease;
+        height: 100vh;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    }
+
+    .sidebar.sidebar-open, #sidebar-container.sidebar-open {
+        left: 0 !important;
+    }
+    
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1040;
+        display: none;
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+    
+    .mobile-sidebar-header {
+        position: sticky;
+        top: 0;
+        z-index: 1060;
+    }
+    
+    body.sidebar-open {
+        overflow: hidden;
+    }
+}
+
 /* Make collapse menus have dark background in all states */
 .sidebar .collapse-inner {
     background: #23272b !important;

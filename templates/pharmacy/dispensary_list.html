@@ -141,14 +141,98 @@
                 </div>
                 <div class="d-flex align-items-center">
                     {% if can_edit %}
-                        <a href="{% url 'pharmacy:add_dispensary' %}" class="btn btn-primary">
+                        <a href="{% url 'pharmacy:add_dispensary' %}" class="btn btn-primary me-2">
                             <i class="fas fa-plus me-2"></i>
                             <span class="d-none d-md-inline">Add New Dispensary</span>
                             <span class="d-md-none">Add</span>
                         </a>
                     {% endif %}
+                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#searchCollapse" aria-expanded="false" aria-controls="searchCollapse">
+                        <i class="fas fa-search me-2"></i>
+                        <span class="d-none d-md-inline">Search</span>
+                        <span class="d-md-none"><i class="fas fa-filter"></i></span>
+                    </button>
                 </div>
             </div>
+
+            <!-- Search Form -->
+            <div class="collapse {% if request.GET %}show{% endif %} mb-4" id="searchCollapse">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="fas fa-search me-2"></i>
+                            Search Dispensaries
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" action="{% url 'pharmacy:dispensary_list' %}" class="row g-3">
+                            <!-- General Search -->
+                            <div class="col-md-6">
+                                <label for="{{ search_form.search.id_for_label }}" class="form-label">{{ search_form.search.label }}</label>
+                                {{ search_form.search }}
+                            </div>
+                            
+                            <!-- Manager Filter -->
+                            <div class="col-md-6">
+                                <label for="{{ search_form.manager.id_for_label }}" class="form-label">{{ search_form.manager.label }}</label>
+                                {{ search_form.manager }}
+                            </div>
+                            
+                            <!-- Status Filter -->
+                            <div class="col-md-3">
+                                <label for="{{ search_form.is_active.id_for_label }}" class="form-label">{{ search_form.is_active.label }}</label>
+                                {{ search_form.is_active }}
+                            </div>
+                            
+                            <!-- Active Store Filter -->
+                            <div class="col-md-3">
+                                <label for="{{ search_form.has_active_store.id_for_label }}" class="form-label">{{ search_form.has_active_store.label }}</label>
+                                {{ search_form.has_active_store }}
+                            </div>
+                            
+                            <!-- Location Filter -->
+                            <div class="col-md-6">
+                                <label for="{{ search_form.location.id_for_label }}" class="form-label">{{ search_form.location.label }}</label>
+                                {{ search_form.location }}
+                            </div>
+                            
+                            <!-- Date Range Filters -->
+                            <div class="col-md-3">
+                                <label for="{{ search_form.created_date_from.id_for_label }}" class="form-label">{{ search_form.created_date_from.label }}</label>
+                                {{ search_form.created_date_from }}
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label for="{{ search_form.created_date_to.id_for_label }}" class="form-label">{{ search_form.created_date_to.label }}</label>
+                                {{ search_form.created_date_to }}
+                            </div>
+                            
+                            <!-- Form Actions -->
+                            <div class="col-12">
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-2"></i>Search
+                                    </button>
+                                    <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-2"></i>Clear
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results Summary -->
+            {% if request.GET %}
+                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-info-circle me-2"></i>
+                        Found {{ dispensaries.count }} dispensary{{ dispensaries.count|pluralize }} matching your criteria.
+                    </div>
+                    <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-sm btn-outline-secondary">Clear Search</a>
+                </div>
+            {% endif %}
 
             <!-- Dispensaries List -->
             {% if dispensaries %}
@@ -285,6 +369,122 @@ $(document).ready(function() {
         if (!$('.navbar-toggler').is(e.target) && $('.navbar-collapse').hasClass('show')) {
             $('.navbar-collapse').removeClass('show');
         }
+    });
+    
+    // Search form enhancements
+    const searchForm = $('form[method="GET"]');
+    const searchInput = $('#id_search');
+    const managerSelect = $('#id_manager');
+    const statusSelect = $('#id_is_active');
+    const activeStoreSelect = $('#id_has_active_store');
+    const locationInput = $('#id_location');
+    const dateFromInput = $('#id_created_date_from');
+    const dateToInput = $('#id_created_date_to');
+    
+    // Auto-expand search if there are search parameters
+    if (window.location.search) {
+        $('#searchCollapse').collapse('show');
+    }
+    
+    // Clear form function
+    function clearSearchForm() {
+        searchForm[0].reset();
+        // Remove focus from search input
+        searchInput.blur();
+    }
+    
+    // Enhanced search with debounce for text inputs
+    let searchTimeout;
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            // Only auto-submit if user has typed something meaningful
+            if (searchInput.val().trim().length >= 2) {
+                searchForm.submit();
+            }
+        }, 500);
+    }
+    
+    // Apply debounced search to text inputs
+    searchInput.on('input', function() {
+        debounceSearch();
+    });
+    
+    locationInput.on('input', function() {
+        debounceSearch();
+    });
+    
+    // Instant search for dropdown selections
+    managerSelect.on('change', function() {
+        searchForm.submit();
+    });
+    
+    statusSelect.on('change', function() {
+        searchForm.submit();
+    });
+    
+    activeStoreSelect.on('change', function() {
+        searchForm.submit();
+    });
+    
+    // Date range validation and search
+    function validateAndSubmitDates() {
+        const dateFrom = dateFromInput.val();
+        const dateTo = dateToInput.val();
+        
+        if (dateFrom && dateTo && dateFrom > dateTo) {
+            alert('Start date cannot be after end date.');
+            dateToInput.focus();
+            return false;
+        }
+        
+        searchForm.submit();
+    }
+    
+    // Submit on date change with validation
+    dateFromInput.on('change', validateAndSubmitDates);
+    dateToInput.on('change', validateAndSubmitDates);
+    
+    // Clear search on button click
+    $('a[href*="dispensary_list"]').on('click', function(e) {
+        if ($(this).text().includes('Clear')) {
+            e.preventDefault();
+            clearSearchForm();
+            window.location.href = $(this).attr('href');
+        }
+    });
+    
+    // Keyboard shortcuts
+    $(document).on('keydown', function(e) {
+        // Ctrl/Cmd + K for search focus
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+            $('#searchCollapse').collapse('show');
+        }
+        
+        // Escape to clear search
+        if (e.key === 'Escape' && searchInput.is(':focus')) {
+            clearSearchForm();
+        }
+    });
+    
+    // Show search hint
+    searchInput.attr('title', 'Ctrl+K to focus, type to search');
+    
+    // Add loading state during search
+    searchForm.on('submit', function() {
+        // Add loading spinner to submit button
+        const submitBtn = searchForm.find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Searching...');
+        submitBtn.prop('disabled', true);
+        
+        // Restore button after a timeout (in case of slow response)
+        setTimeout(function() {
+            submitBtn.html(originalText);
+            submitBtn.prop('disabled', false);
+        }, 5000);
     });
 });
 </script>

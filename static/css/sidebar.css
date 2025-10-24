@@ -92,18 +92,18 @@
         top: 0;
         height: 100vh;
         min-height: 100vh;
-        width: 250px; /* Default width for mobile sidebar */
+        width: 300px; /* Default width for mobile sidebar */
         transform: translateX(-100%); /* Hidden by default */
         box-shadow: 2px 0 8px rgba(0,0,0,0.08);
         background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
         background-repeat: repeat-y;
         background-attachment: local;
         overflow-y: auto;
-        z-index: 1050; /* Higher z-index for overlay */
+        z-index: 1050 !important; /* Higher z-index for overlay */
     }
 
-    .sidebar-open { /* Class added by JS when sidebar is open */
-        transform: translateX(0%);
+    .sidebar.sidebar-open, #sidebar-container.sidebar-open { /* Class added by JS when sidebar is open */
+        transform: translateX(0%) !important;
     }
 
     .sidebar-overlay { /* Overlay for when sidebar is open on mobile */
@@ -395,18 +395,18 @@ body.sidebar-toggled #content-wrapper {
         top: 0;
         height: 100vh;
         min-height: 100vh;
-        width: 280px;
+        width: 300px;
         transform: translateX(-100%);
         box-shadow: 2px 0 8px rgba(0,0,0,0.08);
         background: linear-gradient(180deg, #23272b 80%, #1a1d21 100%);
         background-repeat: repeat-y;
         background-attachment: local;
         overflow-y: auto;
-        z-index: 1050;
+        z-index: 1050 !important;
     }
 
-    .sidebar-open {
-        transform: translateX(0%);
+    .sidebar.sidebar-open, #sidebar-container.sidebar-open {
+        transform: translateX(0%) !important;
     }
 
     .sidebar-overlay {

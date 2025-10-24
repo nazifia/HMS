@@ -99,7 +99,8 @@ def inter_dispensary_transfer_detail(request, transfer_id):
         'transfer': transfer,
         'source_inventory': source_inventory,
         'dest_inventory': dest_inventory,
-        'title': f'Transfer Details - #{transfer.id}'
+        'title': f'Transfer Details - #{transfer.id}',
+        'current_user': request.user,
     }
     
     return render(request, 'pharmacy/inter_dispensary_transfer_detail.html', context)

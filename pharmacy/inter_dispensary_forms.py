@@ -6,8 +6,8 @@ from .models import InterDispensaryTransfer, Medication, Dispensary
 class InterDispensaryTransferForm(forms.ModelForm):
     """Form for creating inter-dispensary transfers"""
     
-    def __init__(self, user=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, data=None, user=None, *args, **kwargs):
+        super().__init__(data, *args, **kwargs)
         self.user = user
         
         # Filter dispensaries to active ones

@@ -3,24 +3,25 @@
 
     // Function to toggle mobile sidebar
     function toggleMobileSidebar() {
-        const sidebar = $('#accordionSidebar'); // Use the ID of the sidebar
+        const sidebar = $('#sidebar-container'); // Use the container ID
         const overlay = $('#sidebar-overlay');
         sidebar.toggleClass('sidebar-open');
         overlay.toggleClass('active');
-        $('body').toggleClass('overflow-hidden'); // Prevent scrolling on body when sidebar is open
+        $('body').toggleClass('sidebar-open'); // Prevent scrolling on body when sidebar is open
     }
 
     // Function to close mobile sidebar
     function closeMobileSidebar() {
-        const sidebar = $('#accordionSidebar');
+        const sidebar = $('#sidebar-container');
         const overlay = $('#sidebar-overlay');
         sidebar.removeClass('sidebar-open');
         overlay.removeClass('active');
-        $('body').removeClass('overflow-hidden');
+        $('body').removeClass('sidebar-open');
     }
 
     // Toggle the side navigation for desktop
     $("#sidebarToggle, #sidebarToggleTop").on('click', function(e) {
+        e.preventDefault();
         if ($(window).width() >= 768) { // Only for desktop
             $("body").toggleClass("sidebar-toggled");
             $(".sidebar").toggleClass("toggled");
@@ -37,6 +38,11 @@
         closeMobileSidebar();
     });
 
+    // Close mobile sidebar when close button is clicked
+    $('#mobileSidebarClose').on('click', function() {
+        closeMobileSidebar();
+    });
+
     // Close any open menu accordions when window is resized below 768px
     $(window).resize(function() {
         if ($(window).width() < 768) {
@@ -47,6 +53,8 @@
             // Ensure desktop sidebar is in correct state when resizing from mobile to desktop
             $("body").removeClass("sidebar-toggled");
             $(".sidebar").removeClass("toggled");
+            // Also close mobile sidebar when going to desktop
+            closeMobileSidebar();
         }
     });
 
