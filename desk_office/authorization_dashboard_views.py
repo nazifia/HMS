@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.core.paginator import Paginator
+from django.http import JsonResponse
 from consultations.models import Consultation, Referral
 from pharmacy.models import Prescription
 from laboratory.models import TestRequest
@@ -74,28 +75,82 @@ def authorization_dashboard(request):
         try:
             patient_id = request.POST.get('patient_id')
             selected_patient = Patient.objects.get(id=patient_id, patient_type='nhia')
-            authorization_form = AuthorizationCodeForm(request.POST, patient=selected_patient)
             
-            if authorization_form.is_valid():
-                auth_code = authorization_form.save(commit=False)
-                auth_code.generated_by = request.user
+            # Handle quick code generation (from modal)
+            is_quick_code = request.POST.get('quick_code') == '1'
+            
+            if is_quick_code:
+                # Quick code generation - use form data directly
+                amount = float(request.POST.get('amount', '0.00'))
+                expiry_days = int(request.POST.get('expiry_days', '30'))
+                expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
+                notes = f"Quick-generated authorization code for {selected_patient.get_full_name()}"
                 
-                # Generate unique code if not provided
-                if not getattr(auth_code, 'code', None):
-                    while True:
-                        auth_code.code = generate_authorization_code_string()
-                        if not AuthorizationCode.objects.filter(code=auth_code.code).exists():
-                            break
+                # Generate unique code
+                while True:
+                    code_str = generate_authorization_code_string()
+                    if not AuthorizationCode.objects.filter(code=code_str).exists():
+                        break
                 
-                auth_code.save()
-                messages.success(request, f'Authorization code {auth_code.code} generated successfully for {selected_patient.get_full_name()}.')
+                # Create authorization code directly
+                auth_code = AuthorizationCode.objects.create(
+                    code=code_str,
+                    patient=selected_patient,
+                    service_type='general',
+                    amount=amount,
+                    expiry_date=expiry_date,
+                    status='active',
+                    notes=notes,
+                    generated_by=request.user
+                )
                 
-                # Clear form and patient selection
+                messages.success(request, f'Quick authorization code {auth_code.code} generated successfully for {selected_patient.get_full_name()}.')
+                
+                # Handle AJAX response for quick code
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Authorization code {auth_code.code} generated successfully.',
+                        'code': auth_code.code,
+                        'patient_name': selected_patient.get_full_name()
+                    })
+                
                 return redirect('desk_office:authorization_dashboard')
+            else:
+                # Regular code generation using form
+                authorization_form = AuthorizationCodeForm(request.POST, patient=selected_patient)
+                
+                if authorization_form.is_valid():
+                    auth_code = authorization_form.save(commit=False)
+                    auth_code.generated_by = request.user
+                    
+                    # Generate unique code if not provided
+                    if not getattr(auth_code, 'code', None):
+                        while True:
+                            auth_code.code = generate_authorization_code_string()
+                            if not AuthorizationCode.objects.filter(code=auth_code.code).exists():
+                                break
+                    
+                    auth_code.save()
+                    messages.success(request, f'Authorization code {auth_code.code} generated successfully for {selected_patient.get_full_name()}.')
+                    
+                    # Clear form and patient selection
+                    return redirect('desk_office:authorization_dashboard')
+                else:
+                    messages.error(request, 'Please correct the errors in the form.')
+                    
         except Patient.DoesNotExist:
             messages.error(request, 'Selected patient not found or is not an NHIA patient.')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'Selected patient not found or is not an NHIA patient.'})
+        except ValueError as e:
+            messages.error(request, f'Invalid amount value: {str(e)}')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f'Invalid amount value: {str(e)}'})
         except Exception as e:
             messages.error(request, f'Error generating authorization code: {str(e)}')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f'Error generating authorization code: {str(e)}'})
     
     # Get all consultations requiring authorization
     pending_consultations = Consultation.objects.filter(

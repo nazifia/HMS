@@ -178,15 +178,16 @@
                           hx-indicator=".search-loading">
                         {% csrf_token %}
                         <div class="input-group mb-3">
-                            <input type="text" 
-                                   name="search" 
-                                   class="form-control" 
+                            <input type="text"
+                                   name="q"
+                                   class="form-control"
                                    placeholder="Search NHIA patients by name, ID, NHIA number, or phone..."
                                    value="{{ search_query|default:'' }}"
                                    hx-get="{% url 'core:patient_search_ajax' %}"
                                    hx-target="#patientResults"
                                    hx-trigger="keyup changed delay:300ms"
-                                   hx-vals='{"patient_type": "nhia", "q": this.value}'
+                                   hx-include="[name='q']"
+                                   hx-vals='{"patient_type": "nhia"}'
                                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
                             <button type="submit" name="search_patients" class="btn btn-primary">
                                 <i class="fas fa-search search-icon"></i>
@@ -628,14 +629,16 @@
                     
                     <div class="mb-3">
                         <label for="quick_patient_search" class="form-label">Search Patient</label>
-                        <input type="text" 
-                               class="form-control" 
+                        <input type="text"
+                               class="form-control"
                                id="quick_patient_search"
+                               name="q"
                                placeholder="Type patient name or ID..."
                                hx-get="{% url 'core:patient_search_ajax' %}"
                                hx-target="#quickPatientResults"
                                hx-trigger="keyup changed delay:300ms"
-                               hx-vals='{"patient_type": "nhia", "quick": "true", "q": this.value}'
+                               hx-include="[name='q']"
+                               hx-vals='{"patient_type": "nhia", "quick": "true"}'
                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
                         <div id="quickPatientResults" class="mt-2"></div>
                     </div>
@@ -663,8 +666,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="quickGenerateBtn">
-                    <i class="fas fa-check-circle"></i> Generate Code
+                <button type="button" class="btn btn-success" id="quickGenerateBtn" disabled>
+                    <i class="fas fa-check-circle"></i> Select Patient First
                 </button>
             </div>
         </div>
@@ -695,24 +698,76 @@ document.querySelectorAll('input[name="code_type"]').forEach(function(radio) {
 document.getElementById('quickGenerateBtn').addEventListener('click', function() {
     const form = document.getElementById('quickCodeForm');
     const patientInput = document.querySelector('#quickPatientResults input[type="radio"]:checked');
+    const amountInput = document.getElementById('quick_amount');
+    const expiryInput = document.getElementById('quick_expiry');
     
+    // Validate inputs
     if (!patientInput) {
         alert('Please select a patient first.');
         return;
     }
     
-    // Add hidden patient_id input
-    let patientIdInput = form.querySelector('input[name="patient_id"]');
-    if (!patientIdInput) {
-        patientIdInput = document.createElement('input');
-        patientIdInput.type = 'hidden';
-        patientIdInput.name = 'patient_id';
-        form.appendChild(patientIdInput);
+    if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
+        alert('Please enter a valid amount.');
+        amountInput.focus();
+        return;
     }
-    patientIdInput.value = patientInput.value;
     
-    // Submit form
-    form.submit();
+    // Create form data for POST request
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('patient_id', patientInput.value);
+    formData.append('amount', amountInput.value);
+    formData.append('expiry_days', expiryInput.value);
+    formData.append('generate_code', '1');
+    formData.append('quick_code', '1');  // Flag to identify quick code submission
+    
+    // Submit via POST request
+    fetch('{% url "desk_office:authorization_dashboard" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message and close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('quickCodeModal'));
+            modal.hide();
+            
+            // Show success notification
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                <i class="fas fa-check-circle"></i> ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            // Remove alert after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+            
+            // Refresh the page to show the new authorization code
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            alert(data.message || 'Error generating authorization code.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error generating authorization code. Please try again.');
+    });
 });
 
 // Enhanced patient selection handling
@@ -735,6 +790,39 @@ document.getElementById('patientSearchForm').addEventListener('submit', function
     setTimeout(function() {
         document.getElementById('patientResults').innerHTML = '';
     }, 100);
+});
+
+// Reset quick code modal when opened
+document.getElementById('quickCodeModal').addEventListener('show.bs.modal', function() {
+    // Reset form fields
+    document.getElementById('quick_patient_search').value = '';
+    document.getElementById('quick_amount').value = '0.00';
+    document.getElementById('quick_expiry').value = '30';
+    document.getElementById('quickPatientResults').innerHTML = '';
+
+    // Reset button state
+    const generateBtn = document.getElementById('quickGenerateBtn');
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="fas fa-check-circle"></i> Select Patient First';
+});
+
+// Process HTMX attributes when modal is shown
+document.getElementById('quickCodeModal').addEventListener('shown.bs.modal', function() {
+    // Ensure HTMX processes the modal content
+    const modal = document.getElementById('quickCodeModal');
+    if (typeof htmx !== 'undefined') {
+        htmx.process(modal);
+    }
+});
+
+// Clear quick patient search when input is cleared
+document.getElementById('quick_patient_search').addEventListener('input', function() {
+    if (this.value.trim() === '') {
+        document.getElementById('quickPatientResults').innerHTML = '';
+        const generateBtn = document.getElementById('quickGenerateBtn');
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-check-circle"></i> Select Patient First';
+    }
 });
 </script>
 {% endblock %}

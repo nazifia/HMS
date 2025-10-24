@@ -4,7 +4,8 @@
             <label class="list-group-item list-group-item-action">
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="selected_patient" value="{{ patient.id }}" 
-                           onchange="document.getElementById('quickGenerateBtn').disabled = false">
+                           data-patient-name="{{ patient.get_full_name }}"
+                           data-patient-id="{{ patient.patient_id }}">
                     <div class="d-flex w-100 justify-content-between">
                         <div>
                             <h6 class="mb-1">{{ patient.get_full_name }}</h6>
@@ -32,6 +33,24 @@
             </label>
         {% endfor %}
     </div>
+    
+    <script>
+    // Handle radio button selection for quick patient search
+    document.querySelectorAll('#quickPatientResults input[type="radio"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            const generateBtn = document.getElementById('quickGenerateBtn');
+            const patientName = this.dataset.patientName;
+            const patientId = this.dataset.patientId;
+            
+            // Enable the generate button
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-check-circle"></i> Generate Code for ' + patientName;
+            
+            // Update the search input to show selected patient
+            document.getElementById('quick_patient_search').value = patientName + ' (ID: ' + patientId + ')';
+        });
+    });
+    </script>
 {% else %}
     <div class="alert alert-info">
         <i class="fas fa-info-circle"></i> No NHIA patients found
