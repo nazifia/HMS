@@ -162,3 +162,52 @@ def api_role_required(allowed_roles):
             return view_func(request, *args, **kwargs)
         return _wrapped_view
     return decorator
+
+
+def department_access_required(department_name):
+    """
+    Decorator to restrict view access to users assigned to a specific department.
+    Superusers have unrestricted access to all departments.
+
+    Args:
+        department_name: Name of the department (case-insensitive)
+
+    Usage:
+        @department_access_required('Dental')
+        def dental_dashboard(request):
+            ...
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            # Check if user is authenticated
+            if not request.user.is_authenticated:
+                messages.error(request, "You must be logged in to access this page.")
+                return redirect('accounts:login')
+
+            # Allow superusers to access all departments
+            if request.user.is_superuser:
+                return view_func(request, *args, **kwargs)
+
+            # Get user's department
+            user_department = None
+            if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department:
+                user_department = request.user.profile.department
+
+            # Check if user has a department assigned
+            if not user_department:
+                messages.error(request, "You must be assigned to a department to access this page.")
+                return redirect('dashboard:dashboard')
+
+            # Check if user's department matches the required department (case-insensitive)
+            if user_department.name.upper() != department_name.upper():
+                messages.error(
+                    request,
+                    f"Access denied. This page is for {department_name} department staff only. "
+                    f"You are assigned to {user_department.name} department."
+                )
+                return redirect('dashboard:dashboard')
+
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator

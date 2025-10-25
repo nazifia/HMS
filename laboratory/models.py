@@ -147,6 +147,12 @@ class TestRequest(models.Model):
 
         return True, 'Test request can be processed'
 
+    def save(self, *args, **kwargs):
+        """Override save to auto-check authorization requirement"""
+        # Auto-check authorization requirement on save
+        self.check_authorization_requirement()
+        super().save(*args, **kwargs)
+
     def get_total_price(self):
         return sum(test.price for test in self.tests.all())
 

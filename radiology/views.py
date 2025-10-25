@@ -7,19 +7,63 @@ from patients.models import Patient
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_POST
 from .forms import RadiologyOrderForm, RadiologyResultForm
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    get_urgent_items,
+    calculate_completion_rate,
+    get_active_staff
+)
+import json
 
 @login_required
 def index(request):
-    """Radiology dashboard view"""
-    from django.db.models import Sum, Count
+    """Enhanced Radiology dashboard with charts, metrics, and referral integration"""
+    from django.db.models import Sum, Count, Avg, F, ExpressionWrapper, DurationField
     from datetime import datetime, timedelta
 
     today = timezone.now().date()
     week_start = today - timedelta(days=today.weekday())
     month_start = today.replace(day=1)
 
+    # Get user's department for referral integration
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.warning(request, "You are not assigned to a department. Some features may be limited.")
+        user_department = None
+
+    # Build enhanced context with charts and trends
+    # Note: RadiologyOrder uses 'order_date' instead of 'created_at'
+    if user_department:
+        # Get chart data manually since RadiologyOrder uses 'order_date' not 'created_at'
+        context = build_department_dashboard_context(
+            department=user_department,
+            record_model=RadiologyOrder,
+            record_queryset=RadiologyOrder.objects.all()
+        )
+
+        # Add chart data with correct date field
+        context['daily_trend'] = get_daily_trend_data(RadiologyOrder, days=7, date_field='order_date')
+        context['status_distribution'] = get_status_distribution(RadiologyOrder, status_field='status')
+        context['completion_rate'] = calculate_completion_rate(RadiologyOrder, status_field='status', completed_status='completed')
+        context['urgent_items'] = get_urgent_items(RadiologyOrder, priority_field='priority')
+        context['active_staff'] = get_active_staff(user_department)
+    else:
+        # Fallback for users without department
+        context = {
+            'total_records': RadiologyOrder.objects.count(),
+            'recent_records': RadiologyOrder.objects.select_related('patient', 'test').order_by('-order_date')[:10]
+        }
+
     # Get counts for dashboard cards
     pending_count = RadiologyOrder.objects.filter(status='pending').count()
+    awaiting_payment = RadiologyOrder.objects.filter(status='awaiting_payment').count()
     scheduled_count = RadiologyOrder.objects.filter(status='scheduled').count()
     completed_count = RadiologyOrder.objects.filter(status='completed').count()
     total_count = RadiologyOrder.objects.count()
@@ -38,6 +82,47 @@ def index(request):
         order_date__date__gte=month_start,
         invoice__isnull=False
     ).aggregate(total=Sum('invoice__total_amount'))['total'] or 0
+
+    # Get urgent/emergency imaging orders
+    urgent_orders = RadiologyOrder.objects.filter(
+        status__in=['pending', 'scheduled', 'awaiting_payment'],
+        priority__in=['urgent', 'emergency']
+    ).select_related('patient', 'test', 'referring_doctor').order_by('-priority', 'order_date')[:10]
+
+    # Get emergency orders count
+    emergency_orders = RadiologyOrder.objects.filter(
+        status__in=['pending', 'scheduled'],
+        priority='emergency'
+    ).count()
+
+    # Calculate average reporting time (for completed orders in last 30 days)
+    avg_reporting_time = RadiologyOrder.objects.filter(
+        status='completed',
+        created_at__gte=timezone.now() - timedelta(days=30),
+        completed_date__isnull=False
+    ).annotate(
+        reporting_time=ExpressionWrapper(
+            F('completed_date') - F('created_at'),
+            output_field=DurationField()
+        )
+    ).aggregate(avg=Avg('reporting_time'))['avg']
+
+    # Format reporting time
+    if avg_reporting_time:
+        hours = avg_reporting_time.total_seconds() / 3600
+        avg_reporting_hours = round(hours, 1)
+    else:
+        avg_reporting_hours = 0
+
+    # Get modality distribution (by test type)
+    modality_data = RadiologyOrder.objects.values('test__name').annotate(count=Count('id')).order_by('-count')[:5]
+    modality_labels = [item['test__name'] for item in modality_data]
+    modality_counts = [item['count'] for item in modality_data]
+
+    # Get results needing verification
+    results_needing_verification = RadiologyResult.objects.filter(
+        verified_by__isnull=True
+    ).select_related('order__patient').count()
 
     # Get recent orders for the table with filtering
     recent_orders_query = RadiologyOrder.objects.select_related('patient', 'test', 'referring_doctor').order_by('-order_date')
@@ -60,8 +145,26 @@ def index(request):
         patient.results_url = f"/radiology/patient/{patient.id}/results/"
         patient.order_count = patient.radiology_orders.count()
 
-    context = {
+    # Add referral integration if user has a department
+    pending_referrals = []
+    pending_referrals_count = 0
+    pending_authorizations = 0
+    categorized_referrals = None
+
+    if user_department:
+        from consultations.models import Referral
+        from core.department_dashboard_utils import get_pending_referrals, get_department_referral_statistics
+
+        pending_referrals = get_pending_referrals(user_department, limit=5)
+        referral_stats = get_department_referral_statistics(user_department)
+        pending_referrals_count = referral_stats['pending_referrals']
+        pending_authorizations = referral_stats['requiring_authorization']
+        categorized_referrals = categorize_referrals(user_department)
+
+    # Update context with new metrics
+    context.update({
         'pending_count': pending_count,
+        'awaiting_payment': awaiting_payment,
         'scheduled_count': scheduled_count,
         'completed_count': completed_count,
         'total_count': total_count,
@@ -71,12 +174,24 @@ def index(request):
         'week_completed': week_completed,
         'month_orders': month_orders,
         'month_revenue': month_revenue,
+        'urgent_orders': urgent_orders,
+        'emergency_orders': emergency_orders,
+        'avg_reporting_hours': avg_reporting_hours,
+        'results_needing_verification': results_needing_verification,
+        'modality_labels': json.dumps(modality_labels),
+        'modality_counts': json.dumps(modality_counts),
         'recent_orders': recent_orders,
+        # Referral integration
+        'pending_referrals': pending_referrals,
+        'pending_referrals_count': pending_referrals_count,
+        'pending_authorizations': pending_authorizations,
+        'categorized_referrals': categorized_referrals,
+        'user_department': user_department,
         'patients': patients,
         'today': today,
         'week_start': week_start,
         'month_start': month_start,
-    }
+    })
 
     return render(request, 'radiology/index.html', context)
 

@@ -68,7 +68,15 @@ class Surgery(models.Model):
         ('cancelled', 'Cancelled'),
         ('postponed', 'Postponed'),
     )
-    
+
+    AUTHORIZATION_STATUS_CHOICES = (
+        ('not_required', 'Not Required'),
+        ('required', 'Required'),
+        ('pending', 'Pending Authorization'),
+        ('authorized', 'Authorized'),
+        ('rejected', 'Rejected'),
+    )
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='surgeries')
     surgery_type = models.ForeignKey(SurgeryType, on_delete=models.PROTECT, related_name='surgeries')
     theatre = models.ForeignKey(OperationTheatre, on_delete=models.SET_NULL, null=True, related_name='surgeries')
@@ -93,13 +101,30 @@ class Surgery(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    # Authorization code for NHIA patients
-    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='surgeries')
-    
+
+    # NHIA Authorization fields
+    requires_authorization = models.BooleanField(
+        default=False,
+        help_text="True if this NHIA patient surgery requires desk office authorization"
+    )
+    authorization_status = models.CharField(
+        max_length=20,
+        choices=AUTHORIZATION_STATUS_CHOICES,
+        default='not_required',
+        help_text="Status of authorization for this surgery"
+    )
+    authorization_code = models.ForeignKey(
+        'nhia.AuthorizationCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='surgeries',
+        help_text="Authorization code from desk office for NHIA patient surgery"
+    )
+
     # Link to billing invoice
     invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='surgery_invoices')
-    
+
     def __str__(self):
         # Create a mapping for status display values to avoid using get_status_display()
         status_display_map = {
@@ -111,7 +136,48 @@ class Surgery(models.Model):
         }
         status_display = status_display_map.get(self.status, self.status)
         return f"Surgery for {self.patient} - {self.surgery_type} ({status_display})"
-    
+
+    def is_nhia_patient(self):
+        """Check if the patient is an NHIA patient"""
+        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None
+
+    def check_authorization_requirement(self):
+        """
+        Check if this surgery requires authorization.
+        All NHIA patient surgeries require authorization.
+        """
+        if self.is_nhia_patient():
+            self.requires_authorization = True
+            if not self.authorization_code:
+                self.authorization_status = 'required'
+            else:
+                self.authorization_status = 'authorized'
+            return True
+        else:
+            self.requires_authorization = False
+            self.authorization_status = 'not_required'
+            return False
+
+    def can_be_performed(self):
+        """Check if surgery can be performed based on authorization"""
+        # Check authorization requirement for NHIA patients
+        if self.requires_authorization:
+            if not self.authorization_code:
+                return False, 'Desk office authorization required for NHIA patient surgery. Please obtain authorization code before proceeding.'
+            elif not self.authorization_code.is_valid():
+                return False, f'Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.'
+
+        # Check if already completed or cancelled
+        if self.status in ['completed', 'cancelled']:
+            return False, f'Surgery is already {self.status}'
+
+        return True, 'Surgery can be performed'
+
+    def save(self, *args, **kwargs):
+        # Auto-check authorization requirement on save
+        self.check_authorization_requirement()
+        super().save(*args, **kwargs)
+
     class Meta:
         app_label = 'theatre'
         verbose_name = "Surgery"

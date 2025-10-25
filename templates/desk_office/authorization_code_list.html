@@ -1,0 +1,619 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Authorization Codes - NHIA Authorization{% endblock %}
+
+{% block extra_css %}
+<style>
+.code-item {
+    transition: all 0.2s ease-in-out;
+}
+.code-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.stats-card {
+    transition: transform 0.2s ease-in-out;
+}
+.stats-card:hover {
+    transform: translateY(-2px);
+}
+.code-active {
+    border-left: 4px solid #28a745;
+}
+.code-expired {
+    border-left: 4px solid #6c757d;
+}
+.code-used {
+    border-left: 4px solid #17a2b8;
+}
+.code-cancelled {
+    border-left: 4px solid #dc3545;
+}
+.patient-info {
+    font-size: 0.9rem;
+}
+.search-loading {
+    display: none;
+}
+.htmx-request .search-loading {
+    display: inline-block;
+}
+.htmx-request .search-icon {
+    display: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-qrcode"></i> NHIA Authorization Codes
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#generateCodeModal">
+                <i class="fas fa-plus"></i> Generate Code
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Codes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-qrcode fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Active Codes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Used Codes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.used }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-double fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                Expired Codes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.expired }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-filter"></i> Filters & Search
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="used" {% if request.GET.status == 'used' %}selected{% endif %}>Used</option>
+                        <option value="expired" {% if request.GET.status == 'expired' %}selected{% endif %}>Expired</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="patient_search" class="form-label">Patient</label>
+                    <input type="text" name="patient_search" id="patient_search" class="form-control" 
+                           placeholder="Search patient..." 
+                           value="{{ request.GET.patient_search|default:'' }}"
+                           hx-get="{% url 'core:patient_search_ajax' %}"
+                           hx-target="#patientResults"
+                           hx-trigger="keyup changed delay:300ms"
+                           hx-include="[name='patient_search']"
+                           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                    <div id="patientResults" class="mt-2"></div>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">Date From</label>
+                    <input type="date" name="date_from" id="date_from" class="form-control" 
+                           value="{{ request.GET.date_from|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">Date To</label>
+                    <input type="date" name="date_to" id="date_to" class="form-control" 
+                           value="{{ request.GET.date_to|default:'' }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search search-icon"></i>
+                        <span class="spinner-border spinner-border-sm search-loading" role="status"></span>
+                        Apply Filters
+                    </button>
+                    <a href="{% url 'desk_office:authorization_code_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Authorization Codes List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Authorization Codes 
+                <span class="badge bg-info">{{ page_obj.paginator.count }}</span>
+            </h6>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-success" id="exportBtn">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Patient</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Generated</th>
+                                <th>Expires</th>
+                                <th>Used By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for code in page_obj %}
+                            <tr class="code-item code-{{ code.status }}">
+                                <td>
+                                    <code class="text-primary fw-bold">{{ code.code }}</code><br>
+                                    {% if code.notes %}
+                                    <small class="text-muted">{{ code.notes|truncatewords:5 }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <h6 class="mb-1">
+                                        <a href="{% url 'patients:detail' code.patient.id %}" class="text-decoration-none">
+                                            {{ code.patient.get_full_name }}
+                                        </a>
+                                    </h6>
+                                    <div class="patient-info text-muted">
+                                        ID: {{ code.patient.patient_id }}<br>
+                                        {% if code.patient.patient_type == 'nhia' %}
+                                            <span class="badge bg-info">NHIA</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Regular</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong>₦{{ code.amount|floatformat:2 }}</strong><br>
+                                    <small class="text-muted">
+                                        {% if code.used_amount and code.status == 'used' %}
+                                            Used: ₦{{ code.used_amount|floatformat:2 }}
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if code.status == 'active' %}bg-success
+                                        {% elif code.status == 'expired' %}bg-secondary
+                                        {% elif code.status == 'used' %}bg-info
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ code.get_status_display|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ code.generated_at|date:"M d, Y" }}<br>
+                                    <small class="text-muted">{{ code.generated_at|date:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    {% if code.expiry_date %}
+                                        {{ code.expiry_date|date:"M d, Y" }}<br>
+                                        {% if code.is_expired %}
+                                            <small class="text-danger">Expired</small>
+                                        {% elif code.days_until_expiry <= 7 %}
+                                            <small class="text-warning">{{ code.days_until_expiry }} days left</small>
+                                        {% else %}
+                                            <small class="text-success">Valid</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">No expiry</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if code.used_by %}
+                                        <a href="{% url 'patients:detail' code.used_by.id %}" class="text-decoration-none">
+                                            {{ code.used_by.get_full_name }}
+                                        </a><br>
+                                        <small class="text-muted">
+                                            {{ code.used_at|date:"M d, Y H:i" }}
+                                        </small>
+                                    {% else %}
+                                        <span class="text-muted">Not used</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="#" class="btn btn-info" title="View Details" 
+                                           data-bs-toggle="modal" data-bs-target="#codeDetailModal"
+                                           data-code-id="{{ code.id }}">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        {% if code.status == 'active' %}
+                                            <a href="{% url 'desk_office:cancel_authorization_code' code.id %}" 
+                                               class="btn btn-warning" title="Cancel Code"
+                                               onclick="return confirm('Are you sure you want to cancel this authorization code?')">
+                                                <i class="fas fa-ban"></i>
+                                            </a>
+                                        {% endif %}
+                                        
+                                        <a href="#" class="btn btn-outline-secondary" title="Print Code"
+                                           onclick="printCode('{{ code.code }}', '{{ code.patient.get_full_name }}', '₦{{ code.amount|floatformat:2 }}')">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.patient_search %}&patient_search={{ request.GET.patient_search }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.patient_search %}&patient_search={{ request.GET.patient_search }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.patient_search %}&patient_search={{ request.GET.patient_search }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.patient_search %}&patient_search={{ request.GET.patient_search }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Last</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>No Authorization Codes Found</h5>
+                    <p class="mb-0">No authorization codes match your search criteria.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Generate Code Modal -->
+<div class="modal fade" id="generateCodeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Generate Authorization Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="generateCodeForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="patient_search_modal" class="form-label">Search Patient</label>
+                                <input type="text" class="form-control" id="patient_search_modal" 
+                                       placeholder="Type patient name or ID..."
+                                       hx-get="{% url 'core:patient_search_ajax' %}"
+                                       hx-target="#modalPatientResults"
+                                       hx-trigger="keyup changed delay:300ms"
+                                       hx-include="[name='patient_search_modal']"
+                                       hx-vals='{"patient_type": "nhia"}'
+                                       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                                <div id="modalPatientResults" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="amount" class="form-label">Amount (₦)</label>
+                                <input type="number" class="form-control" id="amount" name="amount" 
+                                       step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="expiry_days" class="form-label">Expiry Days</label>
+                                <select class="form-select" id="expiry_days" name="expiry_days">
+                                    <option value="7">7 days</option>
+                                    <option value="14">14 days</option>
+                                    <option value="30" selected>30 days</option>
+                                    <option value="60">60 days</option>
+                                    <option value="90">90 days</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="code_type" class="form-label">Code Type</label>
+                                <select class="form-select" id="code_type" name="code_type">
+                                    <option value="auto" selected>Auto-generate</option>
+                                    <option value="manual">Manual</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row" id="manual_code_row" style="display: none;">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="manual_code" class="form-label">Manual Code</label>
+                                <input type="text" class="form-control" id="manual_code" name="manual_code" 
+                                       placeholder="Enter manual code..." maxlength="20">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                          placeholder="Optional notes..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="generateCodeBtn">Generate Code</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Code Detail Modal -->
+<div class="modal fade" id="codeDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Authorization Code Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="codeDetailContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Handle code type toggle
+document.getElementById('code_type').addEventListener('change', function() {
+    const manualCodeRow = document.getElementById('manual_code_row');
+    const manualCodeInput = document.getElementById('manual_code');
+    
+    if (this.value === 'manual') {
+        manualCodeRow.style.display = 'block';
+        manualCodeInput.required = true;
+    } else {
+        manualCodeRow.style.display = 'none';
+        manualCodeInput.required = false;
+        manualCodeInput.value = '';
+    }
+});
+
+// Handle generate code button
+document.getElementById('generateCodeBtn').addEventListener('click', function() {
+    const form = document.getElementById('generateCodeForm');
+    const patientSelected = document.querySelector('#modalPatientResults input[type="radio"]:checked');
+    const amount = document.getElementById('amount').value;
+    
+    if (!patientSelected) {
+        alert('Please select a patient first.');
+        return;
+    }
+    
+    if (!amount || parseFloat(amount) <= 0) {
+        alert('Please enter a valid amount.');
+        document.getElementById('amount').focus();
+        return;
+    }
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('patient_id', patientSelected.value);
+    formData.append('amount', amount);
+    formData.append('expiry_days', document.getElementById('expiry_days').value);
+    formData.append('code_type', document.getElementById('code_type').value);
+    formData.append('notes', document.getElementById('notes').value);
+    
+    if (document.getElementById('code_type').value === 'manual') {
+        formData.append('manual_code', document.getElementById('manual_code').value);
+    }
+    
+    // Submit via fetch
+    fetch('{% url "desk_office:generate_authorization_code" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal and reload page
+            const modal = bootstrap.Modal.getInstance(document.getElementById('generateCodeModal'));
+            modal.hide();
+            
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alert.style.top = '20px';
+            alert.style.right = '20px';
+            alert.style.zIndex = '9999';
+            alert.innerHTML = `
+                Authorization code generated successfully: <strong>${data.code}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alert);
+            
+            // Reload page after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            alert(data.message || 'Error generating authorization code.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error generating authorization code. Please try again.');
+    });
+});
+
+// Load code details
+document.querySelectorAll('[data-bs-target="#codeDetailModal"]').forEach(trigger => {
+    trigger.addEventListener('click', function() {
+        const codeId = this.getAttribute('data-code-id');
+        
+        fetch(`/desk-office/authorization-code-detail/${codeId}/`)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('codeDetailContent').innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('codeDetailContent').innerHTML = 
+                    '<div class="alert alert-danger">Error loading code details.</div>';
+            });
+    });
+});
+
+// Print code function
+function printCode(code, patientName, amount) {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Authorization Code</title>
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                .header { font-size: 24px; font-weight: bold; margin-bottom: 30px; }
+                .code { font-size: 32px; font-weight: bold; color: #007bff; margin: 20px 0; }
+                .details { margin: 20px 0; }
+                .footer { margin-top: 50px; font-size: 12px; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class="header">NHIA Authorization Code</div>
+            <div class="code">${code}</div>
+            <div class="details">
+                <p><strong>Patient:</strong> ${patientName}</p>
+                <p><strong>Amount:</strong> ${amount}</p>
+                <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+            <div class="footer">This is an official NHIA authorization code. Please keep it safe.</div>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Export functionality
+document.getElementById('exportBtn').addEventListener('click', function() {
+    const currentUrl = window.location.href;
+    const exportUrl = currentUrl.includes('?') ? 
+        currentUrl + '&export=csv' : 
+        currentUrl + '?export=csv';
+    
+    window.open(exportUrl, '_blank');
+});
+
+// Reset modal when closed
+document.getElementById('generateCodeModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('generateCodeForm').reset();
+    document.getElementById('modalPatientResults').innerHTML = '';
+    document.getElementById('manual_code_row').style.display = 'none';
+});
+</script>
+{% endblock %}

@@ -27,8 +27,10 @@ urlpatterns = [
     path('referrals/', views.referral_tracking, name='referral_tracking'),
     path('referrals/<int:referral_id>/', views.referral_detail, name='referral_detail'),
     path('referrals/<int:referral_id>/update-status/', views.update_referral_status_detailed, name='update_referral_status_detailed'),
+    path('referrals/<int:referral_id>/reject/', views.reject_referral, name='reject_referral'),
     path('referrals/create/', views.create_referral, name='create_referral'),
     path('referrals/create/<int:patient_id>/', views.create_referral, name='create_referral'),
+    path('department/referrals/', views.department_referral_dashboard, name='department_referral_dashboard'),
 
     # Consulting Room management
     path('consulting-rooms/', views.consulting_room_list, name='consulting_room_list'),
@@ -64,4 +66,5 @@ urlpatterns = [
     path('consultation/<int:consultation_id>/payment/', payment_views.consultation_payment, name='consultation_payment'),
     path('consultation/<int:consultation_id>/payment-history/', payment_views.consultation_payment_history, name='consultation_payment_history'),
     path('ajax/wallet-balance/<int:patient_id>/', payment_views.get_wallet_balance, name='get_wallet_balance'),
+    path('bulk-update-referral-status/', views.bulk_update_referral_status, name='bulk_update_referral_status'),
 ]

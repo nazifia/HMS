@@ -17,4 +17,12 @@ urlpatterns = [
     path('authorize-consultation/<int:consultation_id>/', authorization_dashboard_views.authorize_consultation, name='authorize_consultation'),
     path('authorize-referral/<int:referral_id>/', authorization_dashboard_views.authorize_referral, name='authorize_referral'),
     path('authorization-codes/', authorization_dashboard_views.authorization_code_list, name='authorization_code_list'),
+    
+    # Additional views
+    path('cancel-authorization-code/<str:code_id>/', views.cancel_authorization_code, name='cancel_authorization_code'),
+    path('authorization-code-detail/<str:code_id>/', views.authorization_code_detail, name='authorization_code_detail'),
+    
+    # Bulk operations
+    path('bulk-authorize-consultations/', authorization_dashboard_views.bulk_authorize_consultations, name='bulk_authorize_consultations'),
+    path('bulk-authorize-referrals/', authorization_dashboard_views.bulk_authorize_referrals, name='bulk_authorize_referrals'),
 ]

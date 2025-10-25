@@ -13,6 +13,106 @@ from core.patient_search_utils import search_patients_by_query, format_patient_s
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem
 from billing.models import Invoice, InvoiceItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+import json
+
+
+@login_required
+@department_access_required('Dental')
+def dental_dashboard(request):
+    """Enhanced Dashboard for Dental department with charts and metrics"""
+    from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=DentalRecord,
+        record_queryset=DentalRecord.objects.all(),
+        priority_field=None,  # Dental records don't have priority field
+        status_field='treatment_status',
+        completed_status='completed'
+    )
+
+    # Add dental-specific statistics
+    today = timezone.now().date()
+
+    # Treatment status statistics
+    planned_treatments = DentalRecord.objects.filter(treatment_status='planned').count()
+    in_progress_treatments = DentalRecord.objects.filter(treatment_status='in_progress').count()
+    completed_treatments = DentalRecord.objects.filter(treatment_status='completed').count()
+    completed_today = DentalRecord.objects.filter(
+        treatment_status='completed',
+        updated_at__date=today
+    ).count()
+
+    # Appointments today
+    appointments_today = DentalRecord.objects.filter(
+        appointment_date__date=today
+    ).count()
+
+    # Follow-ups due this week
+    week_end = today + timedelta(days=7)
+    followups_due = DentalRecord.objects.filter(
+        next_appointment_date__date__gte=today,
+        next_appointment_date__date__lte=week_end
+    ).count()
+
+    # Common procedures (top 5)
+    procedure_data = DentalRecord.objects.filter(
+        service__isnull=False
+    ).values('service__name').annotate(count=Count('id')).order_by('-count')[:5]
+    procedure_labels = [item['service__name'] for item in procedure_data]
+    procedure_counts = [item['count'] for item in procedure_data]
+
+    # Emergency dental cases (records created today with urgent notes)
+    emergency_cases = DentalRecord.objects.filter(
+        created_at__date=today,
+        diagnosis__icontains='emergency'
+    ).count() + DentalRecord.objects.filter(
+        created_at__date=today,
+        diagnosis__icontains='pain'
+    ).count()
+
+    # Get recent records with patient info
+    recent_records = DentalRecord.objects.select_related('patient', 'service', 'dentist').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'planned_treatments': planned_treatments,
+        'in_progress_treatments': in_progress_treatments,
+        'completed_treatments': completed_treatments,
+        'completed_today': completed_today,
+        'appointments_today': appointments_today,
+        'followups_due': followups_due,
+        'emergency_cases': emergency_cases,
+        'procedure_labels': json.dumps(procedure_labels),
+        'procedure_counts': json.dumps(procedure_counts),
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'dental/dashboard.html', context)
+
 
 @login_required
 def dental_records(request):
@@ -71,12 +171,42 @@ def create_dental_record(request):
     if request.method == 'POST':
         form = DentalRecordForm(request.POST)
         if form.is_valid():
+            patient = form.cleaned_data.get('patient')
+
+            # **AUTHORIZATION CHECK**: Check if patient has pending referrals requiring authorization
+            if patient:
+                from consultations.models import Referral
+                # Get user's department
+                user_department = None
+                if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department:
+                    user_department = request.user.profile.department
+
+                if user_department:
+                    # Check for unauthorized referrals to this department
+                    unauthorized_referrals = Referral.objects.filter(
+                        patient=patient,
+                        referred_to_department=user_department,
+                        status='pending',
+                        requires_authorization=True,
+                        authorization_status__in=['required', 'pending']
+                    )
+
+                    if unauthorized_referrals.exists():
+                        referral = unauthorized_referrals.first()
+                        messages.error(
+                            request,
+                            f"Cannot create dental record for {patient.get_full_name()}. "
+                            f"This patient has a pending referral (ID: {referral.id}) that requires desk office authorization. "
+                            f"Please wait for authorization before proceeding with treatment."
+                        )
+                        return redirect('dental:create_dental_record')
+
             record = form.save()
             messages.success(request, 'Dental record created successfully.')
             return redirect('dental:dental_record_detail', record_id=record.id)
     else:
         form = DentalRecordForm()
-    
+
     context = {
         'form': form,
         'title': 'Create Dental Record'

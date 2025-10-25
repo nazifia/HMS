@@ -1,0 +1,565 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Authorize Referral - NHIA Authorization{% endblock %}
+
+{% block extra_css %}
+<style>
+.patient-card {
+    border-left: 4px solid #007bff;
+}
+.referral-details {
+    background-color: #f8f9fa;
+}
+.nhia-badge {
+    background-color: #17a2b8;
+}
+.auth-form {
+    background-color: #fff;
+}
+.required-field::after {
+    content: " *";
+    color: #dc3545;
+}
+.urgency-high {
+    border-left: 4px solid #dc3545;
+}
+.urgency-medium {
+    border-left: 4px solid #ffc107;
+}
+.urgency-low {
+    border-left: 4px solid #28a745;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-exchange-alt"></i> Authorize Referral
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'desk_office:pending_referrals' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Pending
+            </a>
+            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="alert-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Patient Information Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow patient-card">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-user"></i> Patient Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="text-primary">{{ referral.patient.get_full_name }}</h5>
+                            <p class="mb-1">
+                                <strong>Patient ID:</strong> {{ referral.patient.patient_id }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Age:</strong> {{ referral.patient.age }} years | 
+                                <strong>Gender:</strong> {{ referral.patient.get_gender_display }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Phone:</strong> {{ referral.patient.phone_number }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Email:</strong> {{ referral.patient.email|default:"Not provided" }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Address:</strong> {{ referral.patient.address|default:"Not provided" }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if referral.patient.patient_type == 'nhia' %}
+                                <span class="badge nhia-badge mb-2">
+                                    <i class="fas fa-shield-alt"></i> NHIA Patient
+                                </span>
+                                {% if referral.patient.nhia_info %}
+                                    <p class="mb-1">
+                                        <small class="text-muted">NHIA Number:</small><br>
+                                        <strong>{{ referral.patient.nhia_info.nhia_reg_number|default:"Not registered" }}</strong>
+                                    </p>
+                                    {% if referral.patient.nhia_info.nhia_plan %}
+                                    <p class="mb-0">
+                                        <small class="text-muted">NHIA Plan:</small><br>
+                                        <strong>{{ referral.patient.nhia_info.get_nhia_plan_display }}</strong>
+                                    </p>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary mb-2">
+                                    <i class="fas fa-user"></i> Regular Patient
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Referral Details Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow urgency-{{ referral.urgency_level|default:'medium' }}">
+                <div class="card-header py-3 bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-exchange-alt"></i> Referral Details
+                    </h6>
+                </div>
+                <div class="card-body referral-details">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1">
+                                <strong>Referral ID:</strong> #{{ referral.id }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Date:</strong> {{ referral.referral_date|date:"M d, Y" }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Time:</strong> {{ referral.referral_time|default:"Not specified" }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Status:</strong> 
+                                <span class="badge badge-warning">{{ referral.get_status_display }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1">
+                                <strong>Urgency:</strong> 
+                                <span class="badge 
+                                    {% if referral.urgency_level == 'high' %}bg-danger
+                                    {% elif referral.urgency_level == 'medium' %}bg-warning
+                                    {% else %}bg-success{% endif %}">
+                                    {{ referral.urgency_level|title|default:"Medium" }}
+                                </span>
+                            </p>
+                            <p class="mb-1">
+                                <strong>From:</strong><br>
+                                {{ referral.referring_doctor.profile.department.name|default:"Department Not Specified" }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>To:</strong><br>
+                                {{ referral.get_referral_destination }}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {% if referral.reason %}
+                    <div class="mt-3">
+                        <p class="mb-1"><strong>Referral Reason:</strong></p>
+                        <p class="mb-0">{{ referral.reason|truncatewords:30 }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if referral.clinical_findings %}
+                    <div class="mt-3">
+                        <p class="mb-1"><strong>Clinical Findings:</strong></p>
+                        <p class="mb-0">{{ referral.clinical_findings|truncatewords:30 }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if referral.external_facility %}
+                    <div class="mt-3">
+                        <p class="mb-1"><strong>External Facility:</strong></p>
+                        <p class="mb-0">{{ referral.external_facility }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authorization Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow auth-form">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-check-circle"></i> Authorization Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if referral.patient.patient_type != 'nhia' %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Note:</strong> This patient is not an NHIA patient. Regular patients do not require NHIA authorization for referrals.
+                    </div>
+                    {% endif %}
+
+                    <form method="post" id="authorizationForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="authorization_status" class="form-label required-field">
+                                        Authorization Decision
+                                    </label>
+                                    <select class="form-select" id="authorization_status" name="authorization_status" required>
+                                        <option value="">Select decision...</option>
+                                        <option value="authorized">Authorize Referral</option>
+                                        <option value="rejected">Reject Authorization</option>
+                                        <option value="requires_review">Requires Further Review</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="priority_level" class="form-label">
+                                        Priority Level
+                                    </label>
+                                    <select class="form-select" id="priority_level" name="priority_level">
+                                        <option value="routine">Routine</option>
+                                        <option value="urgent">Urgent</option>
+                                        <option value="emergency">Emergency</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if referral.patient.patient_type == 'nhia' %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="estimated_cost" class="form-label required-field">
+                                        Estimated Cost (₦)
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="estimated_cost" 
+                                           name="estimated_cost" 
+                                           value="{{ estimated_cost|default:'0.00' }}"
+                                           step="0.01" 
+                                           min="0" 
+                                           required>
+                                    <small class="form-text text-muted">
+                                        Estimated cost for referral procedures and tests
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="coverage_percentage" class="form-label">
+                                        NHIA Coverage (%)
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="coverage_percentage" 
+                                           name="coverage_percentage" 
+                                           value="{{ coverage_percentage|default:'80' }}"
+                                           step="1" 
+                                           min="0" 
+                                           max="100">
+                                    <small class="form-text text-muted">
+                                        Percentage covered by NHIA (usually 80%)
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="authorization_code_type" class="form-label">
+                                        Authorization Code
+                                    </label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="authorization_code_type" id="auto_generate" value="auto" checked>
+                                        <label class="form-check-label" for="auto_generate">
+                                            Auto-generate authorization code
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="authorization_code_type" id="existing_code" value="existing">
+                                        <label class="form-check-label" for="existing_code">
+                                            Use existing authorization code
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="authorization_code_type" id="no_code" value="none">
+                                        <label class="form-check-label" for="no_code">
+                                            No authorization code required
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row" id="existing_code_field" style="display: none;">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="existing_authorization_code" class="form-label">
+                                        Existing Authorization Code
+                                    </label>
+                                    <select class="form-select" id="existing_authorization_code" name="existing_authorization_code">
+                                        <option value="">Select an existing code...</option>
+                                        {% for code in existing_codes %}
+                                        <option value="{{ code.id }}">
+                                            {{ code.code }} - {{ code.amount|floatformat:2 }} ({{ code.get_status_display }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="referral_coverage_details" class="form-label">
+                                        Coverage Details
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="referral_coverage_details" 
+                                              name="referral_coverage_details" 
+                                              rows="2" 
+                                              placeholder="Specific procedures/tests covered by this authorization..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="authorization_notes" class="form-label required-field">
+                                        Authorization Notes
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="authorization_notes" 
+                                              name="authorization_notes" 
+                                              rows="4" 
+                                              placeholder="Enter notes about this referral authorization..."
+                                              required></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="notify_doctor" name="notify_doctor" checked>
+                                    <label class="form-check-label" for="notify_doctor">
+                                        Notify the referring doctor about this authorization
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="notify_destination" name="notify_destination" checked>
+                                    <label class="form-check-label" for="notify_destination">
+                                        Notify the destination department/facility about this authorization
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a href="{% url 'desk_office:pending_referrals' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Cancel
+                                </a>
+                                <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-info">
+                                    <i class="fas fa-eye"></i> View Referral
+                                </a>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Submit Authorization
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="col-lg-4">
+            <!-- Referring Doctor Info -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-secondary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-user-md"></i> Referring Doctor
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-primary">Dr. {{ referral.referring_doctor.get_full_name }}</h6>
+                    {% if referral.referring_doctor.profile and referral.referring_doctor.profile.department %}
+                        <p class="mb-1">
+                            <strong>Department:</strong> {{ referral.referring_doctor.profile.department.name }}
+                        </p>
+                    {% endif %}
+                    {% if referral.referring_doctor.profile and referral.referring_doctor.profile.specialization %}
+                        <p class="mb-1">
+                            <strong>Specialization:</strong> {{ referral.referring_doctor.profile.specialization }}
+                        </p>
+                    {% endif %}
+                    <p class="mb-1">
+                        <strong>Email:</strong> {{ referral.referring_doctor.email|default:"Not provided" }}
+                    </p>
+                    <p class="mb-0">
+                        <strong>Phone:</strong> {{ referral.referring_doctor.profile.phone_number|default:"Not provided" }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Recent Authorizations -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-history"></i> Recent Referral Authorizations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_authorizations %}
+                        {% for auth in recent_authorizations %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <small class="text-muted">{{ auth.created_at|date:"M d, Y H:i" }}</small><br>
+                            <strong>{{ auth.patient.get_full_name }}</strong><br>
+                            <small>{{ auth.get_referral_destination }}</small><br>
+                            <span class="badge badge-{{ auth.status|default:'success' }}">
+                                {{ auth.get_status_display|default:"Authorized" }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No recent referral authorizations found.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-warning text-dark">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'patients:detail' referral.patient.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-user"></i> View Patient Profile
+                        </a>
+                        <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-exchange-alt"></i> Full Referral Details
+                        </a>
+                        {% if referral.patient.patient_type == 'nhia' %}
+                        <a href="{% url 'desk_office:authorization_code_list' %}?patient_id={{ referral.patient.id }}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-shield-alt"></i> Patient's Authorization Codes
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle existing code field based on authorization code type
+document.querySelectorAll('input[name="authorization_code_type"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        const existingCodeField = document.getElementById('existing_code_field');
+        const existingCodeSelect = document.getElementById('existing_authorization_code');
+        
+        if (this.value === 'existing') {
+            existingCodeField.style.display = 'block';
+            existingCodeSelect.required = true;
+        } else {
+            existingCodeField.style.display = 'none';
+            existingCodeSelect.required = false;
+            existingCodeSelect.value = '';
+        }
+    });
+});
+
+// Form validation
+document.getElementById('authorizationForm').addEventListener('submit', function(e) {
+    const authorizationStatus = document.getElementById('authorization_status').value;
+    const authorizationNotes = document.getElementById('authorization_notes').value;
+    
+    if (!authorizationStatus) {
+        e.preventDefault();
+        alert('Please select an authorization decision.');
+        document.getElementById('authorization_status').focus();
+        return;
+    }
+    
+    if (!authorizationNotes.trim()) {
+        e.preventDefault();
+        alert('Please provide authorization notes.');
+        document.getElementById('authorization_notes').focus();
+        return;
+    }
+    
+    // Additional validation for NHIA patients
+    {% if referral.patient.patient_type == 'nhia' %}
+    const estimatedCost = document.getElementById('estimated_cost').value;
+    const codeType = document.querySelector('input[name="authorization_code_type"]:checked').value;
+    
+    if (codeType === 'existing' && !document.getElementById('existing_authorization_code').value) {
+        e.preventDefault();
+        alert('Please select an existing authorization code.');
+        document.getElementById('existing_authorization_code').focus();
+        return;
+    }
+    
+    if (parseFloat(estimatedCost) < 0) {
+        e.preventDefault();
+        alert('Estimated cost must be a positive number.');
+        document.getElementById('estimated_cost').focus();
+        return;
+    }
+    {% endif %}
+    
+    // Confirm rejection
+    if (authorizationStatus === 'rejected') {
+        if (!confirm('Are you sure you want to reject this referral authorization? This action cannot be undone.')) {
+            e.preventDefault();
+            return;
+        }
+    }
+});
+
+// Auto-calculate patient portion based on coverage
+document.getElementById('coverage_percentage').addEventListener('change', function() {
+    const estimatedCost = parseFloat(document.getElementById('estimated_cost').value) || 0;
+    const coveragePercentage = parseFloat(this.value) || 0;
+    const patientPortion = estimatedCost * (1 - coveragePercentage / 100);
+    
+    if (estimatedCost > 0) {
+        const info = document.createElement('small');
+        info.className = 'form-text text-info';
+        info.textContent = `Patient pays: ₦${patientPortion.toFixed(2)} | NHIA covers: ₦${(estimatedCost * coveragePercentage / 100).toFixed(2)}`;
+        
+        const existingInfo = document.querySelector('#coverage_percentage').nextElementSibling;
+        if (existingInfo && existingInfo.tagName === 'SMALL') {
+            existingInfo.remove();
+        }
+        document.getElementById('coverage_percentage').parentNode.appendChild(info);
+    }
+});
+</script>
+{% endblock %}

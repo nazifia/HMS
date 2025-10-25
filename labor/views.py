@@ -14,6 +14,75 @@ from core.medical_prescription_forms import MedicalModulePrescriptionForm, Presc
 from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
 from pharmacy.forms import PackOrderForm
 from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+from django.utils import timezone
+import json
+
+
+@login_required
+@department_access_required('Labor')
+def labor_dashboard(request):
+    """Enhanced Dashboard for Labor department with charts and delivery metrics"""
+    from django.db.models import Count, Avg, Q, F, ExpressionWrapper, DurationField
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=LaborRecord,
+        record_queryset=LaborRecord.objects.all(),
+        priority_field=None,
+        status_field='status',
+        completed_status='delivered'
+    )
+
+    # Labor-specific statistics
+    # Mode of delivery distribution
+    svd_count = LaborRecord.objects.filter(mode_of_delivery='SVD').count()
+    csection_count = LaborRecord.objects.filter(mode_of_delivery='C-Section').count()
+    assisted_count = LaborRecord.objects.filter(mode_of_delivery='Assisted').count()
+
+    # Delivery mode distribution for chart
+    delivery_labels = ['Spontaneous Vaginal Delivery', 'Cesarean Section', 'Assisted Delivery']
+    delivery_counts = [svd_count, csection_count, assisted_count]
+    delivery_colors = ['#28a745', '#ffc107', '#17a2b8']
+
+    # Get recent records with patient info
+    recent_records = LaborRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'svd_count': svd_count,
+        'csection_count': csection_count,
+        'assisted_count': assisted_count,
+        'delivery_labels': json.dumps(delivery_labels),
+        'delivery_counts': json.dumps(delivery_counts),
+        'delivery_colors': json.dumps(delivery_colors),
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'labor/dashboard.html', context)
+
 
 @login_required
 def labor_records_list(request):

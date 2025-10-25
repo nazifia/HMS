@@ -99,7 +99,7 @@
         </div>
     </div>
 
-    <!-- Statistics Row 1 -->
+    <!-- Enhanced Statistics Row -->
     <div class="row">
         <!-- Today's Orders Card -->
         <div class="col-xl-3 col-md-6 mb-4">
@@ -109,7 +109,18 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Today's Orders</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ today_orders }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ today_orders }}
+                                {% if performance.trend_direction == 'up' %}
+                                    <small class="text-success ml-2">
+                                        <i class="fas fa-arrow-up"></i> {{ performance.trend_percentage }}%
+                                    </small>
+                                {% elif performance.trend_direction == 'down' %}
+                                    <small class="text-danger ml-2">
+                                        <i class="fas fa-arrow-down"></i> {{ performance.trend_percentage }}%
+                                    </small>
+                                {% endif %}
+                            </div>
                             <div class="text-xs text-muted">{{ today_completed }} completed</div>
                         </div>
                         <div class="col-auto">
@@ -120,38 +131,38 @@
             </div>
         </div>
 
-        <!-- This Week's Orders Card -->
+        <!-- Urgent Orders Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
+            <div class="card border-left-danger shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                This Week</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ week_orders }}</div>
-                            <div class="text-xs text-muted">{{ week_completed }} completed</div>
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Urgent Orders</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ urgent_orders }}</div>
+                            <div class="text-xs text-muted">Requires immediate attention</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Month's Orders Card -->
+        <!-- Avg Reporting Time Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
+            <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                This Month</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ month_orders }}</div>
-                            <div class="text-xs text-muted">₦{{ month_revenue|floatformat:2 }} revenue</div>
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Avg Reporting Time</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_reporting_time }} hrs</div>
+                            <div class="text-xs text-muted">Last 30 days</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -167,12 +178,53 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Pending Orders</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_count }}</div>
-                            <div class="text-xs text-muted">{{ scheduled_count }} scheduled</div>
+                            <div class="text-xs text-muted">{{ results_needing_verification }} need verification</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                            <i class="fas fa-hourglass-half fa-2x text-gray-300"></i>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Daily Trend Chart -->
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Daily Imaging Volume (Last 7 Days)</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyTrendChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Distribution Chart -->
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Status Distribution</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modality Distribution Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top 5 Imaging Modalities</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="modalityChart" height="60"></canvas>
                 </div>
             </div>
         </div>
@@ -254,9 +306,134 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <script>
     $(document).ready(function() {
         $('#dataTable').DataTable();
+    });
+
+    // Daily Trend Chart (Line Chart)
+    const dailyTrendCtx = document.getElementById('dailyTrendChart').getContext('2d');
+    new Chart(dailyTrendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ daily_trend.labels|safe }},
+            datasets: [{
+                label: 'Imaging Orders',
+                data: {{ daily_trend.data|safe }},
+                borderColor: '#4e73df',
+                backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#4e73df',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return 'Orders: ' + context.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+
+    // Status Distribution Chart (Doughnut Chart)
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ status_distribution.labels|safe }},
+            datasets: [{
+                data: {{ status_distribution.data|safe }},
+                backgroundColor: {{ status_distribution.colors|safe }},
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            let value = context.parsed || 0;
+                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': ' + value + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Modality Distribution Chart (Bar Chart)
+    const modalityCtx = document.getElementById('modalityChart').getContext('2d');
+    new Chart(modalityCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ modality_labels|safe }},
+            datasets: [{
+                label: 'Number of Orders',
+                data: {{ modality_counts|safe }},
+                backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                borderColor: '#4e73df',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Orders: ' + context.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
     });
 </script>
 {% endblock %}

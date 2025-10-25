@@ -15,6 +15,7 @@ from billing.models import Invoice, InvoiceItem, Service, ServiceCategory # Adde
 from datetime import timedelta # For due date calculation
 import datetime # Import the datetime module itself
 from decimal import Decimal
+import json
 
 from .models import (
     TestCategory, Test, TestParameter, TestRequest,
@@ -28,8 +29,123 @@ from .forms import (
 from patients.models import Patient
 from accounts.models import CustomUser
 from pharmacy.models import Prescription, PrescriptionItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    get_urgent_items,
+    calculate_completion_rate,
+    get_active_staff
+)
 import os
 from core.models import send_notification_email, InternalNotification
+
+
+@login_required
+@department_access_required('Laboratory')
+def laboratory_dashboard(request):
+    """Enhanced Dashboard for Laboratory department with charts and metrics"""
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Get time periods
+    today = timezone.now().date()
+    week_start = today - timedelta(days=today.weekday())
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=TestRequest,
+        record_queryset=TestRequest.objects.all(),
+        priority_field='priority',
+        status_field='status',
+        completed_status='completed'
+    )
+
+    # Add laboratory-specific statistics
+    pending_tests = TestRequest.objects.filter(status='pending').count()
+    in_progress_tests = TestRequest.objects.filter(status='processing').count()
+    awaiting_payment = TestRequest.objects.filter(status='awaiting_payment').count()
+    completed_today = TestRequest.objects.filter(
+        status='completed',
+        updated_at__date=today
+    ).count()
+
+    # Get urgent/emergency tests (STAT tests)
+    urgent_tests = TestRequest.objects.filter(
+        status__in=['pending', 'processing', 'awaiting_payment'],
+        priority__in=['urgent', 'emergency']
+    ).select_related('patient', 'doctor').prefetch_related('tests').order_by('-priority', 'request_date')[:10]
+
+    # Get emergency tests count
+    emergency_tests = TestRequest.objects.filter(
+        status__in=['pending', 'processing'],
+        priority='emergency'
+    ).count()
+
+    # Calculate average turnaround time (for completed tests in last 30 days)
+    from django.db.models import Avg, F, ExpressionWrapper, DurationField
+    avg_turnaround = TestRequest.objects.filter(
+        status='completed',
+        created_at__gte=timezone.now() - timedelta(days=30)
+    ).annotate(
+        turnaround=ExpressionWrapper(
+            F('updated_at') - F('created_at'),
+            output_field=DurationField()
+        )
+    ).aggregate(avg=Avg('turnaround'))['avg']
+
+    # Format turnaround time
+    if avg_turnaround:
+        hours = avg_turnaround.total_seconds() / 3600
+        avg_turnaround_hours = round(hours, 1)
+    else:
+        avg_turnaround_hours = 0
+
+    # Get tests requiring verification
+    tests_needing_verification = TestResult.objects.filter(
+        verified_by__isnull=True
+    ).select_related('test_request__patient').count()
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Get priority distribution for chart
+    priority_data = TestRequest.objects.values('priority').annotate(count=Count('id')).order_by('priority')
+    priority_labels = [item['priority'].title() for item in priority_data]
+    priority_counts = [item['count'] for item in priority_data]
+    priority_colors = {
+        'normal': '#28a745',
+        'urgent': '#ffc107',
+        'emergency': '#dc3545'
+    }
+    priority_chart_colors = [priority_colors.get(item['priority'], '#6c757d') for item in priority_data]
+
+    # Add to context
+    context.update({
+        'pending_tests': pending_tests,
+        'in_progress_tests': in_progress_tests,
+        'awaiting_payment': awaiting_payment,
+        'completed_today': completed_today,
+        'urgent_tests': urgent_tests,
+        'emergency_tests': emergency_tests,
+        'avg_turnaround_hours': avg_turnaround_hours,
+        'tests_needing_verification': tests_needing_verification,
+        'categorized_referrals': categorized_referrals,
+        'priority_labels': json.dumps(priority_labels),
+        'priority_counts': json.dumps(priority_counts),
+        'priority_colors': json.dumps(priority_chart_colors),
+    })
+
+    return render(request, 'laboratory/dashboard.html', context)
+
 
 @login_required
 def result_list(request):

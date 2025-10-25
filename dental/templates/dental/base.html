@@ -9,21 +9,33 @@
             <div class="position-sticky pt-3">
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_records' %}active{% endif %}" 
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                           href="{% url 'dental:dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_records' %}active{% endif %}"
                            href="{% url 'dental:dental_records' %}">
                             <i class="fas fa-tooth me-2"></i>Dental Records
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'create_dental_record' %}active{% endif %}" 
+                        <a class="nav-link {% if request.resolver_match.url_name == 'create_dental_record' %}active{% endif %}"
                            href="{% url 'dental:create_dental_record' %}">
                             <i class="fas fa-plus-circle me-2"></i>Create Record
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_services' %}active{% endif %}" 
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_services' %}active{% endif %}"
                            href="{% url 'dental:dental_services' %}">
                             <i class="fas fa-cogs me-2"></i>Services
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'department_referral_dashboard' %}active{% endif %}"
+                           href="{% url 'consultations:department_referral_dashboard' %}">
+                            <i class="fas fa-exchange-alt me-2"></i>Referrals
                         </a>
                     </li>
                 </ul>

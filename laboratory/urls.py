@@ -5,6 +5,9 @@ from . import payment_views
 app_name = 'laboratory'
 
 urlpatterns = [
+    # Dashboard
+    path('', views.laboratory_dashboard, name='dashboard'),
+
     # Test Management
     path('tests/', views.test_list, name='tests'),
     path('tests/add/', views.add_test, name='add_test'),

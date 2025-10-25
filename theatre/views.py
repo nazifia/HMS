@@ -15,6 +15,12 @@ from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrd
 from pharmacy.forms import PackOrderForm
 from pharmacy.views import _add_pack_to_patient_billing
 from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
+from core.department_dashboard_utils import (
+    get_user_department,
+    get_pending_referrals,
+    get_department_referral_statistics,
+    categorize_referrals
+)
 
 from .models import (
     OperationTheatre,
@@ -566,40 +572,161 @@ class SurgicalTeamDeleteView(LoginRequiredMixin, DeleteView):
 
 
 class TheatreDashboardView(LoginRequiredMixin, TemplateView):
+    """Enhanced Dashboard for Theatre department with charts and surgical metrics"""
     template_name = 'theatre/dashboard.html'
-    
+
     def get_context_data(self, **kwargs):
+        from django.db.models import Avg, F, ExpressionWrapper, DurationField
+        from datetime import timedelta
+        from core.department_dashboard_utils import (
+            build_enhanced_dashboard_context,
+            get_daily_trend_data,
+            get_status_distribution,
+            calculate_completion_rate,
+            get_active_staff
+        )
+        import json
+
         context = super().get_context_data(**kwargs)
         today = timezone.now().date()
-        
+
+        # Get user department
+        user_department = get_user_department(self.request.user)
+
+        # Build enhanced context with charts and trends
+        if user_department:
+            enhanced_context = build_enhanced_dashboard_context(
+                department=user_department,
+                record_model=Surgery,
+                record_queryset=Surgery.objects.all(),
+                priority_field=None,
+                status_field='status',
+                completed_status='completed'
+            )
+            context.update(enhanced_context)
+
+        # Theatre-specific statistics
         # Get today's surgeries
         context['todays_surgeries'] = Surgery.objects.filter(
             scheduled_date__date=today
         ).order_by('scheduled_date')
-        
+
+        # Surgeries today count
+        surgeries_today = Surgery.objects.filter(
+            scheduled_date__date=today
+        ).count()
+
         # Get upcoming surgeries (next 7 days)
+        week_end = today + timedelta(days=7)
         context['upcoming_surgeries'] = Surgery.objects.filter(
             scheduled_date__date__gt=today,
-            scheduled_date__date__lte=today + timezone.timedelta(days=7)
+            scheduled_date__date__lte=week_end
         ).order_by('scheduled_date')
-        
+
+        # Upcoming surgeries count
+        upcoming_count = Surgery.objects.filter(
+            scheduled_date__date__gt=today,
+            scheduled_date__date__lte=week_end
+        ).count()
+
         # Get theatre availability
         context['available_theatres'] = OperationTheatre.objects.filter(is_available=True).count()
         context['total_theatres'] = OperationTheatre.objects.count()
-        
+
+        # Theatre occupancy rate
+        if context['total_theatres'] > 0:
+            occupancy_rate = ((context['total_theatres'] - context['available_theatres']) / context['total_theatres']) * 100
+            context['occupancy_rate'] = round(occupancy_rate, 1)
+        else:
+            context['occupancy_rate'] = 0
+
         # Get surgery statistics
         context['total_surgeries'] = Surgery.objects.count()
         context['completed_surgeries'] = Surgery.objects.filter(status='completed').count()
         context['scheduled_surgeries'] = Surgery.objects.filter(status='scheduled').count()
         context['cancelled_surgeries'] = Surgery.objects.filter(status='cancelled').count()
-        
+        context['in_progress_surgeries'] = Surgery.objects.filter(status='in_progress').count()
+
+        # Surgery type distribution (top 5)
+        surgery_type_data = Surgery.objects.values('surgery_type__name').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5]
+        surgery_type_labels = [item['surgery_type__name'] for item in surgery_type_data]
+        surgery_type_counts = [item['count'] for item in surgery_type_data]
+
+        # Surgery status distribution for chart
+        status_labels = ['Completed', 'Scheduled', 'In Progress', 'Cancelled']
+        status_counts = [
+            context['completed_surgeries'],
+            context['scheduled_surgeries'],
+            context['in_progress_surgeries'],
+            context['cancelled_surgeries']
+        ]
+        status_colors = ['#28a745', '#17a2b8', '#ffc107', '#dc3545']
+
+        # Average surgery duration (for completed surgeries in last 30 days)
+        # Using SurgerySchedule model which has start_time and end_time
+        month_start = today - timedelta(days=30)
+        from theatre.models import SurgerySchedule
+
+        avg_duration = SurgerySchedule.objects.filter(
+            surgery__status='completed',
+            surgery__scheduled_date__date__gte=month_start,
+            start_time__isnull=False,
+            end_time__isnull=False
+        ).annotate(
+            duration=ExpressionWrapper(
+                F('end_time') - F('start_time'),
+                output_field=DurationField()
+            )
+        ).aggregate(avg=Avg('duration'))['avg']
+
+        # Format duration
+        if avg_duration:
+            hours = avg_duration.total_seconds() / 3600
+            context['avg_surgery_duration'] = round(hours, 1)
+        else:
+            context['avg_surgery_duration'] = 0
+
         # Get equipment statistics
         context['total_equipment'] = SurgicalEquipment.objects.count()
         context['available_equipment'] = SurgicalEquipment.objects.filter(is_available=True).count()
         context['maintenance_due'] = SurgicalEquipment.objects.filter(
             next_maintenance_date__lte=today
         ).count()
-        
+
+        # High-risk surgeries this week (using surgery_type risk level)
+        week_start = today - timedelta(days=today.weekday())
+        emergency_surgeries = Surgery.objects.filter(
+            scheduled_date__date__gte=week_start,
+            surgery_type__risk_level='high'
+        ).count()
+
+        # Add referral integration
+        if user_department:
+            context['pending_referrals'] = get_pending_referrals(user_department, limit=5)
+            referral_stats = get_department_referral_statistics(user_department)
+            context['pending_referrals_count'] = referral_stats['pending_referrals']
+            context['pending_authorizations'] = referral_stats['requiring_authorization']
+            context['categorized_referrals'] = categorize_referrals(user_department)
+            context['user_department'] = user_department
+        else:
+            context['pending_referrals'] = []
+            context['pending_referrals_count'] = 0
+            context['pending_authorizations'] = 0
+
+        # Add enhanced metrics to context
+        context.update({
+            'surgeries_today': surgeries_today,
+            'upcoming_count': upcoming_count,
+            'surgery_type_labels': json.dumps(surgery_type_labels),
+            'surgery_type_counts': json.dumps(surgery_type_counts),
+            'status_labels': json.dumps(status_labels),
+            'status_counts': json.dumps(status_counts),
+            'status_colors': json.dumps(status_colors),
+            'emergency_surgeries': emergency_surgeries,
+        })
+
         return context
 
 

@@ -301,13 +301,31 @@ class Referral(models.Model):
 
     def is_nhia_patient(self):
         """Check if the patient is an NHIA patient"""
-        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None
+        # Check if patient has NHIA info record
+        if hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None:
+            return True
+        # Fallback: check patient_type field
+        return self.patient.patient_type == 'nhia'
 
     def is_from_nhia_unit(self):
-        """Check if the referral is from an NHIA consultation"""
-        if not self.consultation or not self.consultation.consulting_room:
-            return False
-        return self.consultation.is_nhia_consulting_room()
+        """
+        Check if the referral is from an NHIA unit.
+        This includes:
+        1. Referrals from NHIA consulting rooms (via consultation)
+        2. Referrals from doctors in the NHIA department (direct referrals)
+        """
+        # Check if referral is from an NHIA consultation room
+        if self.consultation and self.consultation.consulting_room:
+            if self.consultation.is_nhia_consulting_room():
+                return True
+
+        # Check if referring doctor is from NHIA department
+        if self.referring_doctor:
+            if hasattr(self.referring_doctor, 'profile') and self.referring_doctor.profile:
+                if self.referring_doctor.profile.department:
+                    return self.referring_doctor.profile.department.name.upper() == 'NHIA'
+
+        return False
 
     def is_to_nhia_unit(self):
         """Check if the referral is to NHIA department"""
@@ -329,6 +347,43 @@ class Referral(models.Model):
             self.requires_authorization = False
             self.authorization_status = 'not_required'
             return False
+
+    def can_be_acted_upon(self):
+        """
+        Check if this referral can be accepted or have medical activities performed.
+        Returns True if authorization is not required OR if it's authorized.
+        Returns False if authorization is required but not yet granted.
+        """
+        if not self.requires_authorization:
+            return True
+        return self.authorization_status in ['authorized', 'not_required']
+
+    def get_authorization_block_message(self):
+        """
+        Get a user-friendly message explaining why the referral is blocked.
+        Returns None if the referral is not blocked.
+        """
+        if self.can_be_acted_upon():
+            return None
+
+        if self.authorization_status == 'required':
+            return (
+                f"This referral requires desk office authorization. "
+                f"The patient is an NHIA patient referred from {self.referring_doctor.profile.department.name if self.referring_doctor.profile and self.referring_doctor.profile.department else 'NHIA'} "
+                f"to {self.referred_to_department.name}. Please contact the desk office to obtain authorization before proceeding."
+            )
+        elif self.authorization_status == 'pending':
+            return (
+                f"This referral is pending desk office authorization. "
+                f"Please wait for the desk office to review and authorize this referral before proceeding."
+            )
+        elif self.authorization_status == 'rejected':
+            return (
+                f"This referral's authorization was rejected by the desk office. "
+                f"Please contact the desk office for more information."
+            )
+
+        return "This referral cannot be acted upon at this time."
 
     def save(self, *args, **kwargs):
         # Auto-check authorization requirement on save

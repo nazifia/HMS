@@ -147,6 +147,12 @@ class RadiologyOrder(models.Model):
 
         return True, 'Radiology order can be processed'
 
+    def save(self, *args, **kwargs):
+        """Override save to auto-check authorization requirement"""
+        # Auto-check authorization requirement on save
+        self.check_authorization_requirement()
+        super().save(*args, **kwargs)
+
     class Meta:
         ordering = ['-order_date']
 

@@ -1,0 +1,315 @@
+{% comment %}
+Enhanced Department Dashboard Base Template
+Provides reusable components for department dashboards with charts and enhanced features
+{% endcomment %}
+
+{% load static %}
+
+{# Chart.js CDN - Include in head section #}
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .trend-indicator {
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 20px;
+    }
+    
+    .urgent-badge {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .quick-action-btn {
+        transition: all 0.3s;
+    }
+    
+    .quick-action-btn:hover {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Chart.js default configuration
+Chart.defaults.font.family = "'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+Chart.defaults.color = '#858796';
+
+// Utility function to create line chart
+function createLineChart(canvasId, labels, data, label) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label,
+                data: data,
+                borderColor: '#4e73df',
+                backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#4e73df',
+                pointBorderColor: '#fff',
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#4e73df',
+                pointHoverBorderColor: '#fff',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14
+                    },
+                    bodyFont: {
+                        size: 13
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Utility function to create doughnut chart
+function createDoughnutChart(canvasId, labels, data, colors) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverBorderWidth: 3,
+                hoverBorderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            label += ' (' + percentage + '%)';
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Utility function to create bar chart
+function createBarChart(canvasId, labels, data, label) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label,
+                data: data,
+                backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                borderColor: '#4e73df',
+                borderWidth: 1,
+                hoverBackgroundColor: 'rgba(78, 115, 223, 1)',
+                hoverBorderColor: '#4e73df'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
+
+{# Enhanced Statistics Card Component #}
+{% comment %}
+Usage:
+{% include 'includes/enhanced_department_dashboard_base.html' with stat_card=True title="Total Records" value=100 icon="fa-file-medical" color="primary" trend=trend_data %}
+{% endcomment %}
+
+{% if stat_card %}
+<div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-{{ color }} shadow h-100 py-2 stat-card">
+        <div class="card-body">
+            <div class="row no-gutters align-items-center">
+                <div class="col mr-2">
+                    <div class="text-xs font-weight-bold text-{{ color }} text-uppercase mb-1">
+                        {{ title }}
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ value }}</div>
+                    {% if trend %}
+                    <div class="trend-indicator text-{{ trend.color }} mt-2">
+                        <i class="fas {{ trend.icon }}"></i>
+                        {{ trend.percentage }}%
+                        <span class="text-muted small">vs yesterday</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-auto">
+                    <i class="fas {{ icon }} fa-2x text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# Urgent Items Section Component #}
+{% if urgent_section %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-danger">
+            <i class="fas fa-exclamation-triangle urgent-badge"></i> Urgent Items
+        </h6>
+        <span class="badge bg-danger">{{ urgent_items|length }}</span>
+    </div>
+    <div class="card-body">
+        {% if urgent_items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Priority</th>
+                        <th>Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in urgent_items %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.patient.get_full_name }}</strong><br>
+                            <small class="text-muted">{{ item.patient.patient_id }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger">{{ item.priority|upper }}</span>
+                        </td>
+                        <td>
+                            <small>{{ item.created_at|timesince }} ago</small>
+                        </td>
+                        <td>
+                            <a href="{{ item.get_absolute_url }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center mb-0">
+            <i class="fas fa-check-circle text-success"></i> No urgent items at this time
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+

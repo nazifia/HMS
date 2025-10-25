@@ -11,6 +11,83 @@ from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+from django.utils import timezone
+import json
+
+
+@login_required
+@department_access_required('SCBU')
+def scbu_dashboard(request):
+    """Enhanced Dashboard for SCBU department with charts and neonatal care metrics"""
+    from django.db.models import Count, Avg, Q, F, ExpressionWrapper, DurationField
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=ScbuRecord,
+        record_queryset=ScbuRecord.objects.all(),
+        priority_field=None,
+        status_field='status',
+        completed_status='discharged'
+    )
+
+    # SCBU-specific statistics
+    today = timezone.now().date()
+
+    # Total admissions
+    total_admissions = ScbuRecord.objects.count()
+
+    # Admissions this week
+    week_start = today - timedelta(days=today.weekday())
+    admissions_this_week = ScbuRecord.objects.filter(
+        visit_date__gte=week_start
+    ).count()
+
+    # Average birth weight
+    avg_birth_weight = ScbuRecord.objects.aggregate(avg=Avg('birth_weight'))['avg']
+    avg_birth_weight = round(avg_birth_weight, 2) if avg_birth_weight else 0
+
+    # Premature babies (gestational age < 37 weeks)
+    premature_babies = ScbuRecord.objects.filter(
+        gestational_age__lt=37
+    ).count()
+
+    # Get recent records with patient info
+    recent_records = ScbuRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'total_admissions': total_admissions,
+        'admissions_this_week': admissions_this_week,
+        'avg_birth_weight': avg_birth_weight,
+        'premature_babies': premature_babies,
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'scbu/dashboard.html', context)
+
 
 @login_required
 def scbu_records_list(request):

@@ -11,6 +11,113 @@ from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+from django.utils import timezone
+import json
+
+
+@login_required
+@department_access_required('Ophthalmic')
+def ophthalmic_dashboard(request):
+    """Enhanced Dashboard for Ophthalmic department with charts and eye care metrics"""
+    from django.db.models import Count, Avg, Q
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=OphthalmicRecord,
+        record_queryset=OphthalmicRecord.objects.all(),
+        priority_field=None,
+        status_field='status',
+        completed_status='completed'
+    )
+
+    # Ophthalmic-specific statistics
+    today = timezone.now().date()
+    week_end = today + timedelta(days=7)
+
+    # Visits today
+    visits_today = OphthalmicRecord.objects.filter(
+        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    ).count()
+
+    # Follow-ups due this week
+    followups_due = OphthalmicRecord.objects.filter(
+        follow_up_required=True,
+        follow_up_date__gte=today,
+        follow_up_date__lte=week_end
+    ).count()
+
+    # Common diagnoses (top 5)
+    diagnosis_data = OphthalmicRecord.objects.filter(
+        diagnosis__isnull=False
+    ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
+    diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]  # Truncate long diagnoses
+    diagnosis_counts = [item['count'] for item in diagnosis_data]
+
+    # Visual acuity statistics (patients with poor vision)
+    poor_vision_right = OphthalmicRecord.objects.filter(
+        Q(visual_acuity_right__icontains='6/60') |
+        Q(visual_acuity_right__icontains='CF') |
+        Q(visual_acuity_right__icontains='HM')
+    ).count()
+
+    poor_vision_left = OphthalmicRecord.objects.filter(
+        Q(visual_acuity_left__icontains='6/60') |
+        Q(visual_acuity_left__icontains='CF') |
+        Q(visual_acuity_left__icontains='HM')
+    ).count()
+
+    # Patients requiring surgery
+    surgery_required = OphthalmicRecord.objects.filter(
+        treatment_plan__icontains='surgery'
+    ).count()
+
+    # Patients with glaucoma (high IOP)
+    high_iop_patients = OphthalmicRecord.objects.filter(
+        Q(intraocular_pressure_right__gte=21) |
+        Q(intraocular_pressure_left__gte=21)
+    ).count()
+
+    # Get recent records with patient info
+    recent_records = OphthalmicRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'visits_today': visits_today,
+        'followups_due': followups_due,
+        'diagnosis_labels': json.dumps(diagnosis_labels),
+        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'poor_vision_right': poor_vision_right,
+        'poor_vision_left': poor_vision_left,
+        'surgery_required': surgery_required,
+        'high_iop_patients': high_iop_patients,
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'ophthalmic/dashboard.html', context)
+
 
 @login_required
 def ophthalmic_records_list(request):

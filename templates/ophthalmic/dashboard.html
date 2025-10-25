@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ophthalmic Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-eye me-2"></i>
+            Ophthalmic Department Dashboard
+        </h1>
+        <div>
+            <a href="{% url 'ophthalmic:create_ophthalmic_record' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Ophthalmic Record
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards Row -->
+    <div class="row">
+        <!-- Total Records Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Records
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-calendar-day"></i> Today: {{ records_today|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-notes-medical fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- This Week Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                This Week
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_week|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-calendar-week"></i> Since {{ week_start|date:"M d" }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- This Month Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                This Month
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_month|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-calendar-alt"></i> Since {{ month_start|date:"M d" }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Referrals Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Referrals
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals_count|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-lock text-danger"></i> Need Auth: {{ pending_authorizations|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Daily Trend Chart -->
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Daily Volume (Last 7 Days)</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyTrendChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Distribution Chart -->
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Status Distribution</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div class="row">
+        <!-- Pending Referrals Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-exchange-alt"></i> Pending Referrals
+                    </h6>
+                    <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-sm btn-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if pending_referrals %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>From</th>
+                                        <th>Auth Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for referral in pending_referrals|slice:":5" %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ referral.patient.get_full_name }}</strong><br>
+                                            <small class="text-muted">{{ referral.patient.patient_id }}</small>
+                                        </td>
+                                        <td>
+                                            <small>Dr. {{ referral.referring_doctor.get_full_name }}</small>
+                                        </td>
+                                        <td>
+                                            {% if referral.authorization_status == 'authorized' %}
+                                                <span class="badge bg-success">Authorized</span>
+                                            {% elif referral.authorization_status == 'not_required' %}
+                                                <span class="badge bg-secondary">Not Required</span>
+                                            {% elif referral.authorization_status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif referral.authorization_status == 'required' %}
+                                                <span class="badge bg-danger">Required</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p class="mb-0">No pending referrals</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="{% url 'ophthalmic:create_ophthalmic_record' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-plus text-primary"></i> New Ophthalmic Record
+                        </a>
+                        <a href="{% url 'ophthalmic:ophthalmic_records_list' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-list text-info"></i> View All Records
+                        </a>
+                        <a href="{% url 'consultations:department_referral_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-exchange-alt text-warning"></i> View Referrals
+                        </a>
+                        {% if pending_authorizations > 0 %}
+                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-shield-alt text-danger"></i> Authorization Dashboard
+                            <span class="badge bg-danger float-end">{{ pending_authorizations }}</span>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Records -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Ophthalmic Records
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_records %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Doctor</th>
+                                        <th>Visit Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in recent_records|slice:":10" %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ record.patient.get_full_name }}</strong><br>
+                                            <small class="text-muted">{{ record.patient.patient_id }}</small>
+                                        </td>
+                                        <td>{{ record.doctor.name|default:"N/A" }}</td>
+                                        <td>{{ record.visit_date|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'ophthalmic:ophthalmic_record_detail' record.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p class="mb-0">No recent records</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    // Daily Trend Chart
+    const dailyTrendCtx = document.getElementById('dailyTrendChart').getContext('2d');
+    new Chart(dailyTrendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ daily_trend.labels|safe }},
+            datasets: [{
+                label: 'Records',
+                data: {{ daily_trend.data|safe }},
+                borderColor: '#4e73df',
+                backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                borderWidth: 2,
+                pointRadius: 4,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+            }
+        }
+    });
+
+    // Status Distribution Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ status_distribution.labels|safe }},
+            datasets: [{
+                data: {{ status_distribution.data|safe }},
+                backgroundColor: {{ status_distribution.colors|safe }},
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            let value = context.parsed || 0;
+                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': ' + value + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

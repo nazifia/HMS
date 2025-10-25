@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pending Consultations - NHIA Authorization{% endblock %}
+
+{% block extra_css %}
+<style>
+.consultation-item {
+    transition: all 0.2s ease-in-out;
+    border-left: 4px solid #ffc107;
+}
+.consultation-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-left-color: #28a745;
+}
+.patient-info {
+    font-size: 0.9rem;
+}
+.badge-nhia {
+    background-color: #17a2b8;
+}
+.stats-card {
+    transition: transform 0.2s ease-in-out;
+}
+.stats-card:hover {
+    transform: translateY(-2px);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-user-md"></i> Pending Consultation Authorizations
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="{% url 'desk_office:pending_referrals' %}" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-exchange-alt"></i> Pending Referrals
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Pending
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pending }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                NHIA Patients
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ nhia_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-shield-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Regular Patients
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ regular_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Authorized Today
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ authorized_today }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-filter"></i> Filters & Search
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="patient_type" class="form-label">Patient Type</label>
+                    <select name="patient_type" id="patient_type" class="form-select">
+                        <option value="">All Patients</option>
+                        <option value="nhia" {% if request.GET.patient_type == 'nhia' %}selected{% endif %}>NHIA Only</option>
+                        <option value="regular" {% if request.GET.patient_type == 'regular' %}selected{% endif %}>Regular Only</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="consulting_room" class="form-label">Consulting Room</label>
+                    <select name="consulting_room" id="consulting_room" class="form-select">
+                        <option value="">All Rooms</option>
+                        {% for room in consulting_rooms %}
+                        <option value="{{ room.id }}" {% if request.GET.consulting_room == room.id|stringformat:"s" %}selected{% endif %}>
+                            {{ room.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search Patient</label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           placeholder="Patient name or ID..." 
+                           value="{{ request.GET.search|default:'' }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'desk_office:pending_consultations' %}" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pending Consultations List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Pending Consultations 
+                <span class="badge bg-warning">{{ page_obj.paginator.count }}</span>
+            </h6>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-success" id="bulkAuthorizeBtn">
+                    <i class="fas fa-check-double"></i> Bulk Authorize
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <form id="bulkAuthorizeForm" method="post" action="{% url 'desk_office:bulk_authorize_consultations' %}">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="30">
+                                        <input type="checkbox" id="selectAll" class="form-check-input">
+                                    </th>
+                                    <th>Patient</th>
+                                    <th>Consultation Details</th>
+                                    <th>Doctor</th>
+                                    <th>Patient Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consultation in page_obj %}
+                                <tr class="consultation-item">
+                                    <td>
+                                        <input type="checkbox" name="consultation_ids" value="{{ consultation.id }}" 
+                                               class="form-check-input consultation-checkbox"
+                                               {% if consultation.patient.patient_type != 'nhia' %}disabled title="Regular patients don't require authorization"{% endif %}>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">
+                                                    <a href="{% url 'patients:detail' consultation.patient.id %}" class="text-decoration-none">
+                                                        {{ consultation.patient.get_full_name }}
+                                                    </a>
+                                                </h6>
+                                                <div class="patient-info text-muted">
+                                                    ID: {{ consultation.patient.patient_id }}<br>
+                                                    Age: {{ consultation.patient.age }} | 
+                                                    Gender: {{ consultation.patient.get_gender_display }}<br>
+                                                    Phone: {{ consultation.patient.phone_number }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong>Room:</strong> {{ consultation.consulting_room.name }}<br>
+                                        <strong>Date:</strong> {{ consultation.consultation_date|date:"M d, Y H:i" }}<br>
+                                        <strong>Status:</strong> 
+                                        <span class="badge badge-warning">{{ consultation.get_status_display }}</span>
+                                    </td>
+                                    <td>
+                                        {% if consultation.consulting_doctor %}
+                                            <strong>Dr. {{ consultation.consulting_doctor.get_full_name }}</strong><br>
+                                            {% if consultation.consulting_doctor.profile and consultation.consulting_doctor.profile.department %}
+                                                <small class="text-muted">{{ consultation.consulting_doctor.profile.department.name }}</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Not assigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if consultation.patient.patient_type == 'nhia' %}
+                                            <span class="badge badge-nhia">
+                                                <i class="fas fa-shield-alt"></i> NHIA
+                                            </span>
+                                            {% if consultation.patient.nhia_info %}
+                                                <br><small class="text-muted">
+                                                    NHIA: {{ consultation.patient.nhia_info.nhia_reg_number|default:"Not registered" }}
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-user"></i> Regular
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'consultations:detail' consultation.id %}" 
+                                               class="btn btn-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            
+                                            {% if consultation.patient.patient_type == 'nhia' %}
+                                                <a href="{% url 'desk_office:authorize_consultation' consultation.id %}" 
+                                                   class="btn btn-success" title="Authorize Consultation">
+                                                    <i class="fas fa-check"></i>
+                                                </a>
+                                            {% else %}
+                                                <button class="btn btn-success" disabled title="Regular patients don't require authorization">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            {% endif %}
+                                            
+                                            <a href="{% url 'patients:detail' consultation.patient.id %}" 
+                                               class="btn btn-outline-primary" title="View Patient">
+                                                <i class="fas fa-user"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bulk Actions (hidden by default) -->
+                    <div id="bulkActions" class="mt-3" style="display: none;">
+                        <div class="alert alert-info">
+                            <strong>{{ selected_count }}</strong> consultation(s) selected
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check-double"></i> Authorize Selected
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="clearSelection">
+                            <i class="fas fa-times"></i> Clear Selection
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.patient_type %}&patient_type={{ request.GET.patient_type }}{% endif %}{% if request.GET.consulting_room %}&consulting_room={{ request.GET.consulting_room }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.patient_type %}&patient_type={{ request.GET.patient_type }}{% endif %}{% if request.GET.consulting_room %}&consulting_room={{ request.GET.consulting_room }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.patient_type %}&patient_type={{ request.GET.patient_type }}{% endif %}{% if request.GET.consulting_room %}&consulting_room={{ request.GET.consulting_room }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.patient_type %}&patient_type={{ request.GET.patient_type }}{% endif %}{% if request.GET.consulting_room %}&consulting_room={{ request.GET.consulting_room }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Last</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>No Pending Consultations</h5>
+                    <p class="mb-0">All consultations have been processed or there are no consultations requiring authorization at this time.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Select/Deselect all functionality
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.consultation-checkbox:not(:disabled)');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+    updateBulkActions();
+});
+
+// Individual checkbox selection
+document.querySelectorAll('.consultation-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateBulkActions);
+});
+
+// Update bulk actions display
+function updateBulkActions() {
+    const selectedCheckboxes = document.querySelectorAll('.consultation-checkbox:checked');
+    const selectedCount = selectedCheckboxes.length;
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCountSpan = document.querySelector('#bulkActions .alert-info strong');
+    
+    if (selectedCount > 0) {
+        bulkActions.style.display = 'block';
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = selectedCount;
+        }
+        document.getElementById('bulkAuthorizeBtn').disabled = false;
+    } else {
+        bulkActions.style.display = 'none';
+        document.getElementById('bulkAuthorizeBtn').disabled = true;
+    }
+}
+
+// Clear selection
+document.getElementById('clearSelection').addEventListener('click', function() {
+    document.getElementById('selectAll').checked = false;
+    document.querySelectorAll('.consultation-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateBulkActions();
+});
+
+// Bulk authorize button
+document.getElementById('bulkAuthorizeBtn').addEventListener('click', function() {
+    if (confirm('Are you sure you want to authorize all selected consultations?')) {
+        document.getElementById('bulkAuthorizeForm').submit();
+    }
+});
+
+// Initialize bulk actions state
+document.addEventListener('DOMContentLoaded', function() {
+    updateBulkActions();
+});
+</script>
+{% endblock %}

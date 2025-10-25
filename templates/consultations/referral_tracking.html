@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Referral Tracking - Consultations{% endblock %}
+
+{% block extra_css %}
+<style>
+.referral-item {
+    transition: all 0.2s ease-in-out;
+    border-left: 4px solid #007bff;
+}
+.referral-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-left-color: #28a745;
+}
+.patient-info {
+    font-size: 0.9rem;
+}
+.status-badge {
+    font-size: 0.8rem;
+}
+.urgency-high {
+    border-left: 4px solid #dc3545;
+}
+.urgency-medium {
+    border-left: 4px solid #ffc107;
+}
+.urgency-low {
+    border-left: 4px solid #28a745;
+}
+.stats-card {
+    transition: transform 0.2s ease-in-out;
+}
+.stats-card:hover {
+    transform: translateY(-2px);
+}
+.filter-section {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-exchange-alt"></i> Referral Tracking
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'consultations:create_referral' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> New Referral
+            </a>
+            {% if request.user.is_staff or request.user.profile.role.name in ['Desk Office', 'Administrator'] %}
+                <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-info btn-sm">
+                    <i class="fas fa-shield-alt"></i> NHIA Authorization
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Referrals
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.pending }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Accepted
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.accepted }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Completed
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.completed }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-double fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card shadow mb-4 filter-section">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-filter"></i> Filters & Search
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="accepted" {% if request.GET.status == 'accepted' %}selected{% endif %}>Accepted</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="urgency" class="form-label">Urgency</label>
+                    <select name="urgency" id="urgency" class="form-select">
+                        <option value="">All Levels</option>
+                        <option value="high" {% if request.GET.urgency == 'high' %}selected{% endif %}>High</option>
+                        <option value="medium" {% if request.GET.urgency == 'medium' %}selected{% endif %}>Medium</option>
+                        <option value="low" {% if request.GET.urgency == 'low' %}selected{% endif %}>Low</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="destination" class="form-label">Destination</label>
+                    <select name="destination" id="destination" class="form-select">
+                        <option value="">All Destinations</option>
+                        <option value="laboratory" {% if request.GET.destination == 'laboratory' %}selected{% endif %}>Laboratory</option>
+                        <option value="radiology" {% if request.GET.destination == 'radiology' %}selected{% endif %}>Radiology</option>
+                        <option value="pharmacy" {% if request.GET.destination == 'pharmacy' %}selected{% endif %}>Pharmacy</option>
+                        <option value="theatre" {% if request.GET.destination == 'theatre' %}selected{% endif %}>Theatre</option>
+                        <option value="icu" {% if request.GET.destination == 'icu' %}selected{% endif %}>ICU</option>
+                        <option value="scbu" {% if request.GET.destination == 'scbu' %}selected{% endif %}>SCBU</option>
+                        <option value="external" {% if request.GET.destination == 'external' %}selected{% endif %}>External</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search Patient</label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           placeholder="Patient name or ID..." 
+                           value="{{ request.GET.search|default:'' }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> Reset
+                    </a>
+                    <button type="button" class="btn btn-outline-info" onclick="exportReferrals()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Referrals List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Referrals 
+                <span class="badge bg-info">{{ page_obj.paginator.count }}</span>
+            </h6>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-success" id="bulkActionBtn">
+                    <i class="fas fa-check-double"></i> Bulk Actions
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <form id="bulkActionForm" method="post">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="30">
+                                        <input type="checkbox" id="selectAll" class="form-check-input">
+                                    </th>
+                                    <th>Patient</th>
+                                    <th>Referral Details</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for referral in page_obj %}
+                                <tr class="referral-item urgency-{{ referral.urgency_level|default:'medium' }}">
+                                    <td>
+                                        <input type="checkbox" name="referral_ids" value="{{ referral.id }}" 
+                                               class="form-check-input referral-checkbox">
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">
+                                                    <a href="{% url 'consultations:referral_detail' referral.id %}" class="text-decoration-none">
+                                                        {{ referral.patient.get_full_name }}
+                                                    </a>
+                                                </h6>
+                                                <div class="patient-info text-muted">
+                                                    ID: {{ referral.patient.patient_id }}<br>
+                                                    Age: {{ referral.patient.age }} | 
+                                                    Gender: {{ referral.patient.get_gender_display }}
+                                                </div>
+                                                {% if referral.patient.patient_type == 'nhia' %}
+                                                    <span class="badge bg-info">NHIA</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong>Date:</strong> {{ referral.referral_date|date:"M d, Y" }}<br>
+                                        <strong>Time:</strong> {{ referral.referral_time|default:"Not specified" }}<br>
+                                        <strong>Urgency:</strong> 
+                                        <span class="badge 
+                                            {% if referral.urgency_level == 'high' %}bg-danger
+                                            {% elif referral.urgency_level == 'medium' %}bg-warning
+                                            {% else %}bg-success{% endif %}">
+                                            {{ referral.urgency_level|title|default:"Medium" }}
+                                        </span><br>
+                                        <strong>Reason:</strong><br>
+                                        <small class="text-muted">{{ referral.reason|truncatewords:8 }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>Dr. {{ referral.referring_doctor.get_full_name }}</strong><br>
+                                        {% if referral.referring_doctor.profile and referral.referring_doctor.profile.department %}
+                                            <small class="text-muted">{{ referral.referring_doctor.profile.department.name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ referral.get_referral_destination }}</span>
+                                        {% if referral.external_facility %}
+                                            <br><small class="text-muted">{{ referral.external_facility }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge status-badge 
+                                            {% if referral.status == 'pending' %}bg-warning
+                                            {% elif referral.status == 'accepted' %}bg-info
+                                            {% elif referral.status == 'completed' %}bg-success
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ referral.get_status_display|title }}
+                                        </span>
+                                        {% if referral.patient.patient_type == 'nhia' %}
+                                            <br><small class="text-muted">
+                                                NHIA: {{ referral.get_authorization_status_display }}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" 
+                                               class="btn btn-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            
+                                            {% if referral.status == 'pending' %}
+                                                <a href="{% url 'consultations:update_referral_status_detailed' referral.id %}?status=accepted" 
+                                                   class="btn btn-success" title="Accept Referral"
+                                                   onclick="return confirm('Accept this referral?')">
+                                                    <i class="fas fa-check"></i>
+                                                </a>
+                                                <a href="{% url 'consultations:update_referral_status_detailed' referral.id %}?status=cancelled" 
+                                                   class="btn btn-danger" title="Cancel Referral"
+                                                   onclick="return confirm('Cancel this referral?')">
+                                                    <i class="fas fa-times"></i>
+                                                </a>
+                                            {% elif referral.status == 'accepted' %}
+                                                <a href="{% url 'consultations:update_referral_status_detailed' referral.id %}?status=completed" 
+                                                   class="btn btn-primary" title="Mark Complete"
+                                                   onclick="return confirm('Mark this referral as completed?')">
+                                                    <i class="fas fa-check-double"></i>
+                                                </a>
+                                            {% endif %}
+                                            
+                                            <a href="{% url 'patients:detail' referral.patient.id %}" 
+                                               class="btn btn-outline-primary" title="View Patient">
+                                                <i class="fas fa-user"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bulk Actions (hidden by default) -->
+                    <div id="bulkActions" class="mt-3" style="display: none;">
+                        <div class="alert alert-info">
+                            <strong>{{ selected_count }}</strong> referral(s) selected
+                        </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-success" onclick="bulkUpdateStatus('accepted')">
+                                <i class="fas fa-check"></i> Accept Selected
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="bulkUpdateStatus('cancelled')">
+                                <i class="fas fa-times"></i> Cancel Selected
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="bulkUpdateStatus('completed')">
+                                <i class="fas fa-check-double"></i> Mark Complete
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="clearSelection">
+                            <i class="fas fa-times"></i> Clear Selection
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.urgency %}&urgency={{ request.GET.urgency }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.urgency %}&urgency={{ request.GET.urgency }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.urgency %}&urgency={{ request.GET.urgency }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.urgency %}&urgency={{ request.GET.urgency }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Last</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>No Referrals Found</h5>
+                    <p class="mb-0">No referrals match your search criteria.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Select/Deselect all functionality
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.referral-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+    updateBulkActions();
+});
+
+// Individual checkbox selection
+document.querySelectorAll('.referral-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateBulkActions);
+});
+
+// Update bulk actions display
+function updateBulkActions() {
+    const selectedCheckboxes = document.querySelectorAll('.referral-checkbox:checked');
+    const selectedCount = selectedCheckboxes.length;
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCountSpan = document.querySelector('#bulkActions .alert-info strong');
+    
+    if (selectedCount > 0) {
+        bulkActions.style.display = 'block';
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = selectedCount;
+        }
+        document.getElementById('bulkActionBtn').disabled = false;
+    } else {
+        bulkActions.style.display = 'none';
+        document.getElementById('bulkActionBtn').disabled = true;
+    }
+}
+
+// Clear selection
+document.getElementById('clearSelection').addEventListener('click', function() {
+    document.getElementById('selectAll').checked = false;
+    document.querySelectorAll('.referral-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateBulkActions();
+});
+
+// Bulk update status
+function bulkUpdateStatus(status) {
+    const selectedIds = Array.from(document.querySelectorAll('.referral-checkbox:checked'))
+                            .map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        alert('Please select at least one referral.');
+        return;
+    }
+    
+    const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+    const actionText = status === 'accepted' ? 'accept' : 
+                      status === 'cancelled' ? 'cancel' : 'mark as complete';
+    
+    if (confirm(`Are you sure you want to ${actionText} ${selectedIds.length} referral(s)?`)) {
+        const form = document.getElementById('bulkActionForm');
+        
+        // Add hidden input for status
+        const statusInput = document.createElement('input');
+        statusInput.type = 'hidden';
+        statusInput.name = 'bulk_status';
+        statusInput.value = status;
+        form.appendChild(statusInput);
+        
+        // Change form action to bulk update endpoint
+        form.action = '{% url "consultations:bulk_update_referral_status" %}';
+        form.submit();
+    }
+}
+
+// Export functionality
+function exportReferrals() {
+    const currentUrl = window.location.href;
+    const exportUrl = currentUrl.includes('?') ? 
+        currentUrl + '&export=csv' : 
+        currentUrl + '?export=csv';
+    
+    window.open(exportUrl, '_blank');
+}
+
+// Initialize bulk actions state
+document.addEventListener('DOMContentLoaded', function() {
+    updateBulkActions();
+});
+
+// Handle keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+Enter to apply filters
+    if (e.ctrlKey && e.key === 'Enter') {
+        const filterForm = document.querySelector('form[method="get"]');
+        if (filterForm) {
+            filterForm.submit();
+        }
+    }
+});
+</script>
+{% endblock %}

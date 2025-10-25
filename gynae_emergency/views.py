@@ -11,6 +11,87 @@ from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+from django.utils import timezone
+import json
+
+
+@login_required
+@department_access_required('Gynae Emergency')
+def gynae_emergency_dashboard(request):
+    """Enhanced Dashboard for Gynae Emergency department with charts and emergency metrics"""
+    from django.db.models import Count, Avg, Q, F, ExpressionWrapper, DurationField
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=Gynae_emergencyRecord,
+        record_queryset=Gynae_emergencyRecord.objects.all(),
+        priority_field=None,
+        status_field='status',
+        completed_status='discharged'
+    )
+
+    # Gynae Emergency-specific statistics
+    today = timezone.now().date()
+
+    # Emergency cases today
+    emergencies_today = Gynae_emergencyRecord.objects.filter(
+        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    ).count()
+
+    # Total emergency cases
+    total_emergencies = Gynae_emergencyRecord.objects.count()
+
+    # Emergency cases this week
+    week_start = today - timedelta(days=today.weekday())
+    emergencies_this_week = Gynae_emergencyRecord.objects.filter(
+        visit_date__gte=week_start
+    ).count()
+
+    # Common emergency types (top 5)
+    emergency_type_data = Gynae_emergencyRecord.objects.filter(
+        emergency_type__isnull=False
+    ).exclude(emergency_type='').values('emergency_type').annotate(count=Count('id')).order_by('-count')[:5]
+    emergency_type_labels = [item['emergency_type'][:30] for item in emergency_type_data]
+    emergency_type_counts = [item['count'] for item in emergency_type_data]
+
+    # Get recent records with patient info
+    recent_records = Gynae_emergencyRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'emergencies_today': emergencies_today,
+        'total_emergencies': total_emergencies,
+        'emergencies_this_week': emergencies_this_week,
+        'emergency_type_labels': json.dumps(emergency_type_labels),
+        'emergency_type_counts': json.dumps(emergency_type_counts),
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'gynae_emergency/dashboard.html', context)
+
 
 @login_required
 def gynae_emergency_records_list(request):

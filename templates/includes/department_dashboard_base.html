@@ -1,0 +1,272 @@
+{% load static %}
+
+<!-- Department Dashboard Base Template -->
+<!-- This template provides a standardized layout for all department dashboards -->
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-hospital-user me-2"></i>
+            {{ department_name }} Department Dashboard
+        </h1>
+        <div>
+            <a href="{% block create_record_url %}#{% endblock %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create New Record
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards Row -->
+    <div class="row">
+        <!-- Total Records Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Records
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-calendar-day"></i> Today: {{ records_today|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Referrals Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Referrals
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals_count|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-check-circle text-success"></i> Ready: {{ referral_stats.authorized_referrals|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- This Week Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                This Week
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_week|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-calendar-week"></i> Since {{ week_start|date:"M d" }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Authorizations Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Pending Authorizations
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_authorizations|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-lock"></i> NHIA Patients
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-shield-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Statistics Row (Department-Specific) -->
+    {% block additional_statistics %}
+    <!-- Override this block in department-specific templates to add custom statistics -->
+    {% endblock %}
+
+    <div class="row">
+        <!-- Pending Referrals Section -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-exchange-alt"></i> Pending Referrals
+                    </h6>
+                    <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-sm btn-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if pending_referrals %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Referring Doctor</th>
+                                        <th>Date</th>
+                                        <th>Authorization</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for referral in pending_referrals|slice:":5" %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ referral.patient.get_full_name }}</strong><br>
+                                            <small class="text-muted">{{ referral.patient.patient_id }}</small>
+                                        </td>
+                                        <td>
+                                            Dr. {{ referral.referring_doctor.get_full_name }}<br>
+                                            <small class="text-muted">
+                                                {% if referral.referring_doctor.profile.department %}
+                                                    {{ referral.referring_doctor.profile.department.name }}
+                                                {% endif %}
+                                            </small>
+                                        </td>
+                                        <td>{{ referral.referral_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if referral.authorization_status == 'authorized' %}
+                                                <span class="badge bg-success">Authorized</span>
+                                            {% elif referral.authorization_status == 'not_required' %}
+                                                <span class="badge bg-secondary">Not Required</span>
+                                            {% elif referral.authorization_status == 'pending' %}
+                                                <span class="badge bg-warning">Pending Auth</span>
+                                            {% elif referral.authorization_status == 'required' %}
+                                                <span class="badge bg-danger">Required</span>
+                                            {% elif referral.authorization_status == 'rejected' %}
+                                                <span class="badge bg-dark">Rejected</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" 
+                                               class="btn btn-sm btn-info" 
+                                               title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% if pending_referrals.count > 5 %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-sm btn-outline-primary">
+                                View All {{ pending_referrals_count }} Referrals
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <p>No pending referrals at this time.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions & Recent Activity -->
+        <div class="col-lg-4 mb-4">
+            <!-- Quick Actions Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="{% block create_record_url_2 %}#{% endblock %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-plus text-primary"></i> Create New Record
+                        </a>
+                        <a href="{% block records_list_url %}#{% endblock %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-list text-info"></i> View All Records
+                        </a>
+                        <a href="{% url 'consultations:department_referral_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-exchange-alt text-warning"></i> View Referrals
+                        </a>
+                        {% if pending_authorizations > 0 %}
+                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-shield-alt text-danger"></i> Authorization Dashboard
+                            <span class="badge bg-danger float-end">{{ pending_authorizations }}</span>
+                        </a>
+                        {% endif %}
+                        {% block additional_quick_actions %}
+                        <!-- Override this block for department-specific quick actions -->
+                        {% endblock %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity Card -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Activity
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_records %}
+                        <div class="list-group list-group-flush">
+                            {% for record in recent_records|slice:":5" %}
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ record.patient.get_full_name }}</strong><br>
+                                        <small class="text-muted">{{ record.created_at|timesince }} ago</small>
+                                    </div>
+                                    <a href="{% block record_detail_url %}#{% endblock %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p class="mb-0">No recent activity</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department-Specific Content -->
+    {% block department_specific_content %}
+    <!-- Override this block in department-specific templates for custom content -->
+    {% endblock %}
+</div>
+

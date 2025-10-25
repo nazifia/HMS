@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dental Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-tooth me-2"></i>
+            Dental Department Dashboard
+        </h1>
+        <div>
+            <a href="{% url 'dental:create_dental_record' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Dental Record
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards Row -->
+    <div class="row">
+        <!-- Total Records Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Dental Records
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-calendar-day"></i> Today: {{ records_today|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-notes-medical fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Treatments Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Treatments
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_treatments|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-hourglass-half"></i> In Progress: {{ in_progress_treatments|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Today Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Completed Today
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_today|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-check-circle"></i> This Week: {{ records_this_week|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-double fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Referrals Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Pending Referrals
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals_count|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-lock text-danger"></i> Need Auth: {{ pending_authorizations|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Daily Patient Volume Chart -->
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Daily Patient Volume (Last 7 Days)</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyTrendChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Treatment Status Distribution Chart -->
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Treatment Status</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popular Procedures Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Popular Dental Procedures</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="procedureChart" height="60"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pending Referrals Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-exchange-alt"></i> Pending Referrals
+                    </h6>
+                    <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-sm btn-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if pending_referrals %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>From</th>
+                                        <th>Auth Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for referral in pending_referrals|slice:":5" %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ referral.patient.get_full_name }}</strong><br>
+                                            <small class="text-muted">{{ referral.patient.patient_id }}</small>
+                                        </td>
+                                        <td>
+                                            <small>Dr. {{ referral.referring_doctor.get_full_name }}</small>
+                                        </td>
+                                        <td>
+                                            {% if referral.authorization_status == 'authorized' %}
+                                                <span class="badge bg-success">Authorized</span>
+                                            {% elif referral.authorization_status == 'not_required' %}
+                                                <span class="badge bg-secondary">Not Required</span>
+                                            {% elif referral.authorization_status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif referral.authorization_status == 'required' %}
+                                                <span class="badge bg-danger">Required</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p class="mb-0">No pending referrals</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="{% url 'dental:create_dental_record' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-plus text-primary"></i> New Dental Record
+                        </a>
+                        <a href="{% url 'dental:dental_records' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-list text-info"></i> View All Records
+                        </a>
+                        <a href="{% url 'consultations:department_referral_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-exchange-alt text-warning"></i> View Referrals
+                        </a>
+                        <a href="{% url 'dental:dental_services' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-cog text-secondary"></i> Manage Services
+                        </a>
+                        {% if pending_authorizations > 0 %}
+                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-shield-alt text-danger"></i> Authorization Dashboard
+                            <span class="badge bg-danger float-end">{{ pending_authorizations }}</span>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Dental Records -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Dental Records
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_records %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Service</th>
+                                        <th>Diagnosis</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in recent_records|slice:":10" %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ record.patient.get_full_name }}</strong><br>
+                                            <small class="text-muted">{{ record.patient.patient_id }}</small>
+                                        </td>
+                                        <td>{{ record.service.name|default:"N/A" }}</td>
+                                        <td>{{ record.diagnosis|truncatewords:5 }}</td>
+                                        <td>
+                                            {% if record.treatment_status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif record.treatment_status == 'in_progress' %}
+                                                <span class="badge bg-info">In Progress</span>
+                                            {% elif record.treatment_status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif record.treatment_status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ record.created_at|timesince }} ago</td>
+                                        <td>
+                                            <a href="{% url 'dental:dental_record_detail' record.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p class="mb-0">No recent dental records</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    // Daily Trend Chart (Line Chart)
+    const dailyTrendCtx = document.getElementById('dailyTrendChart').getContext('2d');
+    new Chart(dailyTrendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ daily_trend.labels|safe }},
+            datasets: [{
+                label: 'Patients',
+                data: {{ daily_trend.data|safe }},
+                borderColor: '#4e73df',
+                backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#4e73df',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+
+    // Status Distribution Chart (Doughnut Chart)
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ status_distribution.labels|safe }},
+            datasets: [{
+                data: {{ status_distribution.data|safe }},
+                backgroundColor: {{ status_distribution.colors|safe }},
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            let value = context.parsed || 0;
+                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': ' + value + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Procedure Distribution Chart (Bar Chart)
+    const procedureCtx = document.getElementById('procedureChart').getContext('2d');
+    new Chart(procedureCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ procedure_labels|safe }},
+            datasets: [{
+                label: 'Number of Procedures',
+                data: {{ procedure_counts|safe }},
+                backgroundColor: 'rgba(28, 200, 138, 0.8)',
+                borderColor: '#1cc88a',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
+

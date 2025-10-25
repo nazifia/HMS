@@ -11,6 +11,124 @@ from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+from django.utils import timezone
+import json
+
+
+@login_required
+@department_access_required('Oncology')
+def oncology_dashboard(request):
+    """Enhanced Dashboard for Oncology department with charts and cancer care metrics"""
+    from django.db.models import Count, Avg, Q
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=OncologyRecord,
+        record_queryset=OncologyRecord.objects.all(),
+        priority_field=None,
+        status_field='status',
+        completed_status='completed'
+    )
+
+    # Oncology-specific statistics
+    today = timezone.now().date()
+    six_months_ago = today - timedelta(days=180)
+
+    # Active patients (currently under treatment)
+    # Count patients with recent visits (last 6 months) or with follow-ups required
+    active_patients = OncologyRecord.objects.filter(
+        Q(visit_date__gte=six_months_ago) | Q(follow_up_required=True)
+    ).values('patient').distinct().count()
+
+    # Patients by cancer type (top 5)
+    cancer_type_data = OncologyRecord.objects.filter(
+        cancer_type__isnull=False
+    ).exclude(cancer_type='').values('cancer_type').annotate(count=Count('id')).order_by('-count')[:5]
+    cancer_type_labels = [item['cancer_type'] for item in cancer_type_data]
+    cancer_type_counts = [item['count'] for item in cancer_type_data]
+
+    # Patients by stage
+    stage_1 = OncologyRecord.objects.filter(stage='Stage I').count()
+    stage_2 = OncologyRecord.objects.filter(stage='Stage II').count()
+    stage_3 = OncologyRecord.objects.filter(stage='Stage III').count()
+    stage_4 = OncologyRecord.objects.filter(stage='Stage IV').count()
+
+    # Stage distribution for chart
+    stage_labels = ['Stage I', 'Stage II', 'Stage III', 'Stage IV']
+    stage_counts = [stage_1, stage_2, stage_3, stage_4]
+    stage_colors = ['#28a745', '#ffc107', '#fd7e14', '#dc3545']
+
+    # Chemotherapy sessions this month
+    month_start = today.replace(day=1)
+    chemo_sessions_month = OncologyRecord.objects.filter(
+        visit_date__date__gte=month_start,
+        chemotherapy_cycle__isnull=False
+    ).count()
+
+    # Radiation treatments this month
+    radiation_treatments_month = OncologyRecord.objects.filter(
+        visit_date__date__gte=month_start,
+        radiation_dose__isnull=False
+    ).count()
+
+    # Patients with metastasis
+    metastasis_patients = OncologyRecord.objects.filter(
+        metastasis=True
+    ).values('patient').distinct().count()
+
+    # Average tumor size
+    avg_tumor_size = OncologyRecord.objects.filter(
+        tumor_size__isnull=False
+    ).aggregate(avg=Avg('tumor_size'))['avg']
+    avg_tumor_size = round(avg_tumor_size, 1) if avg_tumor_size else 0
+
+    # Get recent records with patient info
+    recent_records = OncologyRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'active_patients': active_patients,
+        'cancer_type_labels': json.dumps(cancer_type_labels),
+        'cancer_type_counts': json.dumps(cancer_type_counts),
+        'stage_1': stage_1,
+        'stage_2': stage_2,
+        'stage_3': stage_3,
+        'stage_4': stage_4,
+        'stage_labels': json.dumps(stage_labels),
+        'stage_counts': json.dumps(stage_counts),
+        'stage_colors': json.dumps(stage_colors),
+        'chemo_sessions_month': chemo_sessions_month,
+        'radiation_treatments_month': radiation_treatments_month,
+        'metastasis_patients': metastasis_patients,
+        'avg_tumor_size': avg_tumor_size,
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'oncology/dashboard.html', context)
+
 
 @login_required
 def oncology_records_list(request):

@@ -720,26 +720,81 @@ def update_referral_status_detailed(request, referral_id):
 
     # Check permissions
     can_update = False
-    
+
     if referral.referral_type in ['department', 'specialty', 'unit']:
         # Department/specialty/unit referral
-        can_update = (referral.can_be_accepted_by(request.user) or 
+        can_update = (referral.can_be_accepted_by(request.user) or
                      referral.referring_doctor == request.user or
                      referral.assigned_doctor == request.user)
-    
+
     # Admin and superuser can always update
     if request.user.is_superuser:
         can_update = True
-        
+
     if not can_update:
         messages.error(request, "You don't have permission to update this referral.")
         return redirect('consultations:referral_tracking')
+
+
+@login_required
+def bulk_update_referral_status(request):
+    """Bulk update status for multiple referrals"""
+    if request.method == 'POST':
+        referral_ids = request.POST.getlist('referral_ids')
+        bulk_status = request.POST.get('bulk_status')
+        
+        if not referral_ids or not bulk_status:
+            messages.error(request, 'Please select referrals and choose an action.')
+            return redirect('consultations:referral_tracking')
+        
+        updated_count = 0
+        for referral_id in referral_ids:
+            try:
+                referral = Referral.objects.get(id=referral_id)
+                
+                # Only update if authorization allows it
+                if (referral.authorization_status == 'authorized' or 
+                    referral.authorization_status == 'not_required' or 
+                    bulk_status == 'cancelled'):
+                    
+                    referral.status = bulk_status
+                    if bulk_status == 'accepted':
+                        referral.accepted_at = timezone.now()
+                    elif bulk_status == 'completed':
+                        referral.completed_at = timezone.now()
+                    elif bulk_status == 'cancelled':
+                        referral.cancelled_at = timezone.now()
+                    
+                    referral.save()
+                    updated_count += 1
+                
+            except Referral.DoesNotExist:
+                continue
+        
+        if updated_count > 0:
+            status_text = bulk_status.replace('_', ' ').title()
+            messages.success(request, f'{updated_count} referrals have been {status_text.lower()}.')
+        else:
+            messages.warning(request, 'No referrals could be updated. Check authorization status.')
+    
+    return redirect('consultations:referral_tracking')
 
     if request.method == 'POST':
         status = request.POST.get('status')
         notes = request.POST.get('status_notes', '')
 
         if status in dict(Referral.STATUS_CHOICES):
+            # **AUTHORIZATION CHECK**: Prevent accepting referrals that require authorization
+            if status == 'accepted' and referral.requires_authorization:
+                if referral.authorization_status not in ['authorized', 'not_required']:
+                    messages.error(
+                        request,
+                        f"Cannot accept this referral. Authorization status is '{referral.get_authorization_status_display()}'. "
+                        f"This NHIA patient referral requires desk office authorization before it can be accepted. "
+                        f"Please contact the desk office to obtain authorization."
+                    )
+                    return redirect('consultations:referral_detail', referral_id=referral.id)
+
             old_status = referral.status
             referral.status = status
 
@@ -778,6 +833,74 @@ def update_referral_status_detailed(request, referral_id):
         else:
             messages.error(request, "Invalid status.")
 
+    return redirect('consultations:referral_detail', referral_id=referral.id)
+
+@login_required
+def reject_referral(request, referral_id):
+    """
+    View to reject a referral from the destination department.
+    Only authorized referrals can be rejected.
+    """
+    referral = get_object_or_404(Referral, id=referral_id)
+
+    # Check permissions - user must be able to accept the referral to reject it
+    can_reject = False
+
+    if referral.referral_type in ['department', 'specialty', 'unit']:
+        # Department/specialty/unit referral - check if user can accept it
+        can_reject = referral.can_be_accepted_by(request.user)
+
+    # Admin and superuser can always reject
+    if request.user.is_superuser:
+        can_reject = True
+
+    if not can_reject:
+        messages.error(request, "You don't have permission to reject this referral.")
+        return redirect('consultations:referral_detail', referral_id=referral.id)
+
+    # **AUTHORIZATION CHECK**: Can only reject if authorized or not requiring authorization
+    if referral.requires_authorization:
+        if referral.authorization_status not in ['authorized', 'not_required']:
+            messages.error(
+                request,
+                f"Cannot reject this referral. Authorization status is '{referral.get_authorization_status_display()}'. "
+                f"This NHIA patient referral requires desk office authorization before it can be accepted or rejected. "
+                f"Please contact the desk office if you need to reject this referral."
+            )
+            return redirect('consultations:referral_detail', referral_id=referral.id)
+
+    if request.method == 'POST':
+        rejection_reason = request.POST.get('rejection_reason', '').strip()
+
+        if not rejection_reason:
+            messages.error(request, "Please provide a reason for rejecting this referral.")
+            return redirect('consultations:referral_detail', referral_id=referral.id)
+
+        # Update referral status to cancelled
+        old_status = referral.status
+        referral.status = 'cancelled'
+
+        # Add rejection notes
+        rejection_note = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Referral REJECTED by {referral.referred_to_department.name if referral.referred_to_department else 'destination'} department.\nReason: {rejection_reason}"
+
+        if referral.notes:
+            referral.notes += f"\n\n{rejection_note}"
+        else:
+            referral.notes = rejection_note
+
+        referral.save()
+
+        # Notify referring doctor
+        from core.models import InternalNotification
+        InternalNotification.objects.create(
+            user=referral.referring_doctor,
+            message=f"Your referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()} has been REJECTED by Dr. {request.user.get_full_name()}. Reason: {rejection_reason}"
+        )
+
+        messages.success(request, f"Referral rejected successfully. The referring doctor has been notified.")
+        return redirect('consultations:department_referral_dashboard')
+
+    # GET request - show confirmation page or redirect to detail
     return redirect('consultations:referral_detail', referral_id=referral.id)
 
 @login_required
@@ -1274,3 +1397,75 @@ def create_referral_from_consultation(request, consultation_id):
     }
 
     return render(request, 'consultations/referral_form.html', context)
+
+
+@login_required
+def department_referral_dashboard(request):
+    """
+    Dashboard for department staff to view referrals sent to their department.
+    Shows authorization status and prevents actions on unauthorized referrals.
+    """
+    # Get user's department
+    user_department = None
+    if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department:
+        user_department = request.user.profile.department
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department to view referrals.")
+        return redirect('dashboard:dashboard')
+
+    # Get all referrals sent to this department
+    referrals = Referral.objects.filter(
+        referred_to_department=user_department
+    ).select_related(
+        'patient', 'referring_doctor', 'referred_to_department',
+        'assigned_doctor', 'consultation', 'authorization_code'
+    ).order_by('-referral_date')
+
+    # Apply status filter
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        referrals = referrals.filter(status=status_filter)
+
+    # Apply authorization status filter
+    auth_status_filter = request.GET.get('auth_status', '')
+    if auth_status_filter:
+        referrals = referrals.filter(authorization_status=auth_status_filter)
+
+    # Separate referrals by authorization status
+    authorized_referrals = referrals.filter(
+        Q(authorization_status='authorized') | Q(authorization_status='not_required')
+    )
+    pending_authorization = referrals.filter(
+        authorization_status__in=['required', 'pending']
+    )
+    rejected_authorization = referrals.filter(
+        authorization_status='rejected'
+    )
+
+    # Get counts
+    total_referrals = referrals.count()
+    authorized_count = authorized_referrals.count()
+    pending_auth_count = pending_authorization.count()
+    rejected_count = rejected_authorization.count()
+    pending_acceptance_count = referrals.filter(status='pending').count()
+
+    # Pagination
+    paginator = Paginator(referrals, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'user_department': user_department,
+        'page_obj': page_obj,
+        'total_referrals': total_referrals,
+        'authorized_count': authorized_count,
+        'pending_auth_count': pending_auth_count,
+        'rejected_count': rejected_count,
+        'pending_acceptance_count': pending_acceptance_count,
+        'status_filter': status_filter,
+        'auth_status_filter': auth_status_filter,
+        'page_title': f'{user_department.name} - Referrals Dashboard',
+    }
+
+    return render(request, 'consultations/department_referral_dashboard.html', context)

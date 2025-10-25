@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Verify Authorization Code - NHIA Authorization{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+.code-input {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.verification-result {
+    transition: all 0.3s ease-in-out;
+}
+.result-valid {
+    border-left: 4px solid #28a745;
+    background-color: #d4edda;
+}
+.result-invalid {
+    border-left: 4px solid #dc3545;
+    background-color: #f8d7da;
+}
+.result-expired {
+    border-left: 4px solid #ffc107;
+    background-color: #fff3cd;
+}
+.code-highlight {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.valid-code {
+    background-color: #28a745;
+    color: white;
+}
+.invalid-code {
+    background-color: #dc3545;
+    color: white;
+}
+.expired-code {
+    background-color: #ffc107;
+    color: #212529;
+}
+.quick-actions {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-check-circle"></i> Verify Authorization Code
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'desk_office:authorization_code_list' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-list"></i> All Codes
+            </a>
+            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="alert-container mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Verification Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow form-container">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-search"></i> Enter Authorization Code to Verify
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="verifyForm">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <label for="code" class="form-label required-field">Authorization Code</label>
+                                <div class="input-group input-group-lg">
+                                    <input type="text"
+                                           class="form-control code-input"
+                                           id="code"
+                                           name="code"
+                                           placeholder="AUTH-YYYYMMDD-XXXXXX"
+                                           value="{{ form.code.value|default:'' }}"
+                                           required
+                                           maxlength="25"
+                                           autocomplete="off">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-check-circle"></i> Verify Code
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">
+                                    Enter the complete authorization code in the format: AUTH-YYYYMMDD-XXXXXX
+                                </small>
+                            </div>
+                        </div>
+                    </form>
+
+                    {% if authorization_code %}
+                    <!-- Verification Result -->
+                    <div class="card verification-result {% if authorization_code.is_valid %}result-valid{% elif authorization_code.is_expired %}result-expired{% else %}result-invalid{% endif %} mt-4">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold">
+                                <i class="fas fa-info-circle"></i> Verification Result
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            {% if authorization_code.is_valid %}
+                                <div class="alert alert-success mb-4">
+                                    <h5 class="alert-heading">
+                                        <i class="fas fa-check-circle"></i> Authorization Code is VALID
+                                    </h5>
+                                    <p class="mb-0">
+                                        This authorization code is active and can be used for medical services.
+                                    </p>
+                                </div>
+                            {% elif authorization_code.is_expired %}
+                                <div class="alert alert-warning mb-4">
+                                    <h5 class="alert-heading">
+                                        <i class="fas fa-exclamation-triangle"></i> Authorization Code is EXPIRED
+                                    </h5>
+                                    <p class="mb-0">
+                                        This authorization code expired on {{ authorization_code.expiry_date|date:"M d, Y" }} and cannot be used.
+                                    </p>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-danger mb-4">
+                                    <h5 class="alert-heading">
+                                        <i class="fas fa-times-circle"></i> Authorization Code is INVALID
+                                    </h5>
+                                    <p class="mb-0">
+                                        This authorization code is not valid. It may have been cancelled, used up, or never existed.
+                                    </p>
+                                </div>
+                            {% endif %}
+
+                            <!-- Code Details -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary mb-3">Code Information</h6>
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <td><strong>Code:</strong></td>
+                                            <td>
+                                                <span class="code-highlight 
+                                                    {% if authorization_code.is_valid %}valid-code
+                                                    {% elif authorization_code.is_expired %}expired-code
+                                                    {% else %}invalid-code{% endif %}">
+                                                    {{ authorization_code.code }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Status:</strong></td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if authorization_code.status == 'active' %}bg-success
+                                                    {% elif authorization_code.status == 'expired' %}bg-secondary
+                                                    {% elif authorization_code.status == 'used' %}bg-info
+                                                    {% else %}bg-danger{% endif %}">
+                                                    {{ authorization_code.get_status_display|title }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Generated:</strong></td>
+                                            <td>{{ authorization_code.generated_at|date:"M d, Y H:i" }}</td>
+                                        </tr>
+                                        {% if authorization_code.expiry_date %}
+                                        <tr>
+                                            <td><strong>Expires:</strong></td>
+                                            <td>
+                                                {{ authorization_code.expiry_date|date:"M d, Y H:i" }}
+                                                {% if authorization_code.days_until_expiry > 0 %}
+                                                    <small class="text-muted">({{ authorization_code.days_until_expiry }} days left)</small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr>
+                                            <td><strong>Authorized Amount:</strong></td>
+                                            <td><strong>₦{{ authorization_code.amount|floatformat:2 }}</strong></td>
+                                        </tr>
+                                        {% if authorization_code.used_amount %}
+                                        <tr>
+                                            <td><strong>Used Amount:</strong></td>
+                                            <td>₦{{ authorization_code.used_amount|floatformat:2 }}</td>
+                                        </tr>
+                                        {% if authorization_code.remaining_amount %}
+                                        <tr>
+                                            <td><strong>Remaining:</strong></td>
+                                            <td>
+                                                <strong class="{% if authorization_code.remaining_amount <= 0 %}text-danger{% endif %}">
+                                                    ₦{{ authorization_code.remaining_amount|floatformat:2 }}
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endif %}
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-primary mb-3">Patient Information</h6>
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <td><strong>Name:</strong></td>
+                                            <td>
+                                                <a href="{% url 'patients:detail' authorization_code.patient.id %}" 
+                                                   class="text-decoration-none">
+                                                    {{ authorization_code.patient.get_full_name }}
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Patient ID:</strong></td>
+                                            <td>{{ authorization_code.patient.patient_id }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Age/Gender:</strong></td>
+                                            <td>{{ authorization_code.patient.age }} / {{ authorization_code.patient.get_gender_display }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Patient Type:</strong></td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if authorization_code.patient.patient_type == 'nhia' %}bg-info
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ authorization_code.patient.get_patient_type_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% if authorization_code.patient.nhia_info %}
+                                        <tr>
+                                            <td><strong>NHIA Number:</strong></td>
+                                            <td>{{ authorization_code.patient.nhia_info.nhia_reg_number|default:"Not registered" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+
+                                    {% if authorization_code.used_by %}
+                                    <h6 class="text-primary mb-3 mt-4">Usage Information</h6>
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <td><strong>Used By:</strong></td>
+                                            <td>
+                                                <a href="{% url 'patients:detail' authorization_code.used_by.id %}" 
+                                                   class="text-decoration-none">
+                                                    {{ authorization_code.used_by.get_full_name }}
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Used At:</strong></td>
+                                            <td>{{ authorization_code.used_at|date:"M d, Y H:i" }}</td>
+                                        </tr>
+                                    </table>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if authorization_code.notes %}
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h6 class="text-primary mb-2">Authorization Notes</h6>
+                                    <p class="alert alert-info">{{ authorization_code.notes }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Action Buttons -->
+                            <div class="d-flex justify-content-between mt-4">
+                                <div>
+                                    <a href="{% url 'desk_office:verify_authorization_code' %}" class="btn btn-secondary">
+                                        <i class="fas fa-redo"></i> Verify Another Code
+                                    </a>
+                                    <a href="{% url 'patients:detail' authorization_code.patient.id %}" class="btn btn-info">
+                                        <i class="fas fa-user"></i> View Patient
+                                    </a>
+                                </div>
+                                <div>
+                                    {% if authorization_code.status == 'active' %}
+                                    <a href="{% url 'desk_office:cancel_authorization_code' authorization_code.id %}" 
+                                       class="btn btn-warning"
+                                       onclick="return confirm('Are you sure you want to cancel this authorization code? This action cannot be undone.')">
+                                        <i class="fas fa-ban"></i> Cancel Code
+                                    </a>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-outline-primary" 
+                                            onclick="printCode('{{ authorization_code.code }}', '{{ authorization_code.patient.get_full_name }}', '₦{{ authorization_code.amount|floatformat:2 }}', '{{ authorization_code.get_status_display }}')">
+                                        <i class="fas fa-print"></i> Print Code
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card shadow mb-4 quick-actions">
+                <div class="card-header py-3 bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'desk_office:generate_authorization_code' %}" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Generate New Code
+                        </a>
+                        <a href="{% url 'desk_office:authorization_code_list' %}" class="btn btn-primary">
+                            <i class="fas fa-list"></i> View All Codes
+                        </a>
+                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-info">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Verifications -->
+            {% if recent_verifications %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-secondary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-history"></i> Recent Verifications
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for code in recent_verifications %}
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <code class="text-primary">{{ code.code|truncatechars:15 }}</code><br>
+                                <small class="text-muted">{{ code.patient.get_full_name }}</small><br>
+                                <small>{{ code.generated_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                            <span class="badge 
+                                {% if code.is_valid %}bg-success
+                                {% elif code.is_expired %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {% if code.is_valid %}Valid
+                                {% elif code.is_expired %}Expired
+                                {% else %}Invalid{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Help Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-warning text-dark">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-question-circle"></i> Verification Guide
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="font-weight-bold">Code Status Meanings:</h6>
+                    <ul class="mb-3">
+                        <li><strong class="text-success">Valid:</strong> Code is active and can be used</li>
+                        <li><strong class="text-warning">Expired:</strong> Code has passed its expiry date</li>
+                        <li><strong class="text-danger">Invalid:</strong> Code is cancelled, used up, or doesn't exist</li>
+                    </ul>
+                    
+                    <h6 class="font-weight-bold">Code Format:</h6>
+                    <p class="font-monospace mb-2">AUTH-YYYYMMDD-XXXXXX</p>
+                    <p class="text-muted mb-3">
+                        Where YYYYMMDD is the generation date and XXXXXX is a unique identifier.
+                    </p>
+                    
+                    <h6 class="font-weight-bold">Common Issues:</h6>
+                    <ul class="mb-0">
+                        <li>Check for typos in the code</li>
+                        <li>Verify the code hasn't expired</li>
+                        <li>Ensure the code hasn't been cancelled</li>
+                        <li>Check if the remaining amount is sufficient</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-format code input
+document.getElementById('code').addEventListener('input', function(e) {
+    let value = e.target.value.toUpperCase();
+    
+    // Remove any non-alphanumeric characters except hyphen
+    value = value.replace(/[^A-Z0-9-]/g, '');
+    
+    // Auto-format to AUTH-YYYYMMDD-XXXXXX pattern
+    if (value.length > 0 && !value.startsWith('AUTH-')) {
+        value = 'AUTH-' + value;
+    }
+    
+    e.target.value = value;
+});
+
+// Auto-focus on code input field
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('code').focus();
+    
+    // Add paste event listener to clean up pasted text
+    document.getElementById('code').addEventListener('paste', function(e) {
+        e.preventDefault();
+        let pastedData = (e.clipboardData || window.clipboardData).getData('text');
+        pastedData = pastedData.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+        
+        if (!pastedData.startsWith('AUTH-')) {
+            pastedData = 'AUTH-' + pastedData;
+        }
+        
+        this.value = pastedData;
+    });
+});
+
+// Print code function
+function printCode(code, patientName, amount, status) {
+    const printWindow = window.open('', '_blank');
+    const statusColor = status === 'Valid' ? '#28a745' : status === 'Expired' ? '#ffc107' : '#dc3545';
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Authorization Code Verification</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 30px; max-width: 600px; margin: 0 auto; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .code-box { 
+                    background-color: #f8f9fa; 
+                    border: 2px solid #dee2e6; 
+                    padding: 20px; 
+                    text-align: center; 
+                    font-family: 'Courier New', monospace; 
+                    font-size: 24px; 
+                    font-weight: bold; 
+                    margin: 20px 0;
+                }
+                .status-box {
+                    background-color: ${statusColor};
+                    color: white;
+                    padding: 10px;
+                    text-align: center;
+                    font-weight: bold;
+                    margin: 20px 0;
+                }
+                .info-row { margin: 10px 0; }
+                .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
+                @media print { body { padding: 20px; } }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>NHIA Authorization Code Verification</h2>
+                <p>Generated on: ${new Date().toLocaleString()}</p>
+            </div>
+            
+            <div class="code-box">${code}</div>
+            <div class="status-box">Status: ${status}</div>
+            
+            <div class="info-row">
+                <strong>Patient:</strong> ${patientName}
+            </div>
+            <div class="info-row">
+                <strong>Authorized Amount:</strong> ${amount}
+            </div>
+            
+            <div class="footer">
+                This is an official verification of NHIA authorization code status.
+                Keep this document for your records.
+            </div>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Add keyboard shortcut for form submission (Ctrl+Enter)
+document.getElementById('verifyForm').addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        this.submit();
+    }
+});
+</script>
+{% endblock %}

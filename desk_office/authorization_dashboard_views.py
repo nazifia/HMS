@@ -13,6 +13,7 @@ from consultations.models import Consultation, Referral
 from pharmacy.models import Prescription
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
+from theatre.models import Surgery
 from nhia.models import AuthorizationCode
 from patients.models import Patient
 from .forms import PatientSearchForm, AuthorizationCodeForm
@@ -157,31 +158,37 @@ def authorization_dashboard(request):
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'doctor', 'consulting_room').order_by('-consultation_date')
-    
+
     # Get all referrals requiring authorization
     pending_referrals = Referral.objects.filter(
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'referring_doctor', 'referred_to_doctor', 'referred_to_department', 'assigned_doctor').order_by('-referral_date')
-    
+
     # Get all prescriptions requiring authorization
     pending_prescriptions = Prescription.objects.filter(
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'doctor').order_by('-prescription_date')
-    
+
     # Get all lab test requests requiring authorization
     pending_lab_tests = TestRequest.objects.filter(
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'doctor').order_by('-request_date')
-    
+
     # Get all radiology orders requiring authorization
     pending_radiology = RadiologyOrder.objects.filter(
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'referring_doctor', 'test').order_by('-order_date')
-    
+
+    # Get all surgeries requiring authorization
+    pending_surgeries = Surgery.objects.filter(
+        requires_authorization=True,
+        authorization_status__in=['required', 'pending']
+    ).select_related('patient', 'surgery_type', 'primary_surgeon', 'theatre').order_by('-scheduled_date')
+
     # Get statistics
     stats = {
         'consultations': pending_consultations.count(),
@@ -189,24 +196,27 @@ def authorization_dashboard(request):
         'prescriptions': pending_prescriptions.count(),
         'lab_tests': pending_lab_tests.count(),
         'radiology': pending_radiology.count(),
+        'surgeries': pending_surgeries.count(),
         'total': (
             pending_consultations.count() +
             pending_referrals.count() +
             pending_prescriptions.count() +
             pending_lab_tests.count() +
-            pending_radiology.count()
+            pending_radiology.count() +
+            pending_surgeries.count()
         )
     }
-    
+
     # Get recent authorization codes
     recent_codes = AuthorizationCode.objects.select_related('patient').order_by('-generated_at')[:10]
-    
+
     context = {
         'pending_consultations': pending_consultations[:10],  # Show top 10
         'pending_referrals': pending_referrals[:10],
         'pending_prescriptions': pending_prescriptions[:10],
         'pending_lab_tests': pending_lab_tests[:10],
         'pending_radiology': pending_radiology[:10],
+        'pending_surgeries': pending_surgeries[:10],
         'stats': stats,
         'recent_codes': recent_codes,
         'patient_search_form': patient_search_form,
@@ -455,4 +465,96 @@ def authorization_code_list(request):
     }
     
     return render(request, 'desk_office/authorization_code_list.html', context)
+
+
+@login_required
+def bulk_authorize_consultations(request):
+    """Bulk authorize multiple consultations"""
+    if request.method == 'POST':
+        consultation_ids = request.POST.getlist('consultation_ids')
+        
+        if not consultation_ids:
+            messages.error(request, 'No consultations selected for authorization.')
+            return redirect('desk_office:pending_consultations')
+        
+        authorized_count = 0
+        for consultation_id in consultation_ids:
+            try:
+                consultation = Consultation.objects.get(id=consultation_id)
+                
+                # Only authorize NHIA patients
+                if consultation.patient.patient_type == 'nhia':
+                    # Create authorization code for each consultation
+                    date_str = timezone.now().strftime('%Y%m%d')
+                    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                    code_str = f"AUTH-{date_str}-{random_str}"
+                    
+                    # Check for duplicate codes
+                    if not AuthorizationCode.objects.filter(code=code_str).exists():
+                        auth_code = AuthorizationCode.objects.create(
+                            code=code_str,
+                            patient=consultation.patient,
+                            service_type='consultation',
+                            amount=5000.00,  # Default consultation amount
+                            status='active',
+                            generated_by=request.user,
+                            notes=f"Auto-authorized consultation for {consultation.patient.get_full_name()}"
+                        )
+                        authorized_count += 1
+                
+            except Consultation.DoesNotExist:
+                continue
+        
+        if authorized_count > 0:
+            messages.success(request, f'{authorized_count} consultations have been authorized.')
+        else:
+            messages.warning(request, 'No NHIA consultations were found among the selected items.')
+    
+    return redirect('desk_office:pending_consultations')
+
+
+@login_required
+def bulk_authorize_referrals(request):
+    """Bulk authorize multiple referrals"""
+    if request.method == 'POST':
+        referral_ids = request.POST.getlist('referral_ids')
+        
+        if not referral_ids:
+            messages.error(request, 'No referrals selected for authorization.')
+            return redirect('desk_office:pending_referrals')
+        
+        authorized_count = 0
+        for referral_id in referral_ids:
+            try:
+                referral = Referral.objects.get(id=referral_id)
+                
+                # Only authorize NHIA patients
+                if referral.patient.patient_type == 'nhia':
+                    # Create authorization code for each referral
+                    date_str = timezone.now().strftime('%Y%m%d')
+                    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                    code_str = f"AUTH-{date_str}-{random_str}"
+                    
+                    # Check for duplicate codes
+                    if not AuthorizationCode.objects.filter(code=code_str).exists():
+                        auth_code = AuthorizationCode.objects.create(
+                            code=code_str,
+                            patient=referral.patient,
+                            service_type='referral',
+                            amount=10000.00,  # Default referral amount
+                            status='active',
+                            generated_by=request.user,
+                            notes=f"Auto-authorized referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()}"
+                        )
+                        authorized_count += 1
+                
+            except Referral.DoesNotExist:
+                continue
+        
+        if authorized_count > 0:
+            messages.success(request, f'{authorized_count} referrals have been authorized.')
+        else:
+            messages.warning(request, 'No NHIA referrals were found among the selected items.')
+    
+    return redirect('desk_office:pending_referrals')
 

@@ -11,6 +11,106 @@ from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+from django.utils import timezone
+import json
+
+
+@login_required
+@department_access_required('Family Planning')
+def family_planning_dashboard(request):
+    """Enhanced Dashboard for Family Planning department with charts and contraceptive metrics"""
+    from django.db.models import Count, Q
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=Family_planningRecord,
+        record_queryset=Family_planningRecord.objects.all(),
+        priority_field=None,
+        status_field='status',
+        completed_status='completed'
+    )
+
+    # Family Planning-specific statistics
+    today = timezone.now().date()
+    week_end = today + timedelta(days=7)
+
+    # Visits today
+    visits_today = Family_planningRecord.objects.filter(
+        visit_date__date=today
+    ).count()
+
+    # Contraceptive method distribution (top 5)
+    method_data = Family_planningRecord.objects.filter(
+        method_used__isnull=False
+    ).exclude(method_used='').values('method_used').annotate(count=Count('id')).order_by('-count')[:5]
+    method_labels = [item['method_used'] for item in method_data]
+    method_counts = [item['count'] for item in method_data]
+
+    # Education sessions this month
+    month_start = today.replace(day=1)
+    education_sessions_month = Family_planningRecord.objects.filter(
+        visit_date__date__gte=month_start,
+        education_provided=True
+    ).count()
+
+    # New clients this month (based on first visit date)
+    new_clients_month = Family_planningRecord.objects.filter(
+        visit_date__date__gte=month_start
+    ).values('patient').distinct().count()
+
+    # Follow-up visits due this week
+    followups_due = Family_planningRecord.objects.filter(
+        follow_up_date__gte=today,
+        follow_up_date__lte=week_end
+    ).count()
+
+    # Active clients (on contraceptives)
+    # Count patients with recent visits (last 6 months) or with follow-ups required
+    six_months_ago = today - timedelta(days=180)
+    active_clients = Family_planningRecord.objects.filter(
+        Q(visit_date__date__gte=six_months_ago) | Q(follow_up_required=True)
+    ).values('patient').distinct().count()
+
+    # Get recent records with patient info
+    recent_records = Family_planningRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'visits_today': visits_today,
+        'method_labels': json.dumps(method_labels),
+        'method_counts': json.dumps(method_counts),
+        'education_sessions_month': education_sessions_month,
+        'new_clients_month': new_clients_month,
+        'followups_due': followups_due,
+        'active_clients': active_clients,
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'family_planning/dashboard.html', context)
+
 
 @login_required
 def family_planning_records_list(request):

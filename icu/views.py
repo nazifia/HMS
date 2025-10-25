@@ -11,6 +11,136 @@ from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem
+from core.decorators import department_access_required
+from core.department_dashboard_utils import (
+    get_user_department,
+    build_department_dashboard_context,
+    build_enhanced_dashboard_context,
+    categorize_referrals,
+    get_daily_trend_data,
+    get_status_distribution,
+    calculate_completion_rate,
+    get_active_staff
+)
+from django.utils import timezone
+import json
+
+
+@login_required
+@department_access_required('ICU')
+def icu_dashboard(request):
+    """Enhanced Dashboard for ICU department with charts and critical care metrics"""
+    from django.db.models import Count, Avg, Q
+    from datetime import timedelta
+
+    user_department = get_user_department(request.user)
+
+    if not user_department:
+        messages.error(request, "You must be assigned to a department.")
+        return redirect('dashboard:dashboard')
+
+    # Build enhanced context with charts and trends
+    # ICURecord uses 'visit_date' instead of 'created_at'
+    context = build_enhanced_dashboard_context(
+        department=user_department,
+        record_model=IcuRecord,
+        record_queryset=IcuRecord.objects.all(),
+        priority_field=None,  # ICU records don't have priority field
+        status_field=None,  # ICU records don't have status field
+        completed_status='discharged',
+        date_field='visit_date'  # ICURecord uses visit_date instead of created_at
+    )
+
+    # ICU-specific statistics
+    today = timezone.now().date()
+
+    # Current admissions (active patients) - last 7 days
+    week_ago = today - timedelta(days=7)
+    current_admissions = IcuRecord.objects.filter(
+        visit_date__date__gte=week_ago
+    ).count()
+
+    # Critical patients (GCS score < 8 indicates severe impairment)
+    critical_patients = IcuRecord.objects.filter(
+        gcs_score__lt=8,
+        visit_date__date__gte=week_ago
+    ).count()
+
+    # Patients on ventilator
+    on_ventilator = IcuRecord.objects.filter(
+        mechanical_ventilation=True,
+        visit_date__date__gte=week_ago
+    ).count()
+
+    # Patients on dialysis
+    on_dialysis = IcuRecord.objects.filter(
+        dialysis_required=True,
+        visit_date__date__gte=week_ago
+    ).count()
+
+    # Average GCS score for recent patients
+    avg_gcs = IcuRecord.objects.filter(
+        visit_date__date__gte=week_ago
+    ).aggregate(avg=Avg('gcs_score'))['avg']
+    avg_gcs_score = round(avg_gcs, 1) if avg_gcs else 0
+
+    # Admissions today (using visit_date as ICURecord doesn't have admission_date)
+    admissions_today = IcuRecord.objects.filter(
+        visit_date__date=today
+    ).count()
+
+    # Note: ICURecord doesn't have discharge_date field, so we can't track discharges
+    discharges_today = 0
+
+    # Bed occupancy rate (assuming 10 beds - adjust as needed)
+    total_beds = 10
+    occupancy_rate = (current_admissions / total_beds * 100) if total_beds > 0 else 0
+
+    # GCS distribution for chart (recent patients only - last 7 days)
+    gcs_ranges = [
+        ('Severe (3-8)', IcuRecord.objects.filter(gcs_score__gte=3, gcs_score__lte=8, visit_date__date__gte=week_ago).count()),
+        ('Moderate (9-12)', IcuRecord.objects.filter(gcs_score__gte=9, gcs_score__lte=12, visit_date__date__gte=week_ago).count()),
+        ('Mild (13-15)', IcuRecord.objects.filter(gcs_score__gte=13, gcs_score__lte=15, visit_date__date__gte=week_ago).count()),
+    ]
+    gcs_labels = [item[0] for item in gcs_ranges]
+    gcs_counts = [item[1] for item in gcs_ranges]
+
+    # Equipment usage (recent patients only - last 7 days)
+    equipment_data = [
+        ('Ventilator', on_ventilator),
+        ('Dialysis', on_dialysis),
+        ('Vasopressor', IcuRecord.objects.filter(vasopressor_use=True, visit_date__date__gte=week_ago).count()),
+    ]
+    equipment_labels = [item[0] for item in equipment_data]
+    equipment_counts = [item[1] for item in equipment_data]
+
+    # Get recent records with patient info
+    recent_records = IcuRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
+
+    # Categorize referrals
+    categorized_referrals = categorize_referrals(user_department)
+
+    # Add to context
+    context.update({
+        'current_admissions': current_admissions,
+        'critical_patients': critical_patients,
+        'on_ventilator': on_ventilator,
+        'on_dialysis': on_dialysis,
+        'avg_gcs_score': avg_gcs_score,
+        'admissions_today': admissions_today,
+        'discharges_today': discharges_today,
+        'occupancy_rate': round(occupancy_rate, 1),
+        'total_beds': total_beds,
+        'gcs_labels': json.dumps(gcs_labels),
+        'gcs_counts': json.dumps(gcs_counts),
+        'equipment_labels': json.dumps(equipment_labels),
+        'equipment_counts': json.dumps(equipment_counts),
+        'recent_records': recent_records,
+        'categorized_referrals': categorized_referrals,
+    })
+
+    return render(request, 'icu/dashboard.html', context)
+
 
 @login_required
 def icu_records_list(request):
