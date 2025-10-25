@@ -97,6 +97,51 @@
             {% endfor %}
         </div>
     </div>
+
+    <!-- Clinical Notes Section -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Clinical Notes</h5>
+                <a href="{% url 'patients:add_clinical_note' consultation.patient.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus"></i> Add Clinical Note
+                </a>
+            </div>
+            {% if clinical_notes %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Note</th>
+                                <th>Doctor</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for note in clinical_notes %}
+                                <tr>
+                                    <td>{{ note.date|date:"M d, Y H:i" }}</td>
+                                    <td>{{ note.note|linebreaks }}</td>
+                                    <td>{{ note.doctor.get_full_name }}</td>
+                                    <td>
+                                        <a href="{% url 'patients:edit_clinical_note' note.id %}" class="btn btn-sm btn-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'patients:delete_clinical_note' note.id %}" class="btn btn-sm btn-danger" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">No clinical notes yet.</div>
+            {% endif %}
+        </div>
+    </div>
     <div class="row mb-4">
         <div class="col-md-12">
             <h5>Recent Audit Logs</h5>

@@ -568,8 +568,60 @@
                     {% endif %}
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Appointments Card -->
+    <!-- Clinical Notes Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-notes-medical"></i> Clinical Notes
+            </h6>
+            <a href="{% url 'patients:add_clinical_note' patient.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> Add Clinical Note
+            </a>
+        </div>
+        <div class="card-body">
+            {% if clinical_notes %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm" width="100%" cellspacing="0">
+                        <thead>
+                            <th>Date</th>
+                            <th>Note</th>
+                            <th>Doctor</th>
+                            <th>Actions</th>
+                        </thead>
+                        <tbody>
+                            {% for note in clinical_notes %}
+                                <tr>
+                                    <td>{{ note.date|date:"M d, Y H:i" }}</td>
+                                    <td>{{ note.note|linebreaks }}</td>
+                                    <td>{{ note.doctor.get_full_name }}</td>
+                                    <td>
+                                        <a href="{% url 'patients:edit_clinical_note' note.id %}" class="btn btn-sm btn-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'patients:delete_clinical_note' note.id %}" class="btn btn-sm btn-danger" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted text-center mb-0">No clinical notes recorded yet.</p>
+                <div class="text-end mt-3">
+                    <a href="{% url 'patients:add_clinical_note' patient.id %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Clinical Note
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Appointments Card -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Recent Appointments</h6>

@@ -14,6 +14,10 @@ urlpatterns = [
     path('medical-history/<int:history_id>/edit/', views.edit_medical_history, name='edit_medical_history'),
     path('medical-history/<int:history_id>/delete/', views.delete_medical_history, name='delete_medical_history'),
     path('<int:patient_id>/medical-history/', views.patient_medical_history, name='medical_history'),
+    # Clinical Notes URLs
+    path('<int:patient_id>/clinical-notes/add/', views.add_clinical_note, name='add_clinical_note'),
+    path('clinical-notes/<int:note_id>/edit/', views.edit_clinical_note, name='edit_clinical_note'),
+    path('clinical-notes/<int:note_id>/delete/', views.delete_clinical_note, name='delete_clinical_note'),
     path('<int:patient_id>/vitals/', views.patient_vitals, name='vitals'),
     path('<int:patient_id>/dashboard/', views.patient_dashboard, name='dashboard'),
     # PWA functionality disabled

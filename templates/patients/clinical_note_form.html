@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ page_title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ page_title }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5>Patient: {{ patient.get_full_name }}</h5>
+                    <p class="mb-0"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                            {{ form.doctor|add_class:"form-control" }}
+                            {% if form.doctor.errors %}
+                                <div class="text-danger">
+                                    {{ form.doctor.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.note.id_for_label }}" class="form-label">Clinical Note</label>
+                            {{ form.note|add_class:"form-control" }}
+                            {% if form.note.errors %}
+                                <div class="text-danger">
+                                    {{ form.note.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Back to Patient Details
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Save Clinical Note
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

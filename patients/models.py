@@ -18,11 +18,6 @@ class Patient(models.Model):
         ('A+', 'A+'),
         ('A-', 'A-'),
         ('B+', 'B+'),
-        ('B-', 'B-'),
-        ('AB+', 'AB+'),
-        ('AB-', 'AB-'),
-        ('O+', 'O+'),
-        ('O-', 'O-'),
     )
 
     MARITAL_STATUS_CHOICES = (
@@ -49,7 +44,6 @@ class Patient(models.Model):
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    blood_group = models.CharField(max_length=3, choices=BLOOD_GROUP_CHOICES, blank=True, null=True)
     marital_status = models.CharField(max_length=10, choices=MARITAL_STATUS_CHOICES, blank=True, null=True)
 
     # Contact Information
@@ -1060,3 +1054,21 @@ class NHIAPatient(Patient):
     def save(self, *args, **kwargs):
         self.patient_type = 'nhia'
         super().save(*args, **kwargs)
+
+
+class ClinicalNote(models.Model):
+    """Model for clinical notes associated with patients"""
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='clinical_notes')
+    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='clinical_notes')
+    note = models.TextField(help_text="Clinical note content")
+    date = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date']
+        verbose_name = 'Clinical Note'
+        verbose_name_plural = 'Clinical Notes'
+
+    def __str__(self):
+        return f"Clinical Note for {self.patient.get_full_name()} on {self.date.strftime('%Y-%m-%d')}"

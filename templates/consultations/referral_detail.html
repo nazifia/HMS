@@ -73,10 +73,12 @@
             <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-outline-primary btn-sm">
                 <i class="fas fa-list"></i> All Referrals
             </a>
-            {% if request.user.is_staff or request.user.profile.role.name in ['Desk Office', 'Administrator'] %}
+            {% if request.user.is_staff or request.user.profile %}  
+                {% if request.user.is_staff or request.user.profile.role == 'admin' %}
                 <a href="{% url 'desk_office:pending_referrals' %}" class="btn btn-outline-info btn-sm">
                     <i class="fas fa-shield-alt"></i> Pending Authorizations
                 </a>
+                {% endif %}
             {% endif %}
         </div>
     </div>
@@ -353,11 +355,14 @@
                     {% if referral.authorization_status == 'authorized' or referral.authorization_status == 'not_required' %}
                         {% if referral.status == 'pending' %}
                             <div class="text-center mt-3">
-                                <a href="{% url 'consultations:update_referral_status_detailed' referral.id %}?status=accepted" 
-                                   class="btn btn-success"
-                                   onclick="return confirm('Are you sure you want to accept this referral?')">
-                                    <i class="fas fa-check"></i> Accept Referral
-                                </a>
+                                <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}" 
+                                      onsubmit="return confirm('Are you sure you want to accept this referral?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="accepted">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-check"></i> Accept Referral
+                                    </button>
+                                </form>
                             </div>
                         {% endif %}
                     {% endif %}
@@ -378,7 +383,8 @@
                             <i class="fas fa-user"></i> View Patient Profile
                         </a>
                         
-                        {% if request.user.is_staff or request.user.profile.role.name in ['Desk Office', 'Administrator'] %}
+                        {% if request.user.is_staff or request.user.profile %}  
+                {% if request.user.is_staff or request.user.profile.role == 'admin' %}
                             {% if referral.patient.patient_type == 'nhia' %}
                                 {% if referral.authorization_status == 'required' or referral.authorization_status == 'pending' %}
                                     <a href="{% url 'desk_office:authorize_referral' referral.id %}" class="btn btn-outline-warning">
@@ -387,14 +393,18 @@
                                 {% endif %}
                             {% endif %}
                         {% endif %}
+                        {% endif %}
 
                         {% if referral.status == 'pending' %}
                             {% if referral.authorization_status == 'authorized' or referral.authorization_status == 'not_required' %}
-                                <a href="{% url 'consultations:update_referral_status_detailed' referral.id %}?status=accepted" 
-                                   class="btn btn-success"
-                                   onclick="return confirm('Are you sure you want to accept this referral?')">
-                                    <i class="fas fa-check"></i> Accept Referral
-                                </a>
+                                <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}" 
+                                      onsubmit="return confirm('Are you sure you want to accept this referral?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="accepted">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-check"></i> Accept Referral
+                                    </button>
+                                </form>
                                 <a href="{% url 'consultations:update_referral_status_detailed' referral.id %}?status=cancelled" 
                                    class="btn btn-danger"
                                    onclick="return confirm('Are you sure you want to cancel this referral?')">

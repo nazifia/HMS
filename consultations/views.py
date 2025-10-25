@@ -14,7 +14,7 @@ from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
 from accounts.models import CustomUser, Department
-from patients.models import Patient, Vitals
+from patients.models import Patient, Vitals, ClinicalNote
 from patients.utils import get_safe_vitals_for_patient, get_latest_safe_vitals_for_patient
 from appointments.models import Appointment
 from core.audit_utils import log_audit_action
@@ -107,25 +107,28 @@ def consultation_detail(request, consultation_id):
     notes = ConsultationNote.objects.filter(consultation=consultation)
     referrals = Referral.objects.filter(consultation=consultation)
     soap_notes = SOAPNote.objects.filter(consultation=consultation)
-    
+    clinical_notes = ClinicalNote.objects.filter(patient=consultation.patient).order_by('-date')[:10]
+
     # Get recent orders (limit to 5 for performance)
     orders = ConsultationOrder.objects.filter(consultation=consultation).select_related('content_type', 'created_by')[:5]
-    
+
     # Get analytics
     analytics = {
         'note_count': notes.count(),
         'referral_count': referrals.count(),
         'soap_count': soap_notes.count(),
+        'clinical_note_count': clinical_notes.count(),
     }
-    
+
     # Get user notifications
     user_notifications = []  # This would be implemented based on your notification system
-    
+
     context = {
         'consultation': consultation,
         'notes': notes,
         'referrals': referrals,
         'soap_notes': soap_notes,
+        'clinical_notes': clinical_notes,
         'orders': orders,
         'analytics': analytics,
         'user_notifications': user_notifications,
@@ -794,6 +797,53 @@ def update_referral_status_detailed(request, referral_id):
         messages.error(request, "You don't have permission to update this referral.")
         return redirect('consultations:referral_tracking')
 
+    if request.method == 'POST':
+        status = request.POST.get('status')
+        notes = request.POST.get('status_notes', '')
+        
+        if status in dict(Referral.STATUS_CHOICES):
+            # **AUTHORIZATION CHECK**: Prevent accepting referrals that require authorization
+            if status == 'accepted' and referral.requires_authorization:
+                if referral.authorization_status not in ['authorized', 'not_required']:
+                    messages.error(
+                        request,
+                        f"Cannot accept this referral. Authorization status is '{referral.get_authorization_status_display()}'. "
+                        f"This NHIA patient referral requires desk office authorization before it can be accepted. "
+                        f"Please contact the desk office to obtain authorization."
+                    )
+                    return redirect('consultations:referral_detail', referral_id=referral.id)
+
+            old_status = referral.status
+            referral.status = status
+
+            # Add status update notes
+            if notes:
+                if referral.notes:
+                    referral.notes += f"\n\n[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
+                else:
+                    referral.notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
+
+            # If accepting a department/specialty/unit referral, assign the doctor
+            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit']:
+                referral.assigned_doctor = request.user
+
+            referral.save()
+
+            # Create notification for the other party
+            if referral.referral_type in ['department', 'specialty', 'unit'] and referral.can_be_accepted_by(request.user):
+                # Notify referring doctor
+                from core.models import InternalNotification
+                InternalNotification.objects.create(
+                    user=referral.referring_doctor,
+                    message=f"Referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()} has been {status} by Dr. {request.user.get_full_name()}"
+                )
+
+            messages.success(request, f"Referral status updated to {status}.")
+        else:
+            messages.error(request, "Invalid status.")
+
+    return redirect('consultations:referral_detail', referral_id=referral.id)
+
 
 @login_required
 def bulk_update_referral_status(request):
@@ -841,7 +891,7 @@ def bulk_update_referral_status(request):
     if request.method == 'POST':
         status = request.POST.get('status')
         notes = request.POST.get('status_notes', '')
-
+        
         if status in dict(Referral.STATUS_CHOICES):
             # **AUTHORIZATION CHECK**: Prevent accepting referrals that require authorization
             if status == 'accepted' and referral.requires_authorization:
@@ -967,7 +1017,11 @@ def create_referral(request, patient_id=None):
     """View for creating a new referral directly from the patient detail page"""
     patient = None
     if patient_id:
-        patient = get_object_or_404(Patient, id=patient_id)
+        try:
+            patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            messages.error(request, f"Patient with ID {patient_id} does not exist.")
+            return redirect('patients:list')
 
     # Get referral history for this patient
     referral_history = []

@@ -8,8 +8,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction
-from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm
+from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, ClinicalNote
+from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm, ClinicalNoteForm
 from .utils import get_safe_vitals_for_patient
 from appointments.models import Appointment
 from consultations.models import Consultation
@@ -151,12 +151,21 @@ def patient_detail(request, patient_id):
         patient=patient
     ).order_by('-prescription_date')[:5]
 
+    # Get recent prescriptions
+    recent_prescriptions = Prescription.objects.filter(
+        patient=patient
+    ).order_by('-prescription_date')[:5]
+    # Get medical history and clinical notes
+    medical_histories = MedicalHistory.objects.filter(patient=patient).order_by('-date')
+    clinical_notes = ClinicalNote.objects.filter(patient=patient).order_by('-date')
     context = {
         'patient': patient,
         'age': age,
         'recent_appointments': recent_appointments,
         'recent_consultations': recent_consultations,
         'recent_prescriptions': recent_prescriptions,
+        'medical_histories': medical_histories,
+        'clinical_notes': clinical_notes,
         'page_title': f'Patient Details - {patient.get_full_name()}',
         'active_nav': 'patients',
     }
@@ -1226,3 +1235,75 @@ def clear_patient_context(request):
         return JsonResponse({'success': True, 'message': 'Patient context cleared successfully'})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+
+@login_required
+def add_clinical_note(request, patient_id):
+    """View for adding a clinical note to a patient"""
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    if request.method == 'POST':
+        form = ClinicalNoteForm(request.POST, user=request.user)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.patient = patient
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('patients:detail', patient_id=patient.id)
+    else:
+        form = ClinicalNoteForm(user=request.user)
+
+    context = {
+        'form': form,
+        'patient': patient,
+        'page_title': f'Add Clinical Note - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+
+    return render(request, 'patients/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """View for editing a clinical note"""
+    clinical_note = get_object_or_404(ClinicalNote, id=note_id)
+
+    if request.method == 'POST':
+        form = ClinicalNoteForm(request.POST, instance=clinical_note, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('patients:detail', patient_id=clinical_note.patient.id)
+    else:
+        form = ClinicalNoteForm(instance=clinical_note, user=request.user)
+
+    context = {
+        'form': form,
+        'clinical_note': clinical_note,
+        'patient': clinical_note.patient,
+        'page_title': f'Edit Clinical Note - {clinical_note.patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+
+    return render(request, 'patients/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """View for deleting a clinical note"""
+    clinical_note = get_object_or_404(ClinicalNote, id=note_id)
+    patient_id = clinical_note.patient.id
+
+    if request.method == 'POST':
+        clinical_note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('patients:detail', patient_id=patient_id)
+
+    context = {
+        'clinical_note': clinical_note,
+        'patient': clinical_note.patient,
+        'page_title': f'Delete Clinical Note - {clinical_note.patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+
+    return render(request, 'patients/delete_clinical_note.html', context)

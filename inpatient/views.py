@@ -16,7 +16,7 @@ from django.views.decorators.http import require_http_methods
 from django.db import models
 from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord, BedTransfer, WardTransfer
 from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm, ClinicalRecordForm, PatientTransferForm
-from patients.models import Patient, PatientWallet, WalletTransaction
+from patients.models import Patient, PatientWallet, WalletTransaction, ClinicalNote
 
 @login_required
 def bed_dashboard(request):
@@ -475,12 +475,14 @@ def admission_detail(request, pk):
     daily_rounds = admission.daily_rounds.all().order_by('-date_time')
     nursing_notes = admission.nursing_notes.all().order_by('-date_time')
     clinical_records = admission.clinical_records.all().order_by('-date_time')
-    
+    clinical_notes = ClinicalNote.objects.filter(patient=admission.patient).order_by('-date')[:10]
+
     context = {
         'admission': admission,
         'daily_rounds': daily_rounds,
         'nursing_notes': nursing_notes,
         'clinical_records': clinical_records,
+        'clinical_notes': clinical_notes,
         'note_form': note_form,
         'round_form': round_form,
         'title': f'Admission Details for {admission.patient.get_full_name()}'

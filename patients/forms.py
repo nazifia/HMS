@@ -1,5 +1,5 @@
 from django import forms
-from .models import Patient, MedicalHistory, Vitals
+from .models import Patient, MedicalHistory, Vitals, ClinicalNote
 from django.core.validators import RegexValidator
 from doctors.models import Specialization
 import re
@@ -67,7 +67,7 @@ class PatientForm(forms.ModelForm):
     class Meta:
         model = Patient
         fields = [
-            'first_name', 'last_name', 'date_of_birth', 'gender', 'blood_group', 'marital_status',
+            'first_name', 'last_name', 'date_of_birth', 'gender', 'marital_status',
             'address', 'city', 'state', 'postal_code', 'country', 'email', 'phone_number',
             'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
             'photo', 'id_document',
@@ -711,3 +711,30 @@ class RetainershipIndependentPatientForm(PatientForm):
                     is_active=self.cleaned_data.get('is_retainership_active', True)
                 )
         return patient
+
+
+class ClinicalNoteForm(forms.ModelForm):
+    """Form for adding and editing clinical notes"""
+
+    class Meta:
+        model = ClinicalNote
+        fields = ['doctor', 'note']
+        widgets = {
+            'doctor': forms.Select(attrs={'class': 'form-control'}),
+            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Enter clinical note...'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # Auto-populate doctor field with current user if they are a doctor
+        if self.user and not self.instance.pk:
+            self.fields['doctor'].initial = self.user
+
+        # Add form-control class to all widgets
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            if not isinstance(widget, (forms.CheckboxInput, forms.RadioSelect)):
+                existing_classes = widget.attrs.get('class', '')
+                widget.attrs['class'] = (existing_classes + ' form-control').strip()

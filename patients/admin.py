@@ -37,12 +37,12 @@ class VitalsInline(admin.TabularInline):
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
     list_display = ('patient_id', 'first_name', 'last_name', 'patient_type', 'gender', 'phone_number', 'registration_date', 'is_active', 'primary_doctor')
-    list_filter = ('gender', 'blood_group', 'is_active', 'registration_date')
+    list_filter = ('gender', 'is_active', 'registration_date')
     search_fields = ('patient_id', 'first_name', 'last_name', 'phone_number', 'email')
     date_hierarchy = 'registration_date'
     fieldsets = (
         ('Basic Information', {
-            'fields': ('first_name', 'last_name', 'date_of_birth', 'gender', 'blood_group', 'marital_status', 'profile_picture', 'patient_type')
+            'fields': ('first_name', 'last_name', 'date_of_birth', 'gender', 'marital_status', 'photo', 'patient_type')
         }),
         ('Contact Information', {
             'fields': ('email', 'phone_number', 'address', 'city', 'state', 'postal_code', 'country')
