@@ -52,10 +52,16 @@
             <a href="{% url 'consultations:create_referral' %}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> New Referral
             </a>
-            {% if request.user.is_staff or request.user.profile.role.name in ['Desk Office', 'Administrator'] %}
+            {% if request.user.is_staff %}
                 <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-info btn-sm">
                     <i class="fas fa-shield-alt"></i> NHIA Authorization
                 </a>
+            {% elif request.user.profile and request.user.profile.role %}
+                {% if request.user.profile.role.name == 'Desk Office' or request.user.profile.role.name == 'Administrator' %}
+                    <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-shield-alt"></i> NHIA Authorization
+                    </a>
+                {% endif %}
             {% endif %}
         </div>
     </div>

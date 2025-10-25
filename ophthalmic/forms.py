@@ -38,7 +38,7 @@ class OphthalmicRecordForm(forms.ModelForm):
         widgets = {
             'visit_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'follow_up_date': forms.DateInput(attrs={'type': 'date'}),
-            'notes': forms.Textarea(attrs={'rows': 4}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
 

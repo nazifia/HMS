@@ -19,7 +19,7 @@ class WardForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'ward_type': forms.Select(attrs={'class': 'form-select'}),
             'floor': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'capacity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'charge_per_day': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': '0.01'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -32,7 +32,7 @@ class BedForm(forms.ModelForm):
         widgets = {
             'ward': forms.Select(attrs={'class': 'form-select'}),
             'bed_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
     
@@ -65,10 +65,10 @@ class AdmissionForm(forms.ModelForm):
             'patient': forms.Select(attrs={'class': 'form-select select2'}),
             'admission_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'bed': forms.Select(attrs={'class': 'form-select'}),
-            'diagnosis': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'diagnosis': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'attending_doctor': forms.Select(attrs={'class': 'form-select select2'}),
-            'reason_for_admission': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'admission_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'reason_for_admission': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'admission_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'admission_service': forms.Select(attrs={'class': 'form-select'}),
         }
 
@@ -137,7 +137,7 @@ class DischargeForm(forms.ModelForm):
         fields = ['discharge_date', 'discharge_notes', 'status']
         widgets = {
             'discharge_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'discharge_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'discharge_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'status': forms.Select(attrs={'class': 'form-select'}),
         }
     
@@ -162,10 +162,10 @@ class DailyRoundForm(forms.ModelForm):
         widgets = {
             'date_time': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'doctor': forms.Select(attrs={'class': 'form-select select2'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'treatment_instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'medication_instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'diet_instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'treatment_instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'medication_instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'diet_instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -184,9 +184,9 @@ class NursingNoteForm(forms.ModelForm):
         widgets = {
             'date_time': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'nurse': forms.Select(attrs={'class': 'form-select select2'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'vital_signs': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'medication_given': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'vital_signs': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'medication_given': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -249,7 +249,7 @@ class ClinicalRecordForm(forms.ModelForm):
         widgets = {
             'record_type': forms.Select(attrs={'class': 'form-select'}),
             'date_time': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'temperature': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'blood_pressure_systolic': forms.NumberInput(attrs={'class': 'form-control'}),
             'blood_pressure_diastolic': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -259,8 +259,8 @@ class ClinicalRecordForm(forms.ModelForm):
             'medication_name': forms.TextInput(attrs={'class': 'form-control'}),
             'dosage': forms.TextInput(attrs={'class': 'form-control'}),
             'route': forms.TextInput(attrs={'class': 'form-control'}),
-            'treatment_description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'patient_condition': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'treatment_description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'patient_condition': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):

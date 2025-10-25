@@ -54,7 +54,7 @@ class PrescriptionItemForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={
             'class': 'form-control',
-            'rows': 2,
+            'rows': 1,
             'placeholder': 'Additional instructions (e.g., take after meals)'
         }),
         help_text='Any special instructions for the patient'
@@ -76,7 +76,7 @@ class MedicalModulePrescriptionForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={
             'class': 'form-control',
-            'rows': 3,
+            'rows': 2,
             'placeholder': 'Additional notes for pharmacy'
         }),
         help_text='Any additional notes for the pharmacy'

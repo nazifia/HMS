@@ -31,7 +31,7 @@ class AuthorizationCodeForm(forms.ModelForm):
     service_description = forms.CharField(
         widget=forms.Textarea(attrs={
             'class': 'form-control',
-            'rows': 3,
+            'rows': 2,
             'placeholder': 'Describe the specific service requested (e.g., CBC, X-Ray, Surgery, etc.)'
         }),
         required=False

@@ -45,7 +45,7 @@ class OperationTheatreForm(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'last_sanitized': DateTimeInput(),
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'description': forms.Textarea(attrs={'rows': 2}),
         }
 
 
@@ -57,8 +57,8 @@ class SurgeryTypeForm(forms.ModelForm):
             'average_duration': DurationInput(attrs={'placeholder': 'HH:MM:SS'}),
             'preparation_time': DurationInput(attrs={'placeholder': 'HH:MM:SS'}),
             'recovery_time': DurationInput(attrs={'placeholder': 'HH:MM:SS'}),
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'instructions': forms.Textarea(attrs={'rows': 3}),
+            'description': forms.Textarea(attrs={'rows': 2}),
+            'instructions': forms.Textarea(attrs={'rows': 2}),
             'fee': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01', 'min': '0'}),
         }
         help_texts = {
@@ -174,7 +174,7 @@ class SurgeryForm(forms.ModelForm):
         widgets = {
             'scheduled_date': DateTimeInput(),
             'expected_duration': DurationInput(attrs={'placeholder': 'HH:MM:SS'}),
-            'pre_surgery_notes': forms.Textarea(attrs={'rows': 3}),
+            'pre_surgery_notes': forms.Textarea(attrs={'rows': 2}),
             'patient': forms.HiddenInput(),
         }
         help_texts = {
@@ -263,7 +263,7 @@ class SurgicalTeamForm(forms.ModelForm):
         model = SurgicalTeam
         fields = ['staff', 'role', 'usage_notes']
         widgets = {
-            'usage_notes': forms.Textarea(attrs={'rows': 2}),
+            'usage_notes': forms.Textarea(attrs={'rows': 1}),
         }
     
     def clean(self):
@@ -319,7 +319,7 @@ class SurgicalEquipmentForm(forms.ModelForm):
         model = SurgicalEquipment
         fields = '__all__'
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'description': forms.Textarea(attrs={'rows': 2}),
             'last_maintenance_date': DateInput(),
             'next_maintenance_date': DateInput(),
             'last_calibration_date': DateInput(),
@@ -335,7 +335,7 @@ class EquipmentUsageForm(forms.ModelForm):
         model = EquipmentUsage
         fields = ['equipment', 'quantity_used', 'notes']
         widgets = {
-            'notes': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 1}),
         }
     
     def clean(self):
@@ -398,7 +398,7 @@ class SurgeryScheduleForm(forms.ModelForm):
             'end_time': DateTimeInput(),
             'pre_op_preparation_start': DateTimeInput(),
             'post_op_recovery_end': DateTimeInput(),
-            'delay_reason': forms.Textarea(attrs={'rows': 2}),
+            'delay_reason': forms.Textarea(attrs={'rows': 1}),
         }
 
 
@@ -407,9 +407,9 @@ class PostOperativeNoteForm(forms.ModelForm):
         model = PostOperativeNote
         fields = ['notes', 'complications', 'follow_up_instructions']
         widgets = {
-            'notes': forms.Textarea(attrs={'rows': 4}),
-            'complications': forms.Textarea(attrs={'rows': 3}),
-            'follow_up_instructions': forms.Textarea(attrs={'rows': 3}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
+            'complications': forms.Textarea(attrs={'rows': 2}),
+            'follow_up_instructions': forms.Textarea(attrs={'rows': 2}),
         }
 
 
@@ -431,7 +431,7 @@ class PreOperativeChecklistForm(forms.ModelForm):
             'imaging_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'blood_products_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'antibiotics_administered': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
 

@@ -31,12 +31,12 @@ class Family_planningRecordForm(forms.ModelForm):
             'end_date': forms.DateInput(attrs={'type': 'date'}),
             'refill_date': forms.DateInput(attrs={'type': 'date'}),
             'follow_up_date': forms.DateInput(attrs={'type': 'date'}),
-            'side_effects': forms.Textarea(attrs={'rows': 3}),
-            'education_provided': forms.Textarea(attrs={'rows': 3}),
-            'discontinuation_reason': forms.Textarea(attrs={'rows': 3}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3}),
-            'treatment_plan': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 4}),
+            'side_effects': forms.Textarea(attrs={'rows': 2}),
+            'education_provided': forms.Textarea(attrs={'rows': 2}),
+            'discontinuation_reason': forms.Textarea(attrs={'rows': 2}),
+            'diagnosis': forms.Textarea(attrs={'rows': 2}),
+            'treatment_plan': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
 class FamilyPlanningRecordSearchForm(MedicalRecordSearchForm):

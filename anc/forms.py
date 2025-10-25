@@ -33,9 +33,9 @@ class AncRecordForm(forms.ModelForm):
             'lmp': forms.DateInput(attrs={'type': 'date'}),
             'edd': forms.DateInput(attrs={'type': 'date'}),
             'follow_up_date': forms.DateInput(attrs={'type': 'date'}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3}),
-            'treatment_plan': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 4}),
+            'diagnosis': forms.Textarea(attrs={'rows': 2}),
+            'treatment_plan': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
     
     def __init__(self, *args, **kwargs):

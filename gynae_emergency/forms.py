@@ -29,11 +29,11 @@ class Gynae_emergencyRecordForm(forms.ModelForm):
         widgets = {
             'visit_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'follow_up_date': forms.DateInput(attrs={'type': 'date'}),
-            'vaginal_discharge': forms.Textarea(attrs={'rows': 3}),
-            'emergency_intervention': forms.Textarea(attrs={'rows': 3}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3}),
-            'treatment_plan': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 4}),
+            'vaginal_discharge': forms.Textarea(attrs={'rows': 2}),
+            'emergency_intervention': forms.Textarea(attrs={'rows': 2}),
+            'diagnosis': forms.Textarea(attrs={'rows': 2}),
+            'treatment_plan': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
 class GynaeEmergencyRecordSearchForm(MedicalRecordSearchForm):

@@ -92,7 +92,7 @@ class LeaveForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # If this is a staff member requesting leave for themselves
-        if user and not user.is_superuser and not user.profile.role == 'admin':
+        if user and not user.is_superuser and not (hasattr(user, 'profile') and user.profile and user.profile.role == 'admin'):
             self.fields['staff'].initial = user
             self.fields['staff'].widget = forms.HiddenInput()
         else:

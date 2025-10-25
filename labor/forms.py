@@ -32,9 +32,9 @@ class LaborRecordForm(forms.ModelForm):
             'rupture_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'placenta_delivery_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'follow_up_date': forms.DateInput(attrs={'type': 'date'}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3}),
-            'treatment_plan': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 4}),
+            'diagnosis': forms.Textarea(attrs={'rows': 2}),
+            'treatment_plan': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
 class LaborRecordSearchForm(MedicalRecordSearchForm):

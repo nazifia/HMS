@@ -48,9 +48,9 @@ class EntRecordForm(forms.ModelForm):
             'neck_examination': forms.Textarea(attrs={'rows': 2}),
             'audio_test_right': forms.Textarea(attrs={'rows': 2}),
             'audio_test_left': forms.Textarea(attrs={'rows': 2}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3}),
-            'treatment_plan': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'diagnosis': forms.Textarea(attrs={'rows': 2}),
+            'treatment_plan': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
             'authorization_code': forms.Select(attrs={'class': 'form-select select2'}),
             'follow_up_required': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

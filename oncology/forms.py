@@ -29,13 +29,13 @@ class OncologyRecordForm(forms.ModelForm):
         widgets = {
             'visit_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'follow_up_date': forms.DateInput(attrs={'type': 'date'}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3}),
-            'treatment_plan': forms.Textarea(attrs={'rows': 3}),
-            'treatment_protocol': forms.Textarea(attrs={'rows': 3}),
-            'surgery_details': forms.Textarea(attrs={'rows': 3}),
-            'biopsy_results': forms.Textarea(attrs={'rows': 3}),
-            'oncology_marker': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 4}),
+            'diagnosis': forms.Textarea(attrs={'rows': 2}),
+            'treatment_plan': forms.Textarea(attrs={'rows': 2}),
+            'treatment_protocol': forms.Textarea(attrs={'rows': 2}),
+            'surgery_details': forms.Textarea(attrs={'rows': 2}),
+            'biopsy_results': forms.Textarea(attrs={'rows': 2}),
+            'oncology_marker': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
 class OncologyRecordSearchForm(MedicalRecordSearchForm):

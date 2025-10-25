@@ -1444,7 +1444,7 @@ def create_prescription_from_test(request, test_request_id):
     
     # Check if user has permission to create prescriptions
     if not (request.user.is_staff or request.user.is_superuser or 
-            hasattr(request.user, 'profile') and request.user.profile.department == 'laboratory'):
+            hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department == 'laboratory'):
         messages.error(request, "You don't have permission to create prescriptions.")
         return redirect('laboratory:test_request_detail', request_id=test_request.id)
     

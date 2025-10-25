@@ -58,7 +58,7 @@
                 <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-outline-primary">
                     <i class="fas fa-file-invoice"></i> View Latest Invoice
                 </a>
-                <span class="badge bg-{{ 'success' if invoice.status == 'paid' else 'warning' }} ms-2">
+                <span class="badge {% if invoice.status == 'paid' %}bg-success{% else %}bg-warning{% endif %} ms-2">
                     Billing: {{ invoice.status|capfirst }}
                 </span>
             {% else %}

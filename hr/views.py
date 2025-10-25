@@ -282,7 +282,7 @@ def leave_list(request):
         date_from = search_form.cleaned_data.get('date_from')
         date_to = search_form.cleaned_data.get('date_to')
 
-        if search_query and (request.user.is_superuser or request.user.profile.role == 'admin'):
+        if search_query and (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'admin')):
             leaves = leaves.filter(
                 Q(staff__first_name__icontains=search_query) |
                 Q(staff__last_name__icontains=search_query) |
@@ -465,7 +465,7 @@ def attendance_list(request):
         date_to = search_form.cleaned_data.get('date_to')
         department = search_form.cleaned_data.get('department')
 
-        if search_query and (request.user.is_superuser or request.user.profile.role == 'admin'):
+        if search_query and (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'admin')):
             attendance_records = attendance_records.filter(
                 Q(staff__first_name__icontains=search_query) |
                 Q(staff__last_name__icontains=search_query) |
@@ -481,7 +481,7 @@ def attendance_list(request):
         if date_to:
             attendance_records = attendance_records.filter(date__lte=date_to)
 
-        if department and (request.user.is_superuser or request.user.profile.role == 'admin'):
+        if department and (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'admin')):
             attendance_records = attendance_records.filter(staff__profile__department=department)
 
     paginator = Paginator(attendance_records, 20)

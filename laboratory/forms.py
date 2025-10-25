@@ -17,7 +17,7 @@ class TestCategoryForm(forms.ModelForm):
         model = TestCategory
         fields = ['name', 'description']
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'description': forms.Textarea(attrs={'rows': 2}),
         }
 
 class TestForm(forms.ModelForm):
@@ -31,8 +31,8 @@ class TestForm(forms.ModelForm):
             'sample_type', 'duration', 'is_active'
         ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'preparation_instructions': forms.Textarea(attrs={'rows': 3}),
+            'description': forms.Textarea(attrs={'rows': 2}),
+            'preparation_instructions': forms.Textarea(attrs={'rows': 2}),
         }
 
 class TestParameterForm(forms.ModelForm):
@@ -98,7 +98,7 @@ class TestRequestForm(forms.ModelForm):
         widgets = {
             'status': forms.Select(attrs={'class': 'form-select'}),
             'priority': forms.Select(attrs={'class': 'form-select'}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -256,7 +256,7 @@ class TestResultForm(forms.ModelForm):
         widgets = {
             'test': forms.Select(attrs={'class': 'form-select'}),
             'result_file': forms.FileInput(attrs={'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
 class TestResultParameterForm(forms.ModelForm):

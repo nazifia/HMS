@@ -90,8 +90,8 @@ class RadiologyOrderForm(forms.ModelForm):
             'referring_doctor': forms.Select(attrs={'class': 'form-select select2'}),
             'priority': forms.Select(attrs={'class': 'form-select'}),
             'scheduled_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'clinical_information': forms.Textarea(attrs={'rows': 3}),
-            'notes': forms.Textarea(attrs={'rows': 2}),
+            'clinical_information': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 1}),
         }
 
 class RadiologyResultForm(forms.ModelForm):
@@ -101,8 +101,8 @@ class RadiologyResultForm(forms.ModelForm):
         fields = ['findings', 'impression', 'image_file', 'is_abnormal', 
                   'study_date', 'study_time', 'result_status']
         widgets = {
-            'findings': forms.Textarea(attrs={'rows': 4}),
-            'impression': forms.Textarea(attrs={'rows': 4}),
+            'findings': forms.Textarea(attrs={'rows': 2}),
+            'impression': forms.Textarea(attrs={'rows': 2}),
             'image_file': forms.FileInput(attrs={'class': 'form-control'}),
             'is_abnormal': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'study_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),

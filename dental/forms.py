@@ -29,10 +29,10 @@ class DentalRecordForm(forms.ModelForm):
             'patient': forms.Select(attrs={'class': 'form-select select2 patient-select'}),
             'tooth': forms.Select(attrs={'class': 'form-select'}),
             'service': forms.Select(attrs={'class': 'form-select'}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'treatment_procedure': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'diagnosis': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'treatment_procedure': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'treatment_status': forms.Select(attrs={'class': 'form-select'}),
-            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'appointment_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'next_appointment_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'dentist': forms.Select(attrs={'class': 'form-select'}),
@@ -111,7 +111,7 @@ class DentalServiceForm(forms.ModelForm):
         fields = ['name', 'description', 'price', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
@@ -126,5 +126,5 @@ class DentalXRayForm(forms.ModelForm):
         widgets = {
             'xray_type': forms.Select(attrs={'class': 'form-select'}),
             'image': forms.FileInput(attrs={'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
         }

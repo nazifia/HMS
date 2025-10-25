@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -23,7 +24,7 @@ from core.models import send_notification_email, send_notification_sms, Internal
 @login_required
 def consultation_list(request):
     """View to list consultations for the logged-in doctor"""
-    if hasattr(request.user, 'profile') and request.user.profile.role.name == 'doctor':
+    if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
         consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
     else:
         consultations = Consultation.objects.all().order_by('-consultation_date')
@@ -32,6 +33,64 @@ def consultation_list(request):
         'consultations': consultations,
     }
     return render(request, 'consultations/consultation_list.html', context)
+
+
+@require_http_methods(["POST"])
+@login_required
+def update_consultation_status(request, consultation_id):
+    """AJAX view to update consultation status"""
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check if user has permission to update this consultation
+    if not (request.user == consultation.doctor or request.user.is_staff):
+        return JsonResponse({
+            'success': False, 
+            'message': 'You don\'t have permission to update this consultation.'
+        })
+    
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        
+        # Validate status
+        valid_statuses = ['pending', 'in_progress', 'completed', 'cancelled']
+        if new_status not in valid_statuses:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid status provided.'
+            })
+        
+        old_status = consultation.status
+        consultation.status = new_status
+        
+        # We could add custom fields here if needed, for now just update status
+        consultation.save()
+        
+        # Log the action
+        log_audit_action(
+            request.user, 
+            'update', 
+            consultation, 
+            f"Updated consultation status from {old_status} to {new_status}"
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Consultation status updated to {new_status}.',
+            'old_status': old_status,
+            'new_status': new_status
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid JSON data.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error updating status: {str(e)}'
+        })
 
 
 @login_required
@@ -523,9 +582,9 @@ def referral_list(request):
     # Get referrals received by this doctor (includes assignments)
     referrals_received = Referral.objects.filter(
         Q(assigned_doctor=doctor) |     # Assigned referrals
-        (Q(referral_type='department') & Q(referred_to_department=doctor.profile.department)) |  # Department referrals
-        (Q(referral_type='specialty') & Q(referred_to_department=doctor.profile.department) & Q(referred_to_specialty__icontains=doctor.profile.specialization)) |  # Specialty referrals
-        (Q(referral_type='unit') & Q(referred_to_department=doctor.profile.department))  # Unit referrals
+        (Q(referral_type='department') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None)) |  # Department referrals
+        (Q(referral_type='specialty') & Q(referred_to_department=doctor.profile.department) & Q(referred_to_specialty__icontains=doctor.profile.specialization) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department and doctor.profile.specialization else Q(pk=None)) |  # Specialty referrals
+        (Q(referral_type='unit') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None))  # Unit referrals
     ).distinct().order_by('-referral_date') if hasattr(doctor, 'profile') and doctor.profile else Referral.objects.filter(
         Q(assigned_doctor=doctor)
     ).distinct().order_by('-referral_date')
@@ -1243,7 +1302,7 @@ def update_waiting_status(request, entry_id):
             messages.error(request, "Invalid status.")
 
     # Redirect based on user role
-    if hasattr(request.user, 'profile') and request.user.profile.role == 'doctor':
+    if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
         return redirect('consultations:doctor_waiting_list')
     else:
         return redirect('consultations:waiting_list')
