@@ -1,0 +1,280 @@
+{% extends 'enhanced_base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<!-- Bootstrap Datepicker CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+<style>
+.datepicker {
+    z-index: 1050 !important;
+}
+.datepicker-dropdown {
+    z-index: 1050 !important;
+}
+</style>
+{% endblock %}
+
+{% block title %}{% if physiotherapy_request %}Edit{% else %}Create{% endif %} Physiotherapy Request - {{ patient.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-walking me-2"></i>
+            {% if physiotherapy_request %}Edit{% else %}Create{% endif %} Physiotherapy Request
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'patients:detail' patient.id %}">{{ patient.get_full_name }}</a></li>
+                <li class="breadcrumb-item active">{% if physiotherapy_request %}Edit{% else %}Create{% endif %} Physiotherapy Request</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Physiotherapy Request Form Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-walking me-2"></i>
+                        {% if physiotherapy_request %}Edit{% else %}Create{% endif %} Physiotherapy Request
+                    </h6>
+                    <a href="{% url 'patients:detail' patient.id %}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Patient
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="physiotherapyForm">
+                        {% csrf_token %}
+                        
+                        <!-- Patient Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Patient:</strong> {{ patient.get_full_name }} (ID: {{ patient.patient_id }})
+                                    <br>
+                                    <strong>Age:</strong> {{ age }} years | <strong>Gender:</strong> {{ patient.get_gender_display }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Doctor Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.referring_doctor.id_for_label }}" class="form-label">
+                                    <i class="fas fa-user-md me-1"></i>Referring Doctor
+                                    <small class="text-muted">(Optional)</small>
+                                </label>
+                                {{ form.referring_doctor }}
+                                {% if form.referring_doctor.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.referring_doctor.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.physiotherapist.id_for_label }}" class="form-label">
+                                    <i class="fas fa-user-md me-1"></i>Assigned Physiotherapist
+                                    <small class="text-muted">(Optional)</small>
+                                </label>
+                                {{ form.physiotherapist }}
+                                {% if form.physiotherapist.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.physiotherapist.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Diagnosis and Treatment Plan -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="{{ form.diagnosis.id_for_label }}" class="form-label">
+                                    <i class="fas fa-stethoscope me-1"></i>Primary Diagnosis <span class="text-danger">*</span>
+                                </label>
+                                {{ form.diagnosis }}
+                                {% if form.diagnosis.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.diagnosis.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="{{ form.treatment_plan.id_for_label }}" class="form-label">
+                                    <i class="fas fa-clipboard-list me-1"></i>Treatment Plan <span class="text-danger">*</span>
+                                </label>
+                                {{ form.treatment_plan }}
+                                {% if form.treatment_plan.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.treatment_plan.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Priority and Dates -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">
+                                    <i class="fas fa-flag me-1"></i>Priority
+                                </label>
+                                {{ form.priority }}
+                                {% if form.priority.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.priority.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.start_date.id_for_label }}" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Start Date
+                                </label>
+                                <div class="input-group">
+                                    {{ form.start_date }}
+                                    <span class="input-group-text">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </span>
+                                </div>
+                                {% if form.start_date.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.start_date.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.end_date.id_for_label }}" class="form-label">
+                                    <i class="fas fa-calendar-check me-1"></i>Expected End Date
+                                </label>
+                                <div class="input-group">
+                                    {{ form.end_date }}
+                                    <span class="input-group-text">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </span>
+                                </div>
+                                {% if form.end_date.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.end_date.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                    <i class="fas fa-sticky-note me-1"></i>Additional Notes
+                                </label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.notes.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>
+                                        {% if physiotherapy_request %}Update{% else %}Create{% endif %} Request
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap Datepicker JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap Datepicker for date fields
+    const startDateInput = document.getElementById('{{ form.start_date.id_for_label }}');
+    const endDateInput = document.getElementById('{{ form.end_date.id_for_label }}');
+    
+    if (startDateInput) {
+        // Convert the input to a datepicker
+        $(startDateInput).datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true,
+            startDate: 'today',
+            clearBtn: true,
+            orientation: 'bottom auto'
+        });
+        
+        // Remove the native date picker attributes
+        startDateInput.removeAttribute('type');
+        startDateInput.setAttribute('type', 'text');
+        startDateInput.setAttribute('readonly', 'true');
+        startDateInput.style.cursor = 'pointer';
+        startDateInput.style.backgroundColor = '#fff';
+        
+        // Make the calendar icon clickable
+        const startIcon = startDateInput.parentElement.querySelector('.input-group-text');
+        if (startIcon) {
+            startIcon.style.cursor = 'pointer';
+            startIcon.addEventListener('click', function() {
+                $(startDateInput).datepicker('show');
+            });
+        }
+    }
+    
+    if (endDateInput) {
+        // Convert the input to a datepicker
+        $(endDateInput).datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true,
+            startDate: 'today',
+            clearBtn: true,
+            orientation: 'bottom auto'
+        });
+        
+        // Remove the native date picker attributes
+        endDateInput.removeAttribute('type');
+        endDateInput.setAttribute('type', 'text');
+        endDateInput.setAttribute('readonly', 'true');
+        endDateInput.style.cursor = 'pointer';
+        endDateInput.style.backgroundColor = '#fff';
+        
+        // Make the calendar icon clickable
+        const endIcon = endDateInput.parentElement.querySelector('.input-group-text');
+        if (endIcon) {
+            endIcon.style.cursor = 'pointer';
+            endIcon.addEventListener('click', function() {
+                $(endDateInput).datepicker('show');
+            });
+        }
+    }
+    
+    // Ensure end_date is not before start_date
+    if (startDateInput && endDateInput) {
+        $(startDateInput).on('changeDate', function() {
+            $(endDateInput).datepicker('setStartDate', $(this).datepicker('getDate'));
+        });
+    }
+});
+</script>
+{% endblock %}

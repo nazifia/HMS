@@ -22,18 +22,150 @@ from core.models import send_notification_email, send_notification_sms, Internal
 
 
 @login_required
+def unified_dashboard(request):
+    """Unified dashboard combining waiting list and consultations"""
+    if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
+        # Get consultations for this doctor
+        consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
+        # Get waiting list entries for this doctor
+        waiting_entries = WaitingList.objects.filter(
+            doctor=request.user,
+            status__in=['waiting', 'in_progress']
+        ).order_by('priority', 'check_in_time')
+    else:
+        # For admin staff, show all
+        consultations = Consultation.objects.all().order_by('-consultation_date')
+        waiting_entries = WaitingList.objects.filter(
+            status__in=['waiting', 'in_progress']
+        ).order_by('priority', 'check_in_time')
+    
+    # Calculate statistics
+    total_waiting = waiting_entries.filter(status='waiting').count()
+    in_progress_count = waiting_entries.filter(status='in_progress').count()
+    completed_today = consultations.filter(
+        status='completed',
+        consultation_date__date=timezone.now().date()
+    ).count()
+    
+    context = {
+        'consultations': consultations[:10],  # Show recent consultations
+        'waiting_entries': waiting_entries,
+        'total_waiting': total_waiting,
+        'in_progress_count': in_progress_count,
+        'completed_today': completed_today,
+        'is_unified_view': True,
+    }
+    return render(request, 'consultations/unified_dashboard.html', context)
+
+@login_required
 def consultation_list(request):
-    """View to list consultations for the logged-in doctor"""
+    """View to list consultations for the logged-in doctor with waiting list integration"""
     if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
         consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
+        # Get waiting list entries for this doctor
+        waiting_entries = WaitingList.objects.filter(
+            doctor=request.user,
+            status__in=['waiting', 'in_progress']
+        ).order_by('priority', 'check_in_time')
     else:
         consultations = Consultation.objects.all().order_by('-consultation_date')
+        waiting_entries = WaitingList.objects.filter(
+            status__in=['waiting', 'in_progress']
+        ).order_by('priority', 'check_in_time')
     
     context = {
         'consultations': consultations,
+        'waiting_entries': waiting_entries,
+        'show_waiting_list': True,
     }
     return render(request, 'consultations/consultation_list.html', context)
 
+
+@login_required
+def bulk_start_consultations(request):
+    """Start multiple consultations from waiting list"""
+    if request.method == 'GET':
+        return JsonResponse({
+            'success': True,
+            'message': 'Bulk start endpoint is accessible'
+        })
+    
+    if not hasattr(request.user, 'profile') or not request.user.profile.role == 'doctor':
+        return JsonResponse({
+            'success': False,
+            'message': 'Only doctors can start consultations.'
+        })
+    
+    try:
+        entry_ids = request.POST.getlist('entry_ids')
+        if not entry_ids:
+            return JsonResponse({
+                'success': False,
+                'message': 'No entries selected.'
+            })
+        
+        started_consultations = []
+        errors = []
+        
+        for entry_id in entry_ids:
+            try:
+                waiting_entry = get_object_or_404(WaitingList, id=entry_id, doctor=request.user)
+                
+                # Check if a consultation already exists
+                try:
+                    consultation = waiting_entry.consultation
+                    if consultation.status == 'completed':
+                        # Create new consultation if previous one is completed
+                        consultation = Consultation.objects.create(
+                            patient=waiting_entry.patient,
+                            doctor=waiting_entry.doctor,
+                            consulting_room=waiting_entry.consulting_room,
+                            waiting_list_entry=waiting_entry,
+                            appointment=waiting_entry.appointment,
+                            chief_complaint="",
+                            symptoms="",
+                            status='in_progress'
+                        )
+                        started_consultations.append({
+                            'patient': waiting_entry.patient.get_full_name(),
+                            'consultation_id': consultation.id
+                        })
+                except Consultation.DoesNotExist:
+                    # Create a new consultation
+                    consultation = Consultation.objects.create(
+                        patient=waiting_entry.patient,
+                        doctor=waiting_entry.doctor,
+                        consulting_room=waiting_entry.consulting_room,
+                        waiting_list_entry=waiting_entry,
+                        appointment=waiting_entry.appointment,
+                        chief_complaint="",
+                        symptoms="",
+                        status='in_progress'
+                    )
+                    started_consultations.append({
+                        'patient': waiting_entry.patient.get_full_name(),
+                        'consultation_id': consultation.id
+                    })
+                
+                # Update waiting entry status
+                waiting_entry.status = 'in_progress'
+                waiting_entry.save()
+                
+            except Exception as e:
+                errors.append(f"Error with entry {entry_id}: {str(e)}")
+        
+        return JsonResponse({
+            'success': len(started_consultations) > 0,
+            'message': f"Started {len(started_consultations)} consultations.",
+            'started': started_consultations,
+            'errors': errors
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error starting consultations: {str(e)}'
+        })
 
 @require_http_methods(["POST"])
 @login_required
@@ -42,7 +174,7 @@ def update_consultation_status(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
     
     # Check if user has permission to update this consultation
-    if not (request.user == consultation.doctor or request.user.is_staff):
+    if not (request.user == consultation.doctor or request.user.is_staff or request.user.is_superuser):
         return JsonResponse({
             'success': False, 
             'message': 'You don\'t have permission to update this consultation.'
@@ -99,7 +231,7 @@ def consultation_detail(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
     
     # Check permissions
-    if not (request.user == consultation.doctor or request.user.is_staff):
+    if not (request.user == consultation.doctor or request.user.is_staff or request.user.is_superuser):
         messages.error(request, "You don't have permission to view this consultation.")
         return redirect('consultations:consultation_list')
     
@@ -152,7 +284,7 @@ def create_consultation_order(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
     
     # Check if user has permission to create orders for this consultation
-    if not (request.user == consultation.doctor or request.user.is_staff):
+    if not (request.user == consultation.doctor or request.user.is_staff or request.user.is_superuser):
         messages.error(request, "You don't have permission to create orders for this consultation.")
         return redirect('consultations:consultation_detail', pk=consultation_id)
     
@@ -216,7 +348,7 @@ def create_lab_order_ajax(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
     
     # Check if user has permission
-    if not (request.user == consultation.doctor or request.user.is_staff):
+    if not (request.user == consultation.doctor or request.user.is_staff or request.user.is_superuser):
         return JsonResponse({'success': False, 'error': 'Permission denied'})
     
     form = QuickLabOrderForm(request.POST, consultation=consultation)
@@ -243,7 +375,7 @@ def create_radiology_order_ajax(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
     
     # Check if user has permission
-    if not (request.user == consultation.doctor or request.user.is_staff):
+    if not (request.user == consultation.doctor or request.user.is_staff or request.user.is_superuser):
         return JsonResponse({'success': False, 'error': 'Permission denied'})
     
     form = QuickRadiologyOrderForm(request.POST, consultation=consultation)
@@ -270,7 +402,7 @@ def create_prescription_ajax(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
 
     # Check if user has permission
-    if not (request.user == consultation.doctor or request.user.is_staff):
+    if not (request.user == consultation.doctor or request.user.is_staff or request.user.is_superuser):
         return JsonResponse({'success': False, 'error': 'Permission denied'})
 
     form = QuickPrescriptionForm(request.POST, consultation=consultation, user=request.user)
@@ -298,7 +430,8 @@ def consultation_orders(request, consultation_id):
     # Check if user has permission to view this consultation
     if not (request.user == consultation.doctor or 
             request.user == consultation.patient or 
-            request.user.is_staff):
+            request.user.is_staff or 
+            request.user.is_superuser):
         messages.error(request, "You don't have permission to view this consultation.")
         return redirect('consultations:consultation_list')
     
@@ -394,15 +527,27 @@ def patient_list(request):
     paginator = Paginator(patients, 10)  # Show 10 patients per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
+    
+    # Get waiting list statistics
+    waiting_patients = WaitingList.objects.filter(
+        doctor=request.user,
+        status='waiting'
+    )
+    in_progress_patients = WaitingList.objects.filter(
+        doctor=request.user,
+        status='in_progress'
+    )
+    
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
         'page_title': 'My Patients',
         'active_nav': 'patients',
+        'waiting_patients': waiting_patients,
+        'in_progress_count': in_progress_patients.count(),
     }
 
-    return render(request, 'consultations/patient_list.html', context)
+    return render(request, 'consultations/patient_list_clean.html', context)
 
 @login_required
 def patient_detail(request, patient_id):
@@ -1011,6 +1156,80 @@ def reject_referral(request, referral_id):
 
     # GET request - show confirmation page or redirect to detail
     return redirect('consultations:referral_detail', referral_id=referral.id)
+
+
+@login_required
+def complete_referral(request, referral_id):
+    """
+    View to mark a referral as completed.
+    Only the assigned doctor or department staff can complete a referral.
+    """
+    referral = get_object_or_404(Referral, id=referral_id)
+
+    # Check permissions
+    can_complete = False
+
+    if referral.referral_type in ['department', 'specialty', 'unit']:
+        # Department/specialty/unit referral - check if user is assigned or can accept
+        can_complete = (referral.assigned_doctor == request.user or
+                       referral.can_be_accepted_by(request.user))
+
+    # Admin and superuser can always complete
+    if request.user.is_superuser:
+        can_complete = True
+
+    if not can_complete:
+        messages.error(request, "You don't have permission to complete this referral.")
+        return redirect('consultations:referral_tracking')
+
+    # Check if referral is in accepted status
+    if referral.status != 'accepted':
+        messages.error(request, f"Cannot complete referral. Current status is '{referral.get_status_display()}'. Only accepted referrals can be completed.")
+        return redirect('consultations:referral_detail', referral_id=referral.id)
+
+    if request.method == 'POST':
+        completion_notes = request.POST.get('completion_notes', '').strip()
+
+        # Update referral status to completed
+        old_status = referral.status
+        referral.status = 'completed'
+
+        # Add completion notes
+        completion_note = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Referral COMPLETED.\n"
+        if completion_notes:
+            completion_note += f"Completion Notes: {completion_notes}"
+
+        if referral.notes:
+            referral.notes += f"\n\n{completion_note}"
+        else:
+            referral.notes = completion_note
+
+        referral.save()
+
+        # Create audit log
+        try:
+            from core.models import AuditLog
+            AuditLog.objects.create(
+                user=request.user,
+                action="REFERRAL_COMPLETED",
+                details=f"Completed referral for {referral.patient.get_full_name()} from Dr. {referral.referring_doctor.get_full_name()} to {referral.get_referral_destination()}"
+            )
+        except ImportError:
+            pass
+
+        # Notify referring doctor
+        from core.models import InternalNotification
+        InternalNotification.objects.create(
+            user=referral.referring_doctor,
+            message=f"Your referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()} has been COMPLETED by Dr. {request.user.get_full_name()}."
+        )
+
+        messages.success(request, f"Referral completed successfully. The referring doctor has been notified.")
+        return redirect('consultations:department_referral_dashboard')
+
+    # GET request - show confirmation page or redirect to detail
+    return redirect('consultations:referral_detail', referral_id=referral.id)
+
 
 @login_required
 def create_referral(request, patient_id=None):

@@ -5,6 +5,9 @@ from . import payment_views
 app_name = 'consultations'
 
 urlpatterns = [
+    # Unified Dashboard
+    path('unified-dashboard/', views.unified_dashboard, name='unified_dashboard'),
+
     # Doctor dashboard
     path('doctor/dashboard/', views.doctor_dashboard, name='doctor_dashboard'),
 
@@ -29,6 +32,7 @@ urlpatterns = [
     path('referrals/<int:referral_id>/', views.referral_detail, name='referral_detail'),
     path('referrals/<int:referral_id>/update-status/', views.update_referral_status_detailed, name='update_referral_status_detailed'),
     path('referrals/<int:referral_id>/reject/', views.reject_referral, name='reject_referral'),
+    path('referrals/<int:referral_id>/complete/', views.complete_referral, name='complete_referral'),
     path('referrals/create/', views.create_referral, name='create_referral'),
     path('referrals/create/<int:patient_id>/', views.create_referral, name='create_referral'),
     path('department/referrals/', views.department_referral_dashboard, name='department_referral_dashboard'),
@@ -44,6 +48,7 @@ urlpatterns = [
     path('waiting-list/add/', views.add_to_waiting_list, name='add_to_waiting_list'),
     path('waiting-list/add/<int:patient_id>/', views.add_to_waiting_list, name='add_patient_to_waiting_list'),
     path('waiting-list/<int:entry_id>/update-status/', views.update_waiting_status, name='update_waiting_status'),
+    path('waiting-list/bulk-start/', views.bulk_start_consultations, name='bulk_start_consultations'),
 
     # Doctor Waiting List and Consultation
     path('doctor/waiting-list/', views.doctor_waiting_list, name='doctor_waiting_list'),

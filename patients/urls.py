@@ -18,6 +18,11 @@ urlpatterns = [
     path('<int:patient_id>/clinical-notes/add/', views.add_clinical_note, name='add_clinical_note'),
     path('clinical-notes/<int:note_id>/edit/', views.edit_clinical_note, name='edit_clinical_note'),
     path('clinical-notes/<int:note_id>/delete/', views.delete_clinical_note, name='delete_clinical_note'),
+    # Physiotherapy Request URLs
+    path('<int:patient_id>/physiotherapy/add/', views.create_physiotherapy_request, name='create_physiotherapy_request'),
+    path('physiotherapy/<int:request_id>/edit/', views.edit_physiotherapy_request, name='edit_physiotherapy_request'),
+    path('physiotherapy/<int:request_id>/delete/', views.delete_physiotherapy_request, name='delete_physiotherapy_request'),
+    path('physiotherapy/<int:request_id>/status/<str:status>/', views.update_physiotherapy_status, name='update_physiotherapy_status'),
     path('<int:patient_id>/vitals/', views.patient_vitals, name='vitals'),
     path('<int:patient_id>/dashboard/', views.patient_dashboard, name='dashboard'),
     # PWA functionality disabled

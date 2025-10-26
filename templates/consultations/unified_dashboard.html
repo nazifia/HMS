@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load core_form_tags %}
+{% load consultation_tags %}
+
+{% block title %}Unified Dashboard - Consultations & Waiting List{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-th-large mr-2"></i>Unified Dashboard
+        </h1>
+        <div>
+            <a href="{% url 'consultations:waiting_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm me-2">
+                <i class="fas fa-clock fa-sm text-white-50"></i> Full Waiting List
+            </a>
+            <a href="{% url 'consultations:consultation_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-list fa-sm text-white-50"></i> All Consultations
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Waiting</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_waiting }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">In Progress</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ in_progress_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Completed Today</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_today }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Patients</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_waiting|add:in_progress_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-injured fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Waiting List Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-clock mr-2"></i>Waiting Patients ({{ waiting_entries|length }})
+                    </h6>
+                    <a href="{% url 'consultations:waiting_list' %}" class="btn btn-sm btn-outline-warning">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if waiting_entries %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Priority</th>
+                                        <th>Wait Time</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in waiting_entries %}
+                                        <tr class="{% if entry.priority == 'urgent' %}table-danger{% elif entry.priority == 'high' %}table-warning{% elif entry.priority == 'medium' %}table-info{% endif %}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-xs mr-2">
+                                                        <div class="avatar-title bg-warning rounded-circle">
+                                                            {{ entry.patient.get_full_name|slice:":1"|upper }}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <strong>{{ entry.patient.get_full_name|truncatechars:20 }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">ID: {{ entry.patient.id }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if entry.priority == 'urgent' %}danger{% elif entry.priority == 'high' %}warning{% elif entry.priority == 'medium' %}info{% else %}secondary{% endif %}">
+                                                    {{ entry.get_priority_display|upper }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ entry.check_in_time|timesince }}</small>
+                                            </td>
+                                            <td>
+                                                {% if entry.status == 'waiting' and entry.doctor == request.user %}
+                                                    <a href="{% url 'consultations:start_consultation' entry.id %}" 
+                                                       class="btn btn-xs btn-primary">
+                                                        Start
+                                                    </a>
+                                                {% elif entry.status == 'in_progress' %}
+                                                    <a href="{% if entry.consultation %}{% url 'consultations:doctor_consultation' entry.consultation.id %}{% endif %}" 
+                                                       class="btn btn-xs btn-info">
+                                                        Continue
+                                                    </a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                            <p class="text-muted mb-0">No patients waiting</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Consultations Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-stethoscope mr-2"></i>Recent Consultations
+                    </h6>
+                    <a href="{% url 'consultations:consultation_list' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if consultations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for consultation in consultations %}
+                                        <tr class="{% if consultation.status == 'pending' %}table-warning{% elif consultation.status == 'in_progress' %}table-info{% elif consultation.status == 'completed' %}table-success{% elif consultation.status == 'cancelled' %}table-danger{% endif %}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-xs mr-2">
+                                                        <div class="avatar-title bg-primary rounded-circle">
+                                                            {{ consultation.patient.get_full_name|slice:":1"|upper }}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <strong>{{ consultation.patient.get_full_name|truncatechars:20 }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">ID: {{ consultation.patient.id }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <small>{{ consultation.consultation_date|date:"M d, H:i" }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if consultation.status == 'pending' %}warning{% elif consultation.status == 'in_progress' %}info{% elif consultation.status == 'completed' %}success{% elif consultation.status == 'cancelled' %}danger{% endif %}">
+                                                    {{ consultation.get_status_display|title }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'consultations:consultation_detail' consultation.id %}" 
+                                                   class="btn btn-xs btn-outline-primary">
+                                                    View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-calendar-times text-muted fa-2x mb-2"></i>
+                            <p class="text-muted mb-0">No consultations yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-bolt mr-2"></i>Quick Actions
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'consultations:add_to_waiting_list' %}" class="btn btn-warning btn-block">
+                        <i class="fas fa-plus mr-2"></i>Add Patient to Waiting List
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'consultations:patient_list' %}" class="btn btn-primary btn-block">
+                        <i class="fas fa-user-injured mr-2"></i>View Patients
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'consultations:patient_list' %}" class="btn btn-success btn-block">
+                        <i class="fas fa-user-plus mr-2"></i>New Consultation
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'consultations:doctor_dashboard' %}" class="btn btn-info btn-block">
+                        <i class="fas fa-tachometer-alt mr-2"></i>Doctor Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for real-time updates -->
+<script>
+// Auto-refresh the dashboard every 30 seconds
+setInterval(function() {
+    location.reload();
+}, 30000);
+
+// Add smooth transitions
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.style.transition = 'all 0.3s ease';
+    });
+});
+
+// Function to show patient details modal
+function showPatientDetails(patientId) {
+    // This would open a modal with patient details
+    console.log('Show details for patient:', patientId);
+    // Implementation would depend on your modal system
+}
+</script>
+{% endblock %}

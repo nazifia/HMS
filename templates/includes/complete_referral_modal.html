@@ -1,0 +1,54 @@
+{% load static %}
+
+<!-- Complete Referral Modal -->
+<div class="modal fade" id="completeReferralModal{{ referral.id }}" tabindex="-1" aria-labelledby="completeReferralModalLabel{{ referral.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="completeReferralModalLabel{{ referral.id }}">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Complete Referral
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'consultations:complete_referral' referral.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Complete Referral:</strong> Mark this referral as completed after providing the required service.
+                    </div>
+
+                    <div class="mb-3">
+                        <p><strong>Patient:</strong> {{ referral.patient.get_full_name }}</p>
+                        <p><strong>Referring Doctor:</strong> Dr. {{ referral.referring_doctor.get_full_name }}</p>
+                        <p><strong>Reason:</strong> {{ referral.reason|truncatewords:20 }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="completion_notes{{ referral.id }}" class="form-label">
+                            <strong>Completion Notes (Optional)</strong>
+                        </label>
+                        <textarea class="form-control" 
+                                  id="completion_notes{{ referral.id }}" 
+                                  name="completion_notes" 
+                                  rows="4" 
+                                  placeholder="Enter any notes about the service provided, findings, or recommendations..."></textarea>
+                        <small class="form-text text-muted">
+                            These notes will be sent to the referring doctor.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle"></i> Mark as Completed
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

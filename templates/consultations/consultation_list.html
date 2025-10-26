@@ -1,9 +1,33 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load core_form_tags %}
+{% load consultation_tags %}
 
 {% block title %}Consultations List{% endblock %}
 
 {% block content %}
+
+<!-- Bulk Action Modal -->
+<div class="modal fade" id="bulkActionModal" tabindex="-1" aria-labelledby="bulkActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkActionModalLabel">Bulk Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="bulkActionMessage"></p>
+                <div class="progress d-none" id="bulkProgress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmBulkAction">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -15,6 +39,9 @@
             {% endif %}
         </h1>
         <div>
+            <a href="{% url 'consultations:unified_dashboard' %}" class="d-none d-sm-inline-block btn btn-sm btn-info shadow-sm me-2">
+                <i class="fas fa-th-large fa-sm text-white-50"></i> Dashboard
+            </a>
             {% if request.user.profile and request.user.profile.role == 'doctor' %}
                 <a href="{% url 'consultations:doctor_waiting_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm me-2">
                     <i class="fas fa-clock fa-sm text-white-50"></i> Waiting List
@@ -33,11 +60,26 @@
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pending</div>
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Waiting</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ waiting_entries|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">In Progress</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ consultations|length }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                            <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -89,6 +131,110 @@
             </div>
         </div>
     </div>
+
+    {% if show_waiting_list %}
+    <!-- Waiting List Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <h6 class="m-0 font-weight-bold text-warning me-3">
+                    <i class="fas fa-clock mr-2"></i>Waiting Patients ({{ waiting_entries|length }})
+                </h6>
+                {% if request.user.profile and request.user.profile.role == 'doctor' %}
+                <button class="btn btn-sm btn-success" onclick="bulkStartConsultations()">
+                    <i class="fas fa-play"></i> Start Selected
+                </button>
+                {% endif %}
+            </div>
+            <a href="{% url 'consultations:waiting_list' %}" class="btn btn-sm btn-outline-warning">
+                View Full Waiting List
+            </a>
+        </div>
+        <div class="card-body">
+            {% if waiting_entries %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-light">
+                            <tr>
+                                <th width="5%">
+                                    <input type="checkbox" class="form-check-input" onchange="toggleAllCheckboxes(this)" title="Select all">
+                                </th>
+                                <th>Patient</th>
+                                <th>Priority</th>
+                                <th>Check-in Time</th>
+                                <th>Room</th>
+                                <th>Wait Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in waiting_entries %}
+                                <tr class="{% if entry.priority == 'urgent' %}table-danger{% elif entry.priority == 'high' %}table-warning{% elif entry.priority == 'medium' %}table-info{% endif %}">
+                                    <td>
+                                        <input type="checkbox" class="form-check-input" name="waiting_entry_ids" value="{{ entry.id }}">
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm mr-3">
+                                                <div class="avatar-title bg-warning rounded-circle">
+                                                    {{ entry.patient.get_full_name|slice:":2"|upper }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <strong class="patient-name">{{ entry.patient.get_full_name }}</strong>
+                                                <br>
+                                                <small class="text-muted">ID: {{ entry.patient.id }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if entry.priority == 'urgent' %}danger{% elif entry.priority == 'high' %}warning{% elif entry.priority == 'medium' %}info{% else %}secondary{% endif %}">
+                                            {{ entry.get_priority_display|upper }}
+                                        </span>
+                                    </td>
+                                    <td>{{ entry.check_in_time|time:"H:i" }}</td>
+                                    <td>
+                                        {% if entry.consulting_room %}
+                                            {{ entry.consulting_room.room_number }}
+                                        {% else %}
+                                            <span class="text-muted">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">{{ entry.check_in_time|timesince }}</span>
+                                    </td>
+                                    <td>
+                                        {% if entry.status == 'waiting' and entry.doctor == request.user %}
+                                            <a href="{% url 'consultations:start_consultation' entry.id %}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-play"></i> Start
+                                            </a>
+                                        {% elif entry.status == 'in_progress' %}
+                                            <a href="{% if entry.consultation %}{% url 'consultations:doctor_consultation' entry.consultation.id %}{% endif %}" 
+                                               class="btn btn-sm btn-info">
+                                                <i class="fas fa-stethoscope"></i> Continue
+                                            </a>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-outline-secondary" 
+                                                onclick="showPatientDetails('{{ entry.patient.id }}')">
+                                            <i class="fas fa-user"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                    <h5 class="text-muted">No patients waiting</h5>
+                    <p class="text-muted">All patients have been attended to</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Enhanced Consultations Table -->
     <div class="card shadow mb-4">
@@ -182,7 +328,7 @@
                                     </td>
                                     <td>
                                         <div class="status-container">
-                                            <span id="status-badge-{{ consultation.id }}" class="badge badge-{{ consultation.status|default:'secondary' }} {% if consultation.status == 'pending' %}bg-warning{% elif consultation.status == 'in_progress' %}bg-info{% elif consultation.status == 'completed' %}bg-success{% elif consultation.status == 'cancelled' %}bg-danger{% endif %} status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
+                                            <span id="status-badge-{{ consultation.id }}" class="badge {% if consultation.status == 'pending' %}bg-warning{% elif consultation.status == 'in_progress' %}bg-info{% elif consultation.status == 'completed' %}bg-success{% elif consultation.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %} status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
                                                 {% if consultation.status == 'pending' %}
                                                     <i class="fas fa-clock"></i> 
                                                 {% elif consultation.status == 'in_progress' %}
@@ -747,6 +893,84 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// Bulk operations functionality
+function bulkStartConsultations() {
+    const checkboxes = document.querySelectorAll('input[name="waiting_entry_ids"]:checked');
+    
+    if (checkboxes.length === 0) {
+        showNotification('Please select at least one patient', 'warning');
+        return;
+    }
+    
+    const patientNames = Array.from(checkboxes).map(cb => 
+        cb.closest('tr').querySelector('.patient-name').textContent.trim()
+    );
+    
+    document.getElementById('bulkActionMessage').innerHTML = 
+        `Are you sure you want to start consultations for the following patients?<br><br>
+        <strong>${patientNames.join(', ')}</strong>`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('bulkActionModal'));
+    modal.show();
+    
+    // Set up confirmation button
+    document.getElementById('confirmBulkAction').onclick = function() {
+        performBulkStart(checkboxes);
+    };
+}
+
+function performBulkStart(checkboxes) {
+    const entryIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    // Show progress
+    document.getElementById('bulkProgress').classList.remove('d-none');
+    const progressBar = document.querySelector('#bulkProgress .progress-bar');
+    progressBar.style.width = '20%';
+    
+    fetch('/consultations/waiting-list/bulk-start/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: new URLSearchParams({
+            'entry_ids': entryIds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+        
+        if (data.success) {
+            showNotification(data.message, 'success');
+            
+            // Refresh the page after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'Error starting consultations', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error starting consultations: ' + error.message, 'error');
+    })
+    .finally(() => {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkActionModal'));
+        modal.hide();
+    });
+}
+
+// Toggle all checkboxes
+function toggleAllCheckboxes(source) {
+    const checkboxes = document.querySelectorAll('input[name="waiting_entry_ids"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = source.checked;
+    });
 }
 
 // Add CSRF token to the page if not present

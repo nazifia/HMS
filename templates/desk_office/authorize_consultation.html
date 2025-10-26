@@ -334,7 +334,7 @@
                                 <a href="{% url 'desk_office:pending_consultations' %}" class="btn btn-secondary">
                                     <i class="fas fa-arrow-left"></i> Cancel
                                 </a>
-                                <a href="{% url 'consultations:detail' consultation.id %}" class="btn btn-info">
+                                <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-info">
                                     <i class="fas fa-eye"></i> View Consultation
                                 </a>
                             </div>
@@ -387,7 +387,7 @@
                         <a href="{% url 'patients:detail' consultation.patient.id %}" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-user"></i> View Patient Profile
                         </a>
-                        <a href="{% url 'consultations:detail' consultation.id %}" class="btn btn-outline-info btn-sm">
+                        <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-outline-info btn-sm">
                             <i class="fas fa-stethoscope"></i> Full Consultation Details
                         </a>
                         {% if consultation.patient.patient_type == 'nhia' %}

@@ -292,29 +292,50 @@ def get_unauthorized_referrals(department, limit=None):
 def categorize_referrals(department):
     """
     Categorize referrals by their authorization and status
-    
+
     Args:
         department: Department instance
-        
+
     Returns:
-        dict: Categorized referrals
+        dict: Categorized referrals including pending and accepted
     """
-    all_referrals = Referral.objects.filter(
+    # Get pending referrals
+    pending_referrals = Referral.objects.filter(
         referred_to_department=department,
         status='pending'
     ).select_related(
         'patient',
+        'patient__nhia_info',
         'referring_doctor',
-        'authorization_code'
+        'referring_doctor__profile',
+        'referring_doctor__profile__department',
+        'authorization_code',
+        'assigned_doctor'
     ).order_by('-referral_date')
-    
+
+    # Get accepted referrals (patients under care)
+    accepted_referrals = Referral.objects.filter(
+        referred_to_department=department,
+        status='accepted'
+    ).select_related(
+        'patient',
+        'patient__nhia_info',
+        'referring_doctor',
+        'referring_doctor__profile',
+        'referring_doctor__profile__department',
+        'authorization_code',
+        'assigned_doctor'
+    ).order_by('-referral_date')
+
     categorized = {
-        'ready_to_accept': [],  # Authorized or not requiring authorization
-        'awaiting_authorization': [],  # Requires authorization but not yet authorized
-        'rejected_authorization': [],  # Authorization was rejected
+        'ready_to_accept': [],  # Authorized or not requiring authorization (pending)
+        'awaiting_authorization': [],  # Requires authorization but not yet authorized (pending)
+        'rejected_authorization': [],  # Authorization was rejected (pending)
+        'under_care': [],  # Accepted referrals - patients currently under department care
     }
-    
-    for referral in all_referrals:
+
+    # Categorize pending referrals
+    for referral in pending_referrals:
         if referral.authorization_status == 'rejected':
             categorized['rejected_authorization'].append(referral)
         elif referral.authorization_status in ['authorized', 'not_required']:
@@ -324,7 +345,10 @@ def categorize_referrals(department):
         else:
             # Default to ready to accept for any other case
             categorized['ready_to_accept'].append(referral)
-    
+
+    # Add accepted referrals to under_care
+    categorized['under_care'] = list(accepted_referrals)
+
     return categorized
 
 

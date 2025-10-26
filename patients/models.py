@@ -1072,3 +1072,71 @@ class ClinicalNote(models.Model):
 
     def __str__(self):
         return f"Clinical Note for {self.patient.get_full_name()} on {self.date.strftime('%Y-%m-%d')}"
+
+
+class PhysiotherapyRequest(models.Model):
+    """Model for physiotherapy requests for patients"""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+    
+    PRIORITY_CHOICES = (
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    )
+    
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='physiotherapy_requests')
+    referring_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='referred_physiotherapy')
+    physiotherapist = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_physiotherapy')
+    
+    diagnosis = models.TextField(help_text="Primary diagnosis or condition requiring physiotherapy")
+    treatment_plan = models.TextField(help_text="Proposed physiotherapy treatment plan")
+    notes = models.TextField(blank=True, help_text="Additional notes or instructions")
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    
+    request_date = models.DateTimeField(auto_now_add=True)
+    start_date = models.DateTimeField(null=True, blank=True, help_text="Scheduled start date for treatment")
+    end_date = models.DateTimeField(null=True, blank=True, help_text="Expected end date for treatment")
+    completed_date = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-request_date']
+        verbose_name = 'Physiotherapy Request'
+        verbose_name_plural = 'Physiotherapy Requests'
+    
+    def __str__(self):
+        return f"Physiotherapy Request for {self.patient.get_full_name()} - {self.get_status_display()}"
+    
+    def mark_as_approved(self, physiotherapist=None):
+        """Mark the request as approved"""
+        self.status = 'approved'
+        self.physiotherapist = physiotherapist
+        self.save()
+    
+    def mark_as_in_progress(self):
+        """Mark the request as in progress"""
+        self.status = 'in_progress'
+        self.start_date = timezone.now()
+        self.save()
+    
+    def mark_as_completed(self):
+        """Mark the request as completed"""
+        self.status = 'completed'
+        self.completed_date = timezone.now()
+        self.save()
+    
+    def cancel_request(self):
+        """Cancel the physiotherapy request"""
+        self.status = 'cancelled'
+        self.save()

@@ -143,5 +143,14 @@
         </div>
     </div>
 
+    <!-- Referred Patients Section -->
+    {% if categorized_referrals %}
+    <div class="row">
+        <div class="col-12">
+            {% include 'includes/department_referrals_section.html' %}
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}

@@ -1,5 +1,6 @@
 from django import forms
-from .models import Patient, MedicalHistory, Vitals, ClinicalNote
+from django.db.models import Q
+from .models import Patient, MedicalHistory, Vitals, ClinicalNote, PhysiotherapyRequest
 from django.core.validators import RegexValidator
 from doctors.models import Specialization
 import re
@@ -738,3 +739,71 @@ class ClinicalNoteForm(forms.ModelForm):
             if not isinstance(widget, (forms.CheckboxInput, forms.RadioSelect)):
                 existing_classes = widget.attrs.get('class', '')
                 widget.attrs['class'] = (existing_classes + ' form-control').strip()
+
+
+class PhysiotherapyRequestForm(forms.ModelForm):
+    """
+    Form for creating and editing physiotherapy requests
+    """
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Auto-populate referring_doctor with current user if they are a doctor
+        if self.user and not self.instance.pk:
+            self.fields['referring_doctor'].initial = self.user
+        
+        # Filter users to only show doctors/physiotherapists
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.fields['referring_doctor'].queryset = User.objects.filter(
+            Q(profile__role__in=['Doctor', 'Physiotherapist']) | 
+            Q(is_staff=True)
+        ).distinct()
+        
+        self.fields['physiotherapist'].queryset = User.objects.filter(
+            Q(profile__role__in=['Physiotherapist']) | 
+            Q(is_staff=True)
+        ).distinct()
+        
+        # Set empty labels for optional fields
+        self.fields['referring_doctor'].empty_label = '-- Select Referring Doctor (Optional) --'
+        self.fields['physiotherapist'].empty_label = '-- Select Physiotherapist (Optional) --'
+        
+        # Add form-control class to all widgets
+        for field_name, field in self.fields.items():
+            if field_name not in ['start_date', 'end_date']:
+                widget = field.widget
+                if not isinstance(widget, (forms.CheckboxInput, forms.RadioSelect)):
+                    existing_classes = widget.attrs.get('class', '')
+                    widget.attrs['class'] = (existing_classes + ' form-control').strip()
+            else:
+                # For date fields, add form-control and date input type
+                self.fields[field_name].widget.attrs.update({
+                    'class': 'form-control',
+                    'type': 'date'
+                })
+    
+    class Meta:
+        model = PhysiotherapyRequest
+        fields = [
+            'referring_doctor', 'physiotherapist', 'diagnosis', 
+            'treatment_plan', 'notes', 'priority', 'start_date', 'end_date'
+        ]
+        widgets = {
+            'diagnosis': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Enter primary diagnosis...'}),
+            'treatment_plan': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Describe the proposed treatment plan...'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Additional notes or instructions...'}),
+            'referring_doctor': forms.Select(attrs={'class': 'form-control', 'empty_label': '-- Select Referring Doctor (Optional) --'}),
+            'physiotherapist': forms.Select(attrs={'class': 'form-control', 'empty_label': '-- Select Physiotherapist (Optional) --'}),
+        }
+    
+    def clean_end_date(self):
+        start_date = self.cleaned_data.get('start_date')
+        end_date = self.cleaned_data.get('end_date')
+        
+        if start_date and end_date and end_date < start_date:
+            raise forms.ValidationError('End date cannot be before start date.')
+        
+        return end_date

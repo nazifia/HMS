@@ -1,0 +1,279 @@
+{% load static %}
+
+<!-- Referral Detail Modal -->
+<div class="modal fade" id="referralDetailModal{{ referral.id }}" tabindex="-1" aria-labelledby="referralDetailModalLabel{{ referral.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="referralDetailModalLabel{{ referral.id }}">
+                    <i class="fas fa-exchange-alt me-2"></i>
+                    Referral Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Patient Information -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-user me-2"></i>Patient Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <strong>Name:</strong> {{ referral.patient.get_full_name }}
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Patient ID:</strong> {{ referral.patient.patient_id }}
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Gender:</strong> {{ referral.patient.get_gender_display }}
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Age:</strong> {{ referral.patient.age }} years
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <strong>Date of Birth:</strong> {{ referral.patient.date_of_birth|date:"M d, Y" }}
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Phone:</strong> {{ referral.patient.phone_number|default:"N/A" }}
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Patient Type:</strong> 
+                                    {% if referral.patient.is_nhia_patient %}
+                                        <span class="badge bg-info">NHIA</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ referral.patient.get_patient_type_display }}</span>
+                                    {% endif %}
+                                </p>
+                                {% if referral.patient.is_nhia_patient and referral.patient.nhia_info %}
+                                <p class="mb-2">
+                                    <strong>NHIA Number:</strong> {{ referral.patient.nhia_info.nhia_reg_number }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Current Admission Status -->
+                        {% if referral.patient.current_admission %}
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fas fa-bed me-2"></i>
+                            <strong>Currently Admitted:</strong> 
+                            Ward: {{ referral.patient.current_admission.ward.name }} | 
+                            Bed: {{ referral.patient.current_admission.bed_number }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Referral Information -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Referral Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <strong>Referring Doctor:</strong> Dr. {{ referral.referring_doctor.get_full_name }}
+                                </p>
+                                <p class="mb-2">
+                                    <strong>From Department:</strong> 
+                                    {% if referral.referring_doctor.profile.department %}
+                                        {{ referral.referring_doctor.profile.department.name }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Referral Date:</strong> {{ referral.referral_date|date:"M d, Y h:i A" }}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <strong>To Department:</strong> 
+                                    {% if referral.referred_to_department %}
+                                        {{ referral.referred_to_department.name }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </p>
+                                {% if referral.referred_to_specialty %}
+                                <p class="mb-2">
+                                    <strong>Specialty:</strong> {{ referral.referred_to_specialty }}
+                                </p>
+                                {% endif %}
+                                {% if referral.referred_to_unit %}
+                                <p class="mb-2">
+                                    <strong>Unit:</strong> {{ referral.referred_to_unit }}
+                                </p>
+                                {% endif %}
+                                <p class="mb-2">
+                                    <strong>Status:</strong> 
+                                    <span class="badge 
+                                        {% if referral.status == 'pending' %}bg-warning
+                                        {% elif referral.status == 'accepted' %}bg-info
+                                        {% elif referral.status == 'completed' %}bg-success
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ referral.get_status_display }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <strong>Reason for Referral:</strong>
+                            <p class="mt-2 p-3 bg-light rounded">{{ referral.reason }}</p>
+                        </div>
+
+                        {% if referral.notes %}
+                        <div class="mb-3">
+                            <strong>Additional Notes:</strong>
+                            <p class="mt-2 p-3 bg-light rounded">{{ referral.notes }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if referral.assigned_doctor %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-user-md me-2"></i>
+                            <strong>Assigned to:</strong> Dr. {{ referral.assigned_doctor.get_full_name }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- NHIA Authorization Information -->
+                {% if referral.requires_authorization %}
+                <div class="card mb-3">
+                    <div class="card-header 
+                        {% if referral.authorization_status == 'authorized' %}bg-success text-white
+                        {% elif referral.authorization_status == 'rejected' %}bg-danger text-white
+                        {% else %}bg-warning{% endif %}">
+                        <h6 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            NHIA Authorization Status
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <strong>Authorization Required:</strong> 
+                            <span class="badge bg-warning">Yes</span>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Authorization Status:</strong> 
+                            <span class="badge 
+                                {% if referral.authorization_status == 'authorized' %}bg-success
+                                {% elif referral.authorization_status == 'rejected' %}bg-danger
+                                {% elif referral.authorization_status == 'pending' %}bg-info
+                                {% else %}bg-warning{% endif %}">
+                                {{ referral.get_authorization_status_display }}
+                            </span>
+                        </p>
+
+                        {% if referral.authorization_code %}
+                        <hr>
+                        <p class="mb-2">
+                            <strong>Authorization Code:</strong> {{ referral.authorization_code.code }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Service Type:</strong> {{ referral.authorization_code.get_service_type_display }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Amount Covered:</strong> GH₵ {{ referral.authorization_code.amount }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Expiry Date:</strong> {{ referral.authorization_code.expiry_date|date:"M d, Y" }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Generated By:</strong> {{ referral.authorization_code.generated_by.get_full_name }}
+                        </p>
+                        {% else %}
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>No Authorization Code:</strong> This referral requires desk office authorization before it can be accepted.
+                            <br>
+                            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-warning btn-sm mt-2">
+                                <i class="fas fa-shield-alt"></i> Request Authorization
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Medical History Summary (if available) -->
+                {% if referral.patient.medical_history.exists %}
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-notes-medical me-2"></i>Recent Medical History</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            {% for history in referral.patient.medical_history.all|slice:":3" %}
+                            <li class="mb-2">
+                                <i class="fas fa-circle fa-xs text-primary me-2"></i>
+                                <strong>{{ history.condition }}</strong> - {{ history.diagnosis_date|date:"M Y" }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% if referral.patient and referral.patient.id and referral.patient.medical_history.count > 3 %}
+                        <a href="{% url 'patients:detail' referral.patient.id %}" class="btn btn-sm btn-outline-primary mt-2">
+                            View Full History
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Recent Consultations (if available) -->
+                {% if referral.patient.consultations.exists %}
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-stethoscope me-2"></i>Recent Consultations</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            {% for consultation in referral.patient.consultations.all|slice:":3" %}
+                            <li class="mb-2">
+                                <i class="fas fa-circle fa-xs text-info me-2"></i>
+                                <strong>{{ consultation.consultation_date|date:"M d, Y" }}</strong> - 
+                                Dr. {{ consultation.doctor.get_full_name }}
+                                {% if consultation.diagnosis %}
+                                <br>
+                                <small class="text-muted ms-3">{{ consultation.diagnosis|truncatewords:10 }}</small>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                {% if referral.patient and referral.patient.id %}
+                <a href="{% url 'patients:detail' referral.patient.id %}" class="btn btn-info" target="_blank">
+                    <i class="fas fa-external-link-alt"></i> View Full Patient Record
+                </a>
+                {% endif %}
+                {% if referral.status == 'pending' and referral.authorization_status in 'authorized,not_required' %}
+                <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}" 
+                      onsubmit="return confirm('Are you sure you want to accept this referral?')" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="accepted">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Accept Referral
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+

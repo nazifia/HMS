@@ -8,8 +8,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, ClinicalNote
-from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm, ClinicalNoteForm
+from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, ClinicalNote, PhysiotherapyRequest
+from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm, ClinicalNoteForm, PhysiotherapyRequestForm
 from .utils import get_safe_vitals_for_patient
 from appointments.models import Appointment
 from consultations.models import Consultation
@@ -158,6 +158,9 @@ def patient_detail(request, patient_id):
     # Get medical history and clinical notes
     medical_histories = MedicalHistory.objects.filter(patient=patient).order_by('-date')
     clinical_notes = ClinicalNote.objects.filter(patient=patient).order_by('-date')
+    
+    # Get physiotherapy requests
+    physiotherapy_requests = PhysiotherapyRequest.objects.filter(patient=patient).order_by('-request_date')
     context = {
         'patient': patient,
         'age': age,
@@ -166,6 +169,7 @@ def patient_detail(request, patient_id):
         'recent_prescriptions': recent_prescriptions,
         'medical_histories': medical_histories,
         'clinical_notes': clinical_notes,
+        'physiotherapy_requests': physiotherapy_requests,
         'page_title': f'Patient Details - {patient.get_full_name()}',
         'active_nav': 'patients',
     }
@@ -1307,3 +1311,100 @@ def delete_clinical_note(request, note_id):
     }
 
     return render(request, 'patients/delete_clinical_note.html', context)
+
+
+@login_required
+def create_physiotherapy_request(request, patient_id):
+    """View for creating a physiotherapy request for a patient"""
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    if request.method == 'POST':
+        form = PhysiotherapyRequestForm(request.POST, user=request.user)
+        if form.is_valid():
+            physiotherapy_request = form.save(commit=False)
+            physiotherapy_request.patient = patient
+            physiotherapy_request.save()
+            messages.success(request, 'Physiotherapy request created successfully.')
+            return redirect('patients:detail', patient_id=patient.id)
+    else:
+        form = PhysiotherapyRequestForm(user=request.user)
+
+    context = {
+        'form': form,
+        'patient': patient,
+        'page_title': f'Create Physiotherapy Request - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+
+    return render(request, 'patients/physiotherapy_request_form.html', context)
+
+
+@login_required
+def edit_physiotherapy_request(request, request_id):
+    """View for editing a physiotherapy request"""
+    physiotherapy_request = get_object_or_404(PhysiotherapyRequest, id=request_id)
+
+    if request.method == 'POST':
+        form = PhysiotherapyRequestForm(request.POST, instance=physiotherapy_request, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Physiotherapy request updated successfully.')
+            return redirect('patients:detail', patient_id=physiotherapy_request.patient.id)
+    else:
+        form = PhysiotherapyRequestForm(instance=physiotherapy_request, user=request.user)
+
+    context = {
+        'form': form,
+        'physiotherapy_request': physiotherapy_request,
+        'patient': physiotherapy_request.patient,
+        'page_title': f'Edit Physiotherapy Request - {physiotherapy_request.patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+
+    return render(request, 'patients/physiotherapy_request_form.html', context)
+
+
+@login_required
+def delete_physiotherapy_request(request, request_id):
+    """View for deleting a physiotherapy request"""
+    physiotherapy_request = get_object_or_404(PhysiotherapyRequest, id=request_id)
+    patient_id = physiotherapy_request.patient.id
+
+    if request.method == 'POST':
+        physiotherapy_request.delete()
+        messages.success(request, 'Physiotherapy request deleted successfully.')
+        return redirect('patients:detail', patient_id=patient_id)
+
+    context = {
+        'physiotherapy_request': physiotherapy_request,
+        'patient': physiotherapy_request.patient,
+        'page_title': f'Delete Physiotherapy Request - {physiotherapy_request.patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+
+    return render(request, 'patients/delete_physiotherapy_request.html', context)
+
+
+@login_required
+def update_physiotherapy_status(request, request_id, status):
+    """View for updating physiotherapy request status"""
+    physiotherapy_request = get_object_or_404(PhysiotherapyRequest, id=request_id)
+    
+    if status == 'approved':
+        physiotherapist_id = request.POST.get('physiotherapist')
+        if physiotherapist_id:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            physiotherapist = get_object_or_404(User, id=physiotherapist_id)
+            physiotherapy_request.mark_as_approved(physiotherapist=physiotherapist)
+        else:
+            physiotherapy_request.mark_as_approved()
+    elif status == 'in_progress':
+        physiotherapy_request.mark_as_in_progress()
+    elif status == 'completed':
+        physiotherapy_request.mark_as_completed()
+    elif status == 'cancelled':
+        physiotherapy_request.cancel_request()
+    
+    messages.success(request, f'Physiotherapy request marked as {status}.')
+    return redirect('patients:detail', patient_id=physiotherapy_request.patient.id)

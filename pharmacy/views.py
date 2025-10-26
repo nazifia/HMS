@@ -59,7 +59,21 @@ def pharmacy_dashboard(request):
         total_inter_transfers = 0
         pending_transfers = 0
         recent_transfers = []
-    
+
+    # Add referral integration
+    from core.department_dashboard_utils import get_user_department, categorize_referrals, get_department_referral_statistics
+
+    user_department = get_user_department(request.user)
+    categorized_referrals = None
+    pending_referrals_count = 0
+    pending_authorizations = 0
+
+    if user_department:
+        categorized_referrals = categorize_referrals(user_department)
+        referral_stats = get_department_referral_statistics(user_department)
+        pending_referrals_count = referral_stats['pending_referrals']
+        pending_authorizations = referral_stats['requiring_authorization']
+
     context = {
         'total_medications': total_medications,
         'total_suppliers': total_suppliers,
@@ -70,10 +84,13 @@ def pharmacy_dashboard(request):
         'total_inter_transfers': total_inter_transfers,
         'pending_transfers': pending_transfers,
         'recent_transfers': recent_transfers,
+        'categorized_referrals': categorized_referrals,
+        'pending_referrals_count': pending_referrals_count,
+        'pending_authorizations': pending_authorizations,
         'page_title': 'Pharmacy Dashboard',
         'active_nav': 'pharmacy',
     }
-    
+
     return render(request, 'pharmacy/dashboard.html', context)
 
 
