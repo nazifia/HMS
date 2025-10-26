@@ -159,14 +159,9 @@
                 <div class="col-md-3">
                     <label for="patient_search" class="form-label">Patient</label>
                     <input type="text" name="patient_search" id="patient_search" class="form-control" 
-                           placeholder="Search patient..." 
-                           value="{{ request.GET.patient_search|default:'' }}"
-                           hx-get="{% url 'core:patient_search_ajax' %}"
-                           hx-target="#patientResults"
-                           hx-trigger="keyup changed delay:300ms"
-                           hx-include="[name='patient_search']"
-                           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-                    <div id="patientResults" class="mt-2"></div>
+                           placeholder="Search patient by name or ID..." 
+                           value="{{ request.GET.patient_search|default:'' }}">
+                    <small class="form-text text-muted">Type patient name or ID and click "Apply Filters" to search</small>
                 </div>
                 <div class="col-md-3">
                     <label for="date_from" class="form-label">Date From</label>
@@ -294,18 +289,20 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="#" class="btn btn-info" title="View Details" 
+                                        <a href="#" class="btn btn-info btn-sm" title="View Details"
                                            data-bs-toggle="modal" data-bs-target="#codeDetailModal"
-                                           data-code-id="{{ code.id }}">
+                                           data-code-id="{{ code.code }}">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         
                                         {% if code.status == 'active' %}
-                                            <a href="{% url 'desk_office:cancel_authorization_code' code.id %}" 
-                                               class="btn btn-warning" title="Cancel Code"
-                                               onclick="return confirm('Are you sure you want to cancel this authorization code?')">
-                                                <i class="fas fa-ban"></i>
-                                            </a>
+                                            <form method="post" action="{% url 'desk_office:cancel_authorization_code' code.code %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-warning btn-sm" title="Cancel Code"
+                                                        onclick="return confirm('Are you sure you want to cancel this authorization code?')">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            </form>
                                         {% endif %}
                                         
                                         <a href="#" class="btn btn-outline-secondary" title="Print Code"
@@ -373,20 +370,24 @@
                 <form id="generateCodeForm">
                     {% csrf_token %}
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
-                                <label for="patient_search_modal" class="form-label">Search Patient</label>
-                                <input type="text" class="form-control" id="patient_search_modal" 
+                                <label for="patient_search_modal" class="form-label">Search Patient <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="patient_search_modal"
+                                       name="q"
                                        placeholder="Type patient name or ID..."
                                        hx-get="{% url 'core:patient_search_ajax' %}"
                                        hx-target="#modalPatientResults"
                                        hx-trigger="keyup changed delay:300ms"
-                                       hx-include="[name='patient_search_modal']"
-                                       hx-vals='{"patient_type": "nhia"}'
+                                       hx-include="[name='q']"
+                                       hx-vals='{"patient_type": "nhia", "quick": "true"}'
                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
                                 <div id="modalPatientResults" class="mt-2"></div>
+                                <small class="form-text text-muted">Type at least 2 characters to search for NHIA patients</small>
                             </div>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="amount" class="form-label">Amount (₦)</label>
@@ -485,19 +486,26 @@ document.getElementById('code_type').addEventListener('change', function() {
 // Handle generate code button
 document.getElementById('generateCodeBtn').addEventListener('click', function() {
     const form = document.getElementById('generateCodeForm');
-    const patientSelected = document.querySelector('#modalPatientResults input[type="radio"]:checked');
+    const patientSelected = document.querySelector('#modalPatientResults input[name="selected_patient"]:checked');
     const amount = document.getElementById('amount').value;
-    
+    const generateBtn = this;
+
     if (!patientSelected) {
-        alert('Please select a patient first.');
+        alert('Please search and select a patient first.');
+        document.getElementById('patient_search_modal').focus();
         return;
     }
-    
+
     if (!amount || parseFloat(amount) <= 0) {
         alert('Please enter a valid amount.');
         document.getElementById('amount').focus();
         return;
     }
+
+    // Disable button and show loading state
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+
     
     // Create form data
     const formData = new FormData();
@@ -523,7 +531,7 @@ document.getElementById('generateCodeBtn').addEventListener('click', function() 
             // Close modal and reload page
             const modal = bootstrap.Modal.getInstance(document.getElementById('generateCodeModal'));
             modal.hide();
-            
+
             // Show success message
             const alert = document.createElement('div');
             alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
@@ -531,22 +539,28 @@ document.getElementById('generateCodeBtn').addEventListener('click', function() 
             alert.style.right = '20px';
             alert.style.zIndex = '9999';
             alert.innerHTML = `
-                Authorization code generated successfully: <strong>${data.code}</strong>
+                <i class="fas fa-check-circle"></i> Authorization code generated successfully: <strong>${data.code}</strong>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             document.body.appendChild(alert);
-            
+
             // Reload page after a short delay
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
         } else {
             alert(data.message || 'Error generating authorization code.');
+            // Re-enable button
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = 'Generate Code';
         }
     })
     .catch(error => {
         console.error('Error:', error);
         alert('Error generating authorization code. Please try again.');
+        // Re-enable button
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = 'Generate Code';
     });
 });
 

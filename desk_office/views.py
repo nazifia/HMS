@@ -2,15 +2,99 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Q
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from datetime import timedelta
+import string
+import random
 from .forms import AuthorizationCodeForm, PatientSearchForm
-from .models import AuthorizationCode
+from nhia.models import AuthorizationCode
 from patients.models import Patient
 
+@login_required
 def generate_authorization_code(request):
+    # Handle AJAX POST request for code generation from modal
+    if request.method == 'POST' and request.headers.get('X-Requested-With') != 'XMLHttpRequest' and 'patient_id' in request.POST:
+        try:
+            patient_id = request.POST.get('patient_id')
+            amount = request.POST.get('amount')
+            expiry_days = int(request.POST.get('expiry_days', 30))
+            code_type = request.POST.get('code_type', 'auto')
+            notes = request.POST.get('notes', '')
+            manual_code = request.POST.get('manual_code', '')
+
+            # Validate patient
+            try:
+                patient = Patient.objects.get(id=patient_id, patient_type='nhia')
+            except Patient.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid patient selected. Please select an NHIA patient.'
+                })
+
+            # Validate amount
+            try:
+                amount = float(amount)
+                if amount <= 0:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Amount must be greater than zero.'
+                    })
+            except (ValueError, TypeError):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid amount provided.'
+                })
+
+            # Generate or use manual code
+            if code_type == 'manual' and manual_code:
+                code_str = manual_code.strip().upper()
+                # Check if code already exists
+                if AuthorizationCode.objects.filter(code=code_str).exists():
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'Authorization code "{code_str}" already exists. Please use a different code.'
+                    })
+            else:
+                # Auto-generate unique code
+                while True:
+                    date_str = timezone.now().strftime('%Y%m%d')
+                    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                    code_str = f"AUTH-{date_str}-{random_str}"
+                    if not AuthorizationCode.objects.filter(code=code_str).exists():
+                        break
+
+            # Calculate expiry date
+            expiry_date = timezone.now() + timedelta(days=expiry_days)
+
+            # Create authorization code
+            auth_code = AuthorizationCode.objects.create(
+                code=code_str,
+                patient=patient,
+                service_type='general',  # Default service type
+                amount=amount,
+                expiry_date=expiry_date,
+                status='active',
+                notes=notes,
+                generated_by=request.user
+            )
+
+            return JsonResponse({
+                'success': True,
+                'code': auth_code.code,
+                'message': f'Authorization code {auth_code.code} generated successfully for {patient.get_full_name()}.'
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error generating authorization code: {str(e)}'
+            })
+
     patient_search_form = PatientSearchForm()
     authorization_form = None
     selected_patient = None
-    
+
     # Handle patient search
     if request.method == 'POST' and 'search_patients' in request.POST:
         patient_search_form = PatientSearchForm(request.POST)
@@ -170,30 +254,54 @@ def cancel_authorization_code(request, code_id):
 
 def authorization_code_detail(request, code_id):
     """AJAX endpoint for authorization code details"""
+    from django.http import HttpResponse
     try:
-        auth_code = AuthorizationCode.objects.get(code=code_id)
-        
-        nhia_info = f'<p><strong>NHIA Number:</strong> {auth_code.patient.nhia_info.nhia_reg_number}</p>' if auth_code.patient.nhia_info else ''
-        
+        auth_code = AuthorizationCode.objects.select_related('patient', 'generated_by').get(code=code_id)
+
+        nhia_info = f'<p><strong>NHIA Number:</strong> {auth_code.patient.nhia_info.nhia_reg_number}</p>' if hasattr(auth_code.patient, 'nhia_info') and auth_code.patient.nhia_info else ''
+
+        # Determine status badge color
+        status_colors = {
+            'active': 'success',
+            'used': 'info',
+            'expired': 'secondary',
+            'cancelled': 'danger'
+        }
+        status_color = status_colors.get(auth_code.status, 'secondary')
+
+        # Format used information
+        used_info = ''
+        if auth_code.status == 'used' and hasattr(auth_code, 'used_at') and auth_code.used_at:
+            used_info = f'<p><strong>Used At:</strong> {auth_code.used_at.strftime("%b %d, %Y %H:%M")}</p>'
+
+        # Format notes
+        notes_info = f'<p><strong>Notes:</strong> {auth_code.notes}</p>' if auth_code.notes else ''
+
         html = f"""
         <div class="row">
             <div class="col-md-6">
-                <h6>Code Information</h6>
-                <p><strong>Code:</strong> {auth_code.code}</p>
-                <p><strong>Status:</strong> <span class="badge bg-info">{auth_code.get_status_display()}</span></p>
+                <h6 class="text-primary mb-3"><i class="fas fa-qrcode"></i> Code Information</h6>
+                <p><strong>Code:</strong> <code class="text-primary">{auth_code.code}</code></p>
+                <p><strong>Status:</strong> <span class="badge bg-{status_color}">{auth_code.get_status_display()}</span></p>
                 <p><strong>Generated:</strong> {auth_code.generated_at.strftime('%b %d, %Y %H:%M')}</p>
+                <p><strong>Generated By:</strong> {auth_code.generated_by.get_full_name() if auth_code.generated_by else 'System'}</p>
                 <p><strong>Expires:</strong> {auth_code.expiry_date.strftime('%b %d, %Y') if auth_code.expiry_date else 'Never'}</p>
-                <p><strong>Amount:</strong> ₦{auth_code.amount:.2f}</p>
+                {used_info}
+                <p><strong>Amount:</strong> <span class="text-success fw-bold">₦{auth_code.amount:,.2f}</span></p>
+                {notes_info}
             </div>
             <div class="col-md-6">
-                <h6>Patient Information</h6>
+                <h6 class="text-primary mb-3"><i class="fas fa-user"></i> Patient Information</h6>
                 <p><strong>Name:</strong> {auth_code.patient.get_full_name()}</p>
                 <p><strong>Patient ID:</strong> {auth_code.patient.patient_id}</p>
-                <p><strong>Patient Type:</strong> {auth_code.patient.get_patient_type_display()}</p>
+                <p><strong>Patient Type:</strong> <span class="badge bg-info">{auth_code.patient.get_patient_type_display()}</span></p>
                 {nhia_info}
+                <p><strong>Phone:</strong> {auth_code.patient.phone_number if auth_code.patient.phone_number else 'N/A'}</p>
+                <p><strong>Age:</strong> {auth_code.patient.age if hasattr(auth_code.patient, 'age') else 'N/A'}</p>
+                <p><strong>Gender:</strong> {auth_code.patient.get_gender_display() if hasattr(auth_code.patient, 'get_gender_display') else 'N/A'}</p>
             </div>
         </div>
         """
-        return JsonResponse({'html': html})
+        return HttpResponse(html)
     except AuthorizationCode.DoesNotExist:
-        return JsonResponse({'error': 'Authorization code not found'})
+        return HttpResponse('<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Authorization code not found.</div>')
