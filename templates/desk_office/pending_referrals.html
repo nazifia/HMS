@@ -220,7 +220,7 @@
                             </thead>
                             <tbody>
                                 {% for referral in page_obj %}
-                                <tr class="referral-item urgency-{{ referral.urgency_level|default:'medium' }}">
+                                <tr class="referral-item">
                                     <td>
                                         <input type="checkbox" name="referral_ids" value="{{ referral.id }}" 
                                                class="form-check-input referral-checkbox"
@@ -244,14 +244,13 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>Date:</strong> {{ referral.referral_date|date:"M d, Y" }}<br>
-                                        <strong>Time:</strong> {{ referral.referral_time|default:"Not specified" }}<br>
-                                        <strong>Urgency:</strong> 
+                                        <strong>Date:</strong> {{ referral.referral_date|date:"M d, Y H:i" }}<br>
+                                        <strong>Status:</strong> 
                                         <span class="badge 
-                                            {% if referral.urgency_level == 'high' %}bg-danger
-                                            {% elif referral.urgency_level == 'medium' %}bg-warning
-                                            {% else %}bg-success{% endif %}">
-                                            {{ referral.urgency_level|title|default:"Medium" }}
+                                            {% if referral.authorization_status == 'required' %}bg-warning
+                                            {% elif referral.authorization_status == 'pending' %}bg-info
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ referral.get_authorization_status_display }}
                                         </span><br>
                                         <strong>Reason:</strong><br>
                                         <small class="text-muted">{{ referral.reason|truncatewords:10 }}</small>

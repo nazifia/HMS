@@ -239,7 +239,26 @@ def pending_consultations_list(request):
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'doctor', 'consulting_room').order_by('-consultation_date')
     
+    # Create a simple paginator-like object for the main template
+    from django.core.paginator import Paginator
+    paginator = Paginator(consultations, 25)  # 25 per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Calculate stats for the main template
+    total_pending = consultations.count()
+    nhia_count = consultations.filter(patient__patient_type='nhia').count()
+    high_urgency_count = 0  # Consultations don't have urgency field in this model
+    authorized_today = 0  # Would need additional query to get today's authorized count
+    
     context = {
+        # Main template expected variables
+        'page_obj': page_obj,
+        'total_pending': total_pending,
+        'nhia_count': nhia_count,
+        'high_urgency_count': high_urgency_count,
+        'authorized_today': authorized_today,
+        # Original variables for fallback
         'consultations': consultations,
         'page_title': 'Pending Consultation Authorizations',
         'active_nav': 'desk_office',
@@ -256,7 +275,34 @@ def pending_referrals_list(request):
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'referring_doctor', 'referred_to_doctor', 'referred_to_department', 'assigned_doctor').order_by('-referral_date')
     
+    # Create a simple paginator-like object for main template
+    from django.core.paginator import Paginator
+    paginator = Paginator(referrals, 25)  # 25 per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Calculate stats for main template
+    total_pending = referrals.count()
+    nhia_count = referrals.filter(patient__patient_type='nhia').count()
+    high_urgency_count = 0  # Default for now, would need urgency field
+    authorized_today = 0  # Would need additional query to get today's authorized count
+    
+    # Get unique destinations for filter dropdown
+    destinations = []
+    for referral in referrals:
+        dest = referral.get_referral_destination()
+        if dest not in destinations:
+            destinations.append(dest)
+    
     context = {
+        # Main template expected variables
+        'page_obj': page_obj,
+        'total_pending': total_pending,
+        'nhia_count': nhia_count,
+        'high_urgency_count': high_urgency_count,
+        'authorized_today': authorized_today,
+        'destinations': destinations,
+        # Original variables for fallback
         'referrals': referrals,
         'page_title': 'Pending Referral Authorizations',
         'active_nav': 'desk_office',

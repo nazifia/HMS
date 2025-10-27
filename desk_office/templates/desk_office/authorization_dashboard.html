@@ -468,7 +468,7 @@
                                     <tr>
                                         <td>{{ referral.patient.get_full_name }}</td>
                                         <td>Dr. {{ referral.referring_doctor.get_full_name }}</td>
-                                        <td>Dr. {{ referral.referred_to.get_full_name }}</td>
+                                        <td>{% if referral.referred_to_doctor %}Dr. {{ referral.referred_to_doctor.get_full_name }}{% else %}{{ referral.get_referral_destination }}{% endif %}</td>
                                         <td>{{ referral.referral_date|date:"M d, Y" }}</td>
                                         <td>
                                             <a href="{% url 'desk_office:authorize_referral' referral.id %}" class="btn btn-sm btn-success">
