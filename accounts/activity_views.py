@@ -589,7 +589,7 @@ def live_activity_monitor(request):
     """Live activity monitoring with real-time updates"""
     
     # Get recent activities (last 100)
-    recent_activities = UserActivity.objects.select_related('user').order_by('-timestamp')[:100]
+    recent_activities = UserActivity.objects.select_related('user').order_by('-timestamp', '-id')[:100]
     
     # Get active sessions
     active_sessions = UserSession.objects.filter(
@@ -620,7 +620,7 @@ def api_recent_activities(request):
     
     limit = int(request.GET.get('limit', 50))
     
-    activities = UserActivity.objects.select_related('user').order_by('-timestamp')[:limit]
+    activities = UserActivity.objects.select_related('user').order_by('-timestamp', '-id')[:limit]
     
     data = []
     for activity in activities:
@@ -629,7 +629,8 @@ def api_recent_activities(request):
             'user': activity.user.username if activity.user else 'Anonymous',
             'user_id': activity.user.id if activity.user else None,
             'action_type': activity.get_action_type_display(),
-            'activity_level': activity.get_activity_level_display(),
+            'activity_level': activity.activity_level,  # Send the raw value (low, medium, high, critical)
+            'activity_level_display': activity.get_activity_level_display(),  # Also send display version
             'description': activity.description,
             'module': activity.module,
             'ip_address': activity.ip_address,

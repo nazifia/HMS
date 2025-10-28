@@ -295,13 +295,18 @@ class ActivityLog(models.Model):
                 # This might not be the current IP, but it's a fallback
                 ip_address = getattr(user, 'last_ip', None)
             
+            # Remove ip_address from kwargs to prevent duplicate
+            kwargs_for_create = kwargs.copy()
+            if 'ip_address' in kwargs_for_create:
+                kwargs_for_create.pop('ip_address')
+            
             log_entry = cls.objects.create(
                 user=user,
                 category=category,
                 action_type=action_type,
                 description=description,
                 ip_address=ip_address,
-                **kwargs
+                **kwargs_for_create
             )
             
             logger.info(f"Activity logged: {log_entry}")
@@ -453,6 +458,27 @@ class ActivityLog(models.Model):
             return f"{self.response_time_ms/1000:.2f}s"
         else:
             return f"{self.response_time_ms/60000:.2f}min"
+    
+    def get_action_type_display(self):
+        """Get display version of action type"""
+        for choice in self.ACTION_TYPES:
+            if choice[0] == self.action_type:
+                return choice[1]
+        return self.action_type
+    
+    def get_level_display(self):
+        """Get display version of log level"""
+        for choice in self.LEVEL_CHOICES:
+            if choice[0] == self.level:
+                return choice[1]
+        return self.level
+    
+    def get_category_display(self):
+        """Get display version of category"""
+        for choice in self.CATEGORY_CHOICES:
+            if choice[0] == self.category:
+                return choice[1]
+        return self.category
 
 
 class ActivityLogMiddleware:

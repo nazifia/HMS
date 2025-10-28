@@ -53,6 +53,7 @@ urlpatterns = [
 
     # Admin Management URLs
     path('admin/', admin_views.admin_dashboard, name='admin_dashboard'),
+    path('admin/user-management/', admin_views.user_management_view, name='user_management'),
     path('admin/activity-log/', admin_views.activity_log_view, name='activity_log'),
     path('admin/permissions/', admin_views.permission_management, name='permission_management'),
     path('admin/user-permissions/<int:user_id>/', admin_views.user_permissions_detail, name='user_permissions_detail'),

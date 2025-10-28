@@ -269,7 +269,7 @@
                 <div class="card-body p-0">
                     <div class="activity-stream" id="activity-stream">
                         {% for activity in recent_activities %}
-                        <div class="activity-item activity-level-{{ activity.activity_level }}" data-level="{{ activity.activity_level }}">
+                        <div class="activity-item activity-level-{{ activity.activity_level }}" data-level="{{ activity.activity_level }}" data-activity-id="{{ activity.id }}">
                             <div class="d-flex align-items-start">
                                 {% if activity.user.profile.profile_picture %}
                                     <img src="{{ activity.user.profile.profile_picture.url }}" 
@@ -426,26 +426,67 @@ let refreshInterval;
 
 // Live refresh function
 function refreshData() {
-    if (isPaused) return;
+    if (isPaused) {
+        console.log('Refresh paused');
+        return;
+    }
+    
+    console.log('Refreshing data...');
     
     // Update last update timestamp
-    document.getElementById('last-update').textContent = 'Last updated: Just now';
+    const updateElement = document.getElementById('last-update');
+    if (updateElement) {
+        updateElement.textContent = 'Last updated: Just now';
+    }
     
     // Fetch system stats
     fetch('{% url "accounts:api_system_status" %}')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('System status data:', data);
             updateMetrics(data);
         })
-        .catch(error => console.log('Error fetching system status:', error));
+        .catch(error => {
+            console.error('Error fetching system status:', error);
+            // Optionally show error to user
+            const errorElement = document.getElementById('last-update');
+            if (errorElement) {
+                errorElement.innerHTML = '<span class="text-danger">Error updating stats</span>';
+            }
+        });
     
     // Fetch recent activities
     fetch('{% url "accounts:api_recent_activities" %}?limit=20')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(activities => {
+            console.log('Received activities:', activities);
             updateActivityStream(activities);
         })
-        .catch(error => console.log('Error fetching activities:', error));
+        .catch(error => {
+            console.error('Error fetching activities:', error);
+            // Optionally show error to user in activity stream
+            const stream = document.getElementById('activity-stream');
+            if (stream && !stream.querySelector('.error-message')) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-warning error-message';
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error loading activities. Will retry in 5 seconds.';
+                stream.appendChild(errorDiv);
+                // Remove error message after 5 seconds
+                setTimeout(() => {
+                    errorDiv.remove();
+                }, 5000);
+            }
+        });
 }
 
 // Update metrics display
@@ -460,49 +501,93 @@ function updateMetrics(data) {
 // Update activity stream with animation
 function updateActivityStream(activities) {
     const stream = document.getElementById('activity-stream');
-    const currentActivityCount = stream.children.length - 1; // -1 to exclude empty state
+    if (!stream) {
+        console.error('Activity stream element not found');
+        return;
+    }
     
-    // Add new activities with animation
-    activities.slice(0, 5).forEach((activity, index) => {
-        const existingItems = stream.querySelectorAll('.activity-item');
-        const existing = Array.from(existingItems).find(item => 
-            item.textContent.includes(activity.user) && 
-            item.textContent.includes(activity.description.substring(0, 20))
-        );
+    // Remove any existing error messages
+    const errorMessages = stream.querySelectorAll('.error-message');
+    errorMessages.forEach(msg => msg.remove());
+    
+    // Check if activities exist
+    if (!activities || activities.length === 0) {
+        return;
+    }
+    
+    // Get existing activity items
+    const existingItems = stream.querySelectorAll('.activity-item');
+    const existingIds = new Set();
+    
+    // Create a map of existing activities by ID
+    existingItems.forEach(item => {
+        const activityId = item.getAttribute('data-activity-id');
+        if (activityId) {
+            existingIds.add(activityId);
+        }
+    });
+    
+    // Clear stream if it's the first load or if there are too many items
+    if (existingItems.length === 0 || existingItems.length > 100) {
+        // Keep empty state if present
+        const emptyState = stream.querySelector('.empty-state');
+        stream.innerHTML = '';
+        if (emptyState) {
+            stream.appendChild(emptyState);
+        }
+    }
+    
+    // Insert new activities at the top
+    activities.forEach((activity, index) => {
+        // Skip if activity already exists
+        if (activity.id && existingIds.has(activity.id.toString())) {
+            return;
+        }
         
-        if (!existing) {
-            const activityHtml = createActivityElement(activity);
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = activityHtml;
-            const newElement = tempDiv.firstElementChild;
+        const activityHtml = createActivityElement(activity);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = activityHtml;
+        const newElement = tempDiv.firstElementChild;
+        
+        if (newElement) {
+            // Set data attribute for tracking
+            if (activity.id) {
+                newElement.setAttribute('data-activity-id', activity.id);
+            }
             
-            stream.insertBefore(newElement, existingItems[index] || stream.firstChild);
+            // Insert at the beginning or after the empty state
+            const emptyState = stream.querySelector('.empty-state');
+            if (emptyState && index === 0) {
+                emptyState.insertAdjacentElement('afterend', newElement);
+            } else {
+                stream.insertBefore(newElement, stream.firstChild);
+            }
             
-            // Add animation class
+            // Add animation class for new items
             setTimeout(() => {
                 newElement.classList.add('new-activity');
-            }, 100);
+            }, 50 * index);
             
             // Remove animation class after animation completes
             setTimeout(() => {
                 newElement.classList.remove('new-activity');
-            }, 600);
+            }, 600 + 50 * index);
         }
     });
     
-    // Remove old activities if stream is too long
-    const maxActivities = 50;
-    const items = stream.querySelectorAll('.activity-item');
-    if (items.length > maxActivities) {
-        for (let i = maxActivities; i < items.length; i++) {
-            items[i].remove();
-        }
-    }
-    
     // Remove empty state if there are activities
     const emptyState = stream.querySelector('.empty-state');
-    if (emptyState && activities.length > 0) {
-        emptyState.remove();
+    if (emptyState && stream.querySelectorAll('.activity-item').length > 0) {
+        emptyState.style.display = 'none';
+    }
+    
+    // Limit the number of activities to prevent performance issues
+    const maxActivities = 50;
+    const allItems = stream.querySelectorAll('.activity-item');
+    if (allItems.length > maxActivities) {
+        for (let i = maxActivities; i < allItems.length; i++) {
+            allItems[i].remove();
+        }
     }
 }
 
@@ -515,8 +600,12 @@ function createActivityElement(activity) {
         'critical': '#6f42c1'
     };
     
+    // Use activity_level_display if available, otherwise capitalize the activity_level
+    const levelDisplay = activity.activity_level_display || 
+                        (activity.activity_level ? activity.activity_level.charAt(0).toUpperCase() + activity.activity_level.slice(1) : 'Unknown');
+    
     return `
-        <div class="activity-item activity-level-${activity.activity_level}" data-level="${activity.activity_level}">
+        <div class="activity-item activity-level-${activity.activity_level}" data-level="${activity.activity_level}" data-activity-id="${activity.id || ''}">
             <div class="d-flex align-items-start">
                 <div class="user-avatar bg-primary text-white me-3 d-flex align-items-center justify-content-center">
                     ${activity.user ? activity.user.charAt(0).toUpperCase() : '?'}
@@ -526,12 +615,12 @@ function createActivityElement(activity) {
                         <strong>${activity.user || 'Anonymous'}</strong>
                         <span class="badge bg-secondary ms-2">${activity.action_type}</span>
                         <span class="badge bg-${activity.activity_level === 'low' ? 'success' : activity.activity_level === 'medium' ? 'warning' : activity.activity_level === 'high' ? 'danger' : 'primary'} ms-2">
-                            ${activity.activity_level}
+                            ${levelDisplay}
                         </span>
                     </div>
                     <div class="activity-description">${activity.description}</div>
                     <div class="d-flex align-items-center text-muted">
-                        <span class="timestamp">${activity.timestamp}</span>
+                        <span class="timestamp" title="${activity.timestamp}">${formatTimestamp(activity.timestamp)}</span>
                         ${activity.ip_address ? `
                             <span class="ms-3">
                                 <i class="fas fa-network-wired"></i>
@@ -547,6 +636,21 @@ function createActivityElement(activity) {
             </div>
         </div>
     `;
+}
+
+// Format timestamp to show relative time
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
 // Pause/Resume button
@@ -586,11 +690,26 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
 // Clear stream function
 function clearStream() {
     const stream = document.getElementById('activity-stream');
+    if (!stream) {
+        console.error('Activity stream not found');
+        return;
+    }
+    
     const activities = stream.querySelectorAll('.activity-item');
-    activities.forEach(activity => {
-        activity.style.opacity = '0';
-        activity.style.transform = 'translateX(20px)';
-        setTimeout(() => activity.remove(), 300);
+    activities.forEach((activity, index) => {
+        setTimeout(() => {
+            activity.style.opacity = '0';
+            activity.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                activity.remove();
+                // Show empty state if no activities left
+                const remaining = stream.querySelectorAll('.activity-item');
+                const emptyState = stream.querySelector('.empty-state');
+                if (remaining.length === 0 && emptyState) {
+                    emptyState.style.display = 'block';
+                }
+            }, 300);
+        }, index * 50);
     });
 }
 
