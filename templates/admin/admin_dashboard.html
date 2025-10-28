@@ -614,57 +614,61 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize activity chart if data available
     const activityChart = document.getElementById('activityChart');
-    if (activityChart && {{ activity_by_category|length }} > 0) {
+    if (activityChart) {
         const ctx = activityChart.getContext('2d');
+        const categoryLabels = [{% for item in activity_by_category %}'{{ item.category|title }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const categoryCounts = [{% for item in activity_by_category %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: [{% for item in activity_by_category %}'{{ item.category|title }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
-                datasets: [{
-                    data: [{% for item in activity_by_category %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                    backgroundColor: [
-                        '#667eea',
-                        '#764ba2',
-                        '#f093fb',
-                        '#4facfe',
-                        '#00f2fe',
-                        '#43e97b',
-                        '#38f9d7',
-                        '#fa709a',
-                        '#fee140',
-                        '#30cfd0'
-                    ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 15,
-                            font: {
-                                size: 12
+        if (categoryLabels.length > 0 && categoryCounts.length > 0) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryLabels,
+                    datasets: [{
+                        data: categoryCounts,
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#4facfe',
+                            '#00f2fe',
+                            '#43e97b',
+                            '#38f9d7',
+                            '#fa709a',
+                            '#fee140',
+                            '#30cfd0'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
                             }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return `${label}: ${value} (${percentage}%)`;
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
     }
 });
 
@@ -762,7 +766,16 @@ function editUser(userId) {
             document.getElementById('username').value = user.username || '';
             document.getElementById('email').value = user.email || '';
             document.getElementById('phoneNumber').value = user.phone_number || '';
-            document.getElementById('department').value = user.profile?.department || '';
+            // Handle department - it could be an object or just an ID
+            if (user.profile && user.profile.department) {
+                if (typeof user.profile.department === 'object') {
+                    document.getElementById('department').value = user.profile.department.id || user.profile.department;
+                } else {
+                    document.getElementById('department').value = user.profile.department;
+                }
+            } else {
+                document.getElementById('department').value = '';
+            }
             document.getElementById('isActive').checked = user.is_active;
             document.getElementById('isStaff').checked = user.is_staff;
             document.getElementById('isSuperuser').checked = user.is_superuser;
@@ -909,7 +922,7 @@ function loadUsers() {
                     <td>
                         <div class="d-flex align-items-center">
                             <div class="user-avatar me-2">
-                                ${user.profile?.profile_picture ? 
+                                ${user.profile && user.profile.profile_picture ? 
                                     `<img src="${user.profile.profile_picture}" alt="${user.get_full_name}" class="rounded-circle" width="32" height="32">` :
                                     `<div class="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center bg-primary text-white" style="width: 32px; height: 32px;">
                                         ${user.first_name ? user.first_name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}

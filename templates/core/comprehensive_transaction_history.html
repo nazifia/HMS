@@ -108,16 +108,30 @@
                                 {% for type, data in summary_by_type.items %}
                                 <tr>
                                     <td>
-                                        <span class="badge badge-{% if type == 'wallet' %}primary{% elif type == 'billing' %}success{% elif type == 'pharmacy' %}info{% else %}secondary{% endif %}">
+                                        <span class="badge badge-{% if data.source == 'wallet' %}primary{% elif data.source == 'billing' %}success{% elif data.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
                                             {{ type|title }}
                                         </span>
+                                        <br><small class="text-muted">Source: {{ data.source }}</small>
                                     </td>
                                     <td>{{ data.count }}</td>
                                     <td>₦{{ data.amount|floatformat:2 }}</td>
                                 </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">No transaction types found</td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+                    <!-- Debug info (can be removed in production) -->
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Debug: Found {{ summary_by_type|length }} transaction types
+                            {% if debug_info %}
+                            <br>{{ debug_info }}
+                            {% endif %}
+                        </small>
                     </div>
                 </div>
             </div>
@@ -191,9 +205,11 @@
                             <td>{{ transaction.date|date:"M d, Y g:i A" }}</td>
                             <td>
                                 <span class="badge badge-{% if transaction.source == 'wallet' %}primary{% elif transaction.source == 'billing' %}success{% elif transaction.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
-                                    {{ transaction.type }}
+                                    {{ transaction.subtype|default:transaction.type }}
                                 </span>
-                                <br><small class="text-muted">{{ transaction.subtype }}</small>
+                                {% if transaction.source == 'wallet' and transaction.type %}
+                                <br><small class="text-muted">{{ transaction.type }}</small>
+                                {% endif %}
                             </td>
                             <td>
                                 <strong>{{ transaction.patient.get_full_name }}</strong>
@@ -237,9 +253,30 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // DataTable functionality would require including DataTables library
-    // For now, the table works fine without it
-    console.log('Transaction history loaded successfully');
+    // Initialize DataTables
+    try {
+        $('#transactionTable').DataTable({
+            "order": [[ 0, "desc" ]], // Sort by date column (first column) descending
+            "pageLength": 25,
+            "responsive": true,
+            "language": {
+                "search": "Search transactions:",
+                "lengthMenu": "Show _MENU_ transactions per page",
+                "info": "Showing _START_ to _END_ of _TOTAL_ transactions",
+                "paginate": {
+                    "first": "First",
+                    "last": "Last",
+                    "next": "Next",
+                    "previous": "Previous"
+                }
+            }
+        });
+        console.log('Transaction history DataTable initialized successfully');
+    } catch (error) {
+        console.error('Error initializing DataTable:', error);
+        // Fallback to basic table functionality if DataTables fails
+        console.log('Transaction history loaded successfully (fallback mode)');
+    }
 });
 </script>
 {% endblock %}

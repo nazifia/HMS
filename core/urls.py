@@ -63,4 +63,8 @@ urlpatterns = [
     # Admin API URLs
     path('api/admin/activity-stats/', admin_views.api_activity_stats, name='api_activity_stats'),
     path('api/admin/user-permissions/', admin_views.api_user_permissions, name='api_user_permissions'),
+    path('api/admin/users/', admin_views.api_admin_users, name='api_admin_users'),
+    path('api/admin/users/<int:user_id>/', admin_views.api_admin_user_detail, name='api_admin_user_detail'),
+    path('api/admin/roles/', admin_views.api_admin_roles, name='api_admin_roles'),
+    path('api/admin/departments/', admin_views.api_admin_departments, name='api_admin_departments'),
 ]

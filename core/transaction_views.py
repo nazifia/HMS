@@ -27,9 +27,9 @@ def comprehensive_transaction_history(request, patient_id=None):
     date_to = request.GET.get('date_to')
     transaction_type = request.GET.get('transaction_type', 'all')
     
-    # Default to last 30 days if no dates provided
+    # Default to last 365 days if no dates provided (show full year of data)
     if not date_from:
-        date_from = (timezone.now() - timedelta(days=30)).date()
+        date_from = (timezone.now() - timedelta(days=365)).date()
     else:
         date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
     
@@ -152,23 +152,45 @@ def comprehensive_transaction_history(request, patient_id=None):
     # Group by type for summary
     summary_by_type = {}
     for t in transactions:
-        source = t['source']
-        if source not in summary_by_type:
-            summary_by_type[source] = {'count': 0, 'amount': Decimal('0.00')}
-        summary_by_type[source]['count'] += 1
-        summary_by_type[source]['amount'] += t['amount']
+        # Use subtype as the primary grouping, fallback to source if no subtype
+        display_type = t['subtype'] if t['subtype'] else t['source']
+        if display_type not in summary_by_type:
+            summary_by_type[display_type] = {'count': 0, 'amount': Decimal('0.00'), 'source': t['source']}
+        summary_by_type[display_type]['count'] += 1
+        summary_by_type[display_type]['amount'] += t['amount']
     
-    context = {
-        'patient': patient,
-        'transactions': transactions,
-        'total_amount': total_amount,
-        'total_transactions': total_transactions,
-        'summary_by_type': summary_by_type,
-        'date_from': date_from,
-        'date_to': date_to,
-        'transaction_type': transaction_type,
-        'title': f'Transaction History - {patient.get_full_name()}' if patient else 'System Transaction History'
-    }
+    # Check if there are no transactions and add helpful debug info
+    if not transactions:
+        # Try to find any transactions without date filtering for debugging
+        all_wallet_transactions = WalletTransaction.objects.all()
+        all_billing_payments = BillingPayment.objects.all()
+        total_wallet = all_wallet_transactions.count()
+        total_billing = all_billing_payments.count()
+        
+        context = {
+            'patient': patient,
+            'transactions': transactions,
+            'total_amount': total_amount,
+            'total_transactions': total_transactions,
+            'summary_by_type': summary_by_type,
+            'date_from': date_from,
+            'date_to': date_to,
+            'transaction_type': transaction_type,
+            'title': f'Transaction History - {patient.get_full_name()}' if patient else 'System Transaction History',
+            'debug_info': f"Total wallet transactions in DB: {total_wallet}, Total billing payments in DB: {total_billing}"
+        }
+    else:
+        context = {
+            'patient': patient,
+            'transactions': transactions,
+            'total_amount': total_amount,
+            'total_transactions': total_transactions,
+            'summary_by_type': summary_by_type,
+            'date_from': date_from,
+            'date_to': date_to,
+            'transaction_type': transaction_type,
+            'title': f'Transaction History - {patient.get_full_name()}' if patient else 'System Transaction History'
+        }
     
     return render(request, 'core/comprehensive_transaction_history.html', context)
 

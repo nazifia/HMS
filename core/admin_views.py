@@ -14,11 +14,12 @@ from django.utils import timezone
 from datetime import timedelta
 from django.http import JsonResponse, HttpResponseForbidden
 from django.urls import reverse_lazy
+import json
 
 from core.permissions import RolePermissionChecker, permission_required, get_client_ip
 from core.decorators import admin_required, role_required
 from core.activity_log import ActivityLog
-from accounts.models import CustomUser, CustomUserProfile, Role
+from accounts.models import CustomUser, CustomUserProfile, Role, Department
 
 User = get_user_model()
 
@@ -421,3 +422,207 @@ def api_user_permissions(request):
         
     except User.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=404)
+
+
+@user_passes_test(is_admin)
+def api_admin_users(request):
+    """API endpoint for user management - list, create, update, delete users"""
+    
+    if request.method == 'GET':
+        # List users
+        users = User.objects.select_related('profile').all()
+        users_data = []
+        
+        for user in users:
+            user_roles = list(user.roles.values_list('name', flat=True)) if hasattr(user, 'roles') else []
+            
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'get_full_name': user.get_full_name(),
+                'email': user.email,
+                'phone_number': getattr(user.profile, 'phone_number', '') if hasattr(user, 'profile') else '',
+                'is_active': user.is_active,
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'date_joined': user.date_joined.isoformat() if user.date_joined else None,
+                'roles': user_roles,
+                'profile': {
+                    'department': getattr(user.profile, 'department', '') if hasattr(user, 'profile') else '',
+                    'profile_picture': getattr(user.profile, 'profile_picture', None) if hasattr(user, 'profile') else None,
+                }
+            })
+        
+        return JsonResponse(users_data, safe=False)
+    
+    elif request.method == 'POST':
+        # Create new user
+        try:
+            data = json.loads(request.body)
+            
+            # Validate required fields
+            if not data.get('username') or not data.get('first_name') or not data.get('last_name'):
+                return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+            
+            # Create user
+            user = User.objects.create_user(
+                username=data['username'],
+                email=data.get('email', ''),
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                password=data.get('password', User.objects.make_random_password())
+            )
+            
+            # Update additional fields
+            user.phone_number = data.get('phone_number', '')
+            user.is_active = data.get('is_active', True)
+            user.is_staff = data.get('is_staff', False)
+            user.is_superuser = data.get('is_superuser', False)
+            user.save()
+            
+            # Update or create profile
+            profile, created = CustomUserProfile.objects.get_or_create(user=user)
+            profile.phone_number = data.get('phone_number', '')
+            if data.get('department'):
+                try:
+                    dept = Department.objects.get(id=data['department'])
+                    profile.department = dept
+                except Department.DoesNotExist:
+                    pass
+            profile.save()
+            
+            # Assign roles
+            if hasattr(user, 'roles') and data.get('roles'):
+                from core.models import Role
+                role_objects = Role.objects.filter(name__in=data['roles'])
+                user.roles.set(role_objects)
+            
+            return JsonResponse({'success': True, 'message': 'User created successfully', 'user_id': user.id})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+
+@user_passes_test(is_admin)
+def api_admin_user_detail(request, user_id):
+    """API endpoint for individual user operations - update, delete"""
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
+    
+    if request.method == 'PUT':
+        # Update user
+        try:
+            data = json.loads(request.body)
+            
+            # Update user fields
+            if 'first_name' in data:
+                user.first_name = data['first_name']
+            if 'last_name' in data:
+                user.last_name = data['last_name']
+            if 'email' in data:
+                user.email = data['email']
+            if 'is_active' in data:
+                user.is_active = data['is_active']
+            if 'is_staff' in data:
+                user.is_staff = data['is_staff']
+            if 'is_superuser' in data:
+                user.is_superuser = data['is_superuser']
+            
+            # Update password if provided
+            if data.get('password'):
+                user.set_password(data['password'])
+            
+            user.save()
+            
+            # Update or create profile
+            profile, created = CustomUserProfile.objects.get_or_create(user=user)
+            if 'phone_number' in data:
+                profile.phone_number = data['phone_number']
+            if 'department' in data:
+                try:
+                    dept = Department.objects.get(id=data['department'])
+                    profile.department = dept
+                except Department.DoesNotExist:
+                    pass
+            profile.save()
+            
+            # Update roles
+            if hasattr(user, 'roles') and 'roles' in data:
+                from core.models import Role
+                if data['roles']:
+                    role_objects = Role.objects.filter(name__in=data['roles'])
+                    user.roles.set(role_objects)
+                else:
+                    user.roles.clear()
+            
+            return JsonResponse({'success': True, 'message': 'User updated successfully'})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    
+    elif request.method == 'DELETE':
+        # Delete user
+        if user.is_superuser:
+            return JsonResponse({'success': False, 'message': 'Cannot delete superuser'}, status=403)
+        
+        try:
+            user.delete()
+            return JsonResponse({'success': True, 'message': 'User deleted successfully'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+
+@user_passes_test(is_admin)
+def api_admin_roles(request):
+    """API endpoint for roles management"""
+    
+    if request.method == 'GET':
+        try:
+            from core.models import Role
+            roles = Role.objects.all()
+            roles_data = [{'id': role.id, 'name': role.name} for role in roles]
+            return JsonResponse(roles_data, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@user_passes_test(is_admin)
+def api_admin_departments(request):
+    """API endpoint for departments management"""
+    
+    if request.method == 'GET':
+        try:
+            # Get departments from Department model
+            departments = Department.objects.all()
+            departments_data = [{'id': dept.id, 'name': dept.name} for dept in departments]
+            
+            # If no departments found, provide default list
+            if not departments_data:
+                departments_data = [
+                    {'id': 'administration', 'name': 'Administration'},
+                    {'id': 'medical', 'name': 'Medical'},
+                    {'id': 'nursing', 'name': 'Nursing'},
+                    {'id': 'pharmacy', 'name': 'Pharmacy'},
+                    {'id': 'laboratory', 'name': 'Laboratory'},
+                    {'id': 'radiology', 'name': 'Radiology'},
+                    {'id': 'billing', 'name': 'Billing'},
+                    {'id': 'reception', 'name': 'Reception'},
+                ]
+            
+            return JsonResponse(departments_data, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
