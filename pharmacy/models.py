@@ -837,6 +837,18 @@ class Prescription(models.Model):
         """Check if prescription has some items dispensed but not all"""
         return self.get_dispensing_status() == 'partially_dispensed'
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['patient'], name='idx_presc_patient'),
+            models.Index(fields=['doctor'], name='idx_presc_doctor'),
+            models.Index(fields=['status'], name='idx_presc_status'),
+            models.Index(fields=['prescription_date'], name='idx_presc_date'),
+            models.Index(fields=['payment_status'], name='idx_presc_payment'),
+            models.Index(fields=['authorization_status'], name='idx_presc_auth'),
+            models.Index(fields=['created_at'], name='idx_presc_created'),
+        ]
+        ordering = ['-prescription_date', '-created_at']
+
 class PrescriptionItem(models.Model):
     prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name='items')
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)

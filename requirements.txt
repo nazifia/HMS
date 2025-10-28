@@ -30,3 +30,6 @@ tzdata==2025.2
 whitenoise==6.5.0
 django-celery-beat==2.5.0
 timezone-field==6.1.0
+django-compressor==4.5.1
+rcssmin==1.1.2
+rjsmin==1.2.2

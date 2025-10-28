@@ -318,3 +318,12 @@ class Payment(models.Model):
         # If a wallet payment was processed, the invoice update is already handled within the transaction.
         # The conditional invoice update for new non-wallet payments is handled in the 'else' block.
         # No further invoice update should be needed here if logic above is correct.
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['payment_date'], name='idx_payment_date'),
+            models.Index(fields=['invoice'], name='idx_payment_invoice'),
+            models.Index(fields=['payment_method'], name='idx_payment_method'),
+            models.Index(fields=['created_at'], name='idx_payment_created'),
+        ]
+        ordering = ['-payment_date', '-created_at']

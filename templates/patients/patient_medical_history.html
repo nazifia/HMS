@@ -27,9 +27,9 @@
             <div class="row">
                 <div class="col-md-2 text-center">
                     {% if patient.has_profile_image %}
-                        <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;">
+                        <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;" loading="lazy">
                     {% else %}
-                        <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;">
+                        <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-profile rounded-circle" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6;" loading="lazy">
                     {% endif %}
                 </div>
                 <div class="col-md-5">

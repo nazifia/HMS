@@ -193,9 +193,9 @@
             </div>
             <div class="card-body text-center">
                 {% if patient.has_profile_image %}
-                    <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                    <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;" loading="lazy">
                 {% else %}
-                    <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                    <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;" loading="lazy">
                 {% endif %}
                 <h5>{{ patient.get_full_name }}</h5>
                 <p class="text-muted">Patient type: {{ patient.get_patient_type_display }}</p>

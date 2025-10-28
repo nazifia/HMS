@@ -44,49 +44,65 @@ def is_admin(user):
 @login_required
 @user_passes_test(is_admin, login_url='/dashboard/')
 def admin_dashboard(request):
-    """Enhanced admin dashboard with activity overview"""
-    
-    # Get basic stats
-    total_users = User.objects.count()
-    active_users = User.objects.filter(is_active=True).count()
-    recent_logins = User.objects.filter(last_login__gte=timezone.now() - timedelta(days=1)).count()
-    
-    # Get activity stats
+    """Enhanced admin dashboard with activity overview - Optimized with caching"""
+    # TEMPORARILY DISABLED CACHING TO FIX TEMPLATE UPDATE ISSUE
+    # from django.core.cache import cache
+
+    # Create cache key for admin dashboard
+    # cache_key = f'admin_dashboard_{request.user.id}_{timezone.now().date()}'
+    # cached_data = cache.get(cache_key)
+
+    # if cached_data:
+    #     return render(request, 'admin/admin_dashboard.html', cached_data)
+
+    # Optimize: Use aggregate to get user stats in a single query
+    from django.db.models import Q, Count as CountFunc
+    user_stats = User.objects.aggregate(
+        total=CountFunc('id'),
+        active=CountFunc('id', filter=Q(is_active=True)),
+        recent_logins=CountFunc('id', filter=Q(last_login__gte=timezone.now() - timedelta(days=1)))
+    )
+
+    # Get activity stats - optimize by using single base queryset
     today = timezone.now().date()
+    last_24_hours = timezone.now() - timedelta(hours=24)
+
+    # Optimize: Get all today's activities in one query and cache the count
     today_activities = ActivityLog.objects.filter(timestamp__date=today)
-    
-    # Activity by category
+    total_activities_today = today_activities.count()
+
+    # Activity by category - already optimized with aggregation
     activity_by_category = today_activities.values('category').annotate(
-        count=Count('id')
+        count=CountFunc('id')
     ).order_by('-count')[:5]
-    
-    # Recent activities
+
+    # Recent activities - optimize with select_related for user
     recent_activities = ActivityLog.objects.select_related('user').order_by('-timestamp')[:10]
-    
-    # Failed login attempts (last 24 hours)
-    failed_logins = ActivityLog.objects.filter(
-        action_type='failed_login',
-        timestamp__gte=timezone.now() - timedelta(hours=24)
-    ).count()
-    
-    # Permission denied events (last 24 hours)
-    permission_denied = ActivityLog.objects.filter(
-        action_type='permission_denied',
-        timestamp__gte=timezone.now() - timedelta(hours=24)
-    ).count()
-    
+
+    # Optimize: Get failed logins and permission denied in a single query using aggregation
+    security_stats = ActivityLog.objects.filter(
+        timestamp__gte=last_24_hours
+    ).aggregate(
+        failed_logins=CountFunc('id', filter=Q(action_type='failed_login')),
+        permission_denied=CountFunc('id', filter=Q(action_type='permission_denied'))
+    )
+
     context = {
-        'total_users': total_users,
-        'active_users': active_users,
-        'recent_logins': recent_logins,
-        'total_activities_today': today_activities.count(),
+        'total_users': user_stats['total'],
+        'active_users': user_stats['active'],
+        'recent_logins': user_stats['recent_logins'],
+        'total_activities_today': total_activities_today,
         'activity_by_category': activity_by_category,
         'recent_activities': recent_activities,
-        'failed_logins': failed_logins,
-        'permission_denied': permission_denied,
+        'failed_logins': security_stats['failed_logins'],
+        'permission_denied': security_stats['permission_denied'],
         'page_title': 'Admin Dashboard',
     }
-    
+
+    # TEMPORARILY DISABLED CACHING TO FIX TEMPLATE UPDATE ISSUE
+    # Cache the context for 5 minutes (300 seconds)
+    # cache.set(cache_key, context, 300)
+
     return render(request, 'admin/admin_dashboard.html', context)
 
 @login_required
@@ -459,6 +475,14 @@ def api_admin_users(request):
                             'name': user.profile.department.name
                         }
 
+                    # Get profile picture URL
+                    profile_picture_url = None
+                    if hasattr(user, 'profile') and hasattr(user.profile, 'profile_picture') and user.profile.profile_picture:
+                        try:
+                            profile_picture_url = user.profile.profile_picture.url
+                        except:
+                            profile_picture_url = None
+
                     users_data.append({
                         'id': user.id,
                         'username': user.username,
@@ -475,7 +499,7 @@ def api_admin_users(request):
                         'roles': user_roles,
                         'profile': {
                             'department': department,
-                            'profile_picture': getattr(user.profile, 'profile_picture', None) if hasattr(user, 'profile') else None,
+                            'profile_picture': profile_picture_url,
                         }
                     })
                     print(f"✓ Processed user: {user.username}")

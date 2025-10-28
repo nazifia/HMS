@@ -22,8 +22,11 @@
     {% load static %}
 {% load form_tags %}
 {% load patient_tags %}
+{% load compress %}
+    {% compress css %}
     <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
     <link rel="stylesheet" href="{% static 'css/patient_search.css' %}">
+    {% endcompress %}
 
     {% block extra_css %}{% endblock %}
     <style>
@@ -979,7 +982,9 @@
 
     <!-- Custom JS -->
     {% load static %}
+    {% compress js %}
     <script src="{% static 'js/sidebar.js' %}"></script>
+    {% endcompress %}
 
     <!-- HTMX/Alpine.js Performance Optimizations -->
     <script>

@@ -21,11 +21,14 @@
     <!-- Custom CSS -->
     {% load static %}
     {% load core_tags %}
+    {% load compress %}
+    {% compress css %}
     <link rel="stylesheet" href="{% static 'css/style_new.css' %}">
     <link rel="stylesheet" href="{% static 'css/patient_search.css' %}">
     <link rel="stylesheet" href="{% static 'css/enhanced_ui.css' %}">
     <link rel="stylesheet" href="{% static 'css/role_based_ui.css' %}">
-    
+    {% endcompress %}
+
     {% block extra_css %}{% endblock %}
     
     <!-- Custom Styles -->
@@ -533,8 +536,10 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <!-- Custom JS -->
+    {% compress js %}
     <script src="{% static 'js/app.js' %}"></script>
     <script src="{% static 'js/enhanced_ui.js' %}"></script>
+    {% endcompress %}
 
     {% block extra_js %}{% endblock %}
 

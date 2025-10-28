@@ -48,6 +48,13 @@ class Appointment(models.Model):
 
     class Meta:
         ordering = ['appointment_date', 'appointment_time']
+        indexes = [
+            models.Index(fields=['appointment_date'], name='idx_appt_date'),
+            models.Index(fields=['patient'], name='idx_appt_patient'),
+            models.Index(fields=['doctor'], name='idx_appt_doctor'),
+            models.Index(fields=['status'], name='idx_appt_status'),
+            models.Index(fields=['appointment_date', 'status'], name='idx_appt_date_status'),
+        ]
 
 class AppointmentFollowUp(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='follow_ups')

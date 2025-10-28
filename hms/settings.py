@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'crispy_forms',
     'crispy_bootstrap5',
+    'compressor',  # Django Compressor for CSS/JS minification
     # 'django_celery_beat',  # Temporarily disabled due to Python 3.13 timezone compatibility issue
 
     # HMS Apps
@@ -413,3 +414,20 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = ['bootstrap5']
 # Inter-Dispensary Transfer Settings
 MAX_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal('1000.00')
 MIN_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal('1.00')
+
+# Django Compressor Settings
+COMPRESS_ENABLED = not DEBUG  # Enable compression in production
+COMPRESS_OFFLINE = False  # Set to True for offline compression
+COMPRESS_CSS_FILTERS = [
+    'compressor.filters.css_default.CssAbsoluteFilter',
+    'compressor.filters.cssmin.rCSSMinFilter',
+]
+COMPRESS_JS_FILTERS = [
+    'compressor.filters.jsmin.rJSMinFilter',
+]
+# Add compressor to staticfiles finders
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'compressor.finders.CompressorFinder',
+]

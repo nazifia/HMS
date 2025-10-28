@@ -30,7 +30,7 @@
                 <div class="card-body">
                     <div class="text-center mb-4">
                         {% if patient.has_profile_image %}
-                            <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
+                            <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;" loading="lazy">
                         {% else %}
                             <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
                         {% endif %}

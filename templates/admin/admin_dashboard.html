@@ -1,7 +1,7 @@
 {% extends 'enhanced_base.html' %}
 {% load core_tags %}
 
-{% block title %}Admin Dashboard{% endblock %}
+{% block title %}TESTING 12345 - Admin Dashboard{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -206,9 +206,10 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    <!-- TEST COMMENT 12345 - If you see this, the template is being read from disk -->
                     <div class="row g-3">
                         <div class="col-md-2">
-                            <a href="http://127.0.0.1:8000/accounts/user-dashboard/" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none" onclick="window.location.href='http://127.0.0.1:8000/accounts/user-dashboard/'; return false;">
+                            <a href="{% url 'core:user_management' %}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center">
                                 <i class="fas fa-users fa-2x mb-2"></i>
                                 <span>User Management</span>
                             </a>

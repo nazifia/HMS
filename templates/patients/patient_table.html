@@ -18,7 +18,7 @@
             <tr>
                 <td class="text-center">
                     {% if patient.profile_picture %}
-                        <img src="{{ patient.profile_picture.url }}" alt="{{ patient.get_full_name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                        <img src="{{ patient.profile_picture.url }}" alt="{{ patient.get_full_name }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;" loading="lazy">
                     {% else %}
                         <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 14px;">
                             {{ patient.get_full_name|slice:":2"|upper }}
