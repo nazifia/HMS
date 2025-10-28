@@ -6,9 +6,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.views.generic import ListView, DetailView
 from django.utils.decorators import method_decorator
-from django.db.models import Q, Count, Avg
+from django.db.models import Q, Count, Avg, Max
 from django.utils import timezone
 from datetime import timedelta
 from django.http import JsonResponse, HttpResponseForbidden
@@ -151,14 +152,16 @@ def permission_management(request):
     """Manage user permissions and roles"""
     
     # Get all roles with user counts
-    roles = Role.objects.annotate(user_count=Count('customuser_roles'))
+    roles = Role.objects.annotate(user_count=Count('users'))
     
     # Role statistics
     total_permissions = Permission.objects.count()
+    total_users_in_roles = sum(role.user_count for role in roles)
     
     context = {
         'roles': roles,
         'total_permissions': total_permissions,
+        'total_users_in_roles': total_users_in_roles,
         'page_title': 'Permission Management',
     }
     

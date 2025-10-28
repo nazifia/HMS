@@ -522,6 +522,424 @@ body {
     box-shadow: 0 8px 20px rgba(0,0,0,0.12);
 }
 
+/* Enhanced Table Button Styles */
+.table .btn {
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: auto;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Button ripple effect */
+.table .btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+    z-index: 0;
+}
+
+.table .btn:hover::before {
+    width: 200px;
+    height: 200px;
+}
+
+.table .btn i {
+    position: relative;
+    z-index: 1;
+}
+
+.table .btn span {
+    position: relative;
+    z-index: 1;
+}
+
+/* Table Button Size Variants */
+.table .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.table .btn-xs {
+    padding: 0.1875rem 0.375rem;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    min-width: 24px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Table Button Color Variants */
+.table .btn-primary {
+    background: linear-gradient(135deg, #4f63e7, #667eea);
+    border-color: #4f63e7;
+    color: white;
+    box-shadow: 0 2px 4px rgba(79, 99, 231, 0.2);
+}
+
+.table .btn-primary:hover {
+    background: linear-gradient(135deg, #4352c7, #5a6ed8);
+    border-color: #4352c7;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(79, 99, 231, 0.3);
+}
+
+.table .btn-success {
+    background: linear-gradient(135deg, #218838, #28a745);
+    border-color: #218838;
+    color: white;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.table .btn-success:hover {
+    background: linear-gradient(135deg, #1e7e34, #259641);
+    border-color: #1e7e34;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.table .btn-danger {
+    background: linear-gradient(135deg, #c82333, #dc3545);
+    border-color: #c82333;
+    color: white;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+}
+
+.table .btn-danger:hover {
+    background: linear-gradient(135deg, #bd2130, #c82333);
+    border-color: #bd2130;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.table .btn-warning {
+    background: linear-gradient(135deg, #e0a800, #ffc107);
+    border-color: #e0a800;
+    color: #212529;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+}
+
+.table .btn-warning:hover {
+    background: linear-gradient(135deg, #d39e00, #e0a800);
+    border-color: #d39e00;
+    color: #212529;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+.table .btn-info {
+    background: linear-gradient(135deg, #138496, #17a2b8);
+    border-color: #138496;
+    color: white;
+    box-shadow: 0 2px 4px rgba(23, 162, 184, 0.2);
+}
+
+.table .btn-info:hover {
+    background: linear-gradient(135deg, #117a8b, #138496);
+    border-color: #117a8b;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+.table .btn-secondary {
+    background: linear-gradient(135deg, #5a6268, #6c757d);
+    border-color: #5a6268;
+    color: white;
+    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.2);
+}
+
+.table .btn-secondary:hover {
+    background: linear-gradient(135deg, #545b62, #5a6268);
+    border-color: #545b62;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* Outline Button Variants */
+.table .btn-outline-primary {
+    background: transparent;
+    border-color: #667eea;
+    color: #667eea;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+}
+
+.table .btn-outline-primary:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.table .btn-outline-success {
+    background: transparent;
+    border-color: #28a745;
+    color: #28a745;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+}
+
+.table .btn-outline-success:hover {
+    background: #28a745;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.table .btn-outline-danger {
+    background: transparent;
+    border-color: #dc3545;
+    color: #dc3545;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.1);
+}
+
+.table .btn-outline-danger:hover {
+    background: #dc3545;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.table .btn-outline-warning {
+    background: transparent;
+    border-color: #ffc107;
+    color: #ffc107;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.1);
+}
+
+.table .btn-outline-warning:hover {
+    background: #ffc107;
+    color: #212529;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+.table .btn-outline-info {
+    background: transparent;
+    border-color: #17a2b8;
+    color: #17a2b8;
+    box-shadow: 0 2px 4px rgba(23, 162, 184, 0.1);
+}
+
+.table .btn-outline-info:hover {
+    background: #17a2b8;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+.table .btn-outline-secondary {
+    background: transparent;
+    border-color: #6c757d;
+    color: #6c757d;
+    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.1);
+}
+
+.table .btn-outline-secondary:hover {
+    background: #6c757d;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* Button Group Styles */
+.table .btn-group .btn {
+    border-radius: 0;
+    margin: 0;
+}
+
+.table .btn-group .btn:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.table .btn-group .btn:last-child {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/* Button Active State */
+.table .btn:active,
+.table .btn.active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Button Disabled State */
+.table .btn:disabled,
+.table .btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Focus State */
+.table .btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+}
+
+/* Special Table Button Actions */
+.table .btn-action {
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+/* Outlined Action Button Variants */
+.table .btn-action.btn-outline-primary {
+    background: transparent;
+    border-color: #667eea;
+    color: #667eea;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+    transition: all 0.3s ease;
+}
+
+.table .btn-action.btn-outline-primary:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.table .btn-action.btn-outline-success {
+    background: transparent;
+    border-color: #28a745;
+    color: #28a745;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+    transition: all 0.3s ease;
+}
+
+.table .btn-action.btn-outline-success:hover {
+    background: #28a745;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.table .btn-action.btn-outline-danger {
+    background: transparent;
+    border-color: #dc3545;
+    color: #dc3545;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.1);
+    transition: all 0.3s ease;
+}
+
+.table .btn-action.btn-outline-danger:hover {
+    background: #dc3545;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.table .btn-action.btn-outline-warning {
+    background: transparent;
+    border-color: #ffc107;
+    color: #ffc107;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.1);
+    transition: all 0.3s ease;
+}
+
+.table .btn-action.btn-outline-warning:hover {
+    background: #ffc107;
+    color: #212529;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+.table .btn-action.btn-outline-info {
+    background: transparent;
+    border-color: #17a2b8;
+    color: #17a2b8;
+    box-shadow: 0 2px 4px rgba(23, 162, 184, 0.1);
+    transition: all 0.3s ease;
+}
+
+.table .btn-action.btn-outline-info:hover {
+    background: #17a2b8;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+.table .btn-action.btn-outline-secondary {
+    background: transparent;
+    border-color: #6c757d;
+    color: #6c757d;
+    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.1);
+    transition: all 0.3s ease;
+}
+
+.table .btn-action.btn-outline-secondary:hover {
+    background: #6c757d;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+}
+
+.table .btn-action-sm {
+    min-width: 30px;
+    height: 30px;
+}
+
+.table .btn-action-xs {
+    min-width: 24px;
+    height: 24px;
+}
+
+/* Loading State for Table Buttons */
+.table .btn.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.table .btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
 /* Dark Mode Support */
 @media (prefers-color-scheme: dark) {
     .form-control-enhanced {

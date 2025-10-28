@@ -29,7 +29,8 @@ urlpatterns = [
     # Revenue Point Breakdown URLs
     path('revenue/dashboard/', revenue_views.revenue_point_dashboard, name='revenue_point_dashboard'),
     path('revenue/api/', revenue_views.revenue_point_api, name='revenue_point_api'),
-    path('revenue/trends/', revenue_views.revenue_trends_api, name='revenue_trends_api'),
+    path('revenue/trends/', revenue_views.revenue_trends_view, name='revenue_trends_view'),
+    path('revenue/trends/api/', revenue_views.revenue_trends_api, name='revenue_trends_api'),
     path('revenue/export/', revenue_views.export_revenue_breakdown, name='export_revenue_breakdown'),
     path('revenue/department/<str:department>/', revenue_views.department_revenue_detail, name='department_revenue_detail'),
     path('revenue/widget/', revenue_views.revenue_summary_widget, name='revenue_summary_widget'),

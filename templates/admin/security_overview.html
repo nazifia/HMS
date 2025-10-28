@@ -1,0 +1,319 @@
+{% extends 'enhanced_base.html' %}
+{% load core_tags custom_filters %}
+
+{% block title %}Security Overview{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-shield-alt me-2"></i>Security Overview
+                </h1>
+                <p class="text-muted mb-0">Monitor system security and detect potential threats</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-info" onclick="refreshSecurityData()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                </button>
+                <a href="{% url 'core:admin_dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-danger bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Failed Logins (24h)</h6>
+                            <h4 class="mb-0 text-danger">{{ failed_logins_count }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-warning bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Permission Denied (24h)</h6>
+                            <h4 class="mb-0 text-warning">{{ permission_denied_count }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-warning bg-gradient text-dark text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-user-secret"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Suspicious Activities (24h)</h6>
+                            <h4 class="mb-0 text-warning">{{ suspicious_activities }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-info bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Active Sessions (2h)</h6>
+                            <h4 class="mb-0 text-info">{{ active_sessions|length }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Security Events -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-alt me-2"></i>Recent Security Events
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if security_events %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Event Type</th>
+                                    <th>Level</th>
+                                    <th>IP Address</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in security_events %}
+                                <tr>
+                                    <td>
+                                        <small>{{ event.timestamp|date:"M d, Y H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if event.user %}
+                                            {{ event.user.get_full_name|default:event.user.username }}
+                                        {% else %}
+                                            <span class="text-muted">System</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ event.action_type|action_type_badge_class }}">
+                                            {{ event.get_action_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ event.level|activity_level_badge_class }}">
+                                            {{ event.get_level_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <code>{{ event.ip_address|default:"N/A" }}</code>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-shield-alt fa-2x text-muted mb-3 d-block"></i>
+                        <p class="text-muted">No security events detected in the last 24 hours.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users-cog me-2"></i>Active Sessions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if active_sessions %}
+                    <div class="session-list">
+                        {% for session in active_sessions %}
+                        <div class="session-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <div class="fw-semibold">{{ session.user__username }}</div>
+                                <small class="text-muted">{{ session.ip_address }}</small>
+                            </div>
+                            <div>
+                                <small class="text-muted">{{ session.last_activity|timeago }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-2x text-muted mb-3 d-block"></i>
+                        <p class="text-muted">No active sessions in the last 2 hours.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Recommendations -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>Security Recommendations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Immediate Actions</h6>
+                            <ul class="list-unstyled">
+                                {% if failed_logins_count > 5 %}
+                                <li class="mb-2">
+                                    <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                    High number of failed logins detected
+                                </li>
+                                {% endif %}
+                                {% if permission_denied_count > 10 %}
+                                <li class="mb-2">
+                                    <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                    Unusual permission denied activity
+                                </li>
+                                {% endif %}
+                                {% if suspicious_activities > 0 %}
+                                <li class="mb-2">
+                                    <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                                    Suspicious activities require investigation
+                                </li>
+                                {% endif %}
+                                {% if failed_logins_count == 0 and permission_denied_count == 0 and suspicious_activities == 0 %}
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    No immediate security concerns detected
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">Best Practices</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-shield-alt text-info me-2"></i>
+                                    Regularly review user permissions
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-key text-info me-2"></i>
+                                    Enforce strong password policies
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-clock text-info me-2"></i>
+                                    Monitor session timeouts
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-chart-line text-info me-2"></i>
+                                    Keep security logs and review regularly
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.session-item {
+    transition: background-color 0.2s;
+}
+
+.session-item:hover {
+    background-color: #f8f9fa;
+}
+
+.session-item:last-child {
+    border-bottom: none !important;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshSecurityData() {
+    // Refresh the current page to get updated security data
+    location.reload();
+}
+
+// Auto-refresh security data every 5 minutes
+setInterval(function() {
+    fetch(window.location.href)
+        .then(response => response.text())
+        .then(html => {
+            // Extract and update the security stats
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Update failed logins count
+            const failedLogins = doc.querySelector('.text-danger');
+            if (failedLogins && document.querySelector('.text-danger')) {
+                document.querySelector('.text-danger').textContent = failedLogins.textContent;
+            }
+            
+            // Update permission denied count
+            const permissionDenied = doc.querySelector('.text-warning');
+            if (permissionDenied && document.querySelector('.text-warning')) {
+                document.querySelector('.text-warning').textContent = permissionDenied.textContent;
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing security data:', error);
+        });
+}, 300000); // 5 minutes
+</script>
+{% endblock %}

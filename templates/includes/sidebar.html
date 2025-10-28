@@ -671,7 +671,7 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Revenue & Analytics:</h6>
                     <a class="collapse-item {% if 'revenue/dashboard' in request.path %}active{% endif %}" href="{% url 'core:revenue_point_dashboard' %}">Revenue Dashboard</a>
-                    <a class="collapse-item {% if 'revenue/trends' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_api' %}">Revenue Trends</a>
+                    <a class="collapse-item {% if 'revenue/trends' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_view' %}">Revenue Trends</a>
                     
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Transaction Management:</h6>
@@ -750,7 +750,7 @@
                     <a class="collapse-item {% if '/pharmacy/revenue/statistics/' in request.path %}active{% endif %}" href="{{ revenue_url }}">Pharmacy Revenue Statistics</a>
                     {% endif %}
                     <a class="collapse-item {% if '/core/revenue/dashboard/' in request.path %}active{% endif %}" href="{% url 'core:revenue_point_dashboard' %}">Revenue Dashboard</a>
-                    <a class="collapse-item {% if '/core/revenue/trends/' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_api' %}">Revenue Trends</a>
+                    <a class="collapse-item {% if '/core/revenue/trends/' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_view' %}">Revenue Trends</a>
                     
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Department Reports:</h6>

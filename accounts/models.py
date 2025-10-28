@@ -23,6 +23,12 @@ class Role(models.Model):
         verbose_name=_('permissions'),
         blank=True,
     )
+    users = models.ManyToManyField(
+        'CustomUser',
+        related_name='customuser_roles',
+        blank=True,
+        help_text=_('Users assigned to this role')
+    )
 
     def __str__(self):
         return self.name

@@ -1,0 +1,237 @@
+{% extends 'enhanced_base.html' %}
+{% load core_tags %}
+
+{% block title %}Audit Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-chart-line me-2"></i>Audit Report
+                </h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'core:admin_dashboard' %}">Admin</a></li>
+                        <li class="breadcrumb-item active">Audit Report</li>
+                    </ol>
+                </nav>
+            </div>
+            <div>
+                <button class="btn btn-outline-primary" onclick="refreshAuditReport()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                </button>
+                <button class="btn btn-primary" onclick="exportAuditReport()">
+                    <i class="fas fa-download me-2"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <!-- Today's Statistics -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Today's Logins
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ report_data.today.logins }}
+                            </div>
+                            <div class="text-xs text-muted">
+                                Failed: {{ report_data.today.failed_logins }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-sign-in-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Actions -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Today's User Actions
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ report_data.today.user_actions }}
+                            </div>
+                            <div class="text-xs text-muted">
+                                Permissions Denied: {{ report_data.today.permission_denied }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Events -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                This Week Security Events
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ security_events }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-shield-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Report Tables -->
+    <div class="row">
+        <!-- Time Period Comparison -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Activity by Time Period</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Period</th>
+                                    <th>Logins</th>
+                                    <th>Failed Logins</th>
+                                    <th>User Actions</th>
+                                    <th>Permission Denied</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Today</td>
+                                    <td>{{ report_data.today.logins }}</td>
+                                    <td>{{ report_data.today.failed_logins }}</td>
+                                    <td>{{ report_data.today.user_actions }}</td>
+                                    <td>{{ report_data.today.permission_denied }}</td>
+                                </tr>
+                                <tr>
+                                    <td>This Week</td>
+                                    <td>{{ report_data.this_week.logins }}</td>
+                                    <td>{{ report_data.this_week.failed_logins }}</td>
+                                    <td>{{ report_data.this_week.user_actions }}</td>
+                                    <td>{{ report_data.this_week.permission_denied }}</td>
+                                </tr>
+                                <tr>
+                                    <td>This Month</td>
+                                    <td>{{ report_data.this_month.logins }}</td>
+                                    <td>{{ report_data.this_month.failed_logins }}</td>
+                                    <td>{{ report_data.this_month.user_actions }}</td>
+                                    <td>{{ report_data.this_month.permission_denied }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Active Users -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Active Users (This Week)</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in top_users %}
+                                <tr>
+                                    <td>{{ user.user__first_name }} {{ user.user__last_name }}</td>
+                                    <td>
+                                        <span class="badge badge-primary">{{ user.activity_count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Activity Categories -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Activity Categories (This Week)</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in top_categories %}
+                                <tr>
+                                    <td>{{ category.category|title }}</td>
+                                    <td>
+                                        <span class="badge badge-info">{{ category.count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshAuditReport() {
+    window.location.reload();
+}
+
+function exportAuditReport() {
+    // Export functionality can be implemented here
+    alert('Export functionality will be implemented in a future update.');
+}
+
+// Add any interactive features here
+$(document).ready(function() {
+    // Initialize any interactive components
+});
+</script>
+{% endblock %}

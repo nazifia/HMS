@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ page_title }} - HMS{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/sb-admin-2.min.css' %}" rel="stylesheet">
+<style>
+    .revenue-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #4e73df;
+    }
+    .revenue-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .revenue-amount {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #2e59d9;
+    }
+    .growth-positive {
+        color: #1cc88a;
+    }
+    .growth-negative {
+        color: #e74a3b;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 1rem 0;
+    }
+    .filter-panel {
+        background: #f8f9fc;
+        padding: 1.5rem;
+        border-radius: 0.35rem;
+        margin-bottom: 2rem;
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255,255,255,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+    .trend-table {
+        font-size: 0.9rem;
+    }
+    .trend-table th {
+        background: #4e73df;
+        color: white;
+    }
+    .trend-value {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-chart-line fa-fw"></i> {{ page_title }}
+    </h1>
+    <div class="export-buttons">
+        <button class="btn btn-success btn-sm" onclick="exportData('csv')">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </button>
+        <button class="btn btn-info btn-sm" onclick="exportData('excel')">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="exportData('pdf')">
+            <i class="fas fa-file-pdf"></i> Export PDF
+        </button>
+    </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="filter-panel">
+    <form method="GET" id="filter-form" class="row">
+        <div class="col-md-3">
+            <label for="months" class="form-label">Period (Months)</label>
+            <select name="months" id="months" class="form-control" onchange="submitForm()">
+                {% for m in '3,6,9,12,18,24'|split:',' %}
+                    <option value="{{ m }}" {% if m == months|stringformat:"s" %}selected{% endif %}>
+                        Last {{ m }} Months
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="department" class="form-label">Department</label>
+            <select name="department" id="department" class="form-control" onchange="submitForm()">
+                <option value="all" {% if department == 'all' %}selected{% endif %}>All Departments</option>
+                <option value="pharmacy" {% if department == 'pharmacy' %}selected{% endif %}>Pharmacy</option>
+                <option value="laboratory" {% if department == 'laboratory' %}selected{% endif %}>Laboratory</option>
+                <option value="consultation" {% if department == 'consultation' %}selected{% endif %}>Consultations</option>
+                <option value="theatre" {% if department == 'theatre' %}selected{% endif %}>Theatre</option>
+                <option value="admissions" {% if department == 'admissions' %}selected{% endif %}>Admissions</option>
+                <option value="general" {% if department == 'general' %}selected{% endif %}>General</option>
+                <option value="wallet" {% if department == 'wallet' %}selected{% endif %}>Wallet</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="button" class="btn btn-primary btn-block" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="button" class="btn btn-secondary btn-block" onclick="resetFilters()">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if not error %}
+<!-- Summary Cards -->
+<div class="row mb-4">
+    {% if trends %}
+        
+        <!-- Total Revenue for Period -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card revenue-card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Revenue ({{ months }} months)
+                            </div>
+                            <div class="revenue-amount">
+                                ₦{{ trends|sum:'total_revenue'|floatformat:2|intcomma }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Monthly Revenue -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card revenue-card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Average Monthly
+                            </div>
+                            <div class="revenue-amount text-success">
+                                ₦{% calculate_average trends 'total_revenue' %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-bar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Growth Rate -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card revenue-card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Growth Rate
+                            </div>
+                            {% get_growth_rate_class trends 'total_revenue' %}
+                            <div class="revenue-amount {{ growth_class }}">
+                                {% if growth_rate >= 0 %}+{% endif %}{{ growth_rate }}%
+                            </div>
+                            <div class="text-xs">First vs Last month</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Months -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card revenue-card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Active Months
+                            </div>
+                            <div class="revenue-amount text-info">
+                                {{ trends|filter:'total_revenue>0'|length }}/{{ trends|length }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Revenue Trends Chart -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Revenue Trends - {{ start_date|date:'M Y' }} to {{ end_date|date:'M Y' }}</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="chartTypeDropdown"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                        aria-labelledby="chartTypeDropdown">
+                        <div class="dropdown-header">Chart Options:</div>
+                        <a class="dropdown-item" href="#" onclick="changeChartType('line')">Line Chart</a>
+                        <a class="dropdown-item" href="#" onclick="changeChartType('bar')">Bar Chart</a>
+                        <a class="dropdown-item" href="#" onclick="changeChartType('area')">Area Chart</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="revenueTrendsChart"></canvas>
+                    <div id="chart-loading" class="loading-overlay" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department-wise Trends -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Department-wise Revenue Trends</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered trend-table" id="trendsTable">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Total Revenue</th>
+                                <th>Pharmacy</th>
+                                <th>Laboratory</th>
+                                <th>Consultations</th>
+                                <th>Theatre</th>
+                                <th>Admissions</th>
+                                <th>General</th>
+                                <th>Wallet</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trend in trends %}
+                            <tr>
+                                <td>{{ trend.month|date:"M Y" }}</td>
+                                <td class="trend-value text-primary">₦{{ trend.total_revenue|floatformat:2|intcomma }}</td>
+                                <td>₦{{ trend.pharmacy|floatformat:2|intcomma }}</td>
+                                <td>₦{{ trend.laboratory|floatformat:2|intcomma }}</td>
+                                <td>₦{{ trend.consultations|floatformat:2|intcomma }}</td>
+                                <td>₦{{ trend.theatre|floatformat:2|intcomma }}</td>
+                                <td>₦{{ trend.admissions|floatformat:2|intcomma }}</td>
+                                <td>₦{{ trend.general|floatformat:2|intcomma }}</td>
+                                <td>₦{{ trend.wallet|floatformat:2|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-light">
+                                <th>Total</th>
+                                <th class="trend-value">₦{{ trends|sum:'total_revenue'|floatformat:2|intcomma }}</th>
+                                <th>₦{{ trends|sum:'pharmacy'|floatformat:2|intcomma }}</th>
+                                <th>₦{{ trends|sum:'laboratory'|floatformat:2|intcomma }}</th>
+                                <th>₦{{ trends|sum:'consultations'|floatformat:2|intcomma }}</th>
+                                <th>₦{{ trends|sum:'theatre'|floatformat:2|intcomma }}</th>
+                                <th>₦{{ trends|sum:'admissions'|floatformat:2|intcomma }}</th>
+                                <th>₦{{ trends|sum:'general'|floatformat:2|intcomma }}</th>
+                                <th>₦{{ trends|sum:'wallet'|floatformat:2|intcomma }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Error State -->
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Error Loading Revenue Trends</h4>
+            <p>{{ error }}</p>
+            <hr>
+            <p class="mb-0">Please try refreshing the page or contact system administrator.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Global variables
+let revenueTrendsChart;
+const trendsData = {{ trends_json|safe }};
+
+$(document).ready(function() {
+    initializeCharts();
+    initializeDataTable();
+});
+
+function initializeCharts() {
+    if (!trendsData || !trendsData.length) {
+        return;
+    }
+
+    const ctx = document.getElementById('revenueTrendsChart').getContext('2d');
+    
+    // Prepare data for chart
+    const labels = trendsData.map(trend => trend.month);
+    const datasets = [
+        {
+            label: 'Total Revenue',
+            data: trendsData.map(trend => parseFloat(trend.total_revenue)),
+            borderColor: '#4e73df',
+            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+            borderWidth: 2,
+            tension: 0.3
+        },
+        {
+            label: 'Pharmacy',
+            data: trendsData.map(trend => parseFloat(trend.pharmacy)),
+            borderColor: '#1cc88a',
+            backgroundColor: 'rgba(28, 200, 138, 0.1)',
+            borderWidth: 1,
+            tension: 0.3
+        },
+        {
+            label: 'Laboratory',
+            data: trendsData.map(trend => parseFloat(trend.laboratory)),
+            borderColor: '#36b9cc',
+            backgroundColor: 'rgba(54, 185, 204, 0.1)',
+            borderWidth: 1,
+            tension: 0.3
+        },
+        {
+            label: 'Consultations',
+            data: trendsData.map(trend => parseFloat(trend.consultations)),
+            borderColor: '#f6c23e',
+            backgroundColor: 'rgba(246, 194, 62, 0.1)',
+            borderWidth: 1,
+            tension: 0.3
+        },
+        {
+            label: 'Wallet',
+            data: trendsData.map(trend => parseFloat(trend.wallet)),
+            borderColor: '#e74a3b',
+            backgroundColor: 'rgba(231, 74, 59, 0.1)',
+            borderWidth: 1,
+            tension: 0.3
+        }
+    ];
+
+    revenueTrendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            maintainAspectRatio: false,
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₦' + new Intl.NumberFormat().format(value);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ₦' + new Intl.NumberFormat().format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function initializeDataTable() {
+    $('#trendsTable').DataTable({
+        responsive: true,
+        pageLength: 12,
+        order: [[0, 'desc']],
+        dom: '<"row"<"col-sm-12 col-md-6"B><"col-sm-12 col-md-6"f>>rtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf'
+        ]
+    });
+}
+
+function changeChartType(type) {
+    if (revenueTrendsChart) {
+        if (type === 'area') {
+            revenueTrendsChart.config.type = 'line';
+            revenueTrendsChart.data.datasets.forEach(dataset => {
+                dataset.fill = true;
+            });
+        } else {
+            revenueTrendsChart.config.type = type;
+            revenueTrendsChart.data.datasets.forEach(dataset => {
+                dataset.fill = false;
+            });
+        }
+        revenueTrendsChart.update();
+    }
+}
+
+function submitForm() {
+    showLoading();
+    document.getElementById('filter-form').submit();
+}
+
+function refreshData() {
+    showLoading();
+    location.reload();
+}
+
+function resetFilters() {
+    window.location.href = '{% url "core:revenue_trends_view" %}';
+}
+
+function exportData(format) {
+    showLoading();
+    const params = new URLSearchParams(window.location.search);
+    params.set('format', format);
+    
+    window.location.href = '{% url "core:export_revenue_breakdown" %}?' + params.toString();
+    setTimeout(hideLoading, 2000);
+}
+
+function showLoading() {
+    $('.loading-overlay').show();
+}
+
+function hideLoading() {
+    $('.loading-overlay').hide();
+}
+</script>
+{% endblock %}

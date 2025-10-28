@@ -165,6 +165,56 @@ def revenue_point_api(request):
 
 @login_required
 @require_http_methods(["GET"])
+@login_required
+def revenue_trends_view(request):
+    """
+    Revenue trends page with charts and data visualization
+    """
+    months = int(request.GET.get('months', 12))
+    department = request.GET.get('department', 'all')
+    
+    try:
+        # Get current date for trend calculation
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=30 * months)
+        
+        analyzer = RevenuePointBreakdownAnalyzer(start_date, end_date)
+        
+        if department == 'all':
+            # Get monthly trends for all departments
+            trends = analyzer.get_monthly_trends(months)
+        else:
+            # Get trends for specific department
+            trends = _get_department_trends(department, months)
+        
+        # Convert for JSON
+        trends_json = _convert_decimals_for_json(trends)
+        
+        context = {
+            'trends': trends,
+            'trends_json': json.dumps(trends_json),
+            'months': months,
+            'department': department,
+            'start_date': start_date,
+            'end_date': end_date,
+            'page_title': 'Revenue Trends Analysis',
+            'breadcrumb': 'Revenue Trends'
+        }
+        
+        return render(request, 'core/revenue_trends.html', context)
+        
+    except Exception as e:
+        messages.error(request, f"Error loading revenue trends: {str(e)}")
+        context = {
+            'error': str(e),
+            'page_title': 'Revenue Trends Analysis',
+            'breadcrumb': 'Revenue Trends'
+        }
+        return render(request, 'core/revenue_trends.html', context)
+
+
+@login_required
+@require_http_methods(["GET"])
 def revenue_trends_api(request):
     """
     API endpoint for revenue trend data
@@ -377,13 +427,17 @@ def _get_previous_period(start_date, end_date):
 
 
 def _convert_decimals_for_json(data):
-    """Convert Decimal objects to strings for JSON serialization"""
+    """Convert Decimal and date objects to strings for JSON serialization"""
+    from datetime import date, datetime
+    
     if isinstance(data, dict):
         return {key: _convert_decimals_for_json(value) for key, value in data.items()}
     elif isinstance(data, list):
         return [_convert_decimals_for_json(item) for item in data]
     elif isinstance(data, Decimal):
         return str(data)
+    elif isinstance(data, (date, datetime)):
+        return data.isoformat() if isinstance(data, datetime) else data.strftime('%Y-%m-%d')
     else:
         return data
 
