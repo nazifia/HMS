@@ -22,6 +22,19 @@ if sys.platform == 'win32':
     except ImportError:
         pass  # Patches not available yet during initial setup
 
+# Fix for Python 3.13 timezone compatibility issue with django_celery_beat
+if sys.version_info >= (3, 13):
+    import os
+    os.environ['TZ'] = 'UTC'
+    try:
+        import zoneinfo
+        # Ensure zoneinfo data is available
+        zoneinfo.ZoneInfo('UTC')
+    except Exception:
+        # Fallback to tzdata if zoneinfo data is not available
+        import tzdata
+        os.environ['PYTHONZONE'] = 'tzdata'
+
 # Load environment variables from .env file
 from core.env_loader import load_env_file
 load_env_file()
@@ -88,7 +101,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'crispy_forms',
     'crispy_bootstrap5',
-    'django_celery_beat',
+    # 'django_celery_beat',  # Temporarily disabled due to Python 3.13 timezone compatibility issue
 
     # HMS Apps
     'accounts',
@@ -386,7 +399,7 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = USE_TZ
 
 # Celery Beat (Scheduler) Configuration
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'  # Temporarily disabled
 
 # Custom settings for wallet and session management
 WALLET_LOW_BALANCE_THRESHOLD = Decimal(os.environ.get('WALLET_LOW_BALANCE_THRESHOLD', '100.00'))

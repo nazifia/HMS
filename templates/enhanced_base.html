@@ -805,128 +805,63 @@
 
         // User Management Functions
         function showUserManagementModal() {
-            loadUsersData();
-            const modal = new bootstrap.Modal(document.getElementById('userManagementModal'));
-            modal.show();
+            // Check if we're on the admin page (admin modal exists)
+            const adminModal = document.getElementById('adminUserManagementModal');
+
+            if (adminModal) {
+                // We're on the admin page, check if the admin function exists
+                // The admin page defines its own showUserManagementModal which will override this
+                console.log('Admin modal found, using admin page functionality');
+                return;
+            }
+
+            // Not on admin page, redirect to admin page
+            console.log('Redirecting to admin page for user management');
+            window.location.href = '/core/admin/?openUserModal=true';
         }
 
         function loadUsersData() {
-            const tbody = document.getElementById('users-table-body');
-            
-            // Simulate loading user data
-            tbody.innerHTML = `
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 12px;">
-                                JD
-                            </div>
-                            <div>
-                                <div class="fw-semibold">John Doe</div>
-                                <small class="text-muted">john.doe@hospital.com</small>
-                            </div>
-                        </div>
-                    </td>
-                    <td><span class="badge bg-success">Admin</span></td>
-                    <td>Administration</td>
-                    <td><span class="badge bg-success">Active</span></td>
-                    <td>2 hours ago</td>
-                    <td>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="editUser(1)">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger" onclick="deleteUser(1)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-placeholder bg-info text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 12px;">
-                                DS
-                            </div>
-                            <div>
-                                <div class="fw-semibold">Dr. Sarah Smith</div>
-                                <small class="text-muted">sarah.smith@hospital.com</small>
-                            </div>
-                        </div>
-                    </td>
-                    <td><span class="badge bg-primary">Doctor</span></td>
-                    <td>General Medicine</td>
-                    <td><span class="badge bg-success">Active</span></td>
-                    <td>30 min ago</td>
-                    <td>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="editUser(2)">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger" onclick="deleteUser(2)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function showCreateUserModal() {
-            // Load departments via AJAX (simulated)
-            const departmentSelect = document.getElementById('new-user-department');
-            departmentSelect.innerHTML = `
-                <option value="">Select Department</option>
-                <option value="administration">Administration</option>
-                <option value="general_medicine">General Medicine</option>
-                <option value="pharmacy">Pharmacy</option>
-                <option value="laboratory">Laboratory</option>
-                <option value="radiology">Radiology</option>
-                <option value="billing">Billing</option>
-            `;
-            
-            // Close user management modal if open and show create user modal
-            const userMgmtModal = bootstrap.Modal.getInstance(document.getElementById('userManagementModal'));
-            if (userMgmtModal) {
-                userMgmtModal.hide();
-            }
-            
-            const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
-            modal.show();
-        }
-
-        function createNewUser() {
-            const form = document.getElementById('create-user-form');
-            
-            // Simple validation
-            const username = document.getElementById('new-user-username').value;
-            const firstName = document.getElementById('new-user-first_name').value;
-            const lastName = document.getElementById('new-user-last_name').value;
-            const phone = document.getElementById('new-user-phone').value;
-            const role = document.getElementById('new-user-role').value;
-            
-            if (!username || !firstName || !lastName || !phone || !role) {
-                alert('Please fill in all required fields marked with *');
-                return;
-            }
-            
-            // Simulate user creation
-            alert('User created successfully! (This would be implemented with actual API call)');
-            
-            // Close modal and refresh user list
-            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+            // This function is deprecated - user management now handled by admin page
+            console.log('loadUsersData called - redirecting to admin page');
             showUserManagementModal();
         }
 
+        function showCreateUserModal() {
+            // Check if we're on the admin page
+            const adminModal = document.getElementById('adminUserManagementModal');
+
+            if (adminModal) {
+                // We're on the admin page, use the admin page's create user functionality
+                console.log('Admin page detected, using admin create user functionality');
+                // The admin page should define its own showAddUserForm function
+                if (typeof showAddUserForm === 'function') {
+                    showUserManagementModal();
+                    setTimeout(() => showAddUserForm(), 300);
+                }
+                return;
+            }
+
+            // Not on admin page, redirect to admin page
+            console.log('Redirecting to admin page to create user');
+            window.location.href = '/core/admin/?openUserModal=true&action=create';
+        }
+
+        function createNewUser() {
+            // This function is deprecated - user creation now handled by admin page
+            console.log('createNewUser called - redirecting to admin page');
+            showCreateUserModal();
+        }
+
         function editUser(userId) {
-            alert(`Edit user ${userId} functionality would be implemented here`);
+            // This function is deprecated - user editing now handled by admin page
+            console.log('editUser called - redirecting to admin page');
+            window.location.href = '/core/admin/?openUserModal=true&editUser=' + userId;
         }
 
         function deleteUser(userId) {
-            if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-                alert(`User ${userId} deleted successfully! (This would be implemented with actual API call)`);
-                loadUsersData();
-            }
+            // This function is deprecated - user deletion now handled by admin page
+            console.log('deleteUser called - redirecting to admin page');
+            window.location.href = '/core/admin/?openUserModal=true&deleteUser=' + userId;
         }
 
         // Filter functions
@@ -934,39 +869,16 @@
             // Setup filter listeners
             const roleFilter = document.getElementById('activity-role-filter');
             const categoryFilter = document.getElementById('activity-category-filter');
-            
+
             if (roleFilter) {
                 roleFilter.addEventListener('change', function() {
                     loadActivityLogContent();
                 });
             }
-            
+
             if (categoryFilter) {
                 categoryFilter.addEventListener('change', function() {
                     loadActivityLogContent();
-                });
-            }
-            
-            // Setup user filters
-            const userSearch = document.getElementById('user-search');
-            const userRoleFilter = document.getElementById('user-role-filter-modal');
-            const userStatusFilter = document.getElementById('user-status-filter-modal');
-            
-            if (userSearch) {
-                userSearch.addEventListener('input', function() {
-                    loadUsersData();
-                });
-            }
-            
-            if (userRoleFilter) {
-                userRoleFilter.addEventListener('change', function() {
-                    loadUsersData();
-                });
-            }
-            
-            if (userStatusFilter) {
-                userStatusFilter.addEventListener('change', function() {
-                    loadUsersData();
                 });
             }
         });
@@ -1044,189 +956,6 @@
                             <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- User Management Modal -->
-    <div class="modal fade" id="userManagementModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-users me-2"></i>User Management
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                <input type="text" class="form-control" id="user-search" placeholder="Search users...">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <select class="form-select" id="user-role-filter-modal">
-                                <option value="">All Roles</option>
-                                <option value="admin">Admin</option>
-                                <option value="doctor">Doctor</option>
-                                <option value="nurse">Nurse</option>
-                                <option value="pharmacist">Pharmacist</option>
-                                <option value="receptionist">Receptionist</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select class="form-select" id="user-status-filter-modal">
-                                <option value="">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="users-table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>User</th>
-                                    <th>Role</th>
-                                    <th>Department</th>
-                                    <th>Status</th>
-                                    <th>Last Login</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="users-table-body">
-                                <!-- Will be populated via AJAX -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="showCreateUserModal()">
-                        <i class="fas fa-user-plus me-2"></i>Create New User
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create User Modal -->
-    <div class="modal fade" id="createUserModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-user-plus me-2"></i>Create New User
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="create-user-form">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-username" class="form-label">Username *</label>
-                                    <input type="text" class="form-control" id="new-user-username" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-email" class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="new-user-email">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-first_name" class="form-label">First Name *</label>
-                                    <input type="text" class="form-control" id="new-user-first_name" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-last_name" class="form-label">Last Name *</label>
-                                    <input type="text" class="form-control" id="new-user-last_name" required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-phone" class="form-label">Phone Number *</label>
-                                    <input type="tel" class="form-control" id="new-user-phone" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-role" class="form-label">Role *</label>
-                                    <select class="form-select" id="new-user-role" required>
-                                        <option value="">Select Role</option>
-                                        <option value="admin">Admin</option>
-                                        <option value="doctor">Doctor</option>
-                                        <option value="nurse">Nurse</option>
-                                        <option value="pharmacist">Pharmacist</option>
-                                        <option value="lab_technician">Lab Technician</option>
-                                        <option value="radiology_staff">Radiology Staff</option>
-                                        <option value="accountant">Accountant</option>
-                                        <option value="receptionist">Receptionist</option>
-                                        <option value="health_record_officer">Health Record Officer</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-password" class="form-label">Password *</label>
-                                    <input type="password" class="form-control" id="new-user-password" required>
-                                    <div class="form-text">Leave blank to generate random password</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="new-user-department" class="form-label">Department</label>
-                                    <select class="form-select" id="new-user-department">
-                                        <option value="">Select Department</option>
-                                        <!-- Departments will be loaded via AJAX -->
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="new-user-active" checked>
-                                    <label class="form-check-label" for="new-user-active">
-                                        Active
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    <label for="new-user-address" class="form-label">Address</label>
-                                    <textarea class="form-control" id="new-user-address" rows="3"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="createNewUser()">
-                        <i class="fas fa-user-plus me-2"></i>Create User
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </div>
         </div>

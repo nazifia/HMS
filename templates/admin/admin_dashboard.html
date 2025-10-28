@@ -209,7 +209,7 @@
                     <div class="row g-3">
                         <div class="col-md-2">
                             <button class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center" 
-                                    onclick="openUserManagementModal()">
+                                    onclick="showUserManagementModal()">
                                 <i class="fas fa-users fa-2x mb-2"></i>
                                 <span>User Management</span>
                             </button>
@@ -350,7 +350,7 @@
 </div>
 
 <!-- User Management Modal -->
-<div class="modal fade" id="userManagementModal" tabindex="-1">
+<div class="modal fade" id="adminUserManagementModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -612,62 +612,100 @@
 <script>
 // Chart.js configuration
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin dashboard loading...');
+    
+    // Check if Chart is available
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js is not loaded');
+        return;
+    }
+    
     // Initialize activity chart if data available
     const activityChart = document.getElementById('activityChart');
     if (activityChart) {
-        const ctx = activityChart.getContext('2d');
-        const categoryLabels = [{% for item in activity_by_category %}'{{ item.category|title }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const categoryCounts = [{% for item in activity_by_category %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        
-        if (categoryLabels.length > 0 && categoryCounts.length > 0) {
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: categoryLabels,
-                    datasets: [{
-                        data: categoryCounts,
-                        backgroundColor: [
-                            '#667eea',
-                            '#764ba2',
-                            '#f093fb',
-                            '#4facfe',
-                            '#00f2fe',
-                            '#43e97b',
-                            '#38f9d7',
-                            '#fa709a',
-                            '#fee140',
-                            '#30cfd0'
-                        ],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 15,
-                                font: {
-                                    size: 12
-                                }
-                            }
+        try {
+            const ctx = activityChart.getContext('2d');
+            
+            // Get data from Django template
+            {% if activity_by_category %}
+                const categoryData = [];
+                const categoryLabels = [];
+                const categoryCounts = [];
+                
+                {% for item in activity_by_category %}
+                    categoryLabels.push('{{ item.category|title|escapejs }}');
+                    categoryCounts.push({{ item.count }});
+                {% endfor %}
+                
+                // Ensure we have data
+                if (categoryLabels.length > 0 && categoryCounts.length > 0) {
+                    new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: categoryLabels,
+                            datasets: [{
+                                data: categoryCounts,
+                                backgroundColor: [
+                                    '#667eea',
+                                    '#764ba2',
+                                    '#f093fb',
+                                    '#4facfe',
+                                    '#00f2fe',
+                                    '#43e97b',
+                                    '#38f9d7',
+                                    '#fa709a',
+                                    '#fee140',
+                                    '#30cfd0'
+                                ],
+                                borderWidth: 0
+                            }]
                         },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${label}: ${value} (${percentage}%)`;
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 15,
+                                        font: {
+                                            size: 12
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.parsed;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const percentage = ((value / total) * 100).toFixed(1);
+                                            return `${label}: ${value} (${percentage}%)`;
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
+                    });
+                } else {
+                    // No data available - show empty chart message
+                    const canvas = document.getElementById('activityChart');
+                    const container = canvas.parentElement;
+                    container.innerHTML = '<p class="text-muted text-center py-4">No activity data available for today.</p>';
                 }
-            });
+            {% else %}
+                // No data available - show empty chart message
+                const canvas = document.getElementById('activityChart');
+                const container = canvas.parentElement;
+                container.innerHTML = '<p class="text-muted text-center py-4">No activity data available for today.</p>';
+            {% endif %}
+        } catch (error) {
+            console.error('Chart initialization error:', error);
+            const canvas = document.getElementById('activityChart');
+            if (canvas) {
+                const container = canvas.parentElement;
+                container.innerHTML = `<p class="text-danger text-center py-4">Error loading chart: ${error.message}</p>`;
+            }
         }
     }
 });
@@ -714,21 +752,42 @@ setInterval(() => {
 let userModalInstance = null;
 let currentEditingUser = null;
 
-function openUserManagementModal() {
-    const modal = document.getElementById('userManagementModal');
-    if (!userModalInstance) {
-        userModalInstance = new bootstrap.Modal(modal);
+function showUserManagementModal() {
+    console.log('Opening user management modal...');
+    
+    // Check if Bootstrap is available
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap is not loaded');
+        alert('Error: Bootstrap is not loaded. Please refresh the page.');
+        return;
     }
     
-    // Show user list tab by default
-    showUserList();
+    const modal = document.getElementById('adminUserManagementModal');
+    if (!modal) {
+        console.error('Modal element not found');
+        alert('Error: User management modal not found');
+        return;
+    }
     
-    // Load users and roles
-    loadUsers();
-    loadRoles();
-    loadDepartments();
-    
-    userModalInstance.show();
+    try {
+        if (!userModalInstance) {
+            userModalInstance = new bootstrap.Modal(modal);
+        }
+        
+        // Show user list tab by default
+        showUserList();
+        
+        // Load users and roles
+        loadUsers();
+        loadRoles();
+        loadDepartments();
+        
+        userModalInstance.show();
+        console.log('User management modal opened successfully');
+    } catch (error) {
+        console.error('Error opening user management modal:', error);
+        alert('Error opening user management modal: ' + error.message);
+    }
 }
 
 function showUserList() {
@@ -754,8 +813,13 @@ function showAddUserForm() {
 
 function editUser(userId) {
     // Fetch user data and populate form
-    fetch(`/api/admin/users/${userId}/`)
-        .then(response => response.json())
+    fetch(`/core/api/admin/users/${userId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(user => {
             currentEditingUser = user;
             
@@ -838,7 +902,7 @@ function saveUser() {
     }
     
     // Save user
-    const url = userData.user_id ? `/api/admin/users/${userData.user_id}/` : '/api/admin/users/';
+    const url = userData.user_id ? `/core/api/admin/users/${userData.user_id}/` : '/core/api/admin/users/';
     const method = userData.user_id ? 'PUT' : 'POST';
     
     fetch(url, {
@@ -867,13 +931,18 @@ function saveUser() {
 
 function deleteUser(userId) {
     if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-        fetch(`/api/admin/users/${userId}/`, {
+        fetch(`/core/api/admin/users/${userId}/`, {
             method: 'DELETE',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken')
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 alert('User deleted successfully!');
@@ -890,7 +959,14 @@ function deleteUser(userId) {
 }
 
 function loadUsers() {
+    console.log('Loading users...');
     const tbody = document.getElementById('userTableBody');
+    
+    if (!tbody) {
+        console.error('User table body not found');
+        return;
+    }
+    
     tbody.innerHTML = `
         <tr>
             <td colspan="5" class="text-center py-4">
@@ -902,9 +978,41 @@ function loadUsers() {
         </tr>
     `;
     
-    fetch('/api/admin/users/')
-        .then(response => response.json())
+    console.log('Fetching users from:', '/core/api/admin/users/');
+    
+    fetch('/core/api/admin/users/', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(users => {
+            console.log('Users received from API:', users);
+            
+            if (users.error) {
+                console.error('API returned error:', users.error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3 d-block"></i>
+                            <p class="text-danger">Error: ${users.error}</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
             if (users.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -917,6 +1025,7 @@ function loadUsers() {
                 return;
             }
             
+            console.log('Rendering users in table...');
             tbody.innerHTML = users.map(user => `
                 <tr>
                     <td>
@@ -974,7 +1083,7 @@ function loadUsers() {
                 <tr>
                     <td colspan="5" class="text-center py-4">
                         <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3 d-block"></i>
-                        <p class="text-danger">Failed to load users.</p>
+                        <p class="text-danger">Failed to load users: ${error.message}</p>
                     </td>
                 </tr>
             `;
@@ -982,10 +1091,21 @@ function loadUsers() {
 }
 
 function loadRoles() {
-    fetch('/api/admin/roles/')
-        .then(response => response.json())
+    console.log('Loading roles...');
+    fetch('/core/api/admin/roles/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(roles => {
+            console.log('Roles loaded:', roles);
             const container = document.getElementById('roleCheckboxes');
+            if (!container) {
+                console.error('Role checkboxes container not found');
+                return;
+            }
             container.innerHTML = roles.map(role => `
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="role_${role.id}" value="${role.id}">
@@ -1001,10 +1121,21 @@ function loadRoles() {
 }
 
 function loadDepartments() {
-    fetch('/api/admin/departments/')
-        .then(response => response.json())
+    console.log('Loading departments...');
+    fetch('/core/api/admin/departments/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(departments => {
+            console.log('Departments loaded:', departments);
             const select = document.getElementById('department');
+            if (!select) {
+                console.error('Department select element not found');
+                return;
+            }
             select.innerHTML = '<option value="">Select Department</option>' + 
                 departments.map(dept => `<option value="${dept.id}">${dept.name}</option>`).join('');
         })
@@ -1036,5 +1167,35 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+// Check URL parameters on page load to auto-open modal
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.get('openUserModal') === 'true') {
+        console.log('Auto-opening user management modal from URL parameter');
+
+        // Wait a bit for the page to fully load
+        setTimeout(() => {
+            showUserManagementModal();
+
+            // Check for additional actions
+            const action = urlParams.get('action');
+            const editUserId = urlParams.get('editUser');
+            const deleteUserId = urlParams.get('deleteUser');
+
+            if (action === 'create') {
+                setTimeout(() => showAddUserForm(), 500);
+            } else if (editUserId) {
+                setTimeout(() => editUser(parseInt(editUserId)), 500);
+            } else if (deleteUserId) {
+                setTimeout(() => deleteUser(parseInt(deleteUserId)), 500);
+            }
+
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 300);
+    }
+});
 </script>
 {% endblock %}
