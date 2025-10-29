@@ -1,0 +1,308 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Permissions: {{ target_user.username }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .permissions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .permission-group {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .permission-group h6 {
+        color: #495057;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .permission-item {
+        margin-bottom: 0.5rem;
+    }
+    
+    .permission-item label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    
+    .permission-item input[type="checkbox"] {
+        margin-right: 0.5rem;
+    }
+    
+    .user-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .btn-actions {
+        margin-top: 2rem;
+    }
+    
+    .permission-search {
+        margin-bottom: 1rem;
+    }
+    
+    .stats-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stats-card h6 {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-card .count {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #495057;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- User Info Card -->
+            <div class="user-info-card shadow-sm">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="mb-2">
+                            <i class="fas fa-user-shield me-2"></i>
+                            {{ target_user.get_full_name|default:target_user.username }}
+                        </h4>
+                        <p class="mb-1">
+                            <i class="fas fa-envelope me-2"></i>
+                            {{ target_user.email|default:"No email" }}
+                        </p>
+                        <p class="mb-0">
+                            <i class="fas fa-user-tag me-2"></i>
+                            {% if target_user.profile and target_user.profile.role %}
+                                {{ target_user.profile.role.name }}
+                            {% else %}
+                                No role assigned
+                            {% endif %}
+                            {% if target_user.is_superuser %}
+                                <span class="badge bg-warning ms-2">Superuser</span>
+                            {% endif %}
+                            {% if target_user.is_staff %}
+                                <span class="badge bg-info ms-2">Staff</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <a href="{% url 'accounts:superuser_user_permissions' %}" class="btn btn-light">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Back to User List
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h6>Total Permissions</h6>
+                        <div class="count">{{ all_permissions|length }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h6>Assigned Permissions</h6>
+                        <div class="count text-success">{{ user_permissions|length }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h6>Available Permissions</h6>
+                        <div class="count text-info">{{ all_permissions|length|add:"-"|add:user_permissions|length }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h6>Account Status</h6>
+                        <div class="count">
+                            {% if target_user.is_active %}
+                                <span class="text-success">Active</span>
+                            {% else %}
+                                <span class="text-danger">Inactive</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Permission Management Form -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h5 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-key me-2"></i>
+                        Permission Management
+                    </h5>
+                    <small class="text-muted">Select permissions to assign to {{ target_user.username }}</small>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" id="permissionsForm">
+                        {% csrf_token %}
+                        
+                        <!-- Quick Actions -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllPermissions()">
+                                        <i class="fas fa-check-square me-1"></i>
+                                        Select All
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllPermissions()">
+                                        <i class="fas fa-square me-1"></i>
+                                        Clear All
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info btn-sm" onclick="resetToCurrent()">
+                                        <i class="fas fa-undo me-1"></i>
+                                        Reset to Current
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control form-control-sm" id="permissionSearch" placeholder="Search permissions...">
+                            </div>
+                        </div>
+
+                        <!-- Permissions Grid -->
+                        <div class="permissions-grid" id="permissionsGrid">
+                            {% regroup all_permissions by content_type.model as permission_groups %}
+                            {% for group in permission_groups %}
+                                <div class="permission-group" data-app="{{ group.grouper }}">
+                                    <h6>
+                                        <i class="fas fa-cube me-1"></i>
+                                        {{ group.grouper|title }}
+                                        <span class="badge bg-secondary ms-1">{{ group.list|length }}</span>
+                                    </h6>
+                                    {% for permission in group.list %}
+                                        <div class="permission-item" data-permission="{{ permission.name|lower }}">
+                                            <label>
+                                                <input type="checkbox" 
+                                                       name="permissions" 
+                                                       value="{{ permission.id }}"
+                                                       {% if permission in user_permissions %}checked{% endif %}>
+                                                {{ permission.name|title }}
+                                                <small class="text-muted">({{ permission.codename }})</small>
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="btn-actions">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-1"></i>
+                                        Save Permissions
+                                    </button>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <small class="text-muted">
+                                        Last updated: {% now 'Y-m-d H:i:s' %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Permission search functionality
+    const searchInput = document.getElementById('permissionSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const permissionGroups = document.querySelectorAll('.permission-group');
+            
+            permissionGroups.forEach(function(group) {
+                const groupTitle = group.querySelector('h6').textContent.toLowerCase();
+                const permissionItems = group.querySelectorAll('.permission-item');
+                let groupHasMatch = false;
+                
+                permissionItems.forEach(function(item) {
+                    const permissionText = item.textContent.toLowerCase();
+                    if (permissionText.includes(searchTerm) || groupTitle.includes(searchTerm)) {
+                        item.style.display = '';
+                        groupHasMatch = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                group.style.display = groupHasMatch ? '' : 'none';
+            });
+        });
+    }
+    
+    // Store current permissions for reset functionality
+    window.currentPermissions = [];
+    document.querySelectorAll('input[name="permissions"]:checked').forEach(function(checkbox) {
+        window.currentPermissions.push(checkbox.value);
+    });
+});
+
+function selectAllPermissions() {
+    document.querySelectorAll('input[name="permissions"]').forEach(function(checkbox) {
+        checkbox.checked = true;
+    });
+}
+
+function clearAllPermissions() {
+    document.querySelectorAll('input[name="permissions"]').forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+}
+
+function resetToCurrent() {
+    document.querySelectorAll('input[name="permissions"]').forEach(function(checkbox) {
+        checkbox.checked = window.currentPermissions.includes(checkbox.value);
+    });
+}
+</script>
+{% endblock %}

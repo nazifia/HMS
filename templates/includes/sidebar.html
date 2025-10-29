@@ -2,8 +2,8 @@
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
 <!-- Sidebar -->
-<div class="d-flex flex-column bg-dark sidebar vh-100" id="sidebar-container" style="width:300px !important;min-height:100vh;overflow-y:auto;">
-    <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;">
+<div class="d-flex flex-column bg-dark sidebar vh-100" id="sidebar-container" style="width:300px !important;min-height:100vh;overflow-y:auto;scroll-behavior:auto;">
+    <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;scroll-behavior:auto;">
 
         <!-- Mobile Header with Hamburger Menu -->
         <div class="d-md-none mobile-sidebar-header bg-dark d-flex align-items-center justify-content-between p-3 border-bottom border-secondary">
@@ -574,7 +574,7 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">NHIA Authorization:</h6>
                     <a class="collapse-item {% if 'universal_authorization_dashboard' in request.path %}active{% endif %}" href="{% url 'core:universal_authorization_dashboard' %}">
-                        <i class="fas fa-globe me-1"></i> Universal Dashboard <span class="badge badge-success">New</span>
+                        <i class="fas fa-globe me-1"></i> Universal Dashboard <span class="badge badge-success"></span>
                     </a>
                     <a class="collapse-item {% if 'authorization-dashboard' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_dashboard' %}">
                         <i class="fas fa-tachometer-alt me-1"></i> Dashboard
@@ -599,24 +599,24 @@
                     </a>
 
                     <div class="collapse-divider"></div>
-                    <h6 class="collapse-header">Legacy:</h6>
+                    {% comment %} <h6 class="collapse-header">Legacy:</h6>
                     <a class="collapse-item {% if 'generate-code' in request.path %}active{% endif %}" href="{% url 'desk_office:generate_authorization_code' %}">
                         <i class="fas fa-plus-circle me-1"></i> Generate Code (Old)
                     </a>
                     <a class="collapse-item {% if 'verify-code' in request.path %}active{% endif %}" href="{% url 'desk_office:verify_authorization_code' %}">
                         <i class="fas fa-check-circle me-1"></i> Verify Code
-                    </a>
+                    </a> {% endcomment %}
                 </div>
             </div>
         </li>
 
         <!-- Nav Item - Notifications -->
-        <li class="nav-item {% if '/notifications/' in request.path %}active{% endif %}">
+        {% comment %} <li class="nav-item {% if '/notifications/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'core:notifications_list' %}">
                 <i class="fas fa-fw fa-bell text-white"></i>
                 <span class="text-white">Notifications</span>
             </a>
-        </li>
+        </li> {% endcomment %}
 
         <!-- Nav Item - Billing (Available to accountants, receptionists, and admins) -->
         {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
@@ -719,6 +719,39 @@
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Monitoring:</h6>
                     <a class="collapse-item {% if 'alerts' in request.path %}active{% endif %}" href="{% url 'accounts:activity_alerts' %}">Activity Alerts</a>
+                </div>
+            </div>
+        </li>
+        {% endif %}
+
+        <!-- Nav Item - Superuser User Management (Available to superusers only) -->
+        {% if user.is_superuser %}
+        <li class="nav-item {% if '/accounts/superuser/' in request.path %}active{% endif %}">
+            <a class="nav-link {% if not '/accounts/superuser/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseSuperuserManagement" aria-expanded="{% if '/accounts/superuser/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseSuperuserManagement">
+                <i class="fas fa-fw fa-user-shield text-white"></i>
+                <span class="text-white">Superuser Admin</span>
+            </a>
+            <div id="collapseSuperuserManagement" class="collapse {% if '/accounts/superuser/' in request.path %}show{% endif %}" aria-labelledby="headingSuperuserManagement" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">User Profile Management:</h6>
+                    <a class="collapse-item {% if 'user_profiles' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_user_profiles' %}">Edit User Profiles</a>
+                    <a class="collapse-item {% if 'user_password_reset' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_password_reset' %}">Reset User Passwords</a>
+                    <a class="collapse-item {% if 'user_bulk_operations' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_bulk_operations' %}">Bulk User Operations</a>
+                    <a class="collapse-item {% if 'user_permissions' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_user_permissions' %}">Manage Permissions</a>
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">System Administration:</h6>
+                    <a class="collapse-item {% if 'system_config' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_system_config' %}">System Configuration</a>
+                    <a class="collapse-item {% if 'database_management' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_database_management' %}">Database Management</a>
+                    <a class="collapse-item {% if 'security_audit' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_security_audit' %}">Security Audit</a>
+                    <a class="collapse-item {% if 'backup_restore' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_backup_restore' %}">Backup & Restore</a>
+                    
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Advanced Tools:</h6>
+                    <a class="collapse-item {% if 'system_diagnostics' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_system_diagnostics' %}">System Diagnostics</a>
+                    <a class="collapse-item {% if 'mass_email' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_mass_email' %}">Mass Email Users</a>
+                    <a class="collapse-item {% if 'api_management' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_api_management' %}">API Management</a>
+                    <a class="collapse-item {% if 'logs_viewer' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_logs_viewer' %}">System Logs Viewer</a>
                 </div>
             </div>
         </li>

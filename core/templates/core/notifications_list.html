@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}System Notifications{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Performance Metrics Header -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <i class="fas fa-tachometer-alt fa-2x"></i>
+                        </div>
+                        <div class="col-md-9">
+                            <h5 class="mb-0">System Performance Metrics</h5>
+                            <p class="mb-0">Real-time monitoring and optimization insights</p>
+                        </div>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="bg-white rounded p-2 shadow-sm">
+                                <h6 class="text-primary">Total</h6>
+                                <div class="h4 text-success">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="bg-white rounded p-2 shadow-sm">
+                                <h6 class="text-info">Active</h6>
+                                <div class="h4 text-info">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="bg-white rounded p-2 shadow-sm">
+                                <h6 class="text-warning">Errors</h6>
+                                <div class="h4 text-warning">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="bg-white rounded p-2 shadow-sm">
+                                <h6 class="text-success">Success</h6>
+                                <div class="h4 text-success">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Table with Real-time Updates -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-bell me-2"></i>
+                        System Notifications
+                        <small class="text-white">Real-time updates</small>
+                    </h5>
+                    
+                    <!-- Filters and Controls -->
+                    <div class="d-flex gap-2">
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="filterNotifications('all')">All</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="filterNotifications('success')">Success</button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="filterNotifications('error')">Errors</button>
+                            <button class="btn btn-sm btn-outline-info" onclick="filterNotifications('info')">Info</button>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                            <label class="form-check-label" for="autoRefresh">
+                                <i class="fas fa-sync me-1"></i> Auto-refresh
+                            </label>
+                        </div>
+                        <button class="btn btn-sm btn-secondary" onclick="markAllRead()">
+                            <i class="fas fa-check-double me-1"></i> Mark All Read
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-2" role="alert">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>{{ message }}</strong>
+                                        <small class="text-muted ms-2">{{ message.timestamp|date:"M d, Y H:i:s" }}</small>
+                                    </div>
+                                    <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert" aria-label="Close">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- Enhanced Notifications Table -->
+                    <div class="table-responsive" id="notificationsTable" style="min-height: 400px;">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 80px;">Status</th>
+                                    <th class="text-center" style="width: 100px;">Type</th>
+                                    <th class="text-center" style="width: 300px;">Message</th>
+                                    <th class="text-center" style="width: 150px;">Timestamp</th>
+                                    <th class="text-center" style="width: 120px;">User</th>
+                                    <th class="text-center" style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="notificationsTableBody">
+                                <tr class="text-center">
+                                    <td colspan="5" class="text-muted py-4">
+                                        <div class="d-flex justify-content-center">
+                                            <div class="spinner-border" role="status"></div>
+                                            <p>Loading notifications...</p>
+                                            <p class="small mt-2">Connecting to real-time notification service</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav aria-label="Notifications pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                            <li class="page-item active">
+                                <span class="page-link">1</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced JavaScript for real-time features -->
+<script>
+let notificationPolling;
+let currentFilter = 'all';
+
+// Initialize notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeNotifications();
+    startNotificationPolling();
+});
+
+function initializeNotifications() {
+    loadNotifications('all');
+    
+    // Setup notification filtering
+    window.filterNotifications = function(type) {
+        currentFilter = type;
+        loadNotifications(type);
+        
+        // Update button states
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('btn-outline-primary', 'btn-outline-success', 'btn-outline-warning', 'btn-outline-info');
+            
+            if (btn.textContent.toLowerCase().includes(type.toLowerCase()) || 
+                (type === 'all' && btn.textContent === 'All')) {
+                btn.classList.add('btn-outline-primary');
+            } else if (btn.textContent.toLowerCase().includes('success')) {
+                btn.classList.add('btn-outline-success');
+            } else if (btn.textContent.toLowerCase().includes('error')) {
+                btn.classList.add('btn-outline-warning');
+            } else if (btn.textContent.toLowerCase().includes('info')) {
+                btn.classList.add('btn-outline-info');
+            }
+        });
+    };
+}
+
+function loadNotifications(type = 'all') {
+    fetch(`/api/notifications/?type=${type}`)
+        .then(response => response.json())
+        .then(data => {
+            renderNotifications(data.notifications);
+            updateMetrics(data.metrics);
+        })
+        .catch(error => {
+            console.error('Error loading notifications:', error);
+            showNotificationError();
+        });
+}
+
+function renderNotifications(notifications) {
+    const tbody = document.getElementById('notificationsTableBody');
+    if (!tbody) return;
+    
+    if (notifications.length === 0) {
+        tbody.innerHTML = `
+            <tr class="text-center">
+                <td colspan="5" class="text-muted py-4">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border" role="status"></div>
+                        <p>No notifications found.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = notifications.map(notification => `
+        <tr class="${getNotificationRowClass(notification)}">
+            <td class="text-center">
+                ${getNotificationIcon(notification)}
+            </td>
+            <td class="${getTypeClass(notification)}">
+                ${notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
+            </td>
+            <td class="text-wrap" style="max-width: 300px;">
+                ${notification.message}
+            </td>
+            <td class="small text-muted">
+                ${formatTimestamp(notification.timestamp)}
+            </td>
+            <td class="text-center">
+                <span class="badge bg-light text-dark">${notification.user || 'System'}</span>
+            </td>
+            <td class="text-center">
+                <div class="btn-group btn-group-sm">
+                    ${notification.read ? 
+                        `<button class="btn btn-sm btn-outline-secondary" disabled>
+                            <i class="fas fa-check"></i> Read
+                        </button>` :
+                        `<button class="btn btn-sm btn-primary" onclick="markAsRead('${notification.id}')">
+                            <i class="fas fa-envelope-open"></i> Mark Read
+                        </button>`
+                    }
+                    ${getActionButtons(notification)}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getNotificationIcon(notification) {
+    const icons = {
+        'success': '<i class="fas fa-check-circle text-success"></i>',
+        'error': '<i class="fas fa-exclamation-triangle text-danger"></i>',
+        'warning': '<i class="fas fa-exclamation-circle text-warning"></i>',
+        'info': '<i class="fas fa-info-circle text-info"></i>',
+        'system': '<i class="fas fa-cog text-primary"></i>'
+    };
+    return icons[notification.type] || icons['info'];
+}
+
+function getTypeClass(notification) {
+    const classes = {
+        'success': 'text-success',
+        'error': 'text-danger',
+        'warning': 'text-warning',
+        'info': 'text-info',
+        'system': 'text-primary'
+    };
+    return classes[notification.type] || classes['info'];
+}
+
+function getActionButtons(notification) {
+    if (notification.type === 'error') {
+        return `
+            <button class="btn btn-sm btn-outline-danger" onclick="retryAction('${notification.id}')">
+                <i class="fas fa-redo"></i> Retry
+            </button>
+        `;
+    }
+    
+    if (notification.type === 'system') {
+        return `
+            <button class="btn btn-sm btn-outline-info" onclick="viewDetails('${notification.id}')">
+                <i class="fas fa-info-circle"></i> Details
+            </button>
+        `;
+    }
+    
+    return '';
+}
+
+function updateMetrics(metrics) {
+    if (metrics) {
+        document.querySelector('.text-success.h4').textContent = metrics.success;
+        document.querySelector('.text-info.h4').textContent = metrics.info;
+        document.querySelector('.text-warning.h4').textContent = metrics.error;
+        document.querySelector('.text-primary.h4').textContent = metrics.total;
+    }
+}
+
+function showNotificationError() {
+    const tbody = document.getElementById('notificationsTableBody');
+    tbody.innerHTML = `
+        <tr class="text-center">
+            <td colspan="5" class="text-danger py-4">
+                <i class="fas fa-exclamation-triangle fa-3x"></i>
+                <p>Error loading notifications</p>
+                <button class="btn btn-primary mt-2" onclick="window.location.reload()">
+                    <i class="fas fa-refresh"></i> Retry
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+function markAsRead(notificationId) {
+    fetch(`/api/notifications/${notificationId}/mark-read/`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (response.ok) {
+            loadNotifications(currentFilter);
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+
+function retryAction(notificationId) {
+    console.log('Retrying action for notification:', notificationId);
+}
+
+function viewDetails(notificationId) {
+    console.log('Viewing details for notification:', notificationId);
+}
+
+function markAllRead() {
+    fetch('/api/notifications/mark-all-read/', {
+        method: 'POST'
+    })
+    .then(response => {
+        loadNotifications(currentFilter);
+    })
+    .catch(error => {
+        console.error('Error marking all notifications as read:', error);
+    });
+}
+
+// Real-time polling
+function startNotificationPolling() {
+    const autoRefreshCheckbox = document.getElementById('autoRefresh');
+    
+    function poll() {
+        if (autoRefreshCheckbox && autoRefreshCheckbox.checked) {
+            loadNotifications(currentFilter);
+        }
+    }
+    
+    // Start polling
+    poll();
+    
+    // Continue polling
+    notificationPolling = setInterval(poll, 5000); // Poll every 5 seconds
+}
+
+// Performance optimization
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+        return later;
+    };
+}
+
+// Enhanced search functionality
+const debouncedSearch = debounce(function(query) {
+    if (query.length > 2) {
+        // Search would be implemented here
+        console.log('Searching for:', query);
+    }
+}, 300);
+
+// Activity monitoring
+function trackUserActivity(action) {
+    console.log('User activity tracked:', action);
+    // Send to analytics server if available
+}
+</script>
+{% endblock %}

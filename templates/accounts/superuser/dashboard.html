@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Superuser Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .stats-card .stats-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stats-card .stats-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-card .stats-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .activity-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        height: 100%;
+    }
+    
+    .activity-card .card-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        font-weight: 600;
+    }
+    
+    .activity-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f1f3f4;
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    
+    .security-warning {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .quick-action-btn {
+        transition: all 0.2s ease;
+    }
+    
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-tachometer-alt me-2"></i>
+                        Superuser Dashboard
+                    </h2>
+                    <p class="text-muted mb-0">System administration and monitoring</p>
+                </div>
+                <div>
+                    <span class="badge bg-success me-2">
+                        <i class="fas fa-circle me-1"></i>
+                        System Online
+                    </span>
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        {% now "Y-m-d H:i:s" %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-4">
+            <div class="stats-card">
+                <div class="stats-icon text-primary">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stats-number">{{ user_stats.total }}</div>
+                <div class="stats-label">Total Users</div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-4">
+            <div class="stats-card">
+                <div class="stats-icon text-success">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stats-number">{{ user_stats.active }}</div>
+                <div class="stats-label">Active Users</div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-4">
+            <div class="stats-card">
+                <div class="stats-icon text-warning">
+                    <i class="fas fa-user-times"></i>
+                </div>
+                <div class="stats-number">{{ user_stats.inactive }}</div>
+                <div class="stats-label">Inactive Users</div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-4">
+            <div class="stats-card">
+                <div class="stats-icon text-info">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="stats-number">{{ user_stats.staff }}</div>
+                <div class="stats-label">Staff Users</div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-4">
+            <div class="stats-card">
+                <div class="stats-icon text-danger">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="stats-number">{{ user_stats.superusers }}</div>
+                <div class="stats-label">Superusers</div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-4">
+            <div class="stats-card">
+                <div class="stats-icon text-secondary">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="stats-number">{{ user_stats.regular }}</div>
+                <div class="stats-label">Regular Users</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Alerts -->
+    {% if failed_logins > 10 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="security-warning">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle text-warning me-3" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <strong>Security Alert:</strong> {{ failed_logins }} failed login attempts in the last 7 days.
+                        <a href="{% url 'accounts:superuser_security_audit' %}" class="btn btn-sm btn-outline-warning ms-2">View Details</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">Quick Actions</h4>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'accounts:superuser_user_permissions' %}" class="btn btn-primary btn-lg w-100 quick-action-btn">
+                        <i class="fas fa-key me-2"></i>
+                        Manage Permissions
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'accounts:superuser_bulk_operations' %}" class="btn btn-info btn-lg w-100 quick-action-btn">
+                        <i class="fas fa-cogs me-2"></i>
+                        Bulk Operations
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'accounts:superuser_user_profiles' %}" class="btn btn-success btn-lg w-100 quick-action-btn">
+                        <i class="fas fa-users-cog me-2"></i>
+                        User Profiles
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="{% url 'accounts:superuser_password_reset' %}" class="btn btn-warning btn-lg w-100 quick-action-btn">
+                        <i class="fas fa-key me-2"></i>
+                        Reset Passwords
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Cards Row -->
+    <div class="row">
+        <!-- Recent Users -->
+        <div class="col-lg-4 mb-4">
+            <div class="card activity-card">
+                <div class="card-header">
+                    <i class="fas fa-user-plus me-2"></i>
+                    New Users (Last 5)
+                </div>
+                <div class="card-body p-0">
+                    {% for user in recent_users %}
+                    <div class="activity-item">
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3">
+                                {{ user.username|slice:":2"|upper }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">{{ user.get_full_name|default:user.username }}</div>
+                                <small class="text-muted">
+                                    Joined {{ user.date_joined|timesince }} ago
+                                    {% if user.is_staff %}<span class="badge bg-info ms-1">Staff</span>{% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="activity-item text-center text-muted">
+                        <i class="fas fa-users mb-2" style="font-size: 2rem;"></i>
+                        <p>No recent users</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-4 mb-4">
+            <div class="card activity-card">
+                <div class="card-header">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Activity
+                </div>
+                <div class="card-body p-0">
+                    {% for log in recent_logs %}
+                    <div class="activity-item">
+                        <div class="d-flex align-items-center">
+                            <div class="activity-icon bg-primary text-white me-3">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">{{ log.user.username|default:"System" }}</div>
+                                <small class="text-muted">
+                                    {{ log.action }} - {{ log.timestamp|timesince }} ago
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="activity-item text-center text-muted">
+                        <i class="fas fa-history mb-2" style="font-size: 2rem;"></i>
+                        <p>No recent activity</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="col-lg-4 mb-4">
+            <div class="card activity-card">
+                <div class="card-header">
+                    <i class="fas fa-chart-line me-2"></i>
+                    System Status
+                </div>
+                <div class="card-body p-0">
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Login Activity (7 days)</span>
+                            <span class="badge bg-success">{{ recent_logins }}</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Failed Logins (7 days)</span>
+                            <span class="badge {% if failed_logins > 10 %}bg-danger{% else %}bg-warning{% endif %}">{{ failed_logins }}</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>User Activity Rate</span>
+                            <span class="badge bg-info">
+                                {% widthratio user_stats.active user_stats.total 100 %}%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Staff Ratio</span>
+                            <span class="badge bg-secondary">
+                                {% widthratio user_stats.staff user_stats.total 100 %}%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="activity-item text-center">
+                        <a href="{% url 'accounts:superuser_system_diagnostics' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-heartbeat me-1"></i>
+                            View System Diagnostics
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

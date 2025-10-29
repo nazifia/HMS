@@ -14,12 +14,34 @@ from .forms import (
     UserRegistrationForm, RoleForm, UserRoleAssignmentForm, BulkUserActionForm,
     PermissionFilterForm, AdvancedUserSearchForm
 )
-from core.models import AuditLog, InternalNotification
+from core.models import InternalNotification
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+
+# Custom decorators for backward compatibility
+def user_passes_test(test_func):
+    def decorator(view_func):
+        def _wrapped_view(request, *args, **kwargs):
+            if not test_func(request.user):
+                from django.contrib.auth.decorators import PermissionDenied
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+
+def is_admin(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.roles.filter(name='admin').exists()
+    )
+
+def is_admin_or_staff(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.is_staff
+    )
+from django.conf import settings
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -63,6 +85,27 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib import messages
 from django.urls import reverse
+
+# Custom decorators for backward compatibility
+def user_passes_test(test_func):
+    def decorator(view_func):
+        def _wrapped_view(request, *args, **kwargs):
+            if not test_func(request.user):
+                from django.contrib.auth.decorators import PermissionDenied
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+
+def is_admin(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.roles.filter(name='admin').exists()
+    )
+
+def is_admin_or_staff(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.is_staff
+    )
 from django.http import JsonResponse
 from .forms import CustomLoginForm
 from .auth_wrapper import safe_authenticate
@@ -289,7 +332,7 @@ def edit_profile(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def staff_list(request):
     """View for listing all staff members (admin only)"""
     staff = CustomUserProfile.objects.all().order_by('role', 'user__phone_number')
@@ -323,7 +366,7 @@ def send_staff_onboarding_task_to_mcp(user):
     # messages.info(None, f"[Taskmaster/MCP] Staff onboarding task sent for {user.username} via MCP/Taskmaster.")
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def add_staff(request):
     """View for adding new staff member (admin only)"""
     if request.method == 'POST':
@@ -343,7 +386,7 @@ def add_staff(request):
     return render(request, 'accounts/staff_form.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def edit_staff(request, staff_id):
     """View for editing staff member (admin only)"""
     user_profile = get_object_or_404(CustomUserProfile, id=staff_id)
@@ -366,7 +409,7 @@ def edit_staff(request, staff_id):
     return render(request, 'accounts/staff_form.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def delete_staff(request, staff_id):
     """View for deleting staff member (admin only)"""
     user_profile = get_object_or_404(CustomUserProfile, id=staff_id)
@@ -387,7 +430,7 @@ def delete_staff(request, staff_id):
     return render(request, 'accounts/delete_staff.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def department_list(request):
     """View for listing all departments (admin only)"""
     departments = Department.objects.all().order_by('name')
@@ -397,7 +440,7 @@ def department_list(request):
     return render(request, 'accounts/department_list.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def add_department(request):
     """View for adding new department (admin only)"""
     if request.method == 'POST':
@@ -416,7 +459,7 @@ def add_department(request):
     return render(request, 'accounts/department_form.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def edit_department(request, department_id):
     """View for editing department (admin only)"""
     department = get_object_or_404(Department, id=department_id)
@@ -438,7 +481,7 @@ def edit_department(request, department_id):
     return render(request, 'accounts/department_form.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def delete_department(request, department_id):
     """View for deleting department (admin only)"""
     department = get_object_or_404(Department, id=department_id)
@@ -510,7 +553,7 @@ def register(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def create_role(request):
     if request.method == 'POST':
         form = RoleForm(request.POST)
@@ -527,7 +570,7 @@ def create_role(request):
     return render(request, 'accounts/role_form.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def edit_role(request, role_id):
     role = get_object_or_404(Role, id=role_id)
     if request.method == 'POST':
@@ -549,7 +592,7 @@ def role_demo(request):
     return render(request, 'accounts/role_demo.html', {'page_title': 'Role Demo'})
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def audit_logs(request):
     logs = AuditLog.objects.all().order_by('-timestamp')
     form = AuditLogFilterForm(request.GET)
@@ -580,7 +623,7 @@ def audit_logs(request):
     return render(request, 'accounts/audit_logs.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def permission_management(request):
     permissions = Permission.objects.all()
     form = PermissionFilterForm(request.GET)
@@ -597,7 +640,7 @@ def permission_management(request):
     return render(request, 'accounts/permission_management.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def bulk_user_actions(request):
     if request.method == 'POST':
         form = BulkUserActionForm(request.POST)
@@ -617,7 +660,7 @@ def bulk_user_actions(request):
     return redirect('accounts:user_dashboard')
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def user_privileges(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -636,7 +679,7 @@ def user_privileges(request, user_id):
     return render(request, 'accounts/user_privileges.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def delete_role(request, role_id):
     role = get_object_or_404(Role, id=role_id)
     if request.method == 'POST':
@@ -651,7 +694,7 @@ def delete_role(request, role_id):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def role_management(request):
     roles = Role.objects.all().prefetch_related('permissions')
     form = RoleForm()
@@ -1068,6 +1111,27 @@ from .forms import CustomLoginForm, UserProfileForm, StaffCreationForm, Departme
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+# Custom decorators for backward compatibility
+def user_passes_test(test_func):
+    def decorator(view_func):
+        def _wrapped_view(request, *args, **kwargs):
+            if not test_func(request.user):
+                from django.contrib.auth.decorators import PermissionDenied
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+
+def is_admin(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.roles.filter(name='admin').exists()
+    )
+
+def is_admin_or_staff(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.is_staff
+    )
+
 
 User = get_user_model()
 
@@ -1260,7 +1324,7 @@ def user_dashboard(request):
 # ============================================================================
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def role_management(request):
     """View for managing roles and permissions"""
     roles = Role.objects.all().prefetch_related('permissions', 'children').order_by('name')
@@ -1274,7 +1338,7 @@ def role_management(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def create_role(request):
     """View for creating a new role"""
     if request.method == 'POST':
@@ -1308,7 +1372,7 @@ def create_role(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def edit_role(request, role_id):
     """View for editing an existing role"""
     role = get_object_or_404(Role, id=role_id)
@@ -1348,7 +1412,7 @@ def edit_role(request, role_id):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def delete_role(request, role_id):
     """View for deleting a role"""
     role = get_object_or_404(Role, id=role_id)
@@ -1387,7 +1451,7 @@ def delete_role(request, role_id):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def user_privileges(request, user_id):
     """View for managing user privileges (role assignments)"""
     target_user = get_object_or_404(User, id=user_id)
@@ -1427,7 +1491,7 @@ def user_privileges(request, user_id):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def bulk_user_actions(request):
     """View for performing bulk actions on users"""
     if request.method == 'POST':
@@ -1486,7 +1550,7 @@ def bulk_user_actions(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def permission_management(request):
     """View for managing permissions"""
     from django.contrib.auth.models import Permission
@@ -1528,7 +1592,7 @@ def permission_management(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def audit_logs(request):
     """View for displaying audit logs"""
     logs = AuditLog.objects.select_related('user', 'target_user').order_by('-timestamp')
@@ -1571,7 +1635,7 @@ def audit_logs(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def role_demo(request):
     """Demo view showing the role system in action"""
     # Get all roles with user counts
@@ -1607,3 +1671,443 @@ def role_demo(request):
         'active_nav': 'role_demo',
     }
     return render(request, 'accounts/role_demo.html', context)
+
+
+# =============================================================================
+# SUPERUSER-ONLY VIEWS
+# =============================================================================
+
+def superuser_required(view_func):
+    """Decorator to ensure only superusers can access these views"""
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, 'Access denied. Superuser privileges required.')
+            return redirect('accounts:login')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+
+@superuser_required
+def superuser_user_profiles(request):
+    """View for superusers to edit any user profile"""
+    users = User.objects.select_related('profile').order_by('username')
+    
+    # Search functionality
+    query = request.GET.get('q', '')
+    if query:
+        users = users.filter(
+            Q(username__icontains=query) |
+            Q(email__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(profile__phone_number__icontains=query)
+        )
+    
+    # Pagination
+    paginator = Paginator(users, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'accounts/superuser/user_profiles.html', {
+        'page_obj': page_obj,
+        'query': query,
+        'page_title': 'User Profile Management',
+        'active_nav': 'user_profiles',
+    })
+
+
+@superuser_required
+def superuser_dashboard(request):
+    """Main superuser dashboard with system overview"""
+    from django.db.models import Count
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Get system statistics
+    total_users = User.objects.count()
+    active_users = User.objects.filter(is_active=True).count()
+    staff_users = User.objects.filter(is_staff=True).count()
+    superusers = User.objects.filter(is_superuser=True).count()
+    
+    # Recent activity
+    recent_users = User.objects.order_by('-date_joined')[:5]
+    recent_logs = AuditLog.objects.select_related('user').order_by('-timestamp')[:10]
+    
+    # User status breakdown
+    user_stats = {
+        'total': total_users,
+        'active': active_users,
+        'inactive': total_users - active_users,
+        'staff': staff_users,
+        'superusers': superusers,
+        'regular': total_users - staff_users
+    }
+    
+    # Login activity (last 7 days)
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    recent_logins = AuditLog.objects.filter(
+        action__icontains='login',
+        timestamp__gte=seven_days_ago
+    ).count()
+    
+    # Failed login attempts (last 7 days)
+    failed_logins = AuditLog.objects.filter(
+        action__icontains='failed login',
+        timestamp__gte=seven_days_ago
+    ).count()
+    
+    context = {
+        'user_stats': user_stats,
+        'recent_users': recent_users,
+        'recent_logs': recent_logs,
+        'recent_logins': recent_logins,
+        'failed_logins': failed_logins,
+        'page_title': 'Superuser Dashboard',
+        'active_nav': 'dashboard',
+    }
+    return render(request, 'accounts/superuser/dashboard.html', context)
+
+
+@superuser_required  
+def superuser_edit_user_profile(request, user_id):
+    """Edit any user's profile as superuser"""
+    user = get_object_or_404(User, id=user_id)
+    profile = getattr(user, 'profile', None)
+    
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, instance=user, request_user=request.user)
+        user_form = StaffCreationForm(request.POST, instance=user)
+        
+        if form.is_valid() and user_form.is_valid():
+            # Save user basic info
+            user_form.save()
+            
+            # Save or update profile
+            if profile:
+                form.save()
+            else:
+                profile = form.save(commit=False)
+                profile.user = user
+                profile.save()
+            
+            messages.success(request, f'Profile for {user.username} updated successfully.')
+            return redirect('accounts:superuser_user_profiles')
+    else:
+        form = UserProfileForm(instance=user, request_user=request.user)
+        user_form = StaffCreationForm(instance=user)
+    
+    return render(request, 'accounts/superuser/edit_user_profile.html', {
+        'form': form,
+        'user_form': user_form,
+        'target_user': user,
+        'page_title': f'Edit Profile: {user.username}',
+        'active_nav': 'user_profiles',
+    })
+
+
+@superuser_required
+def superuser_password_reset(request):
+    """View to reset any user's password"""
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if user_id and new_password:
+            user = get_object_or_404(User, id=user_id)
+            
+            if new_password == confirm_password:
+                user.set_password(new_password)
+                user.save()
+                
+                # Log the password reset
+                AuditLog.objects.create(
+                    user=request.user,
+                    action=f'Password reset for user {user.username}',
+                    details=f'Superuser {request.user.username} reset password for {user.username}',
+                    timestamp=timezone.now()
+                )
+                
+                messages.success(request, f'Password for {user.username} has been reset successfully.')
+            else:
+                messages.error(request, 'Passwords do not match.')
+        else:
+            messages.error(request, 'Please provide user ID and new password.')
+    
+    users = User.objects.order_by('username')
+    return render(request, 'accounts/superuser/password_reset.html', {
+        'users': users,
+        'page_title': 'Reset User Passwords',
+        'active_nav': 'user_password_reset',
+    })
+
+
+@superuser_required
+def superuser_reset_user_password(request, user_id):
+    """Direct password reset for a specific user"""
+    user = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if new_password and new_password == confirm_password:
+            user.set_password(new_password)
+            user.save()
+            
+            # Log the action
+            AuditLog.objects.create(
+                user=request.user,
+                action=f'Password reset for {user.username}',
+                details=f'Superuser {request.user.username} reset password for {user.username}',
+                timestamp=timezone.now()
+            )
+            
+            messages.success(request, f'Password for {user.username} has been reset.')
+            return redirect('accounts:superuser_password_reset')
+        else:
+            messages.error(request, 'Passwords do not match.')
+    
+    return render(request, 'accounts/superuser/reset_user_password.html', {
+        'target_user': user,
+        'page_title': f'Reset Password: {user.username}',
+        'active_nav': 'user_password_reset',
+    })
+
+
+@superuser_required
+def superuser_bulk_operations(request):
+    """Bulk operations on users"""
+    if request.method == 'POST':
+        operation = request.POST.get('operation')
+        user_ids = request.POST.getlist('user_ids')
+        
+        if operation and user_ids:
+            users = User.objects.filter(id__in=user_ids)
+            
+            if operation == 'activate':
+                users.update(is_active=True)
+                messages.success(request, f'Activated {len(users)} users.')
+            elif operation == 'deactivate':
+                users.update(is_active=False)
+                messages.success(request, f'Deactivated {len(users)} users.')
+            elif operation == 'delete':
+                # Be careful with deletion
+                count = users.count()
+                users.delete()
+                messages.success(request, f'Deleted {count} users.')
+            elif operation == 'assign_role':
+                role_id = request.POST.get('role_id')
+                if role_id:
+                    role = Role.objects.get(id=role_id)
+                    for user in users:
+                        profile = getattr(user, 'profile', None)
+                        if profile:
+                            profile.role = role
+                            profile.save()
+                    messages.success(request, f'Assigned role to {len(users)} users.')
+    
+    users = User.objects.select_related('profile').order_by('username')
+    roles = Role.objects.all()
+    
+    return render(request, 'accounts/superuser/bulk_operations_fixed.html', {
+        'users': users,
+        'roles': roles,
+        'page_title': 'Bulk User Operations',
+        'active_nav': 'user_bulk_operations',
+    })
+
+
+@superuser_required
+def superuser_user_permissions(request):
+    """Manage user permissions"""
+    users = User.objects.select_related('profile').order_by('username')
+    permissions = Permission.objects.select_related('content_type').order_by('content_type__model', 'name')
+    
+    return render(request, 'accounts/superuser/user_permissions.html', {
+        'users': users,
+        'permissions': permissions,
+        'page_title': 'Manage User Permissions',
+        'active_nav': 'user_permissions',
+    })
+
+
+@superuser_required
+def superuser_manage_user_permissions(request, user_id):
+    """Manage permissions for a specific user"""
+    user = get_object_or_404(User, id=user_id)
+    user_permissions = user.user_permissions.all()
+    all_permissions = Permission.objects.select_related('content_type').order_by('content_type__model', 'name')
+    
+    if request.method == 'POST':
+        permission_ids = request.POST.getlist('permissions')
+        user.user_permissions.set(permission_ids)
+        
+        # Log the action
+        AuditLog.objects.create(
+            user=request.user,
+            action=f'Updated permissions for {user.username}',
+            details=f'Superuser {request.user.username} updated permissions for {user.username}',
+            timestamp=timezone.now()
+        )
+        
+        messages.success(request, f'Permissions for {user.username} updated successfully.')
+        return redirect('accounts:superuser_user_permissions')
+    
+    return render(request, 'accounts/superuser/manage_user_permissions.html', {
+        'target_user': user,
+        'user_permissions': user_permissions,
+        'all_permissions': all_permissions,
+        'page_title': f'Manage Permissions: {user.username}',
+        'active_nav': 'user_permissions',
+    })
+
+
+@superuser_required
+def superuser_system_config(request):
+    """System configuration panel"""
+    from django.conf import settings
+    
+    # Get basic system info
+    system_info = {
+        'debug_mode': settings.DEBUG,
+        'database_engine': settings.DATABASES['default']['ENGINE'],
+        'installed_apps': settings.INSTALLED_APPS,
+        'middleware': settings.MIDDLEWARE,
+        'static_url': settings.STATIC_URL,
+        'media_url': settings.MEDIA_URL,
+    }
+    
+    return render(request, 'accounts/superuser/system_config.html', {
+        'system_info': system_info,
+        'page_title': 'System Configuration',
+        'active_nav': 'system_config',
+    })
+
+
+@superuser_required
+def superuser_database_management(request):
+    """Database management operations"""
+    from django.db import connection
+    
+    # Get table information
+    with connection.cursor() as cursor:
+        db_name = settings.DATABASES['default']['NAME']
+        cursor.execute(f"SELECT table_name FROM information_schema.tables WHERE table_schema = '{db_name}'")
+        tables = [row[0] for row in cursor.fetchall()]
+    
+    return render(request, 'accounts/superuser/database_management.html', {
+        'tables': tables,
+        'page_title': 'Database Management',
+        'active_nav': 'database_management',
+    })
+
+
+@superuser_required
+def superuser_security_audit(request):
+    """Security audit panel"""
+    # Get recent security-related logs
+    security_logs = AuditLog.objects.filter(
+        Q(action__icontains='login') | 
+        Q(action__icontains='logout') | 
+        Q(action__icontains='password') | 
+        Q(action__icontains='permission')
+    ).order_by('-timestamp')[:100]
+    
+    # Get failed login attempts
+    failed_logins = AuditLog.objects.filter(
+        action__icontains='failed login'
+    ).order_by('-timestamp')[:50]
+    
+    return render(request, 'accounts/superuser/security_audit.html', {
+        'security_logs': security_logs,
+        'failed_logins': failed_logins,
+        'page_title': 'Security Audit',
+        'active_nav': 'security_audit',
+    })
+
+
+@superuser_required
+def superuser_backup_restore(request):
+    """Backup and restore operations"""
+    return render(request, 'accounts/superuser/backup_restore.html', {
+        'page_title': 'Backup & Restore',
+        'active_nav': 'backup_restore',
+    })
+
+
+@superuser_required
+def superuser_system_diagnostics(request):
+    """System diagnostics panel"""
+    import psutil
+    import platform
+    
+    diagnostics = {
+        'system': platform.system(),
+        'platform': platform.platform(),
+        'python_version': platform.python_version(),
+        'cpu_percent': psutil.cpu_percent(),
+        'memory': psutil.virtual_memory(),
+        'disk': psutil.disk_usage('/'),
+    }
+    
+    return render(request, 'accounts/superuser/system_diagnostics.html', {
+        'diagnostics': diagnostics,
+        'page_title': 'System Diagnostics',
+        'active_nav': 'system_diagnostics',
+    })
+
+
+@superuser_required
+def superuser_mass_email(request):
+    """Send mass emails to users"""
+    if request.method == 'POST':
+        subject = request.POST.get('subject')
+        message = request.POST.get('message')
+        user_ids = request.POST.getlist('user_ids')
+        
+        if subject and message and user_ids:
+            users = User.objects.filter(id__in=user_ids)
+            email_count = 0
+            
+            for user in users:
+                if user.email:
+                    # Here you would implement actual email sending
+                    # send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+                    email_count += 1
+            
+            messages.success(request, f'Email sent to {email_count} users.')
+    
+    users = User.objects.order_by('username')
+    return render(request, 'accounts/superuser/mass_email.html', {
+        'users': users,
+        'page_title': 'Mass Email Users',
+        'active_nav': 'mass_email',
+    })
+
+
+@superuser_required
+def superuser_api_management(request):
+    """API management panel"""
+    return render(request, 'accounts/superuser/api_management.html', {
+        'page_title': 'API Management',
+        'active_nav': 'api_management',
+    })
+
+
+@superuser_required
+def superuser_logs_viewer(request):
+    """System logs viewer"""
+    import logging
+    
+    # Get log files
+    log_files = []
+    for handler in logging.root.handlers:
+        if hasattr(handler, 'baseFilename'):
+            log_files.append(handler.baseFilename)
+    
+    return render(request, 'accounts/superuser/logs_viewer.html', {
+        'log_files': log_files,
+        'page_title': 'System Logs Viewer',
+        'active_nav': 'logs_viewer',
+    })

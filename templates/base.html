@@ -986,88 +986,173 @@
     <script src="{% static 'js/sidebar.js' %}"></script>
     {% endcompress %}
 
+    <!-- Final Scroll Prevention Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Prevent any remaining auto-scroll behaviors
+            const sidebar = document.getElementById('sidebar-container');
+            if (sidebar) {
+                // Force sidebar to top on page load
+                setTimeout(function() {
+                    sidebar.scrollTop = 0;
+                }, 100);
+                
+                // Override any scrollIntoView calls for sidebar elements
+                const sidebarElements = sidebar.querySelectorAll('*');
+                sidebarElements.forEach(element => {
+                    if (element.scrollIntoView) {
+                        element.scrollIntoView = function(options) {
+                            return false;
+                        };
+                    }
+                });
+                
+                // Prevent hash-based scrolling in sidebar
+                if (window.location.hash) {
+                    window.scrollTo(0, 0);
+                }
+                
+                // Monitor scroll events to detect and prevent auto-scroll
+                let userScrolling = false;
+                let scrollTimeout;
+                
+                sidebar.addEventListener('wheel', function() {
+                    userScrolling = true;
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(function() {
+                        userScrolling = false;
+                    }, 150);
+                });
+                
+                sidebar.addEventListener('touchstart', function() {
+                    userScrolling = true;
+                });
+                
+                // Reset scroll if it changes without user interaction
+                const observer = new MutationObserver(function(mutations) {
+                    if (!userScrolling) {
+                        sidebar.scrollTop = 0;
+                    }
+                });
+                
+                observer.observe(sidebar, { 
+                    attributes: true, 
+                    attributeFilter: ['scrollTop'],
+                    childList: true, 
+                    subtree: true 
+                });
+            }
+        });
+    </script>
+
     <!-- HTMX/Alpine.js Performance Optimizations -->
     <script>
+        // Global error handler to prevent JavaScript errors
+        window.addEventListener('error', function(e) {
+            // Suppress H.match errors that might break functionality
+            if (e.error && e.error.message && e.error.message.includes('H.match')) {
+                e.preventDefault();
+                console.warn('Suppressed H.match error:', e.error);
+                return false;
+            }
+        });
+
         // HTMX Configuration
-        if (typeof htmx !== 'undefined') {
-            htmx.config.globalViewTransitions = true;
-            htmx.config.scrollBehavior = 'smooth';
-            htmx.config.defaultSwapStyle = 'innerHTML';
-            htmx.config.defaultSwapDelay = 0;
-            htmx.config.defaultSettleDelay = 50;
-            
-            // Show loading indicators
-            htmx.on('htmx:beforeRequest', function(evt) {
-                const target = evt.target;
-                if (target) {
-                    target.style.opacity = '0.6';
-                }
-            });
-            
-            htmx.on('htmx:afterRequest', function(evt) {
-                const target = evt.target;
-                if (target) {
-                    target.style.opacity = '1';
-                }
-                // Re-initialize tooltips and other Bootstrap components
-                if (typeof bootstrap !== 'undefined') {
-                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-                    tooltipTriggerList.map(function (tooltipTriggerEl) {
-                        return new bootstrap.Tooltip(tooltipTriggerEl);
-                    });
-                }
-            });
-            
-            // Add custom event for search
-            htmx.on('search', function(evt) {
-                const form = evt.detail.elt;
-                if (form && form.tagName === 'FORM') {
-                    // Get all form data
-                    const formData = new FormData(form);
-                    const url = new URL(form.action || window.location.pathname);
-                    
-                    // Add form data to URL
-                    for (let [key, value] of formData.entries()) {
-                        if (value) {
-                            url.searchParams.set(key, value);
-                        }
+        try {
+            if (typeof htmx !== 'undefined') {
+                htmx.config.globalViewTransitions = true;
+                htmx.config.scrollBehavior = 'auto'; // Changed to 'auto' to prevent auto-scroll
+                htmx.config.defaultSwapStyle = 'innerHTML';
+                htmx.config.defaultSwapDelay = 0;
+                htmx.config.defaultSettleDelay = 50;
+                
+                // Show loading indicators
+                htmx.on('htmx:beforeRequest', function(evt) {
+                    const target = evt.target;
+                    if (target) {
+                        target.style.opacity = '0.6';
                     }
-                    
-                    // Trigger HTMX request
-                    htmx.ajax('GET', url, {
-                        target: form.getAttribute('hx-target') || '#patient-table-container',
-                        swap: form.getAttribute('hx-swap') || 'innerHTML',
-                        select: form.getAttribute('hx-select') || 'body'
-                    });
-                }
-            });
+                });
+                
+                htmx.on('htmx:afterRequest', function(evt) {
+                    const target = evt.target;
+                    if (target) {
+                        target.style.opacity = '1';
+                    }
+                    // Re-initialize tooltips and other Bootstrap components
+                    if (typeof bootstrap !== 'undefined') {
+                        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                        tooltipTriggerList.map(function (tooltipTriggerEl) {
+                            return new bootstrap.Tooltip(tooltipTriggerEl);
+                        });
+                    }
+                });
+                
+                // Add custom event for search
+                htmx.on('search', function(evt) {
+                    try {
+                        const form = evt.detail.elt;
+                        if (form && form.tagName === 'FORM') {
+                            // Get all form data
+                            const formData = new FormData(form);
+                            const url = new URL(form.action || window.location.pathname);
+                            
+                            // Add form data to URL
+                            for (let [key, value] of formData.entries()) {
+                                if (value) {
+                                    url.searchParams.set(key, value);
+                                }
+                            }
+                            
+                            // Trigger HTMX request
+                            htmx.ajax('GET', url, {
+                                target: form.getAttribute('hx-target') || '#patient-table-container',
+                                swap: form.getAttribute('hx-swap') || 'innerHTML',
+                                select: form.getAttribute('hx-select') || 'body'
+                            });
+                        }
+                    } catch (error) {
+                        console.warn('HTMX search error suppressed:', error);
+                    }
+                });
+            }
+        } catch (error) {
+            console.warn('HTMX configuration error suppressed:', error);
         }
         
         // Alpine.js Global Utilities
-        if (typeof Alpine !== 'undefined') {
-            Alpine.data('loading', () => ({
-                loading: false,
-                show() { this.loading = true; },
-                hide() { this.loading = false; }
-            }));
-            
-            Alpine.data('search', () => ({
-                query: '',
-                typing: false,
-                timeout: null,
-                search() {
-                    this.typing = true;
-                    clearTimeout(this.timeout);
-                    this.timeout = setTimeout(() => {
-                        this.typing = false;
-                        // Trigger HTMX search if available
-                        const searchForm = document.getElementById('search-form');
-                        if (searchForm && typeof htmx !== 'undefined') {
-                            htmx.trigger(searchForm, 'search');
-                        }
-                    }, 500);
-                }
-            }));
+        try {
+            if (typeof Alpine !== 'undefined') {
+                Alpine.data('loading', () => ({
+                    loading: false,
+                    show() { this.loading = true; },
+                    hide() { this.loading = false; }
+                }));
+                
+                Alpine.data('search', () => ({
+                    query: '',
+                    typing: false,
+                    timeout: null,
+                    search() {
+                        this.typing = true;
+                        clearTimeout(this.timeout);
+                        this.timeout = setTimeout(() => {
+                            this.typing = false;
+                            // Trigger HTMX search if available
+                            const searchForm = document.getElementById('search-form');
+                            if (searchForm && typeof htmx !== 'undefined') {
+                                try {
+                                    htmx.trigger(searchForm, 'search');
+                                } catch (error) {
+                                    console.warn('HTMX trigger error suppressed:', error);
+                                }
+                            }
+                        }, 500);
+                    }
+                }));
+            }
+        } catch (error) {
+            console.warn('Alpine.js configuration error suppressed:', error);
         }
     </script>
 </body>

@@ -10,6 +10,29 @@
         $('body').toggleClass('sidebar-open'); // Prevent scrolling on body when sidebar is open
     }
 
+    // Prevent auto-scroll to active menu items on page load
+    $(document).ready(function() {
+        // Store original scroll position
+        const sidebarScrollTop = $('#sidebar-container').scrollTop();
+        
+        // Prevent Bootstrap's default scroll behavior for accordion
+        $('#accordionSidebar .collapse').on('show.bs.collapse', function(e) {
+            // Prevent automatic scrolling
+            e.stopPropagation();
+            return true;
+        });
+        
+        // Maintain manual scroll position
+        window.addEventListener('load', function() {
+            $('#sidebar-container').scrollTop(0);
+        });
+        
+        // Override any scroll attempts to active elements
+        $('.nav-item.active').each(function() {
+            $(this).data('original-scroll', false);
+        });
+    });
+
     // Function to close mobile sidebar
     function closeMobileSidebar() {
         const sidebar = $('#sidebar-container');
@@ -65,6 +88,61 @@
                 delta = e0.wheelDelta || -e0.detail;
             this.scrollTop += (delta < 0 ? 1 : -1) * 30;
             e.preventDefault();
+        }
+    });
+
+    // Prevent automatic scroll to active navigation items
+    function preventSidebarAutoScroll() {
+        // Override Bootstrap's scroll to active behavior
+        if (window.location.hash) {
+            // Prevent hash-based scrolling
+            window.scrollTo(0, 0);
+        }
+        
+        // Prevent any scroll attempts to active menu items
+        const activeElements = document.querySelectorAll('.nav-item.active, .collapse-item.active');
+        activeElements.forEach(function(element) {
+            // Remove any scrollIntoView calls
+            if (element.scrollIntoView) {
+                const originalScrollIntoView = element.scrollIntoView;
+                element.scrollIntoView = function() {
+                    return false;
+                };
+            }
+        });
+        
+        // Ensure sidebar stays at top or current manual position
+        const sidebar = document.getElementById('sidebar-container');
+        if (sidebar) {
+            sidebar.scrollTop = 0; // Always start at top
+        }
+    }
+
+    // Apply scroll prevention on page load and navigation
+    $(document).ready(function() {
+        preventSidebarAutoScroll();
+        
+        // Prevent scroll on any navigation
+        $('.nav-link, .collapse-item').on('click', function(e) {
+            // Allow navigation but prevent auto-scroll
+            setTimeout(function() {
+                preventSidebarAutoScroll();
+            }, 100);
+        });
+        
+        // Monitor and prevent any scroll changes in sidebar
+        const sidebar = document.getElementById('sidebar-container');
+        if (sidebar) {
+            let manualScroll = false;
+            sidebar.addEventListener('scroll', function() {
+                if (!manualScroll) {
+                    manualScroll = true;
+                    // This is a manual scroll, allow it
+                } else {
+                    // This might be an auto-scroll, check if user initiated
+                    setTimeout(() => { manualScroll = false; }, 100);
+                }
+            });
         }
     });
 

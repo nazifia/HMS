@@ -72,6 +72,24 @@ urlpatterns = [
      path('permissions/', views.permission_management, name='permission_management'),
      path('audit-logs/', views.audit_logs, name='audit_logs'),
      path('role-demo/', views.role_demo, name='role_demo'),
+
+    # Superuser-only URLs
+    path('superuser/', views.superuser_dashboard, name='superuser_dashboard'),
+    path('superuser/user-profiles/', views.superuser_user_profiles, name='superuser_user_profiles'),
+    path('superuser/user-profiles/<int:user_id>/edit/', views.superuser_edit_user_profile, name='superuser_edit_user_profile'),
+    path('superuser/password-reset/', views.superuser_password_reset, name='superuser_password_reset'),
+    path('superuser/password-reset/<int:user_id>/', views.superuser_reset_user_password, name='superuser_reset_user_password'),
+    path('superuser/bulk-operations/', views.superuser_bulk_operations, name='superuser_bulk_operations'),
+    path('superuser/user-permissions/', views.superuser_user_permissions, name='superuser_user_permissions'),
+    path('superuser/user-permissions/<int:user_id>/', views.superuser_manage_user_permissions, name='superuser_manage_user_permissions'),
+    path('superuser/system-config/', views.superuser_system_config, name='superuser_system_config'),
+    path('superuser/database-management/', views.superuser_database_management, name='superuser_database_management'),
+    path('superuser/security-audit/', views.superuser_security_audit, name='superuser_security_audit'),
+    path('superuser/backup-restore/', views.superuser_backup_restore, name='superuser_backup_restore'),
+    path('superuser/system-diagnostics/', views.superuser_system_diagnostics, name='superuser_system_diagnostics'),
+    path('superuser/mass-email/', views.superuser_mass_email, name='superuser_mass_email'),
+    path('superuser/api-management/', views.superuser_api_management, name='superuser_api_management'),
+    path('superuser/logs-viewer/', views.superuser_logs_viewer, name='superuser_logs_viewer'),
 ]
 
 # Activity Monitoring URLs

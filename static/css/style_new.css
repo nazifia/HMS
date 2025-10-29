@@ -13,6 +13,36 @@ body {
     overflow-y: auto; /* Added to allow vertical scrolling */
 }
 
+/* Sidebar scroll prevention */
+#sidebar-container {
+    scroll-behavior: auto !important; /* Override smooth scrolling */
+    scroll-padding-top: 0 !important;
+}
+
+#accordionSidebar {
+    scroll-behavior: auto !important;
+    scroll-padding-top: 0 !important;
+}
+
+/* Prevent auto-scroll to active elements */
+.nav-item.active, .collapse-item.active {
+    scroll-margin-top: 0 !important;
+    scroll-margin-bottom: 0 !important;
+}
+
+/* Ensure sidebar is manually scrollable */
+.sidebar {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scroll-behavior: auto !important;
+}
+
+/* Override any scroll-snap behavior */
+.sidebar * {
+    scroll-snap-type: none !important;
+    scroll-behavior: auto !important;
+}
+
 .container-fluid {
     padding-left: 0 !important;
     padding-right: 0 !important;
@@ -100,6 +130,44 @@ body {
 .table th {
     font-weight: 600;
     background-color: #f8f9fa;
+}
+
+/* Table Dark Styles - Fix for visibility */
+.table-dark {
+    background-color: #343a40 !important;
+    color: #fff !important;
+}
+
+.table-dark th,
+.table-dark td {
+    border-color: #454d55 !important;
+}
+
+.table-dark th {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+}
+
+.table-dark thead th {
+    background-color: #495057 !important;
+    color: #fff !important;
+    border-color: #454d55 !important;
+}
+
+/* Ensure table headers are visible in all contexts */
+thead th {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border: 1px solid #dee2e6 !important;
+    padding: 0.75rem !important;
+}
+
+/* For tables with table-dark class specifically */
+.table.table-dark thead th {
+    background-color: #495057 !important;
+    color: #ffffff !important;
 }
 
 /* Button Styles */
