@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+{% load static %}
+{% load form_tags %}
+
+{% block title %}System Logs Viewer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .log-entry {
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 10px 15px;
+        margin-bottom: 10px;
+        border-radius: 0 4px 4px 0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        white-space: pre-wrap;
+    }
+    .log-entry.error {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+    }
+    .log-entry.warning {
+        border-left-color: #ffc107;
+        background-color: #fff3cd;
+    }
+    .log-entry.info {
+        border-left-color: #17a2b8;
+        background-color: #d1ecf1;
+    }
+    .log-entry.debug {
+        border-left-color: #6c757d;
+        background-color: #e9ecef;
+    }
+    .log-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    .log-controls {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .log-content {
+        background-color: #2d3748;
+        color: #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        max-height: 600px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+    .line-number {
+        color: #718096;
+        margin-right: 15px;
+        user-select: none;
+    }
+    .search-highlight {
+        background-color: #ffd700;
+        padding: 2px 4px;
+        border-radius: 2px;
+    }
+    .filter-section {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-file-alt me-2"></i>
+                    System Logs Viewer
+                </h1>
+                <div>
+                    <button type="button" class="btn btn-primary" onclick="refreshLogs()">
+                        <i class="fas fa-sync me-1"></i> Refresh Logs
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="downloadLog()">
+                        <i class="fas fa-download me-1"></i> Download
+                    </button>
+                </div>
+            </div>
+
+            <!-- Log Statistics -->
+            <div class="log-stats">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="totalLines">0</h3>
+                            <p class="mb-0">Total Lines</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="errorCount">0</h3>
+                            <p class="mb-0">Errors</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="warningCount">0</h3>
+                            <p class="mb-0">Warnings</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="infoCount">0</h3>
+                            <p class="mb-0">Info Messages</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3">
+                    <!-- Log Files List -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-folder-open me-2"></i>
+                                Log Files
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if log_files %}
+                                {% for file in log_files %}
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-truncate" title="{{ file }}">
+                                        {{ file|split:"/"|last }}
+                                    </span>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="loadLogFile('{{ file }}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted text-center">
+                                    <i class="fas fa-folder-open fa-2x mb-2"></i><br>
+                                    No log files found
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Filter Section -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-filter me-2"></i>
+                                Filters
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Log Level</label>
+                                <select class="form-select" id="logLevel" onchange="filterLogs()">
+                                    <option value="">All Levels</option>
+                                    <option value="error">ERROR</option>
+                                    <option value="warning">WARNING</option>
+                                    <option value="info">INFO</option>
+                                    <option value="debug">DEBUG</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Date Range</label>
+                                <input type="date" class="form-control mb-2" id="startDate" onchange="filterLogs()">
+                                <input type="date" class="form-control" id="endDate" onchange="filterLogs()">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Search</label>
+                                <input type="text" class="form-control" id="searchText" placeholder="Search in logs..." oninput="filterLogs()">
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                                <i class="fas fa-times me-1"></i> Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <!-- Log Controls -->
+                    <div class="log-controls">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h5 class="mb-0" id="currentLogFile">
+                                    <i class="fas fa-file me-2"></i>
+                                    Select a log file to view
+                                </h5>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="scrollToTop()">
+                                        <i class="fas fa-arrow-up"></i> Top
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="scrollToBottom()">
+                                        <i class="fas fa-arrow-down"></i> Bottom
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="toggleLineNumbers()">
+                                        <i class="fas fa-list-ol"></i> Lines
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Log Content -->
+                    <div class="log-content" id="logContent">
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-file-alt fa-3x mb-3"></i>
+                            <h5>No Log File Selected</h5>
+                            <p>Select a log file from the list to view its contents</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Log Entry Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>Timestamp:</strong>
+                    <span id="logTimestamp"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>Level:</strong>
+                    <span id="logLevel"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>Logger:</strong>
+                    <span id="logLogger"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>Message:</strong>
+                    <div id="logMessage" class="bg-light p-3 rounded"></div>
+                </div>
+                <div class="mb-3">
+                    <strong>Stack Trace:</strong>
+                    <div id="logStackTrace" class="bg-dark text-light p-3 rounded" style="font-family: monospace;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentLogFile = null;
+let currentLogContent = [];
+let filteredLogContent = [];
+let showLineNumbers = true;
+
+// Load log file
+function loadLogFile(filePath) {
+    currentLogFile = filePath;
+    const fileName = filePath.split('/').pop();
+    
+    $('#currentLogFile').html(`
+        <i class="fas fa-file me-2"></i>
+        ${fileName}
+        <small class="text-muted ms-2">(${filePath})</small>
+    `);
+    
+    // Show loading state
+    $('#logContent').html(`
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading log file...</p>
+        </div>
+    `);
+    
+    // Real API call to read log file
+    $.ajax({
+        url: "{% url 'accounts:superuser_read_log_file' %}",
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+        },
+        data: {
+            'file_path': filePath,
+            'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+        },
+        success: function(response) {
+            if (response.success) {
+                currentLogContent = response.logs;
+                filteredLogContent = [...currentLogContent];
+                displayLogs();
+                updateLogStats();
+                
+                // Update title with actual count
+                $('#currentLogFile').html(`
+                    <i class="fas fa-file me-2"></i>
+                    ${fileName}
+                    <small class="text-muted ms-2">(${response.total_lines} lines)</small>
+                `);
+            } else {
+                $('#logContent').html(`
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x mb-3 text-danger"></i>
+                        <h5 class="text-danger">Error Loading Log File</h5>
+                        <p class="text-muted">${response.error}</p>
+                    </div>
+                `);
+            }
+        },
+        error: function(xhr, status, error) {
+            $('#logContent').html(`
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3 text-danger"></i>
+                    <h5 class="text-danger">Network Error</h5>
+                    <p class="text-muted">Failed to load log file: ${error}</p>
+                </div>
+            `);
+        }
+    });
+}
+
+
+
+// Display logs in the content area
+function displayLogs() {
+    const logContent = $('#logContent');
+    
+    if (filteredLogContent.length === 0) {
+        logContent.html(`
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-search fa-3x mb-3"></i>
+                <h5>No logs found</h5>
+                <p>Try adjusting your filters</p>
+            </div>
+        `);
+        return;
+    }
+    
+    let html = '';
+    filteredLogContent.forEach((log, index) => {
+        const lineNumber = showLineNumbers ? `<span class="line-number">${index + 1}</span>` : '';
+        const logClass = getLogClass(log.level);
+        
+        html += `<div class="log-entry ${logClass}" onclick="showLogDetails(${index})">
+            ${lineNumber}
+            ${log.timestamp} - <strong>${log.level}</strong> - ${log.message}
+        </div>`;
+    });
+    
+    logContent.html(html);
+}
+
+// Get CSS class for log level
+function getLogClass(level) {
+    switch (level.toLowerCase()) {
+        case 'error': return 'error';
+        case 'warning': return 'warning';
+        case 'info': return 'info';
+        case 'debug': return 'debug';
+        default: return '';
+    }
+}
+
+// Update log statistics
+function updateLogStats() {
+    const stats = {
+        total: filteredLogContent.length,
+        error: filteredLogContent.filter(log => log.level === 'ERROR').length,
+        warning: filteredLogContent.filter(log => log.level === 'WARNING').length,
+        info: filteredLogContent.filter(log => log.level === 'INFO').length
+    };
+    
+    $('#totalLines').text(stats.total);
+    $('#errorCount').text(stats.error);
+    $('#warningCount').text(stats.warning);
+    $('#infoCount').text(stats.info);
+}
+
+// Filter logs based on current filters
+function filterLogs() {
+    const level = $('#logLevel').val().toUpperCase();
+    const startDate = $('#startDate').val();
+    const endDate = $('#endDate').val();
+    const searchText = $('#searchText').val().toLowerCase();
+    
+    filteredLogContent = currentLogContent.filter(log => {
+        // Level filter
+        if (level && log.level !== level) return false;
+        
+        // Date filter
+        let logDate = '';
+        if (log.timestamp) {
+            try {
+                logDate = new Date(log.timestamp).toISOString().split('T')[0];
+            } catch (e) {
+                // Handle invalid dates
+                logDate = '';
+            }
+        }
+        if (startDate && logDate && logDate < startDate) return false;
+        if (endDate && logDate && logDate > endDate) return false;
+        
+        // Text search
+        if (searchText && !log.message.toLowerCase().includes(searchText)) return false;
+        
+        return true;
+    });
+    
+    displayLogs();
+    updateLogStats();
+}
+
+// Clear all filters
+function clearFilters() {
+    $('#logLevel').val('');
+    $('#startDate').val('');
+    $('#endDate').val('');
+    $('#searchText').val('');
+    
+    filteredLogContent = [...currentLogContent];
+    displayLogs();
+    updateLogStats();
+}
+
+// Refresh logs
+function refreshLogs() {
+    if (currentLogFile) {
+        loadLogFile(currentLogFile);
+    }
+}
+
+// Download current log
+function downloadLog() {
+    if (!currentLogFile || filteredLogContent.length === 0) {
+        alert('Please select a log file first');
+        return;
+    }
+    
+    const logText = filteredLogContent.map(log => log.raw || log.line).join('\n');
+    const blob = new Blob([logText], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentLogFile.split('/').pop() + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Scroll to top of log content
+function scrollToTop() {
+    $('#logContent').scrollTop(0);
+}
+
+// Scroll to bottom of log content
+function scrollToBottom() {
+    $('#logContent').prop('scrollHeight', $('#logContent').prop('scrollHeight'));
+}
+
+// Toggle line numbers
+function toggleLineNumbers() {
+    showLineNumbers = !showLineNumbers;
+    displayLogs();
+}
+
+// Show log details in modal
+function showLogDetails(index) {
+    const log = filteredLogContent[index];
+    
+    const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown timestamp';
+    $('#logTimestamp').text(timestamp);
+    $('#logLevel').html(`<span class="badge bg-${getLogLevelBadgeClass(log.level)}">${log.level}</span>`);
+    $('#logLogger').text('django.request');
+    $('#logMessage').text(log.message);
+    $('#logStackTrace').text('No stack trace available for this log entry.');
+    
+    $('#logDetailsModal').modal('show');
+}
+
+// Get Bootstrap badge class for log level
+function getLogLevelBadgeClass(level) {
+    switch (level.toLowerCase()) {
+        case 'error': return 'danger';
+        case 'warning': return 'warning';
+        case 'info': return 'info';
+        case 'debug': return 'secondary';
+        default: return 'primary';
+    }
+}
+
+// Initialize on page load
+$(document).ready(function() {
+    // Auto-refresh every 30 seconds
+    setInterval(refreshLogs, 30000);
+});
+</script>
+{% endblock %}

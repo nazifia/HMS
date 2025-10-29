@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Mass Email Users{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-card {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+    .user-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .user-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    .selected-users {
+        background-color: #f8f9fa;
+        border: 2px solid #007bff;
+    }
+    .email-form {
+        display: none;
+    }
+    .email-form.show {
+        display: block;
+    }
+    .user-count {
+        background-color: #007bff;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        margin-left: 10px;
+    }
+    .preview-area {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .search-filter {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-envelope me-2"></i>
+                    Mass Email Users
+                    <span class="user-count" id="selectedCount">0</span>
+                </h1>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary" onclick="selectAll()">
+                        <i class="fas fa-check-square me-1"></i> Select All
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearSelection()">
+                        <i class="fas fa-times me-1"></i> Clear Selection
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="search-filter">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="searchInput" placeholder="Search users by name, email, or username...">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="roleFilter">
+                            <option value="">All Roles</option>
+                            <option value="Doctor">Doctor</option>
+                            <option value="Nurse">Nurse</option>
+                            <option value="Pharmacist">Pharmacist</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Staff">Staff</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Grid -->
+            <div class="row" id="usersGrid">
+                {% for user in users %}
+                <div class="col-md-6 col-lg-4 mb-3 user-item" 
+                     data-name="{{ user.get_full_name|default:user.username }}" 
+                     data-email="{{ user.email|default:'' }}"
+                     data-username="{{ user.username }}"
+                     data-role="{{ user.profile.role|default:'No Role' }}"
+                     data-status="{% if user.is_active %}active{% else %}inactive{% endif %}">
+                    <div class="card user-card h-100" id="user-{{ user.id }}">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <input type="checkbox" 
+                                       class="form-check-input user-checkbox me-3" 
+                                       id="check-{{ user.id }}"
+                                       value="{{ user.id }}"
+                                       onchange="updateSelection()">
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">
+                                        {{ user.get_full_name|default:user.username }}
+                                        {% if not user.is_active %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </h6>
+                                    <p class="card-text text-muted small mb-1">
+                                        <i class="fas fa-envelope me-1"></i>{{ user.email|default:'No email' }}
+                                    </p>
+                                    <p class="card-text text-muted small mb-0">
+                                        <i class="fas fa-user-tag me-1"></i>{{ user.profile.role|default:'No Role' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No users found</h5>
+                    <p class="text-muted">There are no users in the system.</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Email Compose Form -->
+            <div class="card mt-4 email-form" id="emailForm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Compose Email
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="subject" class="form-label">Subject</label>
+                            <input type="text" class="form-control" id="subject" name="subject" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea class="form-control" id="message" name="message" rows="8" required></textarea>
+                        </div>
+                        <div class="preview-area mb-3" id="previewArea" style="display: none;">
+                            <h6>Preview:</h6>
+                            <div id="previewContent"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary" onclick="togglePreview()">
+                                    <i class="fas fa-eye me-1"></i> Preview
+                                </button>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-secondary me-2" onclick="cancelEmail()">
+                                    Cancel
+                                </button>
+                                <input type="hidden" name="user_ids" id="userIds">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane me-1"></i> Send Email
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Email Button (Floating) -->
+<button type="button" 
+        class="btn btn-primary btn-lg position-fixed bottom-0 end-0 m-4 shadow-lg" 
+        id="sendEmailBtn"
+        style="display: none; z-index: 1000;"
+        onclick="showEmailForm()">
+    <i class="fas fa-paper-plane me-1"></i> Send Email
+</button>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedUsers = new Set();
+
+function updateSelection() {
+    selectedUsers.clear();
+    $('.user-checkbox:checked').each(function() {
+        selectedUsers.add($(this).val());
+    });
+    
+    updateSelectedCount();
+    updateUserCardStyles();
+    toggleSendButton();
+}
+
+function updateSelectedCount() {
+    const count = selectedUsers.size;
+    $('#selectedCount').text(count);
+}
+
+function updateUserCardStyles() {
+    $('.user-item').each(function() {
+        const userId = $(this).find('.user-checkbox').val();
+        if (selectedUsers.has(userId)) {
+            $(this).find('.user-card').addClass('selected-users');
+        } else {
+            $(this).find('.user-card').removeClass('selected-users');
+        }
+    });
+}
+
+function toggleSendButton() {
+    if (selectedUsers.size > 0) {
+        $('#sendEmailBtn').show();
+    } else {
+        $('#sendEmailBtn').hide();
+        $('#emailForm').removeClass('show');
+    }
+}
+
+function selectAll() {
+    $('.user-checkbox').prop('checked', true);
+    updateSelection();
+}
+
+function clearSelection() {
+    $('.user-checkbox').prop('checked', false);
+    updateSelection();
+}
+
+function showEmailForm() {
+    $('#emailForm').addClass('show');
+    $('#userIds').val(Array.from(selectedUsers).join(','));
+    
+    // Scroll to email form
+    $('html, body').animate({
+        scrollTop: $('#emailForm').offset().top
+    }, 500);
+}
+
+function cancelEmail() {
+    $('#emailForm').removeClass('show');
+    clearSelection();
+}
+
+function togglePreview() {
+    const previewArea = $('#previewArea');
+    const subject = $('#subject').val();
+    const message = $('#message').val();
+    
+    if (previewArea.is(':visible')) {
+        previewArea.hide();
+    } else {
+        const previewContent = `
+            <h6>Subject: ${subject || '(No subject)'}</h6>
+            <hr>
+            <div>${message.replace(/\n/g, '<br>') || '(No message)'}</div>
+        `;
+        $('#previewContent').html(previewContent);
+        previewArea.show();
+    }
+}
+
+// Search and filter functionality
+function filterUsers() {
+    const searchTerm = $('#searchInput').val().toLowerCase();
+    const roleFilter = $('#roleFilter').val().toLowerCase();
+    const statusFilter = $('#statusFilter').val().toLowerCase();
+    
+    $('.user-item').each(function() {
+        const name = $(this).data('name').toLowerCase();
+        const email = $(this).data('email').toLowerCase();
+        const username = $(this).data('username').toLowerCase();
+        const role = $(this).data('role').toLowerCase();
+        const status = $(this).data('status').toLowerCase();
+        
+        let show = true;
+        
+        // Search filter
+        if (searchTerm && !name.includes(searchTerm) && !email.includes(searchTerm) && !username.includes(searchTerm)) {
+            show = false;
+        }
+        
+        // Role filter
+        if (roleFilter && role !== roleFilter) {
+            show = false;
+        }
+        
+        // Status filter
+        if (statusFilter && status !== statusFilter) {
+            show = false;
+        }
+        
+        $(this).toggle(show);
+    });
+}
+
+// Event listeners
+$(document).ready(function() {
+    $('#searchInput').on('input', filterUsers);
+    $('#roleFilter').on('change', filterUsers);
+    $('#statusFilter').on('change', filterUsers);
+    
+    // Auto-save draft
+    let draftTimer;
+    $('#subject, #message').on('input', function() {
+        clearTimeout(draftTimer);
+        draftTimer = setTimeout(function() {
+            localStorage.setItem('mass_email_draft', JSON.stringify({
+                subject: $('#subject').val(),
+                message: $('#message').val()
+            }));
+        }, 1000);
+    });
+    
+    // Load draft if exists
+    const draft = localStorage.getItem('mass_email_draft');
+    if (draft) {
+        const draftData = JSON.parse(draft);
+        $('#subject').val(draftData.subject || '');
+        $('#message').val(draftData.message || '');
+    }
+});
+</script>
+{% endblock %}

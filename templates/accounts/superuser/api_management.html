@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}API Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .api-card {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+        margin-bottom: 20px;
+    }
+    .api-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .status-active {
+        color: #28a745;
+    }
+    .status-inactive {
+        color: #dc3545;
+    }
+    .status-pending {
+        color: #ffc107;
+    }
+    .code-block {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 15px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+    }
+    .api-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    .log-entry {
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 10px 15px;
+        margin-bottom: 10px;
+        border-radius: 0 4px 4px 0;
+    }
+    .log-entry.error {
+        border-left-color: #dc3545;
+    }
+    .log-entry.warning {
+        border-left-color: #ffc107;
+    }
+    .log-entry.success {
+        border-left-color: #28a745;
+    }
+    .config-section {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-code me-2"></i>
+                    API Management
+                </h1>
+                <div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createApiModal">
+                        <i class="fas fa-plus me-1"></i> Create API Key
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="refreshApiStats()">
+                        <i class="fas fa-sync me-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- API Statistics -->
+            <div class="api-stats">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="totalApiKeys">0</h3>
+                            <p class="mb-0">Total API Keys</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="activeApiKeys">0</h3>
+                            <p class="mb-0">Active Keys</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="totalRequests">0</h3>
+                            <p class="mb-0">Total Requests</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h3 id="successRate">0%</h3>
+                            <p class="mb-0">Success Rate</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Keys List -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-key me-2"></i>
+                                API Keys
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Key</th>
+                                            <th>Status</th>
+                                            <th>Created</th>
+                                            <th>Last Used</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="apiKeysTable">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">
+                                                <i class="fas fa-key fa-3x mb-3"></i>
+                                                <p>No API keys found. Create your first API key.</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <!-- API Logs -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>
+                                Recent API Logs
+                            </h5>
+                        </div>
+                        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                            <div id="apiLogs">
+                                <div class="log-entry success">
+                                    <small class="text-muted">2 minutes ago</small>
+                                    <div class="fw-bold">GET /api/v1/users/</div>
+                                    <small>Success - 200 OK</small>
+                                </div>
+                                <div class="log-entry warning">
+                                    <small class="text-muted">5 minutes ago</small>
+                                    <div class="fw-bold">POST /api/v1/auth/</div>
+                                    <small>Warning - Rate limit approaching</small>
+                                </div>
+                                <div class="log-entry error">
+                                    <small class="text-muted">10 minutes ago</small>
+                                    <div class="fw-bold">POST /api/v1/data/</div>
+                                    <small>Error - 401 Unauthorized</small>
+                                </div>
+                                <div class="log-entry success">
+                                    <small class="text-muted">15 minutes ago</small>
+                                    <div class="fw-bold">GET /api/v1/reports/</div>
+                                    <small>Success - 200 OK</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Configuration -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="config-section">
+                        <h5 class="mb-3">
+                            <i class="fas fa-cog me-2"></i>
+                            API Configuration
+                        </h5>
+                        <div class="mb-3">
+                            <label class="form-label">Rate Limit (requests per minute)</label>
+                            <input type="number" class="form-control" id="rateLimit" value="1000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Token Expiry (hours)</label>
+                            <input type="number" class="form-control" id="tokenExpiry" value="24">
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableLogging" checked>
+                            <label class="form-check-label" for="enableLogging">
+                                Enable API Logging
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableCORS" checked>
+                            <label class="form-check-label" for="enableCORS">
+                                Enable CORS
+                            </label>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="saveApiConfig()">
+                            <i class="fas fa-save me-1"></i> Save Configuration
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="config-section">
+                        <h5 class="mb-3">
+                            <i class="fas fa-code me-2"></i>
+                            API Endpoints
+                        </h5>
+                        <div class="accordion" id="endpointsAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#userEndpoints">
+                                        User Management APIs
+                                    </button>
+                                </h2>
+                                <div id="userEndpoints" class="accordion-collapse collapse show" data-bs-parent="#endpointsAccordion">
+                                    <div class="accordion-body">
+                                        <div class="code-block mb-2">GET /api/v1/users/</div>
+                                        <small class="text-muted">List all users</small>
+                                        
+                                        <div class="code-block mb-2 mt-3">POST /api/v1/users/</div>
+                                        <small class="text-muted">Create new user</small>
+                                        
+                                        <div class="code-block mb-2 mt-3">GET /api/v1/users/{id}/</div>
+                                        <small class="text-muted">Get user details</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#authEndpoints">
+                                        Authentication APIs
+                                    </button>
+                                </h2>
+                                <div id="authEndpoints" class="accordion-collapse collapse" data-bs-parent="#endpointsAccordion">
+                                    <div class="accordion-body">
+                                        <div class="code-block mb-2">POST /api/v1/auth/login/</div>
+                                        <small class="text-muted">User login</small>
+                                        
+                                        <div class="code-block mb-2 mt-3">POST /api/v1/auth/logout/</div>
+                                        <small class="text-muted">User logout</small>
+                                        
+                                        <div class="code-block mb-2 mt-3">POST /api/v1/auth/refresh/</div>
+                                        <small class="text-muted">Refresh token</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#dataEndpoints">
+                                        Data Management APIs
+                                    </button>
+                                </h2>
+                                <div id="dataEndpoints" class="accordion-collapse collapse" data-bs-parent="#endpointsAccordion">
+                                    <div class="accordion-body">
+                                        <div class="code-block mb-2">GET /api/v1/data/</div>
+                                        <small class="text-muted">List data records</small>
+                                        
+                                        <div class="code-block mb-2 mt-3">POST /api/v1/data/</div>
+                                        <small class="text-muted">Create data record</small>
+                                        
+                                        <div class="code-block mb-2 mt-3">PUT /api/v1/data/{id}/</div>
+                                        <small class="text-muted">Update data record</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create API Key Modal -->
+<div class="modal fade" id="createApiModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-key me-2"></i>
+                    Create New API Key
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createApiForm">
+                    <div class="mb-3">
+                        <label class="form-label">Key Name</label>
+                        <input type="text" class="form-control" id="keyName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="keyDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Permissions</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="readPermission" checked>
+                            <label class="form-check-label" for="readPermission">
+                                Read Access
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="writePermission">
+                            <label class="form-check-label" for="writePermission">
+                                Write Access
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="deletePermission">
+                            <label class="form-check-label" for="deletePermission">
+                                Delete Access
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Expiry Date</label>
+                        <input type="date" class="form-control" id="expiryDate">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createApiKey()">
+                    <i class="fas fa-plus me-1"></i> Create Key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize API stats
+function initializeApiStats() {
+    // Simulated data - replace with actual API calls
+    $('#totalApiKeys').text('12');
+    $('#activeApiKeys').text('8');
+    $('#totalRequests').text('45,632');
+    $('#successRate').text('98.5%');
+}
+
+// Refresh API statistics
+function refreshApiStats() {
+    // Show loading state
+    $('.api-stats').css('opacity', '0.6');
+    
+    // Simulate API call
+    setTimeout(function() {
+        initializeApiStats();
+        $('.api-stats').css('opacity', '1');
+        
+        // Show success message
+        const toast = $('<div class="position-fixed top-0 end-0 p-3" style="z-index: 11">' +
+            '<div class="toast show" role="alert">' +
+            '<div class="toast-header">' +
+            '<i class="fas fa-check-circle text-success me-2"></i>' +
+            '<strong class="me-auto">Success</strong>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="toast"></button>' +
+            '</div>' +
+            '<div class="toast-body">API statistics refreshed successfully!</div>' +
+            '</div></div>');
+        $('body').append(toast);
+        setTimeout(function() {
+            toast.remove();
+        }, 3000);
+    }, 1000);
+}
+
+// Create API key
+function createApiKey() {
+    const keyName = $('#keyName').val();
+    const keyDescription = $('#keyDescription').val();
+    const readPermission = $('#readPermission').is(':checked');
+    const writePermission = $('#writePermission').is(':checked');
+    const deletePermission = $('#deletePermission').is(':checked');
+    const expiryDate = $('#expiryDate').val();
+    
+    if (!keyName) {
+        alert('Please enter a key name');
+        return;
+    }
+    
+    // Generate random API key
+    const apiKey = 'hms_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    // Add to table
+    const tableRow = `
+        <tr>
+            <td>${keyName}</td>
+            <td><code>${apiKey}</code></td>
+            <td><span class="badge bg-success status-active">Active</span></td>
+            <td>Just now</td>
+            <td>Never</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="regenerateApiKey('${apiKey}')">
+                    <i class="fas fa-sync"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="revokeApiKey('${apiKey}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+    
+    $('#apiKeysTable').append(tableRow);
+    
+    // Update stats
+    const currentTotal = parseInt($('#totalApiKeys').text());
+    const currentActive = parseInt($('#activeApiKeys').text());
+    $('#totalApiKeys').text(currentTotal + 1);
+    $('#activeApiKeys').text(currentActive + 1);
+    
+    // Close modal and reset form
+    $('#createApiModal').modal('hide');
+    $('#createApiForm')[0].reset();
+    
+    // Show success message
+    alert('API key created successfully!');
+}
+
+// Regenerate API key
+function regenerateApiKey(key) {
+    if (confirm('Are you sure you want to regenerate this API key? The old key will be invalidated.')) {
+        const newKey = 'hms_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        
+        // Find and update the key in the table
+        $('code').each(function() {
+            if ($(this).text() === key) {
+                $(this).text(newKey);
+            }
+        });
+        
+        alert('API key regenerated successfully!');
+    }
+}
+
+// Revoke API key
+function revokeApiKey(key) {
+    if (confirm('Are you sure you want to revoke this API key?')) {
+        // Find and remove the row
+        $('code').each(function() {
+            if ($(this).text() === key) {
+                $(this).closest('tr').remove();
+            }
+        });
+        
+        // Update stats
+        const currentTotal = parseInt($('#totalApiKeys').text());
+        const currentActive = parseInt($('#activeApiKeys').text());
+        $('#totalApiKeys').text(currentTotal - 1);
+        $('#activeApiKeys').text(currentActive - 1);
+        
+        alert('API key revoked successfully!');
+    }
+}
+
+// Save API configuration
+function saveApiConfig() {
+    const rateLimit = $('#rateLimit').val();
+    const tokenExpiry = $('#tokenExpiry').val();
+    const enableLogging = $('#enableLogging').is(':checked');
+    const enableCORS = $('#enableCORS').is(':checked');
+    
+    // Simulate saving configuration
+    const toast = $('<div class="position-fixed top-0 end-0 p-3" style="z-index: 11">' +
+        '<div class="toast show" role="alert">' +
+        '<div class="toast-header">' +
+        '<i class="fas fa-check-circle text-success me-2"></i>' +
+        '<strong class="me-auto">Configuration Saved</strong>' +
+        '<button type="button" class="btn-close" data-bs-dismiss="toast"></button>' +
+        '</div>' +
+        '<div class="toast-body">API configuration has been saved successfully!</div>' +
+        '</div></div>');
+    $('body').append(toast);
+    setTimeout(function() {
+        toast.remove();
+    }, 3000);
+}
+
+// Auto-refresh API logs every 30 seconds
+function refreshApiLogs() {
+    // Simulate adding new log entries
+    const logs = [
+        { type: 'success', message: 'GET /api/v1/users/', status: 'Success - 200 OK' },
+        { type: 'warning', message: 'POST /api/v1/auth/', status: 'Warning - Rate limit approaching' },
+        { type: 'error', message: 'POST /api/v1/data/', status: 'Error - 401 Unauthorized' },
+        { type: 'success', message: 'GET /api/v1/reports/', status: 'Success - 200 OK' }
+    ];
+    
+    const randomLog = logs[Math.floor(Math.random() * logs.length)];
+    const logEntry = `
+        <div class="log-entry ${randomLog.type}">
+            <small class="text-muted">Just now</small>
+            <div class="fw-bold">${randomLog.message}</div>
+            <small>${randomLog.status}</small>
+        </div>
+    `;
+    
+    $('#apiLogs').prepend(logEntry);
+    
+    // Keep only the last 10 entries
+    if ($('#apiLogs .log-entry').length > 10) {
+        $('#apiLogs .log-entry:last').remove();
+    }
+}
+
+// Initialize on page load
+$(document).ready(function() {
+    initializeApiStats();
+    
+    // Set up auto-refresh for logs
+    setInterval(refreshApiLogs, 30000);
+});
+</script>
+{% endblock %}

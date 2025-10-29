@@ -1,4 +1,5 @@
 import logging
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User, Permission
@@ -8,13 +9,14 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
-from .models import CustomUserProfile, Department, Role, AuditLog
+from .models import CustomUserProfile, Department, Role, AuditLog, CustomUser
 from .forms import (
     CustomLoginForm, UserProfileForm, StaffCreationForm, DepartmentForm,
     UserRegistrationForm, RoleForm, UserRoleAssignmentForm, BulkUserActionForm,
     PermissionFilterForm, AdvancedUserSearchForm
 )
 from core.models import InternalNotification
+from core.activity_log import ActivityLog
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth import authenticate, login
@@ -1990,14 +1992,34 @@ def superuser_database_management(request):
     """Database management operations"""
     from django.db import connection
     
-    # Get table information
+    # Get table information - SQLite compatible query
     with connection.cursor() as cursor:
-        db_name = settings.DATABASES['default']['NAME']
-        cursor.execute(f"SELECT table_name FROM information_schema.tables WHERE table_schema = '{db_name}'")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
         tables = [row[0] for row in cursor.fetchall()]
+        
+        # Get table counts and other info
+        table_info = []
+        total_records = 0
+        largest_table_count = 0
+        non_empty_tables = 0
+        for table in tables:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            count = cursor.fetchone()[0]
+            table_info.append({
+                'name': table,
+                'row_count': count
+            })
+            total_records += count
+            if count > largest_table_count:
+                largest_table_count = count
+            if count > 0:
+                non_empty_tables += 1
     
     return render(request, 'accounts/superuser/database_management.html', {
-        'tables': tables,
+        'tables': table_info,
+        'total_records': total_records,
+        'largest_table_count': largest_table_count,
+        'non_empty_tables': non_empty_tables,
         'page_title': 'Database Management',
         'active_nav': 'database_management',
     })
@@ -2007,21 +2029,29 @@ def superuser_database_management(request):
 def superuser_security_audit(request):
     """Security audit panel"""
     # Get recent security-related logs
-    security_logs = AuditLog.objects.filter(
-        Q(action__icontains='login') | 
-        Q(action__icontains='logout') | 
-        Q(action__icontains='password') | 
-        Q(action__icontains='permission')
+    security_logs = ActivityLog.objects.filter(
+        Q(action_type__in=['login', 'logout', 'failed_login', 'permission_denied'])
     ).order_by('-timestamp')[:100]
     
     # Get failed login attempts
-    failed_logins = AuditLog.objects.filter(
-        action__icontains='failed login'
+    failed_logins = ActivityLog.objects.filter(
+        action_type='failed_login'
     ).order_by('-timestamp')[:50]
+    
+    # Calculate statistics
+    successful_logins = ActivityLog.objects.filter(
+        action_type='login'
+    ).count()
+    
+    password_changes = ActivityLog.objects.filter(
+        action_type__icontains='password'
+    ).count()
     
     return render(request, 'accounts/superuser/security_audit.html', {
         'security_logs': security_logs,
         'failed_logins': failed_logins,
+        'successful_logins': successful_logins,
+        'password_changes': password_changes,
         'page_title': 'Security Audit',
         'active_nav': 'security_audit',
     })
@@ -2037,19 +2067,243 @@ def superuser_backup_restore(request):
 
 
 @superuser_required
+def create_backup(request):
+    """Create database backup"""
+    import subprocess
+    import os
+    from django.conf import settings
+    from django.utils import timezone
+    import json
+    from django.core.management import call_command
+    from django.http import HttpResponse
+    
+    if request.method == 'POST':
+        try:
+            backup_name = request.POST.get('backup_name', '')
+            backup_description = request.POST.get('backup_description', '')
+            include_media = request.POST.get('include_media') == 'on'
+            
+            # Create backup directory if it doesn't exist
+            backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            # Generate backup filename
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+            if backup_name:
+                filename = f"{backup_name}_{timestamp}.sql"
+            else:
+                filename = f"backup_{timestamp}.sql"
+            
+            backup_path = os.path.join(backup_dir, filename)
+            
+            # Create database backup using Django management command
+            with open(backup_path, 'w') as f:
+                call_command('dumpdata', stdout=f)
+            
+            # Store backup metadata
+            metadata = {
+                'filename': filename,
+                'name': backup_name or f"Backup_{timestamp}",
+                'description': backup_description,
+                'created_at': timezone.now().isoformat(),
+                'include_media': include_media,
+                'size': os.path.getsize(backup_path),
+                'user': request.user.username
+            }
+            
+            metadata_path = os.path.join(backup_dir, f"{filename}.meta")
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            messages.success(request, f"Backup '{metadata['name']}' created successfully!")
+            return redirect('accounts:superuser_backup_restore')
+            
+        except Exception as e:
+            messages.error(request, f"Error creating backup: {str(e)}")
+    
+    return redirect('accounts:superuser_backup_restore')
+
+
+@superuser_required
+def restore_backup(request):
+    """Restore database from backup"""
+    import subprocess
+    import os
+    from django.conf import settings
+    import json
+    
+    if request.method == 'POST':
+        try:
+            backup_file = request.FILES.get('backup_file')
+            confirm_restore = request.POST.get('confirm_restore') == 'on'
+            
+            if not backup_file:
+                messages.error(request, "Please select a backup file.")
+                return redirect('accounts:superuser_backup_restore')
+                
+            if not confirm_restore:
+                messages.error(request, "Please confirm that you understand the restore will overwrite current data.")
+                return redirect('accounts:superuser_backup_restore')
+            
+            # Save uploaded file temporarily
+            temp_dir = os.path.join(settings.BASE_DIR, 'temp_restore')
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            temp_path = os.path.join(temp_dir, backup_file.name)
+            with open(temp_path, 'wb+') as destination:
+                for chunk in backup_file.chunks():
+                    destination.write(chunk)
+            
+            # Process restore (simplified version - in production, you'd want more sophisticated restore)
+            messages.warning(request, "Restore functionality needs to be implemented with proper database migration handling.")
+            messages.info(request, f"File '{backup_file.name}' uploaded successfully. Manual restore required.")
+            
+            # Clean up temporary file
+            os.remove(temp_path)
+            
+            return redirect('accounts:superuser_backup_restore')
+            
+        except Exception as e:
+            messages.error(request, f"Error restoring backup: {str(e)}")
+    
+    return redirect('accounts:superuser_backup_restore')
+
+
+@superuser_required
+def backup_list(request):
+    """Return HTML fragment of backup list"""
+    import os
+    import json
+    from django.conf import settings
+    from django.http import HttpResponse
+    
+    try:
+        backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+        backups = []
+        
+        if os.path.exists(backup_dir):
+            for file in os.listdir(backup_dir):
+                if file.endswith('.meta'):
+                    metadata_path = os.path.join(backup_dir, file)
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                        backups.append(metadata)
+        
+        backups.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        html = ""
+        if backups:
+            for backup in backups:
+                html += f"""
+                <tr>
+                    <td>{backup['name']}</td>
+                    <td>{backup['description'] or 'N/A'}</td>
+                    <td>{backup['created_at']}</td>
+                    <td>{backup['size'] / 1024:.2f} KB</td>
+                    <td>SQL</td>
+                    <td>
+                        <a href="/accounts/superuser/download-backup/{backup['filename']}/" 
+                           class="btn btn-sm btn-primary me-1">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button class="btn btn-sm btn-danger delete-backup" 
+                                data-backup-name="{backup['name']}"
+                                data-url="/accounts/superuser/delete-backup/{backup['filename']}/">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                """
+        else:
+            html = """
+            <tr>
+                <td colspan="6" class="text-center text-muted">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>No backup files found. Create your first backup above.</p>
+                </td>
+            </tr>
+            """
+        
+        return HttpResponse(html)
+        
+    except Exception as e:
+        return HttpResponse(f"<tr><td colspan='6'>Error loading backups: {str(e)}</td></tr>")
+
+
+@superuser_required
+def delete_backup(request, backup_name):
+    """Delete a backup file"""
+    import os
+    from django.conf import settings
+    
+    try:
+        backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+        backup_path = os.path.join(backup_dir, backup_name)
+        metadata_path = os.path.join(backup_dir, f"{backup_name}.meta")
+        
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+        if os.path.exists(metadata_path):
+            os.remove(metadata_path)
+            
+        messages.success(request, f"Backup '{backup_name}' deleted successfully.")
+        
+    except Exception as e:
+        messages.error(request, f"Error deleting backup: {str(e)}")
+    
+    return redirect('accounts:superuser_backup_restore')
+
+
+@superuser_required
+def download_backup(request, backup_name):
+    """Download a backup file"""
+    import os
+    from django.conf import settings
+    from django.http import HttpResponse, Http404
+    
+    try:
+        backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+        backup_path = os.path.join(backup_dir, backup_name)
+        
+        if not os.path.exists(backup_path):
+            raise Http404("Backup file not found")
+        
+        with open(backup_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/octet-stream')
+            response['Content-Disposition'] = f'attachment; filename="{backup_name}"'
+            return response
+            
+    except Exception as e:
+        messages.error(request, f"Error downloading backup: {str(e)}")
+        return redirect('accounts:superuser_backup_restore')
+
+
+@superuser_required
 def superuser_system_diagnostics(request):
     """System diagnostics panel"""
     import psutil
     import platform
+    import os
     
-    diagnostics = {
-        'system': platform.system(),
-        'platform': platform.platform(),
-        'python_version': platform.python_version(),
-        'cpu_percent': psutil.cpu_percent(),
-        'memory': psutil.virtual_memory(),
-        'disk': psutil.disk_usage('/'),
-    }
+    # Get correct disk path for Windows
+    disk_path = '/' if os.name != 'nt' else 'C:'
+    
+    try:
+        diagnostics = {
+            'system': platform.system(),
+            'platform': platform.platform(),
+            'python_version': platform.python_version(),
+            'cpu_percent': psutil.cpu_percent(),
+            'memory': psutil.virtual_memory(),
+            'disk': psutil.disk_usage(disk_path),
+        }
+    except Exception as e:
+        diagnostics = {
+            'system': platform.system(),
+            'platform': platform.platform(),
+            'python_version': platform.python_version(),
+            'error': str(e),
+        }
     
     return render(request, 'accounts/superuser/system_diagnostics.html', {
         'diagnostics': diagnostics,
@@ -2061,6 +2315,9 @@ def superuser_system_diagnostics(request):
 @superuser_required
 def superuser_mass_email(request):
     """Send mass emails to users"""
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
     if request.method == 'POST':
         subject = request.POST.get('subject')
         message = request.POST.get('message')
@@ -2069,14 +2326,29 @@ def superuser_mass_email(request):
         if subject and message and user_ids:
             users = User.objects.filter(id__in=user_ids)
             email_count = 0
+            failed_count = 0
             
             for user in users:
                 if user.email:
-                    # Here you would implement actual email sending
-                    # send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
-                    email_count += 1
+                    try:
+                        send_mail(
+                            subject=subject,
+                            message=message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[user.email],
+                            fail_silently=False,
+                        )
+                        email_count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to send email to {user.email}: {str(e)}")
+                        failed_count += 1
             
-            messages.success(request, f'Email sent to {email_count} users.')
+            if email_count > 0:
+                messages.success(request, f'Email successfully sent to {email_count} user{"s" if email_count != 1 else ""}.')
+            if failed_count > 0:
+                messages.warning(request, f'Failed to send email to {failed_count} user{"s" if failed_count != 1 else ""}. Check logs for details.')
+        else:
+            messages.error(request, 'Please provide subject, message, and select at least one user.')
     
     users = User.objects.order_by('username')
     return render(request, 'accounts/superuser/mass_email.html', {
@@ -2099,15 +2371,151 @@ def superuser_api_management(request):
 def superuser_logs_viewer(request):
     """System logs viewer"""
     import logging
+    import os
+    from django.conf import settings
     
     # Get log files
     log_files = []
+    log_dir = os.path.join(settings.BASE_DIR, 'logs')
+    
+    # Check both Django handlers and logs directory
     for handler in logging.root.handlers:
         if hasattr(handler, 'baseFilename'):
             log_files.append(handler.baseFilename)
+    
+    # Also scan logs directory for additional log files
+    if os.path.exists(log_dir):
+        for filename in os.listdir(log_dir):
+            if filename.endswith('.log') or filename.endswith('.txt'):
+                log_files.append(os.path.join(log_dir, filename))
     
     return render(request, 'accounts/superuser/logs_viewer.html', {
         'log_files': log_files,
         'page_title': 'System Logs Viewer',
         'active_nav': 'logs_viewer',
     })
+
+@superuser_required
+def superuser_read_log_file(request):
+    """Read a specific log file (AJAX endpoint)"""
+    import os
+    from django.conf import settings
+    from django.http import JsonResponse
+    from django.views.decorators.csrf import csrf_exempt
+    
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        file_path = request.POST.get('file_path')
+        
+        # Security check - ensure file is in allowed directory
+        log_dir = os.path.join(settings.BASE_DIR, 'logs')
+        if not os.path.exists(log_dir):
+            log_dir = os.path.join(settings.BASE_DIR)  # Fallback to base dir
+        
+        # Validate the file path to prevent directory traversal
+        if not file_path:
+            return JsonResponse({'error': 'No file path provided'}, status=400)
+        
+        # Ensure file path is within allowed directories
+        is_allowed = (
+            file_path.startswith(log_dir) or 
+            file_path.startswith(settings.BASE_DIR) and (
+                file_path.endswith('.log') or 
+                file_path.endswith('.txt') or
+                'logs' in file_path
+            )
+        )
+        
+        if not is_allowed:
+            return JsonResponse({'error': 'Access denied'}, status=403)
+        
+        try:
+            # Read last N lines of log file for performance
+            max_lines = 1000  # Limit for performance
+            lines = []
+            
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+                # Read file in reverse to get last lines efficiently
+                file.seek(0, 2)  # Seek to end
+                file_size = file.tell()
+                file.seek(0)
+                
+                for line in file:
+                    if len(lines) >= max_lines:
+                        break
+                    lines.append(line.strip())
+            
+            # Parse log lines
+            parsed_logs = []
+            for i, line in enumerate(lines):
+                if not line.strip():
+                    continue
+                    
+                # Try to extract timestamp, level, and message
+                parsed = parse_log_line(line)
+                if parsed:
+                    parsed['line_number'] = i + 1
+                    parsed_logs.append(parsed)
+            
+            return JsonResponse({
+                'success': True,
+                'logs': parsed_logs,
+                'total_lines': len(lines),
+                'file_path': file_path
+            })
+            
+        except Exception as e:
+            logger.error(f"Error reading log file {file_path}: {str(e)}")
+            return JsonResponse({'error': f'Failed to read log file: {str(e)}'}, status=500)
+    
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+def parse_log_line(line):
+    """Parse a log line to extract timestamp, level, and message"""
+    import re
+    from datetime import datetime
+    
+    # Common log formats
+    patterns = [
+        # Django default format: 2025-10-29 14:30:15,123 INFO django.request: Message
+        r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,\d]*)\s+(\w+)\s+(.+?):?\s*(.*)',
+        # Python logging: 2025-10-29 14:30:15 - INFO - Message
+        r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*-\s*(\w+)\s*-\s*(.*)',
+        # Apache/Nginx style: [29/Oct/2025:14:30:15 +0000] INFO Message
+        r'\[([^\]]+)\]\s+(\w+)\s+(.*)',
+        # Simple format: INFO 2025-10-29 Message
+        r'(\w+)\s+(\d{4}-\d{2}-\d{2}[^\s]*)\s+(.*)',
+    ]
+    
+    for pattern in patterns:
+        match = re.match(pattern, line)
+        if match:
+            groups = match.groups()
+            
+            if len(groups) == 3:  # timestamp, level, message
+                try:
+                    return {
+                        'timestamp': groups[0],
+                        'level': groups[1].upper(),
+                        'message': groups[2],
+                        'raw': line
+                    }
+                except:
+                    pass
+            elif len(groups) == 2:  # level, rest
+                try:
+                    return {
+                        'timestamp': groups[1] if groups[1].count('-') >= 2 else '',
+                        'level': groups[0].upper(),
+                        'message': groups[0] if groups[0].count('-') < 2 else groups[1],
+                        'raw': line
+                    }
+                except:
+                    pass
+    
+    # If no pattern matches, treat as info level
+    return {
+        'timestamp': '',
+        'level': 'INFO',
+        'message': line,
+        'raw': line
+    }

@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-heartbeat"></i> System Diagnostics
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if diagnostics %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-info"><i class="fas fa-desktop"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">System</span>
+                                        <span class="info-box-number">{{ diagnostics.system }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-warning"><i class="fas fa-microchip"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">CPU Usage</span>
+                                        <span class="info-box-number">{{ diagnostics.cpu_percent }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-success"><i class="fas fa-memory"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Memory Usage</span>
+                                        <span class="info-box-number">{{ diagnostics.memory.percent }}%</span>
+                                        <small>{{ diagnostics.memory.used|filesizeformat }} / {{ diagnostics.memory.total|filesizeformat }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-danger"><i class="fas fa-hdd"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Disk Usage</span>
+                                        <span class="info-box-number">{{ diagnostics.disk.percent }}%</span>
+                                        <small>{{ diagnostics.disk.used|filesizeformat }} / {{ diagnostics.disk.total|filesizeformat }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>System Information</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-bordered">
+                                            <tr>
+                                                <th>Platform</th>
+                                                <td>{{ diagnostics.platform }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Python Version</th>
+                                                <td>{{ diagnostics.python_version }}</td>
+                                            </tr>
+                                            {% if diagnostics.error %}
+                                            <tr>
+                                                <th>Error</th>
+                                                <td class="text-danger">{{ diagnostics.error }}</td>
+                                            </tr>
+                                            {% endif %}
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            No diagnostic data available.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

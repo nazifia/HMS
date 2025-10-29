@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Security Audit{% endblock %}
+
+{% block extra_css %}
+<style>
+    .security-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .security-log {
+        border-left: 4px solid;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0 0.25rem 0.25rem 0;
+    }
+    
+    .security-log.login {
+        border-left-color: #28a745;
+    }
+    
+    .security-log.logout {
+        border-left-color: #17a2b8;
+    }
+    
+    .security-log.failed {
+        border-left-color: #dc3545;
+    }
+    
+    .security-log.password {
+        border-left-color: #ffc107;
+    }
+    
+    .security-log.permission {
+        border-left-color: #6f42c1;
+    }
+    
+    .timestamp {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .user-info {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .action-text {
+        margin-top: 0.25rem;
+    }
+    
+    .alert-high {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+    }
+    
+    .alert-medium {
+        border-left-color: #ffc107;
+        background-color: #fff3cd;
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-shield-alt text-primary mr-2"></i>
+            Security Audit
+        </h1>
+        <div>
+            <button onclick="location.reload()" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Security Statistics -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Security Events
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ security_logs.count }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Failed Logins
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ failed_logins.count }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Successful Logins
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ successful_logins }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-sign-in-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Password Changes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ password_changes }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-key fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Security Events -->
+        <div class="col-lg-8">
+            <div class="security-card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-history mr-2"></i>
+                        Recent Security Events
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if security_logs %}
+                        {% for log in security_logs %}
+                            <div class="security-log 
+                                {% if 'failed' in log.action_type %}failed
+                                {% elif 'login' in log.action_type %}login
+                                {% elif 'logout' in log.action_type %}logout
+                                {% elif 'password' in log.action_type %}password
+                                {% elif 'permission' in log.action_type %}permission
+                                {% endif %}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="user-info">
+                                            {% if log.user %}
+                                                {{ log.user.username }}
+                                                {% if log.user.get_full_name %}
+                                                    ({{ log.user.get_full_name }})
+                                                {% endif %}
+                                            {% else %}
+                                                Anonymous User
+                                            {% endif %}
+                                        </div>
+                                        <div class="action-text">
+                                            <strong>{{ log.action_type|title }}</strong>
+                                            {% if log.description %}
+                                                - {{ log.description }}
+                                            {% endif %}
+                                        </div>
+                                        {% if log.ip_address %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-map-marker-alt mr-1"></i>
+                                                IP: {{ log.ip_address }}
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="timestamp text-right">
+                                        <small>{{ log.timestamp|date:"M d, Y H:i:s" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            No security events found in the system.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Failed Login Attempts -->
+        <div class="col-lg-4">
+            <div class="security-card">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Failed Login Attempts
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if failed_logins %}
+                        {% for log in failed_logins %}
+                            <div class="security-log failed">
+                                <div class="user-info">
+                                    {% if log.user %}
+                                        {{ log.user.username }}
+                                    {% else %}
+                                        {{ log.details|default:"Unknown User" }}
+                                    {% endif %}
+                                </div>
+                                <div class="timestamp">
+                                    {{ log.timestamp|date:"M d, Y H:i:s" }}
+                                </div>
+                                {% if log.ip_address %}
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>
+                                        IP: {{ log.ip_address }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            No failed login attempts detected.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh every 30 seconds for real-time monitoring
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
+
+    // Highlight recent critical events
+    document.addEventListener('DOMContentLoaded', function() {
+        const failedLogs = document.querySelectorAll('.security-log.failed');
+        failedLogs.forEach(function(log) {
+            const timestamp = log.querySelector('.timestamp');
+            if (timestamp) {
+                const timeElement = timestamp.querySelector('small');
+                if (timeElement) {
+                    const logTime = new Date(timeElement.textContent);
+                    const now = new Date();
+                    const diffMinutes = (now - logTime) / (1000 * 60);
+                    
+                    if (diffMinutes < 10) {
+                        log.classList.add('alert-high');
+                        log.style.animation = 'pulse 2s infinite';
+                    }
+                }
+            }
+        });
+    });
+
+    // Add pulse animation for critical alerts
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+{% endblock %}

@@ -86,10 +86,16 @@ urlpatterns = [
     path('superuser/database-management/', views.superuser_database_management, name='superuser_database_management'),
     path('superuser/security-audit/', views.superuser_security_audit, name='superuser_security_audit'),
     path('superuser/backup-restore/', views.superuser_backup_restore, name='superuser_backup_restore'),
+    path('superuser/create-backup/', views.create_backup, name='create_backup'),
+    path('superuser/restore-backup/', views.restore_backup, name='restore_backup'),
+    path('superuser/backup-list/', views.backup_list, name='backup_list'),
+    path('superuser/delete-backup/<str:backup_name>/', views.delete_backup, name='delete_backup'),
+    path('superuser/download-backup/<str:backup_name>/', views.download_backup, name='download_backup'),
     path('superuser/system-diagnostics/', views.superuser_system_diagnostics, name='superuser_system_diagnostics'),
     path('superuser/mass-email/', views.superuser_mass_email, name='superuser_mass_email'),
     path('superuser/api-management/', views.superuser_api_management, name='superuser_api_management'),
     path('superuser/logs-viewer/', views.superuser_logs_viewer, name='superuser_logs_viewer'),
+    path('superuser/read-log-file/', views.superuser_read_log_file, name='superuser_read_log_file'),
 ]
 
 # Activity Monitoring URLs

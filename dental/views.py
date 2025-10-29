@@ -96,9 +96,27 @@ def dental_dashboard(request):
     # Categorize referrals
     categorized_referrals = categorize_referrals(user_department)
 
+    # Get chart data from build_enhanced_dashboard_context
+    # Ensure we have the chart data needed by template
+    if 'daily_trend' not in context:
+        context['daily_trend'] = {
+            'labels': json.dumps(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
+            'data': json.dumps([0, 0, 0, 0, 0, 0, 0])
+        }
+    
+    if 'status_distribution' not in context:
+        context['status_distribution'] = {
+            'labels': json.dumps(['Planned', 'In Progress', 'Completed']),
+            'data': json.dumps([planned_treatments, in_progress_treatments, completed_treatments]),
+            'colors': json.dumps(['#6c757d', '#17a2b8', '#28a745'])
+        }
+
     # Add to context
     context.update({
-        'planned_treatments': planned_treatments,
+        'total_records': DentalRecord.objects.count(),
+        'records_today': DentalRecord.objects.filter(created_at__date=today).count(),
+        'records_this_week': DentalRecord.objects.filter(created_at__date__gte=today - timedelta(days=7)).count(),
+        'pending_treatments': planned_treatments,
         'in_progress_treatments': in_progress_treatments,
         'completed_treatments': completed_treatments,
         'completed_today': completed_today,
@@ -109,6 +127,9 @@ def dental_dashboard(request):
         'procedure_counts': json.dumps(procedure_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
+        'pending_referrals': categorized_referrals['ready_to_accept'] + categorized_referrals['awaiting_authorization'],
+        'pending_referrals_count': len(categorized_referrals['ready_to_accept'] + categorized_referrals['awaiting_authorization']),
+        'pending_authorizations': len(categorized_referrals['awaiting_authorization']),
     })
 
     return render(request, 'dental/dashboard.html', context)

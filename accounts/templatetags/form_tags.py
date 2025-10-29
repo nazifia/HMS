@@ -11,3 +11,13 @@ def add_class(field, css_class):
     if hasattr(field, 'as_widget'):
         return field.as_widget(attrs={**field.field.widget.attrs, 'class': css_class})
     return field
+
+@register.filter(name='split')
+def split_string(value, delimiter='/'):
+    """
+    Splits a string by a delimiter and returns a list.
+    Usage: {{ file|split:'/'|last }}
+    """
+    if not value:
+        return []
+    return str(value).split(delimiter)

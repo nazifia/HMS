@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}System Configuration{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-section {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .config-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .config-item:last-child {
+        border-bottom: none;
+    }
+    
+    .config-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .config-value {
+        font-family: monospace;
+        background: #f8f9fa;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        max-width: 60%;
+        overflow-x: auto;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .status-active {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .app-list {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        background: #f8f9fa;
+    }
+    
+    .middleware-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        background: #f8f9fa;
+    }
+    
+    .middleware-item {
+        padding: 0.25rem 0;
+        font-family: monospace;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">System Configuration</h2>
+        </div>
+    </div>
+
+    <!-- Basic Settings -->
+    <div class="config-section">
+        <h4 class="mb-4">Basic Settings</h4>
+        
+        <div class="config-item">
+            <span class="config-label">Debug Mode</span>
+            <span class="config-value">
+                <span class="status-badge {% if system_info.debug_mode %}status-active{% else %}status-inactive{% endif %}">
+                    {% if system_info.debug_mode %}ON{% else %}OFF{% endif %}
+                </span>
+            </span>
+        </div>
+        
+        <div class="config-item">
+            <span class="config-label">Database Engine</span>
+            <span class="config-value">{{ system_info.database_engine }}</span>
+        </div>
+        
+        <div class="config-item">
+            <span class="config-label">Static URL</span>
+            <span class="config-value">{{ system_info.static_url }}</span>
+        </div>
+        
+        <div class="config-item">
+            <span class="config-label">Media URL</span>
+            <span class="config-value">{{ system_info.media_url }}</span>
+        </div>
+    </div>
+
+    <!-- Installed Apps -->
+    <div class="config-section">
+        <h4 class="mb-4">Installed Applications ({{ system_info.installed_apps|length }})</h4>
+        <div class="app-list">
+            {% for app in system_info.installed_apps %}
+                <div class="config-item">
+                    <span>{{ app }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Middleware -->
+    <div class="config-section">
+        <h4 class="mb-4">Middleware Stack ({{ system_info.middleware|length }})</h4>
+        <div class="middleware-list">
+            {% for middleware in system_info.middleware %}
+                <div class="middleware-item">{{ middleware }}</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="config-section">
+        <h4 class="mb-4">System Actions</h4>
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'accounts:superuser_database_management' %}" class="btn btn-primary btn-block">
+                    <i class="fas fa-database me-2"></i>Database Management
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'accounts:superuser_security_audit' %}" class="btn btn-warning btn-block">
+                    <i class="fas fa-shield-alt me-2"></i>Security Audit
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'accounts:superuser_backup_restore' %}" class="btn btn-info btn-block">
+                    <i class="fas fa-download me-2"></i>Backup & Restore
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'accounts:superuser_system_diagnostics' %}" class="btn btn-secondary btn-block">
+                    <i class="fas fa-stethoscope me-2"></i>System Diagnostics
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
