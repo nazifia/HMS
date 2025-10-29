@@ -817,12 +817,14 @@
                 // We're on the admin page, check if the admin function exists
                 // The admin page defines its own showUserManagementModal which will override this
                 console.log('Admin modal found, using admin page functionality');
+                // Show a user management modal or redirect to user management
+                window.location.href = '/core/admin/user-management/';
                 return;
             }
 
             // Not on admin page, redirect to admin page
             console.log('Redirecting to admin page for user management');
-            window.location.href = '/core/admin/?openUserModal=true';
+            window.location.href = '/core/admin/user-management/';
         }
 
         function loadUsersData() {
@@ -842,13 +844,16 @@
                 if (typeof showAddUserForm === 'function') {
                     showUserManagementModal();
                     setTimeout(() => showAddUserForm(), 300);
+                } else {
+                    // Fallback to user management page
+                    window.location.href = '/core/admin/user-management/';
                 }
                 return;
             }
 
             // Not on admin page, redirect to admin page
             console.log('Redirecting to admin page to create user');
-            window.location.href = '/core/admin/?openUserModal=true&action=create';
+            window.location.href = '/core/admin/user-management/';
         }
 
         function createNewUser() {

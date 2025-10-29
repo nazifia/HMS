@@ -1,7 +1,7 @@
 {% extends 'enhanced_base.html' %}
 {% load core_tags %}
 
-{% block title %}TESTING 12345 - Admin Dashboard{% endblock %}
+{% block title %}Admin Dashboard - Settings Fixed{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -469,6 +469,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
         });
+        
+        // Check URL parameters for modal opening
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('openUserModal') === 'true') {
+            // Prevent default redirect and show appropriate modal
+            console.log('User modal requested from URL');
+            // Since this is the admin dashboard, we can handle user management here
+            setTimeout(() => {
+                if (typeof showUserManagementModal === 'function') {
+                    showUserManagementModal();
+                } else {
+                    console.warn('showUserManagementModal function not found');
+                    // Fallback: show alert for settings
+                    alert('Settings functionality is being redirected to user profile');
+                    window.location.href = '/accounts/profile/edit/';
+                }
+            }, 500);
+        }
     
     // Check if Chart is available
     if (typeof Chart === 'undefined') {
@@ -613,7 +631,23 @@ let userModalInstance = null;
 let currentEditingUser = null;
 
 function openSystemSettingsModal() {
-    alert('System Settings functionality to be implemented');
+    // Redirect to user profile edit page which serves as settings
+    window.location.href = '/accounts/profile/edit/';
+}
+
+function showUserManagementModal() {
+    // Redirect to user management page
+    window.location.href = '/core/admin/user-management/';
+}
+
+function showCreateUserModal() {
+    // Redirect to user management page with create intent
+    window.location.href = '/core/admin/user-management/';
+}
+
+function showEditUserModal(userId) {
+    // Redirect to user management page with edit intent
+    window.location.href = `/core/admin/user-management/?edit=${userId}`;
 }
 
 // Helper function to get CSRF token
@@ -632,9 +666,7 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Check URL parameters on page load to auto-open modal
-document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
+
 
 
 

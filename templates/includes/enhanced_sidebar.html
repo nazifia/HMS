@@ -388,10 +388,10 @@
                 <!-- Settings & System -->
                 {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
                 <li class="nav-item">
-                    <a class="nav-link nav-link-sidebar" href="#" data-bs-toggle="collapse" data-bs-target="#settingsMenu">
+                    <a class="nav-link nav-link-sidebar" href="#" onclick="toggleSettingsMenu(event); return false;">
                         <i class="fas fa-cog sidebar-icon"></i>
                         <span class="sidebar-text">Settings</span>
-                        <i class="fas fa-chevron-down ms-auto sidebar-arrow"></i>
+                        <i class="fas fa-chevron-down ms-auto sidebar-arrow" id="settingsArrow"></i>
                     </a>
                     <div class="collapse" id="settingsMenu">
                         <ul class="nav nav-pills flex-column ms-3">
@@ -724,6 +724,16 @@
     transition-timing-function: ease-in-out;
     transition-duration: 0.2s;
 }
+
+/* Settings menu specific styles */
+#settingsMenu.show {
+    display: block !important;
+}
+
+.sidebar-arrow.fa-chevron-up {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
 </style>
 
 <script>
@@ -741,6 +751,47 @@ function toggleSidebar() {
     } else {
         mainContent.style.marginLeft = '280px';
         localStorage.setItem('sidebarCollapsed', 'false');
+    }
+}
+
+// Settings menu toggle
+function toggleSettingsMenu(event) {
+    event.preventDefault();
+    const settingsMenu = document.getElementById('settingsMenu');
+    const settingsArrow = document.getElementById('settingsArrow');
+    
+    if (settingsMenu) {
+        const isShowing = settingsMenu.classList.contains('show');
+        
+        // Close all other menus first
+        document.querySelectorAll('.collapse.show').forEach(menu => {
+            if (menu.id !== 'settingsMenu') {
+                menu.classList.remove('show');
+            }
+        });
+        
+        // Reset all arrows
+        document.querySelectorAll('.sidebar-arrow').forEach(arrow => {
+            if (arrow.id !== 'settingsArrow') {
+                arrow.classList.remove('fa-chevron-up');
+                arrow.classList.add('fa-chevron-down');
+            }
+        });
+        
+        // Toggle current menu
+        if (!isShowing) {
+            settingsMenu.classList.add('show');
+            if (settingsArrow) {
+                settingsArrow.classList.remove('fa-chevron-down');
+                settingsArrow.classList.add('fa-chevron-up');
+            }
+        } else {
+            settingsMenu.classList.remove('show');
+            if (settingsArrow) {
+                settingsArrow.classList.remove('fa-chevron-up');
+                settingsArrow.classList.add('fa-chevron-down');
+            }
+        }
     }
 }
 
