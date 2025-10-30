@@ -1055,6 +1055,37 @@
                 console.warn('Suppressed H.match error:', e.error);
                 return false;
             }
+            
+            // Suppress undefined object errors
+            if (e.error && e.error.message && e.error.message.includes('undefined is not an object')) {
+                e.preventDefault();
+                console.warn('Suppressed undefined object error:', e.error);
+                return false;
+            }
+            
+            // Suppress other common library errors
+            if (e.error && (
+                e.error.message.includes('Cannot read property') ||
+                e.error.message.includes('Cannot access property') ||
+                e.error.message.includes('null is not an object') ||
+                e.error.message.includes('is not a function')
+            )) {
+                e.preventDefault();
+                console.warn('Suppressed library error:', e.error);
+                return false;
+            }
+        });
+
+        // Additional error handler for unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && e.reason.message && (
+                e.reason.message.includes('H.match') ||
+                e.reason.message.includes('undefined is not an object')
+            )) {
+                e.preventDefault();
+                console.warn('Suppressed promise rejection error:', e.reason);
+                return false;
+            }
         });
 
         // HTMX Configuration

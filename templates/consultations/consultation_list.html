@@ -206,17 +206,26 @@
                                     <td>
                                         {% if entry.status == 'waiting' and entry.doctor == request.user %}
                                             <a href="{% url 'consultations:start_consultation' entry.id %}" 
-                                               class="btn btn-sm btn-primary">
+                                               class="btn btn-sm btn-primary"
+                                               title="Start consultation with this patient">
                                                 <i class="fas fa-play"></i> Start
                                             </a>
                                         {% elif entry.status == 'in_progress' %}
-                                            <a href="{% if entry.consultation %}{% url 'consultations:doctor_consultation' entry.consultation.id %}{% endif %}" 
-                                               class="btn btn-sm btn-info">
-                                                <i class="fas fa-stethoscope"></i> Continue
-                                            </a>
+                                            {% if entry.consultation %}
+                                                <a href="{% url 'consultations:doctor_consultation' entry.consultation.id %}" 
+                                                   class="btn btn-sm btn-info">
+                                                    <i class="fas fa-stethoscope"></i> Continue
+                                                </a>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-info" disabled
+                                                        title="No consultation record found">
+                                                    <i class="fas fa-stethoscope"></i> Continue
+                                                </button>
+                                            {% endif %}
                                         {% endif %}
                                         <button class="btn btn-sm btn-outline-secondary" 
-                                                onclick="showPatientDetails('{{ entry.patient.id }}')">
+                                                onclick="showPatientDetails('{{ entry.patient.id }}')"
+                                                title="View Patient Details">
                                             <i class="fas fa-user"></i>
                                         </button>
                                     </td>
@@ -601,6 +610,12 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+    // Check if DataTable is available before using it
+    if (typeof $.fn.DataTable === 'undefined') {
+        console.warn('DataTable library not loaded, skipping table initialization');
+        return;
+    }
+    
     // Initialize DataTable
     var table = $('#consultationsTable').DataTable({
         responsive: true,
@@ -628,24 +643,36 @@ $(document).ready(function() {
 
     // Custom search functionality
     $('#searchPatient').on('keyup', function() {
-        table.column(0).search(this.value).draw();
+        if (typeof table !== 'undefined' && table) {
+            table.column(0).search(this.value).draw();
+        }
     });
 
     $('#filterStatus').on('change', function() {
-        table.column(2).search(this.value).draw();
+        if (typeof table !== 'undefined' && table) {
+            table.column(2).search(this.value).draw();
+        }
     });
 
     $('#filterDepartment').on('change', function() {
-        table.column(4).search(this.value).draw();
+        if (typeof table !== 'undefined' && table) {
+            table.column(4).search(this.value).draw();
+        }
     });
 
     $('#filterDate').on('change', function() {
-        table.column(1).search(this.value).draw();
+        if (typeof table !== 'undefined' && table) {
+            table.column(1).search(this.value).draw();
+        }
     });
 });
 
 function applyFilters() {
-    table.draw();
+    if (typeof table !== 'undefined' && table) {
+        table.draw();
+    } else {
+        location.reload();
+    }
 }
 
 function refreshTable() {
@@ -982,5 +1009,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(meta);
     }
 });
+
+// Function to show patient details
+function showPatientDetails(patientId) {
+    // Redirect to patient detail page or open modal
+    window.location.href = `/patients/${patientId}/`;
+}
+
+// Function to view consultation details
+function viewConsultation(consultationId) {
+    window.location.href = `/consultations/doctor/consultations/${consultationId}/`;
+}
 </script>
 {% endblock %}

@@ -233,6 +233,15 @@
                     <div class="card-header bg-light">
                         <h5 class="mb-0">Dispense Medications</h5>
                     </div>
+                    <div class="card-body bg-info bg-opacity-10 border-start border-4 border-info mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-info-circle text-info me-3 mt-1"></i>
+                            <div class="small">
+                                <strong>Flexible Dispensing:</strong> Pharmacy staff can now dispense any quantity up to available stock. 
+                                The system only validates against stock levels, not prescribed quantities, giving you full control over dispensing decisions.
+                            </div>
+                        </div>
+                    </div>
                     <div class="card-body">
                         <form method="post" id="dispenseForm">
                             {% csrf_token %}
@@ -280,8 +289,7 @@
                                             </th>
                                             <th>Medication</th>
                                             <th>Prescribed Qty</th>
-                                            <th>Remaining Qty</th>
-                                            <th>Stock</th>
+                                            <th>Available Stock</th>
                                             <th>Unit Price</th>
                                             <th>Qty to Dispense</th>
                                             <th>Status</th>
@@ -313,33 +321,38 @@
                                                 <td>
                                                     <strong>{{ item.medication.name }}</strong> ({{ item.medication.strength }})
                                                     <div class="small text-muted">{{ item.medication.dosage_form }}</div>
-                                                </td>
-                                                <td><strong>{{ item.quantity }}</strong> units</td>
-                                                <td>
-                                                    {% if item.is_dispensed %}
-                                                        <span class="badge bg-success">0</span>
-                                                    {% else %}
-                                                        <strong class="text-primary">{{ item.remaining_quantity_to_dispense }}</strong> units
+                                                    {% if item.quantity_dispensed_so_far > 0 %}
+                                                        <div class="small text-info mt-1">
+                                                            <i class="fas fa-info-circle"></i> Previously dispensed: {{ item.quantity_dispensed_so_far }} units
+                                                        </div>
                                                     {% endif %}
                                                 </td>
+                                                <td><strong>{{ item.quantity }}</strong> units</td>
                                                 <td class="text-center">
                     {% if selected_dispensary %}
                         {% if form.stock_quantity_display.value %}
-                            <div class="d-flex align-items-center justify-content-center">
-                                <span class="badge badge-{% if form.stock_quantity_display.value|add:0 > 10 %}success{% elif form.stock_quantity_display.value|add:0 > 0 %}warning{% else %}danger{% endif %} mr-2">
-                                    {{ form.stock_quantity_display.value }} units
-                                </span>
-                                {% if form.stock_quantity_display.value|add:0 <= 10 %}
-                                    <button type="button" class="btn btn-sm btn-outline-primary add-stock-btn" 
-                                            data-medication-id="{{ item.medication.id }}" 
-                                            data-medication-name="{{ item.medication.name }}" 
-                                            data-dispensary-id="{{ selected_dispensary.id }}" 
-                                            data-dispensary-name="{{ selected_dispensary.name }}" 
-                                            title="Add stock for this medication">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
+                            {% with stock_qty=form.stock_quantity_display.value|add:0 %}
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <span class="badge badge-{% if stock_qty > 20 %}success{% elif stock_qty > 0 %}warning{% else %}danger{% endif %} mr-2">
+                                        {{ stock_qty }} units
+                                    </span>
+                                    {% if stock_qty <= 20 %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary add-stock-btn" 
+                                                data-medication-id="{{ item.medication.id }}" 
+                                                data-medication-name="{{ item.medication.name }}" 
+                                                data-dispensary-id="{{ selected_dispensary.id }}" 
+                                                data-dispensary-name="{{ selected_dispensary.name }}" 
+                                                title="Add stock for this medication">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                                {% if stock_qty == 0 %}
+                                    <div class="small text-danger mt-1">Out of stock</div>
+                                {% elif stock_qty < 10 %}
+                                    <div class="small text-warning mt-1">Low stock</div>
                                 {% endif %}
-                            </div>
+                            {% endwith %}
                         {% else %}
                             <div class="d-flex align-items-center justify-content-center">
                                 <span class="badge badge-secondary mr-2">No stock data</span>
@@ -362,6 +375,11 @@
                                                     {{ form.quantity_to_dispense|add_class:"form-control form-control-sm quantity-input" }}
                                                     {% if form.quantity_to_dispense.errors %}
                                                         <div class="text-danger small">{{ form.quantity_to_dispense.errors|join:", " }}</div>
+                                                    {% endif %}
+                                                    {% if selected_dispensary and form.stock_quantity_display.value %}
+                                                        <div class="small text-muted mt-1">
+                                                            <i class="fas fa-info-circle"></i> Max available: {{ form.stock_quantity_display.value }} units
+                                                        </div>
                                                     {% endif %}
                                                 </td>
                                                 <td>
@@ -408,7 +426,7 @@
                                             {% endwith %}
                                         {% empty %}
                                             <tr>
-                                                <td colspan="{% if is_nhia_patient %}11{% else %}9{% endif %}" class="text-center text-muted">
+                                                <td colspan="{% if is_nhia_patient %}10{% else %}8{% endif %}" class="text-center text-muted">
                                                     {% if prescription.status == 'completed' %}
                                                         All medications in this prescription have been dispensed.
                                                     {% else %}
@@ -421,8 +439,8 @@
                                     <tfoot class="table-light">
                                         {% if is_nhia_patient %}
                                         <tr class="fw-bold">
-                                            <td colspan="8" class="text-end">TOTAL:</td>
-                                            <td class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td colspan="7" class="text-end">TOTAL:</td>
+                                            <td id="overall-total-price" class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
                                             <td class="text-end bg-warning bg-opacity-10">
                                                 <span class="text-warning">₦{{ total_patient_pays|floatformat:2 }}</span>
                                             </td>
@@ -432,8 +450,8 @@
                                         </tr>
                                         {% else %}
                                         <tr class="fw-bold">
-                                            <td colspan="8" class="text-end">TOTAL:</td>
-                                            <td class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td colspan="7" class="text-end">TOTAL:</td>
+                                            <td id="overall-total-price" class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
                                         </tr>
                                         {% endif %}
                                     </tfoot>
@@ -521,7 +539,8 @@
         stockData.forEach(item => {
             const row = document.querySelector(`tr[data-item-id="${item.prescription_item_id}"]`);
             if (row) {
-                const stockCell = row.querySelector('.stock-status');
+                // Find the stock column (5th column in the table)
+                const stockCell = row.querySelector('td:nth-child(5)');
                 const dispenseCheckbox = row.querySelector('.dispense-checkbox');
                 const quantityInput = row.querySelector('.quantity-input');
                 const addStockBtn = row.querySelector('.add-stock-btn');
@@ -597,8 +616,12 @@
 
     // Function to clear stock quantities
     function clearStockQuantities() {
-        document.querySelectorAll('.stock-status').forEach(cell => {
-            cell.innerHTML = '<span class="badge bg-secondary">Select Dispensary</span>';
+        // Update the stock column (5th column) in each row
+        document.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
+            const stockCell = row.querySelector('td:nth-child(5)');
+            if (stockCell) {
+                stockCell.innerHTML = '<span class="badge bg-secondary">Select Dispensary</span>';
+            }
         });
 
         document.querySelectorAll('.dispense-checkbox').forEach(checkbox => {
@@ -620,8 +643,12 @@
 
     // Loading indicator functions
     function showLoadingIndicator() {
-        document.querySelectorAll('.stock-status').forEach(cell => {
-            cell.innerHTML = '<span class="badge bg-info"><i class="fas fa-spinner fa-spin"></i> Loading...</span>';
+        // Update the stock column (5th column) in each row
+        document.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
+            const stockCell = row.querySelector('td:nth-child(5)');
+            if (stockCell) {
+                stockCell.innerHTML = '<span class="badge bg-info"><i class="fas fa-spinner fa-spin"></i> Loading...</span>';
+            }
         });
     }
 
@@ -674,13 +701,11 @@
                 if (quantityInput && !target.disabled) {
                     quantityInput.disabled = !target.checked;
                     if (target.checked && (!quantityInput.value || quantityInput.value == '0')) {
-                        // Auto-fill with prescribed quantity if empty or zero
-                        const prescribedQty = row.querySelector('td:nth-child(3)')?.textContent.trim();
-                        if (prescribedQty && !isNaN(parseInt(prescribedQty))) {
-                            quantityInput.value = parseInt(prescribedQty);
-                        } else {
-                            quantityInput.value = 1;
-                        }
+                        // Set quantity to 1 as default, let user decide the actual quantity
+                        quantityInput.value = 1;
+                        // Focus the quantity input for easy editing
+                        quantityInput.focus();
+                        quantityInput.select();
                     }
                 }
                 updateTotals();

@@ -2329,7 +2329,7 @@ def dispense_prescription(request, prescription_id):
                     medication = prescription_item.medication
 
                     # Prevent redispensing items that are already fully dispensed
-                    if prescription_item.is_dispensed or prescription_item.remaining_quantity_to_dispense <= 0:
+                    if prescription_item.is_dispensed:
                         # Collect for a single warning later
                         skipped_items.append(prescription_item)
                         continue
@@ -2337,10 +2337,6 @@ def dispense_prescription(request, prescription_id):
                     # Validate quantity
                     if qty <= 0:
                         messages.error(request, f'Quantity for {medication.name} must be greater than zero.')
-                        continue
-
-                    if qty > prescription_item.remaining_quantity_to_dispense:
-                        messages.error(request, f'Cannot dispense more than remaining quantity ({prescription_item.remaining_quantity_to_dispense} units) for {medication.name}.')
                         continue
 
                     # Check inventory in the selected dispensary
@@ -4188,9 +4184,62 @@ def add_medication_stock(request):
     pass
 @login_required
 def quick_add_stock(request):
-    """View for quick adding stock"""
-    # Implementation for quick adding stock
-    pass
+    """View for quick adding stock via AJAX"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        medication_id = data.get('medication_id')
+        dispensary_id = data.get('dispensary_id')
+        quantity_to_add = data.get('quantity_to_add')
+        
+        if not all([medication_id, dispensary_id, quantity_to_add]):
+            return JsonResponse({'success': False, 'error': 'Missing required fields'})
+            
+        if quantity_to_add <= 0:
+            return JsonResponse({'success': False, 'error': 'Quantity must be greater than 0'})
+        
+        # Get medication and dispensary
+        medication = get_object_or_404(Medication, id=medication_id)
+        dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+        
+        # Check for existing inventory
+        try:
+            # Try MedicationInventory first (legacy)
+            inventory = MedicationInventory.objects.get(
+                medication=medication,
+                dispensary=dispensary
+            )
+            inventory.stock_quantity += quantity_to_add
+            inventory.last_restock_date = timezone.now()
+            inventory.save()
+            
+            return JsonResponse({
+                'success': True,
+                'new_stock_quantity': inventory.stock_quantity,
+                'message': f'Successfully added {quantity_to_add} units to {medication.name}'
+            })
+            
+        except MedicationInventory.DoesNotExist:
+            # Create new inventory record
+            inventory = MedicationInventory.objects.create(
+                medication=medication,
+                dispensary=dispensary,
+                stock_quantity=quantity_to_add,
+                last_restock_date=timezone.now()
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'new_stock_quantity': inventory.stock_quantity,
+                'message': f'Successfully added {quantity_to_add} units to {medication.name}'
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 
 @login_required

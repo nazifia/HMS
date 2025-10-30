@@ -272,12 +272,12 @@ class DispenseItemForm(forms.Form):
     item_id = forms.IntegerField(widget=forms.HiddenInput())
     dispense_this_item = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
     quantity_to_dispense = forms.IntegerField(
-        min_value=0,
+        min_value=1,
         required=False,
         widget=forms.NumberInput(attrs={
             'class': 'form-control form-control-sm quantity-input',
             'style': 'width: 80px;',
-            'placeholder': '0'
+            'placeholder': 'Enter quantity'
         })
     )
     dispensary = forms.ModelChoiceField(
@@ -360,16 +360,20 @@ class DispenseItemForm(forms.Form):
                     self.fields['dispense_this_item'].initial = False
                     self.fields['quantity_to_dispense'].initial = 0
             else:
-                # Set initial quantity to remaining quantity, capped by available stock
-                initial_qty_to_dispense = remaining_qty
+                # Set default quantity to 1, let user decide the actual quantity
+                # Only limit by available stock, not by remaining quantity
+                initial_qty_to_dispense = 1
                 if self.selected_dispensary and available_stock > 0:
-                    initial_qty_to_dispense = min(remaining_qty, available_stock)
+                    # Set initial to 1, but allow up to available stock
                     # Don't auto-check the checkbox - let user decide what to dispense
                     # self.fields['dispense_this_item'].initial = True
+                    pass
 
                 self.fields['quantity_to_dispense'].initial = initial_qty_to_dispense
-                self.fields['quantity_to_dispense'].widget.attrs['max'] = min(remaining_qty, available_stock) if self.selected_dispensary else remaining_qty
+                # Only limit by available stock, not remaining quantity
+                self.fields['quantity_to_dispense'].widget.attrs['max'] = available_stock if self.selected_dispensary and available_stock > 0 else None
                 self.fields['quantity_to_dispense'].widget.attrs['min'] = 1
+                self.fields['quantity_to_dispense'].widget.attrs['placeholder'] = 'Enter quantity'
 
             # Set initial value for dispensary field if selected_dispensary is provided
             if self.selected_dispensary:
@@ -408,7 +412,7 @@ class DispenseItemForm(forms.Form):
 
 
         logging.debug(f"DispenseItemForm clean: Item ID {self.prescription_item.id if self.prescription_item else 'None'}")
-        logging.debug(f"  dispense_this_item: {dispense_this_item}, quantity_to_dispense: {quantity_to_dispense}, dispensary: {dispensary}")
+        logging.debug(f"  dispense_this_item: {dispense_this_item}, quantity_to_dispense: {quantity_to_dispense} (type: {type(quantity_to_dispense)}), dispensary: {dispensary}")
         logging.debug(f"  selected_dispensary: {self.selected_dispensary}")
 
         if not self.prescription_item:
@@ -484,12 +488,15 @@ class DispenseItemForm(forms.Form):
             if not effective_dispensary:
                 self.add_error('dispensary', 'Please select a dispensary for this item.')
                 logging.warning(f"  Validation Error: Dispensary not selected for item {self.prescription_item.id}.")
-            if quantity_to_dispense is None or quantity_to_dispense <= 0:
+            
+            # Handle quantity validation more robustly
+            # If quantity is None, 0, or empty string, treat as invalid
+            if quantity_to_dispense is None or quantity_to_dispense == '':
+                self.add_error('quantity_to_dispense', 'Quantity is required when item is selected for dispensing.')
+                logging.warning(f"  Validation Error: Quantity is missing for item {self.prescription_item.id}.")
+            elif quantity_to_dispense <= 0:
                 self.add_error('quantity_to_dispense', 'Quantity must be greater than 0 if selected for dispensing.')
-                logging.warning(f"  Validation Error: Invalid quantity for item {self.prescription_item.id}.")
-            elif quantity_to_dispense > remaining_qty:
-                self.add_error('quantity_to_dispense', f'Cannot dispense more than remaining ({remaining_qty}).')
-                logging.warning(f"  Validation Error: Quantity ({quantity_to_dispense}) > remaining ({remaining_qty}) for item {self.prescription_item.id}.")
+                logging.warning(f"  Validation Error: Invalid quantity ({quantity_to_dispense}) for item {self.prescription_item.id}.")
             elif available_stock is not None and quantity_to_dispense > available_stock:
                 self.add_error('quantity_to_dispense', f'Not enough stock at selected dispensary. Available: {available_stock}.')
                 logging.warning(f"  Validation Error: Quantity ({quantity_to_dispense}) > available stock ({available_stock}) for item {self.prescription_item.id}.")
