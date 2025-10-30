@@ -31,7 +31,13 @@ def create_cart_from_prescription(request, prescription_id):
     # Check if prescription can be dispensed
     can_dispense, message = prescription.can_be_dispensed()
     if not can_dispense:
-        messages.error(request, message)
+        # Enhanced message styling for dispensed prescriptions
+        if prescription.status == 'dispensed':
+            messages.success(request, f'✅ {message} - This prescription has already been fully dispensed.', extra_tags='dispensed-status')
+        elif prescription.status == 'cancelled':
+            messages.warning(request, f'⚠️ {message}', extra_tags='cancelled-status')
+        else:
+            messages.error(request, f'❌ {message}', extra_tags='error-status')
         return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
     
     # Check if there's already an active cart for this prescription
@@ -94,6 +100,12 @@ def view_cart(request, cart_id):
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
     
+    # Auto-update cart status if invoice is paid (handles billing office payments)
+    if cart.invoice and cart.invoice.status == 'paid' and cart.status in ['invoiced', 'active']:
+        cart.status = 'paid'
+        cart.save(update_fields=['status'])
+        messages.info(request, '💳 Cart status updated to "Paid" - payment processed via billing office')
+    
     # Get all dispensaries
     dispensaries = Dispensary.objects.filter(is_active=True)
     
@@ -108,6 +120,11 @@ def view_cart(request, cart_id):
     # Get pricing breakdown
     is_nhia_patient = cart.prescription.patient.is_nhia_patient()
     
+    # Get payment details for billing office payments
+    payment_details = None
+    if cart.invoice and cart.invoice.payments.exists():
+        payment_details = cart.invoice.payments.all().order_by('-payment_date')
+    
     context = {
         'cart': cart,
         'dispensaries': dispensaries,
@@ -117,6 +134,7 @@ def view_cart(request, cart_id):
         'can_checkout': can_checkout,
         'checkout_message': checkout_message,
         'is_nhia_patient': is_nhia_patient,
+        'payment_details': payment_details,
         'page_title': f'Prescription Cart #{cart.id}',
         'active_nav': 'pharmacy',
     }
@@ -271,8 +289,9 @@ def generate_invoice_from_cart(request, cart_id):
             
             messages.success(request, f'Invoice created successfully. Total: ₦{patient_payable:.2f}')
             
-            # Redirect to payment page
-            return redirect('pharmacy:prescription_payment', prescription_id=cart.prescription.id)
+            # Direct to current cart for dispensing workflow
+            messages.info(request, '💊 Invoice created! Redirecting to cart.')
+            return redirect('pharmacy:view_cart', cart_id=cart.id)
     
     except Exception as e:
         messages.error(request, f'Error generating invoice: {str(e)}')

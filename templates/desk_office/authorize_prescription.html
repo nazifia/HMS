@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Authorize Prescription - NHIA Authorization{% endblock %}
+
+{% block extra_css %}
+<style>
+.patient-card {
+    border-left: 4px solid #007bff;
+}
+.prescription-details {
+    background-color: #f8f9fa;
+}
+.nhia-badge {
+    background-color: #17a2b8;
+}
+.auth-form {
+    background-color: #fff;
+}
+.required-field::after {
+    content: " *";
+    color: #dc3545;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-pills"></i> Authorize Prescription
+        </h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'pharmacy:prescription_list' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Prescriptions
+            </a>
+            <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="alert-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Patient Information Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow patient-card">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-user"></i> Patient Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="text-primary">{{ prescription.patient.get_full_name }}</h5>
+                            <p class="mb-1">
+                                <strong>Patient ID:</strong> {{ prescription.patient.patient_id }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Age:</strong> {{ prescription.patient.age }} years | 
+                                <strong>Gender:</strong> {{ prescription.patient.get_gender_display }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Phone:</strong> {{ prescription.patient.phone_number }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Email:</strong> {{ prescription.patient.email|default:"Not provided" }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Address:</strong> {{ prescription.patient.address|default:"Not provided" }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if prescription.patient.patient_type == 'nhia' %}
+                                <span class="badge nhia-badge mb-2">
+                                    <i class="fas fa-shield-alt"></i> NHIA Patient
+                                </span>
+                                {% if prescription.patient.nhia_info %}
+                                    <p class="mb-1">
+                                        <small class="text-muted">NHIA Number:</small><br>
+                                        <strong>{{ prescription.patient.nhia_info.nhia_reg_number|default:"Not registered" }}</strong>
+                                    </p>
+                                    {% if prescription.patient.nhia_info.nhia_plan %}
+                                    <p class="mb-0">
+                                        <small class="text-muted">NHIA Plan:</small><br>
+                                        <strong>{{ prescription.patient.nhia_info.get_nhia_plan_display }}</strong>
+                                    </p>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary mb-2">
+                                    <i class="fas fa-user"></i> Regular Patient
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prescription Details Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-pills"></i> Prescription Details
+                    </h6>
+                </div>
+                <div class="card-body prescription-details">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1">
+                                <strong>Prescription ID:</strong> #{{ prescription.id }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Prescribed by:</strong> {{ prescription.doctor.get_full_name|default:"Not specified" }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Status:</strong> 
+                                <span class="badge badge-warning">{{ prescription.get_status_display }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1">
+                                <strong>Authorization Status:</strong> 
+                                <span class="badge bg-warning">{{ prescription.get_authorization_status_display }}</span>
+                            </p>
+                            <p class="mb-1">
+                                <strong>Dispensing Status:</strong> 
+                                <span class="badge 
+                                    {% if prescription.dispensing_status == 'dispensed' %}bg-success
+                                    {% elif prescription.dispensing_status == 'partial' %}bg-info
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ prescription.get_dispensing_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Prescription Items -->
+                    {% if prescription.items.all %}
+                    <div class="mt-3">
+                        <h6 class="text-primary">Prescription Items</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Strength</th>
+                                        <th>Quantity</th>
+                                        <th>Frequency</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in prescription.items.all %}
+                                    <tr>
+                                        <td>{{ item.medication.name }}</td>
+                                        <td>{{ item.strength|default:"-" }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>{{ item.frequency|default:"-" }}</td>
+                                        <td>{{ item.duration|default:"-" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if prescription.notes %}
+                    <div class="mt-3">
+                        <h6 class="text-primary">Prescription Notes</h6>
+                        <p class="mb-0">{{ prescription.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authorization Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow auth-form">
+                <div class="card-header py-3 bg-warning text-dark">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-check-circle"></i> Authorization Decision
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="authorizationForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="amount" class="form-label required-field">
+                                        Authorization Amount (₦)
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="amount" 
+                                           name="amount" 
+                                           value="0.00"
+                                           step="0.01" 
+                                           min="0" 
+                                           required>
+                                    <small class="form-text text-muted">
+                                        Amount authorized for this prescription
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="expiry_days" class="form-label">
+                                        Validity Period (Days)
+                                    </label>
+                                    <select class="form-select" id="expiry_days" name="expiry_days" required>
+                                        <option value="7">7 days</option>
+                                        <option value="14">14 days</option>
+                                        <option value="30" selected>30 days</option>
+                                        <option value="60">60 days</option>
+                                        <option value="90">90 days</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="code_type" class="form-label">
+                                        Authorization Code Type
+                                    </label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="code_type" id="auto_code" value="auto" checked>
+                                        <label class="form-check-label" for="auto_code">
+                                            Auto-generate authorization code
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="code_type" id="manual_code" value="manual">
+                                        <label class="form-check-label" for="manual_code">
+                                            Enter manual authorization code
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row" id="manual_code_field" style="display: none;">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="manual_code_input" class="form-label">
+                                        Manual Authorization Code
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="manual_code_input" 
+                                           name="manual_code" 
+                                           placeholder="Enter authorization code..."
+                                           maxlength="20">
+                                    <small class="form-text text-muted">
+                                        Enter a unique authorization code manually
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="notes" class="form-label">
+                                        Authorization Notes
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="notes" 
+                                              name="notes" 
+                                              rows="4" 
+                                              placeholder="Enter notes about this authorization decision..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Cancel
+                                </a>
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-info">
+                                    <i class="fas fa-eye"></i> View Prescription
+                                </a>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Authorize Prescription
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-warning text-dark">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'patients:detail' prescription.patient.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-user"></i> View Patient Profile
+                        </a>
+                        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-pills"></i> Full Prescription Details
+                        </a>
+                        {% if prescription.patient.patient_type == 'nhia' %}
+                        <a href="{% url 'desk_office:authorization_code_list' %}?patient_id={{ prescription.patient.id }}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-shield-alt"></i> Patient's Authorization Codes
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Authorizations -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-secondary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-history"></i> Recent Authorizations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-0">No recent authorizations found.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle manual code field based on code type selection
+document.querySelectorAll('input[name="code_type"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        const manualField = document.getElementById('manual_code_field');
+        const manualInput = document.getElementById('manual_code_input');
+        
+        if (this.value === 'manual') {
+            manualField.style.display = 'block';
+            manualInput.required = true;
+        } else {
+            manualField.style.display = 'none';
+            manualInput.required = false;
+            manualInput.value = '';
+        }
+    });
+});
+
+// Form validation
+document.getElementById('authorizationForm').addEventListener('submit', function(e) {
+    const amount = document.getElementById('amount').value;
+    const expiryDays = document.getElementById('expiry_days').value;
+    const codeType = document.querySelector('input[name="code_type"]:checked').value;
+    
+    if (!amount || parseFloat(amount) <= 0) {
+        e.preventDefault();
+        alert('Please enter a valid authorization amount.');
+        document.getElementById('amount').focus();
+        return;
+    }
+    
+    if (!expiryDays) {
+        e.preventDefault();
+        alert('Please select a validity period.');
+        document.getElementById('expiry_days').focus();
+        return;
+    }
+    
+    if (codeType === 'manual') {
+        const manualCode = document.getElementById('manual_code_input').value.trim();
+        if (!manualCode) {
+            e.preventDefault();
+            alert('Please enter a manual authorization code.');
+            document.getElementById('manual_code_input').focus();
+            return;
+        }
+    }
+});
+</script>
+{% endblock %}

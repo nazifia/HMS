@@ -13,6 +13,7 @@ from patients.models import PatientWallet, WalletTransaction
 from .payment_forms import (
     BasePaymentForm, QuickPaymentForm, BulkPaymentForm, PaymentSearchForm, FlexiblePaymentForm
 )
+from .billing_office_integration import BillingOfficePaymentProcessor
 
 
 @login_required
@@ -20,6 +21,7 @@ from .payment_forms import (
 def process_payment(request, invoice_id, module_name='general', template_name=None):
     """
     Universal payment processing view that can be used by all modules
+    Enhanced with billing office integration
     """
     invoice = get_object_or_404(Invoice, id=invoice_id)
     
@@ -30,98 +32,71 @@ def process_payment(request, invoice_id, module_name='general', template_name=No
     )
     
     if request.method == 'POST':
-        form = BasePaymentForm(
-            request.POST,
+        amount = Decimal(request.POST.get('amount', '0'))
+        payment_source = request.POST.get('payment_source', 'billing_office')
+        payment_method = request.POST.get('payment_method', 'cash')
+        transaction_id = request.POST.get('transaction_id', '')
+        notes = request.POST.get('notes', '')
+        
+        # Process payment using billing office integration
+        success, message, payment = BillingOfficePaymentProcessor.process_payment(
+            request=request,
             invoice=invoice,
-            patient_wallet=patient_wallet,
+            amount=amount,
+            payment_source=payment_source,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            notes=notes,
             module_name=module_name
         )
         
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    payment = form.save(commit=False)
-                    payment.invoice = invoice
-                    payment.created_by = request.user
-                    
-                    # Handle payment source
-                    payment_source = form.cleaned_data['payment_source']
-                    
-                    if payment_source == 'patient_wallet':
-                        payment.payment_method = 'wallet'
-                        # Deduct from wallet using the enhanced debit method
-                        patient_wallet.debit(
-                            amount=payment.amount,
-                            description=f"{module_name} payment for invoice #{invoice.invoice_number}",
-                            transaction_type=f"{module_name.lower()}_payment",
-                            user=request.user,
-                            invoice=invoice,
-                            payment_instance=payment
-                        )
-                    
-                    payment.save()
-                    
-                    # Update invoice amount paid
-                    invoice.amount_paid += payment.amount
-                    if invoice.amount_paid >= invoice.total_amount:
-                        invoice.status = 'paid'
-                    elif invoice.amount_paid > 0:
-                        invoice.status = 'partially_paid'
-                    invoice.save()
-                    
-                    # Success message with payment details
-                    payment_method = payment.get_payment_method_display()
-                    source_display = payment_source.replace('_', ' ').title()
-                    
-                    messages.success(
-                        request,
-                        f'Payment of ₦{payment.amount:,.2f} processed successfully via {payment_method} '
-                        f'({source_display}). Invoice balance: ₦{invoice.get_balance():,.2f}'
-                    )
-                    
-                    # Return JSON response for AJAX requests
-                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                        return JsonResponse({
-                            'success': True,
-                            'message': 'Payment processed successfully',
-                            'payment_id': payment.id,
-                            'remaining_balance': float(invoice.get_balance()),
-                            'is_paid': invoice.is_paid()
-                        })
-                    
-                    # Redirect based on module
-                    return redirect_after_payment(invoice, module_name)
-                    
-            except Exception as e:
-                messages.error(request, f'Error processing payment: {str(e)}')
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': False,
-                        'message': str(e)
-                    })
+        if success:
+            messages.success(request, message)
+            
+            # Return JSON response for AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': message,
+                    'payment_id': payment.id,
+                    'remaining_balance': float(invoice.get_balance()),
+                    'is_paid': invoice.is_paid()
+                })
+            
+            # Redirect based on module
+            return redirect_after_payment(invoice, module_name)
+        else:
+            messages.error(request, message)
+            
+            # Return JSON response for AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': message
+                })
     else:
+        # Use the enhanced context from billing office integration
+        context = BillingOfficePaymentProcessor.get_payment_context(
+            request, invoice, module_name
+        )
+        
+        # Add service info and back URL
+        context.update({
+            'service_info': get_service_info(invoice, module_name),
+            'back_url': get_back_url(invoice, module_name),
+        })
+        
+        # Create form for initial rendering
         form = BasePaymentForm(
             invoice=invoice,
-            patient_wallet=patient_wallet,
+            patient_wallet=context['patient_wallet'],
             module_name=module_name,
             initial={
                 'payment_date': timezone.now().date(),
-                'amount': invoice.get_balance()
+                'amount': context['remaining_amount']
             }
         )
-    
-    # Prepare context
-    context = {
-        'form': form,
-        'invoice': invoice,
-        'patient_wallet': patient_wallet,
-        'remaining_balance': invoice.get_balance(),
-        'payments': Payment.objects.filter(invoice=invoice).order_by('-created_at'),
-        'module_name': module_name,
-        'title': f'{module_name} Payment Processing',
-        'service_info': get_service_info(invoice, module_name),
-        'back_url': get_back_url(invoice, module_name),
-    }
+        context['form'] = form
     
     # Use custom template if provided, otherwise use unified template
     template = template_name or 'payments/unified_payment.html'

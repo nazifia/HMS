@@ -72,7 +72,7 @@
                         {% endif %}
                         
                         <div class="col-md-6 mb-3">
-                            <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                            <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor <small class="text-muted">(Optional)</small></label>
                             <!-- Show current user info for readonly doctor field -->
                             {% if current_user %}
                                 <div class="form-control-plaintext border p-2 bg-light">
@@ -87,6 +87,7 @@
                                     {{ form.doctor.errors }}
                                 </div>
                             {% endif %}
+                            <small class="form-text text-muted">Optional: Select a doctor if applicable</small>
                         </div>
                         
                         <div class="col-md-4 mb-3">
@@ -100,7 +101,7 @@
                         </div>
                         
                         <div class="col-md-4 mb-3">
-                            <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis</label>
+                            <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis <small class="text-muted">(Optional)</small></label>
                             {{ form.diagnosis|add_class:"form-control" }}
                             {% if form.diagnosis.errors %}
                                 <div class="text-danger">
@@ -132,13 +133,24 @@
                         </div>
                         
                         <div class="col-md-12 mb-3">
-                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes <small class="text-muted">(Optional)</small></label>
                             {{ form.notes|add_class:"form-control" }}
                             {% if form.notes.errors %}
                                 <div class="text-danger">
                                     {{ form.notes.errors }}
                                 </div>
                             {% endif %}
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">Authorization Code <small class="text-muted">(Optional)</small></label>
+                            {{ form.authorization_code_input|add_class:"form-control" }}
+                            {% if form.authorization_code_input.errors %}
+                                <div class="text-danger">
+                                    {{ form.authorization_code_input.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Required for NHIA patients from non-NHIA consultations</small>
                         </div>
                     </div>
                     

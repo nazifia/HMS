@@ -117,17 +117,17 @@
                                     {% else %}
                                         <span class="text-muted">No visits</span>
                                     {% endif %}
+                                    {% endwith %}
                                 </td>
                                 <td>
                                     <span class="badge bg-info">{{ patient.consultations_set.count }}</span>
                                 </td>
                                 <td>
-                                    {% with waiting_entry=patient.waitinglist_set.filter(status='waiting').first %}
-                                    {% if waiting_entry %}
+                                    {% if patient_waiting_status.patient.id %}
                                         <span class="badge bg-warning">
                                             <i class="fas fa-clock"></i> Waiting
                                         </span>
-                                    {% elif last_consultation and last_consultation.status == 'in_progress' %}
+                                    {% elif patient_consultation_status.patient.id == 'in_progress' %}
                                         <span class="badge bg-info">
                                             <i class="fas fa-stethoscope"></i> In Progress
                                         </span>

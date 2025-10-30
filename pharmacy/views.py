@@ -302,7 +302,12 @@ def create_prescription(request, patient_id=None):
             form = PrescriptionForm(request.POST, request=request)
 
         if form.is_valid():
-            prescription = form.save()
+            prescription = form.save(commit=False)
+            # Set the current user as the doctor/prescriber if not already set
+            if not prescription.doctor:
+                prescription.doctor = request.user
+            prescription.save()
+            form.save_m2m()  # Save many-to-many relationships if any
             messages.success(request, f'Prescription #{prescription.id} created successfully.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
     else:
@@ -2155,7 +2160,13 @@ def dispense_prescription(request, prescription_id):
     # Check authorization requirement BEFORE allowing dispensing
     can_dispense, message = prescription.can_be_dispensed()
     if not can_dispense:
-        messages.error(request, message)
+        # Enhanced message styling for dispensed prescriptions
+        if prescription.status == 'dispensed':
+            messages.success(request, f'✅ {message} - This prescription has already been fully dispensed.', extra_tags='dispensed-status')
+        elif prescription.status == 'cancelled':
+            messages.warning(request, f'⚠️ {message}', extra_tags='cancelled-status')
+        else:
+            messages.error(request, f'❌ {message}', extra_tags='error-status')
         return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
 
     # Prepare prescription items for dispensing
@@ -2251,9 +2262,11 @@ def dispense_prescription(request, prescription_id):
         # Instantiate formset with POST data and bind prescription items
         formset = DispenseFormSet(request.POST, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
 
+        # Get the selected medication index from radio button (single selection)
+        selected_medication_index = request.POST.get('selected_medication')
+
         # If user attempted to dispense items but didn't pick a dispensary, show a clear message
-        any_checked = any(request.POST.get(f'form-{i}-dispense_this_item') in ['on', 'True', 'true', '1'] for i in range(len(prescription_items)))
-        if not selected_dispensary and any_checked:
+        if not selected_dispensary and selected_medication_index is not None:
             messages.error(request, 'Please select a dispensary before dispensing items.')
 
             # Enhanced NHIA pricing breakdown
@@ -2307,109 +2320,113 @@ def dispense_prescription(request, prescription_id):
         # No need to modify form data here as it can cause AttributeError
 
         if formset.is_valid():
-            # Process each selected form
+            # Process only the selected medication (single selection via radio button)
             any_dispensed = False
             skipped_items = []
-            for form in formset:
-                # Check if form has cleaned_data attribute before accessing it
-                if not hasattr(form, 'cleaned_data') or not form.cleaned_data:
-                    continue
-                dispense = form.cleaned_data.get('dispense_this_item')
-                qty = form.cleaned_data.get('quantity_to_dispense') or 0
-                dispensary = form.cleaned_data.get('dispensary') or selected_dispensary
 
-                # Ensure we have a dispensary for dispensing
-                if dispense and qty > 0:
-                    if not dispensary:
-                        messages.error(request, f'No dispensary selected for medication item.')
-                        continue
+            # Get the selected medication index from radio button
+            selected_medication_index = request.POST.get('selected_medication')
 
-                    # Continue with dispensing logic
-                    prescription_item = form.prescription_item
-                    medication = prescription_item.medication
+            if selected_medication_index is None:
+                messages.error(request, 'Please select a medication to dispense.')
+            else:
+                try:
+                    selected_index = int(selected_medication_index)
+                    if 0 <= selected_index < len(formset.forms):
+                        form = formset.forms[selected_index]
 
-                    # Prevent redispensing items that are already fully dispensed
-                    if prescription_item.is_dispensed:
-                        # Collect for a single warning later
-                        skipped_items.append(prescription_item)
-                        continue
-
-                    # Validate quantity
-                    if qty <= 0:
-                        messages.error(request, f'Quantity for {medication.name} must be greater than zero.')
-                        continue
-
-                    # Check inventory in the selected dispensary
-                    # First check ActiveStoreInventory (new system)
-                    med_inventory = None
-                    try:
-                        active_store = getattr(dispensary, 'active_store', None)
-                        if active_store:
-                            # Handle multiple inventory records by getting the first one with sufficient stock
-                            med_inventory = ActiveStoreInventory.objects.filter(
-                                medication=medication,
-                                active_store=active_store,
-                                stock_quantity__gte=qty
-                            ).first()
-                    except Exception as e:
-                        pass  # Continue to legacy inventory check
-                    
-                    # If not found in active store, try legacy MedicationInventory (backward compatibility)
-                    if med_inventory is None:
-                        try:
-                            med_inventory = MedicationInventory.objects.filter(
-                                medication=medication,
-                                dispensary=dispensary,
-                                stock_quantity__gte=qty
-                            ).first()
-                        except Exception as e:
-                            pass  # med_inventory remains None
-                    
-                    # If no inventory found with sufficient stock, show error and continue
-                    if med_inventory is None:
-                        messages.error(request, f'Insufficient stock for {medication.name} at {dispensary.name}.')
-                        continue
-
-                    # Create dispensing log
-                    unit_price = medication.price or Decimal('0.00')
-                    total_price = unit_price * qty
-                    dispensing_log = DispensingLog.objects.create(
-                        prescription_item=prescription_item,
-                        dispensed_by=request.user,
-                        dispensed_quantity=qty,
-                        unit_price_at_dispense=unit_price,
-                        total_price_for_this_log=total_price,
-                        dispensary=dispensary
-                    )
-
-                    # Update inventory (update the correct inventory model)
-                    if med_inventory is not None:
-                        # Ensure we have sufficient stock before deducting
-                        if hasattr(med_inventory, 'stock_quantity') and med_inventory.stock_quantity >= qty:
-                            if isinstance(med_inventory, ActiveStoreInventory):
-                                # Update active store inventory
-                                med_inventory.stock_quantity -= qty
-                                med_inventory.save()
-                            else:
-                                # Update legacy medication inventory
-                                med_inventory.stock_quantity -= qty
-                                med_inventory.save()
+                        # Check if form has cleaned_data attribute before accessing it
+                        if not hasattr(form, 'cleaned_data') or not form.cleaned_data:
+                            messages.error(request, 'Invalid form data. Please try again.')
                         else:
-                            messages.error(request, f'Insufficient stock for {medication.name}. Available: {getattr(med_inventory, "stock_quantity", 0)}, Required: {qty}')
-                            continue
+                            qty = form.cleaned_data.get('quantity_to_dispense') or 0
+                            dispensary = form.cleaned_data.get('dispensary') or selected_dispensary
+
+                            # Ensure we have a dispensary for dispensing
+                            if qty > 0:
+                                if not dispensary:
+                                    messages.error(request, f'No dispensary selected for medication item.')
+                                else:
+                                    # Continue with dispensing logic
+                                    prescription_item = form.prescription_item
+                                    medication = prescription_item.medication
+
+                                    # Prevent redispensing items that are already fully dispensed
+                                    if prescription_item.is_dispensed:
+                                        # Collect for a single warning later
+                                        skipped_items.append(prescription_item)
+                                        messages.warning(request, f'{medication.name} is already fully dispensed.')
+                                    else:
+                                        # Check inventory in the selected dispensary
+                                        # First check ActiveStoreInventory (new system)
+                                        med_inventory = None
+                                        try:
+                                            active_store = getattr(dispensary, 'active_store', None)
+                                            if active_store:
+                                                # Handle multiple inventory records by getting the first one with sufficient stock
+                                                med_inventory = ActiveStoreInventory.objects.filter(
+                                                    medication=medication,
+                                                    active_store=active_store,
+                                                    stock_quantity__gte=qty
+                                                ).first()
+                                        except Exception as e:
+                                            pass  # Continue to legacy inventory check
+
+                                        # If not found in active store, try legacy MedicationInventory (backward compatibility)
+                                        if med_inventory is None:
+                                            try:
+                                                med_inventory = MedicationInventory.objects.filter(
+                                                    medication=medication,
+                                                    dispensary=dispensary,
+                                                    stock_quantity__gte=qty
+                                                ).first()
+                                            except Exception as e:
+                                                pass  # med_inventory remains None
+
+                                        # If no inventory found with sufficient stock, show error
+                                        if med_inventory is None:
+                                            messages.error(request, f'Insufficient stock for {medication.name} at {dispensary.name}.')
+                                        else:
+                                            # Create dispensing log
+                                            unit_price = medication.price or Decimal('0.00')
+                                            total_price = unit_price * qty
+                                            dispensing_log = DispensingLog.objects.create(
+                                                prescription_item=prescription_item,
+                                                dispensed_by=request.user,
+                                                dispensed_quantity=qty,
+                                                unit_price_at_dispense=unit_price,
+                                                total_price_for_this_log=total_price,
+                                                dispensary=dispensary
+                                            )
+
+                                            # Update inventory (update the correct inventory model)
+                                            if hasattr(med_inventory, 'stock_quantity') and med_inventory.stock_quantity >= qty:
+                                                if isinstance(med_inventory, ActiveStoreInventory):
+                                                    # Update active store inventory
+                                                    med_inventory.stock_quantity -= qty
+                                                    med_inventory.save()
+                                                else:
+                                                    # Update legacy medication inventory
+                                                    med_inventory.stock_quantity -= qty
+                                                    med_inventory.save()
+                                            else:
+                                                messages.error(request, f'Insufficient stock for {medication.name}. Available: {getattr(med_inventory, "stock_quantity", 0)}, Required: {qty}')
+
+                                            # Update prescription item quantities
+                                            prescription_item.quantity_dispensed_so_far += qty
+                                            if prescription_item.quantity_dispensed_so_far >= prescription_item.quantity:
+                                                prescription_item.is_dispensed = True
+                                                prescription_item.dispensed_date = timezone.now()
+                                                prescription_item.dispensed_by = request.user
+                                            prescription_item.save()
+
+                                            any_dispensed = True
+                            else:
+                                messages.error(request, f'Quantity for {medication.name} must be greater than zero.')
                     else:
-                        messages.error(request, f'No inventory record found for {medication.name} at {dispensary.name}.')
-                        continue
-
-                    # Update prescription item quantities
-                    prescription_item.quantity_dispensed_so_far += qty
-                    if prescription_item.quantity_dispensed_so_far >= prescription_item.quantity:
-                        prescription_item.is_dispensed = True
-                        prescription_item.dispensed_date = timezone.now()
-                        prescription_item.dispensed_by = request.user
-                    prescription_item.save()
-
-                    any_dispensed = True
+                        messages.error(request, 'Invalid medication selection.')
+                except (ValueError, IndexError):
+                    messages.error(request, 'Invalid medication selection.')
 
             if any_dispensed:
                 # Update prescription status based on dispensing progress
@@ -2469,8 +2486,19 @@ def dispense_prescription(request, prescription_id):
                     else:
                         messages.error(request, 'Failed to create invoice. Please contact billing.')
 
-                # Redirect to payment page
-                return redirect('pharmacy:prescription_payment', prescription_id=prescription.id)
+                # Find appropriate cart for redirect
+                from pharmacy.cart_models import PrescriptionCart
+                cart = PrescriptionCart.objects.filter(
+                    prescription=prescription,
+                    status__in=['paid', 'invoiced', 'partially_dispensed']
+                ).order_by('-created_at').first()
+                
+                if cart:
+                    messages.info(request, '💊 Medications dispensed successfully! Redirecting to cart.')
+                    return redirect('pharmacy:view_cart', cart_id=cart.id)
+                else:
+                    messages.info(request, '💊 Medications dispensed successfully!')
+                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
             else:
                 messages.warning(request, 'No medications were selected for dispensing.')
         else:
@@ -2835,15 +2863,17 @@ def prescription_payment(request, prescription_id):
                         prescription.payment_status = 'paid'
                         prescription.save(update_fields=['payment_status'])
 
-                        # Update cart status to 'paid' if invoice is fully paid
+                        # Update cart status to 'paid' if invoice is fully paid - treat each cart independently
                         from pharmacy.cart_models import PrescriptionCart
                         carts = PrescriptionCart.objects.filter(
                             invoice=pharmacy_invoice,
                             status='invoiced'
                         )
                         for cart in carts:
-                            cart.status = 'paid'
-                            cart.save(update_fields=['status'])
+                            # Check if this individual cart can be marked as paid
+                            if cart.can_generate_invoice()[0]:  # Verify cart is in valid state for payment
+                                cart.status = 'paid'
+                                cart.save(update_fields=['status'])
                     else:
                         pharmacy_invoice.status = 'partially_paid'
 
@@ -2866,21 +2896,28 @@ def prescription_payment(request, prescription_id):
 
                     messages.success(request, f'✅ Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
 
-                    # Redirect to cart if payment is complete and cart exists
+                    # Find appropriate cart for redirect after successful payment
+                    from pharmacy.cart_models import PrescriptionCart
+                    cart = PrescriptionCart.objects.filter(
+                        invoice=pharmacy_invoice,
+                        status__in=['paid', 'invoiced', 'partially_dispensed']
+                    ).order_by('-created_at').first()
+                    
                     if pharmacy_invoice.status == 'paid':
-                        # Find the cart associated with this invoice
-                        from pharmacy.cart_models import PrescriptionCart
-                        cart = PrescriptionCart.objects.filter(
-                            invoice=pharmacy_invoice,
-                            status__in=['paid', 'invoiced']
-                        ).first()
-
                         if cart:
-                            messages.info(request, '💊 Payment complete! You can now dispense the medications.')
+                            messages.info(request, '💊 Payment complete! Redirecting to cart for dispensing.')
                             return redirect('pharmacy:view_cart', cart_id=cart.id)
-
-                    # Fallback to prescription detail if no cart found
-                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                        else:
+                            messages.info(request, '💊 Payment complete!')
+                            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                    
+                    # For partial payments, also redirect to cart if available
+                    if cart:
+                        messages.info(request, '💊 Partial payment recorded. Redirecting to cart for dispensing.')
+                        return redirect('pharmacy:view_cart', cart_id=cart.id)
+                    else:
+                        messages.info(request, '💊 Partial payment recorded.')
+                        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
                     
             except Exception as e:
                 messages.error(request, f'Error processing payment: {str(e)}')
@@ -3125,15 +3162,17 @@ def billing_office_medication_payment(request, prescription_id):
                     prescription.payment_status = 'paid'
                     prescription.save(update_fields=['payment_status'])
 
-                    # Update cart status to 'paid' if invoice is fully paid
+                    # Update cart status to 'paid' if invoice is fully paid - treat each cart independently
                     from pharmacy.cart_models import PrescriptionCart
                     carts = PrescriptionCart.objects.filter(
                         invoice=pharmacy_invoice,
                         status='invoiced'
                     )
                     for cart in carts:
-                        cart.status = 'paid'
-                        cart.save(update_fields=['status'])
+                        # Check if this individual cart can be marked as paid
+                        if cart.can_generate_invoice()[0]:  # Verify cart is in valid state for payment
+                            cart.status = 'paid'
+                            cart.save(update_fields=['status'])
                 else:
                     pharmacy_invoice.status = 'partially_paid'
 
@@ -3166,7 +3205,7 @@ def billing_office_medication_payment(request, prescription_id):
                     ).first()
 
                     if cart:
-                        messages.info(request, '💊 Payment complete! Pharmacist can now dispense the medications from the cart.')
+                        messages.info(request, '💊 Payment complete! Redirecting to cart for dispensing.')
                         return redirect('pharmacy:view_cart', cart_id=cart.id)
 
                 # Fallback to prescription detail if no cart found

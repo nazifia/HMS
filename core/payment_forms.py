@@ -3,22 +3,11 @@ from django.utils import timezone
 from decimal import Decimal
 from billing.models import Payment, Invoice
 from patients.models import PatientWallet
+from .billing_office_integration import BillingOfficeFormMixin
 
 
-class BasePaymentForm(forms.ModelForm):
+class BasePaymentForm(BillingOfficeFormMixin, forms.ModelForm):
     """Base payment form that can be extended by all modules"""
-    
-    PAYMENT_SOURCE_CHOICES = [
-        ('billing_office', 'Billing Office'),
-        ('patient_wallet', 'Patient Wallet'),
-        ('department', 'Department Collection'),
-    ]
-    
-    payment_source = forms.ChoiceField(
-        choices=PAYMENT_SOURCE_CHOICES,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        help_text="Choose where the payment is being processed"
-    )
     
     class Meta:
         model = Payment
@@ -32,8 +21,6 @@ class BasePaymentForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
-        self.invoice = kwargs.pop('invoice', None)
-        self.patient_wallet = kwargs.pop('patient_wallet', None)
         self.module_name = kwargs.pop('module_name', 'General')
         super().__init__(*args, **kwargs)
         
@@ -47,6 +34,11 @@ class BasePaymentForm(forms.ModelForm):
             self.fields['amount'].widget.attrs['max'] = str(remaining_balance)
             self.fields['amount'].initial = remaining_balance
             self.fields['amount'].help_text = f"Maximum amount: ₦{remaining_balance:,.2f}"
+        
+        # Set wallet balance info
+        if self.patient_wallet:
+            if hasattr(self.fields['payment_source'], 'help_text'):
+                self.fields['payment_source'].help_text += f' | Wallet Balance: ₦{self.patient_wallet.balance:.2f}'
     
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')

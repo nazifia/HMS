@@ -542,6 +542,12 @@
                                             Date: {{ prescription.prescription_date|date:"M d, Y" }}
                                         </small>
                                     </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'desk_office:authorize_prescription' prescription.id %}" 
+                                           class="btn btn-success">
+                                            <i class="fas fa-check"></i> Authorize
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         {% endfor %}

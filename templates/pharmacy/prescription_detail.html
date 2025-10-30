@@ -4,6 +4,68 @@
 
 {% block title %}Prescription Details - Hospital Management System{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Custom message styling for dispensed prescriptions */
+.alert-dispensed {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: 1px solid #b8dacc;
+    color: #155724;
+    font-weight: 500;
+}
+
+.alert-cancelled {
+    background: linear-gradient(135deg, #fff3cd 0%, #fdeaa7 100%);
+    border: 1px solid #f3d9a2;
+    color: #856404;
+    font-weight: 500;
+}
+
+.alert-error-custom {
+    background: linear-gradient(135deg, #f8d7da 0%, #f1b0b7 100%);
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    font-weight: 500;
+}
+
+/* Message icon styling */
+.message-icon {
+    font-size: 1.2em;
+    margin-right: 0.5em;
+    vertical-align: middle;
+}
+
+/* Enhanced message container */
+.alert-dispensed .alert-icon,
+.alert-cancelled .alert-icon,
+.alert-error-custom .alert-icon {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 30px;
+    margin-right: 10px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.alert-dispensed .alert-icon {
+    background: rgba(25, 135, 84, 0.2);
+    color: #198754;
+}
+
+.alert-cancelled .alert-icon {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.alert-error-custom .alert-icon {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-md-12 mb-4">
@@ -188,6 +250,11 @@
                                 {% endif %}
                             </div>
                         </div>
+                        
+                        <!-- NHIA Authorization Status -->
+                        {% if prescription.patient.patient_type == 'nhia' %}
+                            {% include 'includes/authorization_status.html' with object=prescription %}
+                        {% endif %}
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Prescription Type:</div>
                             <div class="col-md-8">
@@ -240,6 +307,19 @@
 
                 <!-- NHIA Payment Information - Prominent Display -->
                 {% if is_nhia_patient %}
+                <!-- Authorization Status Display -->
+                {% include 'includes/authorization_status.html' with object=prescription %}
+                
+                <!-- Authorization Request Button (if needed) -->
+                {% if prescription.authorization_status == 'required' or prescription.authorization_status == 'pending' %}
+                    <div class="mt-3">
+                        <a href="{% url 'core:request_authorization' model_type='prescription' object_id=prescription.id %}" 
+                           class="btn btn-warning">
+                            <i class="fas fa-paper-plane"></i> Request Desk Office Authorization
+                        </a>
+                    </div>
+                {% endif %}
+                
                 <div class="row mt-4">
                     <div class="col-md-12">
                         <div class="card border-success shadow-sm">

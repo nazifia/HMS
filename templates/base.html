@@ -29,7 +29,86 @@
     {% endcompress %}
 
     {% block extra_css %}{% endblock %}
+
+    <!-- Custom Message Styles for Prescription Status -->
     <style>
+        /* Custom message styling for dispensed prescriptions */
+        .alert-dispensed {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 1px solid #b8dacc;
+            color: #155724;
+            font-weight: 500;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .alert-cancelled {
+            background: linear-gradient(135deg, #fff3cd 0%, #fdeaa7 100%);
+            border: 1px solid #f3d9a2;
+            color: #856404;
+            font-weight: 500;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .alert-error-custom {
+            background: linear-gradient(135deg, #f8d7da 0%, #f1b0b7 100%);
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            font-weight: 500;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Message icon styling */
+        .alert-icon {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            font-size: 16px;
+            vertical-align: middle;
+        }
+
+        .alert-dispensed .alert-icon {
+            background: rgba(25, 135, 84, 0.2);
+            color: #198754;
+        }
+
+        .alert-cancelled .alert-icon {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .alert-error-custom .alert-icon {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        /* Enhanced transitions */
+        .alert-dispensed,
+        .alert-cancelled,
+        .alert-error-custom {
+            transition: all 0.3s ease;
+            border-left: 4px solid;
+        }
+
+        .alert-dispensed {
+            border-left-color: #198754;
+        }
+
+        .alert-cancelled {
+            border-left-color: #ffc107;
+        }
+
+        .alert-error-custom {
+            border-left-color: #dc3545;
+        }
+    </style>
         /* Main layout for sidebar and content */
         html, body {
             height: 100%;
@@ -286,11 +365,31 @@
                 <div class="container-fluid">
                     {% if messages %}
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
+                            {% if 'dispensed-status' in message.tags %}
+                                <div class="alert alert-dispensed alert-dismissible fade show" role="alert">
+                                    <span class="alert-icon">✅</span>
+                                    <strong>{{ message }}</strong>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% elif 'cancelled-status' in message.tags %}
+                                <div class="alert alert-cancelled alert-dismissible fade show" role="alert">
+                                    <span class="alert-icon">⚠️</span>
+                                    <strong>{{ message }}</strong>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% elif 'error-status' in message.tags %}
+                                <div class="alert alert-error-custom alert-dismissible fade show" role="alert">
+                                    <span class="alert-icon">❌</span>
+                                    <strong>{{ message }}</strong>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-{% if 'success' in message.tags %}check-circle{% elif 'error' in message.tags %}exclamation-circle{% elif 'warning' in message.tags %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     {% endif %}
                     {% block content %}

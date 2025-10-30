@@ -640,6 +640,16 @@
             </div>
         </li>
         {% endif %}
+        
+        <!-- Nav Item - Authorization Dashboard -->
+        {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
+        <li class="nav-item {% if 'desk_office:authorization_dashboard' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'desk_office:authorization_dashboard' %}">
+                <i class="fas fa-fw fa-shield-alt text-white"></i>
+                <span class="text-white">Authorization Dashboard</span>
+            </a>
+        </li>
+        {% endif %}
 
         <!-- Nav Item - Wallet Management -->
         {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
@@ -828,7 +838,7 @@
 
         <!-- Sidebar Toggler (Sidebar) -->
         <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle" onclick="document.querySelector('.sidebar').classList.toggle('sidebar-collapsed');">
+            <button class="rounded-circle border-0" id="sidebarToggle">
                 <i class="fas fa-angle-left"></i>
             </button>
         </div>

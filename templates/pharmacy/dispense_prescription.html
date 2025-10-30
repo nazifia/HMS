@@ -237,8 +237,8 @@
                         <div class="d-flex align-items-start">
                             <i class="fas fa-info-circle text-info me-3 mt-1"></i>
                             <div class="small">
-                                <strong>Flexible Dispensing:</strong> Pharmacy staff can now dispense any quantity up to available stock. 
-                                The system only validates against stock levels, not prescribed quantities, giving you full control over dispensing decisions.
+                                <strong>Single Medication Dispensing:</strong> Select ONE medication at a time using the radio button, specify the quantity to dispense, and select the dispensary.
+                                The system validates against stock levels and allows flexible quantity dispensing up to available stock.
                             </div>
                         </div>
                     </div>
@@ -311,11 +311,9 @@
                                                     {{ form.item_id }}
                                                     {{ form.dispensary }}
                                                     {{ form.stock_quantity_display }}
-                                                    <input type="hidden" name="form-{{ forloop.counter0 }}-dispense_this_item" value="off">
-                                                    <input type="checkbox" class="dispense-checkbox item-checkbox" name="form-{{ forloop.counter0 }}-dispense_this_item" value="on"
-                                                           {% if form.dispense_this_item.value %}checked{% endif %}
-                                                           {% if form.dispense_this_item.field.widget.attrs.disabled %}disabled{% endif %}
-                                                           title="{{ form.dispense_this_item.field.widget.attrs.title|default:'' }}">
+                                                    <input type="radio" class="dispense-radio item-radio" name="selected_medication" value="{{ forloop.counter0 }}"
+                                                           {% if item.is_dispensed %}disabled{% endif %}
+                                                           title="Select this medication to dispense">
                                                     {% if form.dispense_this_item.errors %}<div class="text-danger small">{{ form.dispense_this_item.errors|join:", " }}</div>{% endif %}
                                                 </td>
                                                 <td>
@@ -463,7 +461,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Prescription
                                 </a>
                                 <button type="submit" class="btn btn-success" {% if not formset.forms %}disabled{% endif %}>
-                                    <i class="fas fa-prescription-bottle-alt"></i> Dispense Selected Medications
+                                    <i class="fas fa-prescription-bottle-alt"></i> Dispense Selected Medication
                                 </button>
                             </div>
                         </form>
@@ -539,18 +537,18 @@
         stockData.forEach(item => {
             const row = document.querySelector(`tr[data-item-id="${item.prescription_item_id}"]`);
             if (row) {
-                // Find the stock column (5th column in the table)
-                const stockCell = row.querySelector('td:nth-child(5)');
-                const dispenseCheckbox = row.querySelector('.dispense-checkbox');
+                // Find the stock column (4th column in the table)
+                const stockCell = row.querySelector('td:nth-child(4)');
+                const dispenseRadio = row.querySelector('.dispense-radio');
                 const quantityInput = row.querySelector('.quantity-input');
                 const addStockBtn = row.querySelector('.add-stock-btn');
-                
+
                 if (stockCell) {
                     if (item.stock_quantity === 0) {
                         stockCell.innerHTML = '<span class="badge bg-danger">Out of Stock</span>';
-                        if (dispenseCheckbox) {
-                            dispenseCheckbox.disabled = true;
-                            dispenseCheckbox.checked = false;
+                        if (dispenseRadio) {
+                            dispenseRadio.disabled = true;
+                            dispenseRadio.checked = false;
                         }
                         if (quantityInput) {
                             quantityInput.disabled = true;
@@ -558,9 +556,9 @@
                         }
                     } else if (item.stock_quantity === null || item.stock_quantity === undefined) {
                         stockCell.innerHTML = '<span class="badge bg-secondary">Unknown</span>';
-                        if (dispenseCheckbox) {
-                            dispenseCheckbox.disabled = true;
-                            dispenseCheckbox.checked = false;
+                        if (dispenseRadio) {
+                            dispenseRadio.disabled = true;
+                            dispenseRadio.checked = false;
                         }
                         if (quantityInput) {
                             quantityInput.disabled = true;
@@ -568,17 +566,17 @@
                         }
                     } else {
                         stockCell.innerHTML = `<span class="badge bg-success">${item.stock_quantity} units</span>`;
-                        if (dispenseCheckbox) {
-                            dispenseCheckbox.disabled = false;
+                        if (dispenseRadio) {
+                            dispenseRadio.disabled = false;
                         }
                         if (quantityInput) {
-                            quantityInput.disabled = !dispenseCheckbox.checked;
+                            quantityInput.disabled = !dispenseRadio.checked;
                             // Set max attribute for quantity validation
                             quantityInput.setAttribute('max', Math.min(item.stock_quantity, item.remaining_qty));
                         }
                     }
                 }
-                
+
                 // Update add stock button data
                 if (addStockBtn) {
                     addStockBtn.dataset.dispensaryId = item.dispensary_id;
@@ -616,17 +614,17 @@
 
     // Function to clear stock quantities
     function clearStockQuantities() {
-        // Update the stock column (5th column) in each row
+        // Update the stock column (4th column) in each row
         document.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
-            const stockCell = row.querySelector('td:nth-child(5)');
+            const stockCell = row.querySelector('td:nth-child(4)');
             if (stockCell) {
                 stockCell.innerHTML = '<span class="badge bg-secondary">Select Dispensary</span>';
             }
         });
 
-        document.querySelectorAll('.dispense-checkbox').forEach(checkbox => {
-            checkbox.disabled = true;
-            checkbox.checked = false;
+        document.querySelectorAll('.dispense-radio').forEach(radio => {
+            radio.disabled = true;
+            radio.checked = false;
         });
 
         document.querySelectorAll('.quantity-input').forEach(input => {
@@ -643,9 +641,9 @@
 
     // Loading indicator functions
     function showLoadingIndicator() {
-        // Update the stock column (5th column) in each row
+        // Update the stock column (4th column) in each row
         document.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
-            const stockCell = row.querySelector('td:nth-child(5)');
+            const stockCell = row.querySelector('td:nth-child(4)');
             if (stockCell) {
                 stockCell.innerHTML = '<span class="badge bg-info"><i class="fas fa-spinner fa-spin"></i> Loading...</span>';
             }
@@ -672,75 +670,94 @@
         const formsetTable = document.getElementById('dispenseForm');
         if (!formsetTable) return;
 
-        // Individual checkbox functionality
-        const itemCheckboxes = document.querySelectorAll('.dispense-checkbox');
+        // Individual radio button functionality for single medication selection
+        const itemRadios = document.querySelectorAll('.dispense-radio');
 
         function updateTotals() {
             let overallTotal = 0;
             formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach((row, index) => {
-                const dispenseCheckbox = row.querySelector(`.dispense-checkbox`);
+                const dispenseRadio = row.querySelector(`.dispense-radio`);
                 const quantityInput = row.querySelector(`.quantity-input`);
                 const itemTotalPriceSpan = row.querySelector('.item-total-price');
                 const unitPrice = parseFloat(row.dataset.unitPrice) || 0;
                 let itemTotal = 0;
-                if (dispenseCheckbox && dispenseCheckbox.checked && !dispenseCheckbox.disabled && quantityInput) {
+                if (dispenseRadio && dispenseRadio.checked && !dispenseRadio.disabled && quantityInput) {
                     const quantity = parseInt(quantityInput.value) || 0;
                     itemTotal = quantity * unitPrice;
                     overallTotal += itemTotal;
                 }
-                itemTotalPriceSpan.textContent = itemTotal.toFixed(2);
+                if (itemTotalPriceSpan) {
+                    itemTotalPriceSpan.textContent = '₦' + itemTotal.toFixed(2);
+                }
             });
-            document.getElementById('overall-total-price').textContent = overallTotal.toFixed(2);
+            const overallTotalElement = document.getElementById('overall-total-price');
+            if (overallTotalElement) {
+                overallTotalElement.textContent = '₦' + overallTotal.toFixed(2);
+            }
         }
 
         formsetTable.addEventListener('change', function(event) {
             const target = event.target;
-            if (target.classList.contains('dispense-checkbox')) {
+            if (target.classList.contains('dispense-radio')) {
+                // Disable all quantity inputs first
+                formsetTable.querySelectorAll('.quantity-input').forEach(input => {
+                    input.disabled = true;
+                });
+
+                // Enable only the selected medication's quantity input
                 const row = target.closest('tr');
                 const quantityInput = row.querySelector('.quantity-input');
                 if (quantityInput && !target.disabled) {
-                    quantityInput.disabled = !target.checked;
-                    if (target.checked && (!quantityInput.value || quantityInput.value == '0')) {
+                    quantityInput.disabled = false;
+                    if (!quantityInput.value || quantityInput.value == '0') {
                         // Set quantity to 1 as default, let user decide the actual quantity
                         quantityInput.value = 1;
-                        // Focus the quantity input for easy editing
-                        quantityInput.focus();
-                        quantityInput.select();
                     }
+                    // Focus the quantity input for easy editing
+                    quantityInput.focus();
+                    quantityInput.select();
                 }
                 updateTotals();
             } else if (target.classList.contains('quantity-input')) {
                 // Just update totals when quantity changes
-                // Don't auto-check/uncheck the checkbox - let user control that
                 updateTotals();
             }
         });
 
         // Initial calculation on page load and setup of quantity input disabled state
         formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
-            const dispenseCheckbox = row.querySelector('.dispense-checkbox');
+            const dispenseRadio = row.querySelector('.dispense-radio');
             const quantityInput = row.querySelector('.quantity-input');
-            if (dispenseCheckbox && quantityInput) {
-                if (dispenseCheckbox.disabled) {
+            if (dispenseRadio && quantityInput) {
+                if (dispenseRadio.disabled) {
                     quantityInput.disabled = true;
                 } else {
-                    quantityInput.disabled = !dispenseCheckbox.checked;
+                    quantityInput.disabled = !dispenseRadio.checked;
                 }
             }
         });
         updateTotals();
 
-        // Ensure all checked checkboxes and their quantity inputs are enabled before submit
+        // Ensure selected radio button's quantity input is enabled before submit
         formsetTable.addEventListener('submit', function(event) {
-            formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
-                const dispenseCheckbox = row.querySelector('.dispense-checkbox');
-                const quantityInput = row.querySelector('.quantity-input');
-                if (dispenseCheckbox && quantityInput) {
-                    if (dispenseCheckbox.checked) {
-                        quantityInput.disabled = false;
-                    }
+            const selectedRadio = formsetTable.querySelector('.dispense-radio:checked');
+            if (!selectedRadio) {
+                event.preventDefault();
+                alert('Please select a medication to dispense.');
+                return false;
+            }
+
+            const row = selectedRadio.closest('tr');
+            const quantityInput = row.querySelector('.quantity-input');
+            if (quantityInput) {
+                quantityInput.disabled = false;
+                if (!quantityInput.value || quantityInput.value <= 0) {
+                    event.preventDefault();
+                    alert('Please enter a valid quantity to dispense.');
+                    quantityInput.focus();
+                    return false;
                 }
-            });
+            }
         });
 
         // Quick add stock functionality

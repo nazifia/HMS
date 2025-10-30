@@ -17,6 +17,7 @@ from pharmacy.models import Prescription
 from inpatient.models import Admission
 from core.audit_utils import log_audit_action
 from core.models import InternalNotification, send_notification_email
+from core.billing_office_integration import BillingOfficePaymentProcessor
 
 @login_required
 def invoice_list(request):
@@ -238,9 +239,8 @@ def print_invoice(request, invoice_id):
 
 @login_required
 def record_payment(request, invoice_id):
-    """Enhanced view for recording payments with dual payment method support"""
+    """Enhanced view for recording payments with billing office integration"""
     from patients.models import PatientWallet
-    from django.db import transaction
     
     invoice = get_object_or_404(Invoice, id=invoice_id)
 
@@ -263,73 +263,56 @@ def record_payment(request, invoice_id):
         )
 
     if request.method == 'POST':
-        form = PaymentForm(
-            request.POST,
+        amount = request.POST.get('amount', '0')
+        payment_source = request.POST.get('payment_source', 'billing_office')
+        payment_method = request.POST.get('payment_method', 'cash')
+        transaction_id = request.POST.get('transaction_id', '')
+        notes = request.POST.get('notes', '')
+        
+        # Process payment using billing office integration
+        success, message, payment = BillingOfficePaymentProcessor.process_payment(
+            request=request,
             invoice=invoice,
-            patient_wallet=patient_wallet
+            amount=Decimal(amount),
+            payment_source=payment_source,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            notes=notes,
+            module_name='Billing'
         )
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    payment = form.save(commit=False)
-                    payment.invoice = invoice
-                    payment.received_by = request.user
-
-                    payment_source = form.cleaned_data['payment_source']
-
-                    if payment_source == 'patient_wallet':
-                        # Force wallet payment method
-                        payment.payment_method = 'wallet'
-
-                    payment.save()
-
-                    # Audit log
-                    log_audit_action(
-                        request.user, 
-                        'create', 
-                        payment, 
-                        f"Recorded {payment_source} payment of ₦{payment.amount:.2f} for invoice {invoice.invoice_number}"
-                    )
-                    
-                    # Notification to billing/admin
-                    if invoice.created_by:
-                        InternalNotification.objects.create(
-                            user=invoice.created_by,
-                            message=f"Payment of ₦{payment.amount:.2f} recorded for invoice {invoice.invoice_number} via {payment_source}"
-                        )
-                    
-                    # Send email notification if user has email
-                    if invoice.created_by and hasattr(invoice.created_by, 'email') and invoice.created_by.email:
-                        send_notification_email(
-                            subject="Payment Recorded",
-                            message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number} via {payment_source.replace('_', ' ').title()}.",
-                            recipient_list=[invoice.created_by.email]
-                        )
-                    
-                    messages.success(request, f'Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
-                    return redirect('billing:detail', invoice_id=invoice.id)
-                    
-            except Exception as e:
-                messages.error(request, f'Error processing payment: {str(e)}')
+        
+        if success:
+            messages.success(request, message)
+            
+            # Send email notification if user has email
+            if invoice.created_by and hasattr(invoice.created_by, 'email') and invoice.created_by.email:
+                send_notification_email(
+                    subject="Payment Recorded",
+                    message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number} via {payment_source.replace('_', ' ').title()}.",
+                    recipient_list=[invoice.created_by.email]
+                )
+            
+            return redirect('billing:detail', invoice_id=invoice.id)
+        else:
+            messages.error(request, message)
     else:
-        # Pre-fill the amount with the remaining balance
+        # Use enhanced context from billing office integration
+        context = BillingOfficePaymentProcessor.get_payment_context(
+            request, invoice, 'Billing'
+        )
+        
+        # Create form for initial rendering
         form = PaymentForm(
             invoice=invoice,
-            patient_wallet=patient_wallet,
+            patient_wallet=context['patient_wallet'],
             initial={
-                'amount': remaining_amount,
+                'amount': context['remaining_amount'],
                 'payment_date': timezone.now().date(),
                 'payment_method': 'cash'
             }
         )
-
-    context = {
-        'form': form,
-        'invoice': invoice,
-        'patient_wallet': patient_wallet,
-        'remaining_amount': remaining_amount,
-        'title': f'Record Payment for Invoice #{invoice.invoice_number}'
-    }
+        context['form'] = form
+        context['title'] = f'Record Payment for Invoice #{invoice.invoice_number}'
 
     return render(request, 'billing/payment_form.html', context)
 
@@ -947,7 +930,7 @@ def create_invoice_for_admission(request, admission_id):
 
 @login_required
 def admission_payment(request, admission_id):
-    """Enhanced view for processing admission payments from billing office or patient wallet"""
+    """Enhanced view for processing admission payments with billing office integration"""
     from inpatient.models import Admission
     from patients.models import PatientWallet
     from .forms import AdmissionPaymentForm
@@ -1005,87 +988,65 @@ def admission_payment(request, admission_id):
             total_amount=total_cost
         )
 
-    # Get patient wallet
-    patient_wallet = None
-    try:
-        patient_wallet = PatientWallet.objects.get(patient=admission.patient)
-    except PatientWallet.DoesNotExist:
-        # Create wallet if it doesn't exist
-        patient_wallet = PatientWallet.objects.create(
-            patient=admission.patient,
-            balance=0
-        )
-
-    remaining_amount = invoice.get_balance()
-
-    if remaining_amount <= 0:
-        messages.info(request, 'This admission has already been fully paid.')
-        return redirect('inpatient:admission_detail', pk=admission.id)
-
     if request.method == 'POST':
-        form = AdmissionPaymentForm(
-            request.POST,
+        amount = request.POST.get('amount', '0')
+        payment_source = request.POST.get('payment_source', 'billing_office')
+        payment_method = request.POST.get('payment_method', 'cash')
+        transaction_id = request.POST.get('transaction_id', '')
+        notes = request.POST.get('notes', '')
+        
+        # Process payment using billing office integration
+        success, message, payment = BillingOfficePaymentProcessor.process_payment(
+            request=request,
             invoice=invoice,
-            patient_wallet=patient_wallet
+            amount=Decimal(amount),
+            payment_source=payment_source,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            notes=notes,
+            module_name='Admission'
         )
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    payment = form.save(commit=False)
-                    payment.invoice = invoice
-                    payment.received_by = request.user
+        
+        if success:
+            messages.success(request, message)
+            
+            # Additional notification for admissions
+            notification_user = request.user
+            if hasattr(admission.patient, 'primary_doctor') and admission.patient.primary_doctor:
+                notification_user = admission.patient.primary_doctor
+            elif hasattr(admission, 'attending_doctor') and admission.attending_doctor:
+                notification_user = admission.attending_doctor
 
-                    payment_source = form.cleaned_data['payment_source']
-
-                    if payment_source == 'patient_wallet':
-                        # Force wallet payment method
-                        payment.payment_method = 'wallet'
-
-                    payment.save()
-
-                    # Audit log
-                    log_audit_action(
-                        request.user,
-                        'create',
-                        payment,
-                        f"Recorded {payment_source} payment of ₦{payment.amount:.2f} for admission {admission.id}"
-                    )
-
-                    # Notification
-                    notification_user = request.user
-                    if hasattr(admission.patient, 'primary_doctor') and admission.patient.primary_doctor:
-                        notification_user = admission.patient.primary_doctor
-                    elif hasattr(admission, 'attending_doctor') and admission.attending_doctor:
-                        notification_user = admission.attending_doctor
-
-                    InternalNotification.objects.create(
-                        user=notification_user,
-                        message=f"Payment of ₦{payment.amount:.2f} recorded for admission {admission.id} via {payment_source}"
-                    )
-
-                    messages.success(request, f'Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
-                    return redirect('inpatient:admission_detail', pk=admission.id)
-
-            except Exception as e:
-                messages.error(request, f'Error processing payment: {str(e)}')
+            InternalNotification.objects.create(
+                user=notification_user,
+                message=f"Payment of ₦{payment.amount:.2f} recorded for admission {admission.id} via {payment_source}"
+            )
+            
+            return redirect('inpatient:admission_detail', pk=admission.id)
+        else:
+            messages.error(request, message)
     else:
+        # Use enhanced context from billing office integration
+        context = BillingOfficePaymentProcessor.get_payment_context(
+            request, invoice, 'Admission'
+        )
+        
+        # Add admission-specific context
+        context.update({
+            'admission': admission,
+            'title': f'Payment for Admission #{admission.id}'
+        })
+        
+        # Create form for initial rendering
         form = AdmissionPaymentForm(
             invoice=invoice,
-            patient_wallet=patient_wallet,
+            patient_wallet=context['patient_wallet'],
             initial={
-                'amount': remaining_amount,
+                'amount': context['remaining_amount'],
                 'payment_date': timezone.now().date(),
                 'payment_method': 'cash'
             }
         )
-
-    context = {
-        'form': form,
-        'admission': admission,
-        'invoice': invoice,
-        'patient_wallet': patient_wallet,
-        'remaining_amount': remaining_amount,
-        'title': f'Payment for Admission #{admission.id}'
-    }
+        context['form'] = form
 
     return render(request, 'billing/admission_payment.html', context)

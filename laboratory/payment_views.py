@@ -10,6 +10,7 @@ from billing.models import Invoice, Payment
 from patients.models import PatientWallet
 from .payment_forms import LaboratoryPaymentForm
 from .models import TestRequest
+from core.billing_office_integration import BillingOfficePaymentProcessor
 
 
 @login_required
@@ -41,63 +42,52 @@ def laboratory_payment(request, test_request_id):
     )
     
     if request.method == 'POST':
-        form = LaboratoryPaymentForm(
-            request.POST,
+        amount = request.POST.get('amount', '0')
+        payment_source = request.POST.get('payment_source', 'billing_office')
+        payment_method = request.POST.get('payment_method', 'cash')
+        transaction_id = request.POST.get('transaction_id', '')
+        notes = request.POST.get('notes', '')
+        
+        # Process payment using billing office integration
+        success, message, payment = BillingOfficePaymentProcessor.process_payment(
+            request=request,
             invoice=invoice,
-            patient_wallet=patient_wallet
+            amount=Decimal(amount),
+            payment_source=payment_source,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            notes=notes,
+            module_name='Laboratory'
         )
         
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    payment = form.save(commit=False)
-                    payment.invoice = invoice
-                    payment.created_by = request.user
-                    
-                    # Set payment method based on payment source
-                    payment_source = form.cleaned_data['payment_source']
-                    if payment_source == 'patient_wallet':
-                        payment.payment_method = 'wallet'
-                        # Deduct from wallet
-                        patient_wallet.balance -= payment.amount
-                        patient_wallet.save()
-                    
-                    payment.save()
-                    
-                    # Update invoice and test request status if fully paid
-                    if invoice.get_balance() <= 0:
-                        invoice.status = 'paid'
-                        invoice.save()
-                        test_request.status = 'payment_confirmed'
-                        test_request.save()
-                    
-                    # Log the payment
-                    payment_method_display = 'Wallet' if payment_source == 'patient_wallet' else payment.get_payment_method_display()
-                    messages.success(
-                        request,
-                        f"Payment of ₦{payment.amount:.2f} recorded successfully via {payment_method_display}."
-                    )
-                    
-                    return redirect('laboratory:test_request_detail', test_request_id=test_request.id)
-                    
-            except Exception as e:
-                messages.error(request, f"Payment processing failed: {str(e)}")
+        if success:
+            messages.success(request, message)
+            
+            # Update test request status if fully paid
+            if invoice.get_balance() <= 0:
+                test_request.status = 'payment_confirmed'
+                test_request.save()
+            
+            return redirect('laboratory:test_request_detail', test_request_id=test_request.id)
         else:
-            messages.error(request, "Please correct the errors below.")
+            messages.error(request, message)
     else:
+        # Use enhanced context from billing office integration
+        context = BillingOfficePaymentProcessor.get_payment_context(
+            request, invoice, 'Laboratory'
+        )
+        
+        # Add laboratory-specific context
+        context.update({
+            'test_request': test_request,
+        })
+        
+        # Create form for initial rendering
         form = LaboratoryPaymentForm(
             invoice=invoice,
-            patient_wallet=patient_wallet
+            patient_wallet=context['patient_wallet']
         )
-    
-    context = {
-        'form': form,
-        'test_request': test_request,
-        'invoice': invoice,
-        'patient_wallet': patient_wallet,
-        'remaining_balance': invoice.get_balance(),
-        'payments': Payment.objects.filter(invoice=invoice).order_by('-created_at'),
-    }
+        context['form'] = form
     
     return render(request, 'laboratory/payment.html', context)
 

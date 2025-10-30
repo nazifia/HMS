@@ -538,6 +538,28 @@ def patient_list(request):
         status='in_progress'
     )
     
+    # Pre-calculate waiting status for each patient
+    patient_waiting_status = {}
+    for patient in page_obj:
+        has_waiting_entry = WaitingList.objects.filter(
+            patient=patient,
+            doctor=request.user,
+            status='waiting'
+        ).exists()
+        patient_waiting_status[patient.id] = has_waiting_entry
+    
+    # Get last consultation status for each patient
+    patient_consultation_status = {}
+    for patient in page_obj:
+        last_consultation = Consultation.objects.filter(
+            patient=patient,
+            doctor=request.user
+        ).order_by('-consultation_date').first()
+        if last_consultation:
+            patient_consultation_status[patient.id] = last_consultation.status
+        else:
+            patient_consultation_status[patient.id] = None
+    
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
@@ -545,6 +567,8 @@ def patient_list(request):
         'active_nav': 'patients',
         'waiting_patients': waiting_patients,
         'in_progress_count': in_progress_patients.count(),
+        'patient_waiting_status': patient_waiting_status,
+        'patient_consultation_status': patient_consultation_status,
     }
 
     return render(request, 'consultations/patient_list_clean.html', context)

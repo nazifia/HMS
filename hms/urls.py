@@ -46,7 +46,7 @@ urlpatterns = [
     path('theatre/', include(('theatre.urls', 'theatre'), namespace='theatre')),
     path('nhia/', include('nhia.urls')),
     path('retainership/', include('retainership.urls')),
-    path('desk-office/', include('desk_office.urls')),
+    path('desk-office/', include(('desk_office.urls', 'desk_office'))),
     path('dental/', include('dental.urls')),
     path('ophthalmic/', include('ophthalmic.urls')),
     path('ent/', include('ent.urls')),

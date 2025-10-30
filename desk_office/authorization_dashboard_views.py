@@ -478,6 +478,89 @@ def authorize_referral(request, referral_id):
 
 
 @login_required
+def authorize_prescription(request, prescription_id):
+    """Generate authorization code for a specific prescription"""
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+    
+    if not prescription.requires_authorization:
+        messages.error(request, 'This prescription does not require authorization.')
+        return redirect('desk_office:authorization_dashboard')
+    
+    if request.method == 'POST':
+        # Get form data
+        amount = request.POST.get('amount', '0.00')
+        expiry_days = int(request.POST.get('expiry_days', '30'))
+        expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
+        notes = request.POST.get('notes', '')
+        code_type = request.POST.get('code_type', 'auto')
+        manual_code = request.POST.get('manual_code', '').strip().upper()
+
+        # Determine service type
+        service_type = 'pharmacy'
+
+        # Handle code generation (auto or manual)
+        if code_type == 'manual':
+            if not manual_code:
+                messages.error(request, 'Please enter a manual authorization code.')
+                context = {
+                    'prescription': prescription,
+                    'page_title': f'Authorize Prescription #{prescription.id}',
+                    'active_nav': 'desk_office',
+                    'form_data': request.POST,
+                }
+                return render(request, 'desk_office/authorize_prescription.html', context)
+
+            # Check if manual code already exists
+            if AuthorizationCode.objects.filter(code=manual_code).exists():
+                messages.error(request, f'Authorization code "{manual_code}" already exists. Please use a different code.')
+                context = {
+                    'prescription': prescription,
+                    'page_title': f'Authorize Prescription #{prescription.id}',
+                    'active_nav': 'desk_office',
+                    'form_data': request.POST,
+                }
+                return render(request, 'desk_office/authorize_prescription.html', context)
+
+            code_str = manual_code
+            code_source = "Manual"
+        else:
+            # Auto-generate authorization code
+            while True:
+                code_str = generate_authorization_code_string()
+                if not AuthorizationCode.objects.filter(code=code_str).exists():
+                    break
+            code_source = "System"
+
+        # Create authorization code
+        auth_code = AuthorizationCode.objects.create(
+            code=code_str,
+            patient=prescription.patient,
+            service_type=service_type,
+            amount=amount,
+            expiry_date=expiry_date,
+            status='active',
+            notes=f"{code_source}-generated for prescription #{prescription.id}. {notes}",
+            generated_by=request.user
+        )
+
+        # Link authorization code to prescription
+        prescription.authorization_code = auth_code
+        prescription.authorization_status = 'authorized'
+        prescription.save()
+
+        messages.success(request, f'Authorization code {auth_code.code} generated successfully for prescription #{prescription.id}.')
+        return redirect('desk_office:authorization_dashboard')
+    
+    context = {
+        'prescription': prescription,
+        'page_title': f'Authorize Prescription #{prescription.id}',
+        'active_nav': 'desk_office',
+    }
+    
+    return render(request, 'desk_office/authorize_prescription.html', context)
+
+
+@login_required
 def authorization_code_list(request):
     """List all authorization codes with filtering"""
     import csv

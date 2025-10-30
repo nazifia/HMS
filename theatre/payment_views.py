@@ -10,6 +10,7 @@ from billing.models import Invoice, Payment
 from patients.models import PatientWallet
 from .payment_forms import TheatrePaymentForm
 from .models import Surgery
+from core.billing_office_integration import BillingOfficePaymentProcessor
 
 
 @login_required

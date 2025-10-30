@@ -1,6 +1,7 @@
 from django import forms
 from django.utils import timezone
 from .models import Invoice, InvoiceItem, Payment, Service
+from core.billing_office_integration import BillingOfficeFormMixin
 
 class InvoiceForm(forms.ModelForm):
     """Form for creating and editing invoices"""
@@ -69,18 +70,8 @@ class InvoiceItemForm(forms.ModelForm):
 
         return cleaned_data
 
-class PaymentForm(forms.ModelForm):
-    """Enhanced form for recording payments with dual payment method support"""
-    
-    payment_source = forms.ChoiceField(
-        choices=[
-            ('billing_office', 'Billing Office Payment'),
-            ('patient_wallet', 'Patient Wallet Payment')
-        ],
-        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
-        label='Payment Source',
-        initial='billing_office'
-    )
+class PaymentForm(BillingOfficeFormMixin, forms.ModelForm):
+    """Enhanced form for recording payments with billing office integration"""
     
     class Meta:
         model = Payment
@@ -92,50 +83,10 @@ class PaymentForm(forms.ModelForm):
             'transaction_id': forms.TextInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
-    
-    def __init__(self, *args, **kwargs):
-        self.invoice = kwargs.pop('invoice', None)
-        self.patient_wallet = kwargs.pop('patient_wallet', None)
-        super().__init__(*args, **kwargs)
-        
-        # Add wallet balance info to the form if wallet is provided
-        if self.patient_wallet:
-            self.fields['payment_source'].help_text = f'Wallet Balance: ₦{self.patient_wallet.balance:.2f}'
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        payment_source = cleaned_data.get('payment_source')
-        amount = cleaned_data.get('amount')
-        
-        # Force wallet payment method for wallet payments
-        if payment_source == 'patient_wallet':
-            cleaned_data['payment_method'] = 'wallet'
-
-        # Allow wallet payments even with insufficient balance (negative balance allowed)
-        # Wallet balance validation removed to support negative balances
-        
-        if self.invoice and amount:
-            remaining_balance = self.invoice.get_balance()
-            if amount > remaining_balance:
-                raise forms.ValidationError(
-                    f'Payment amount exceeds remaining balance of ₦{remaining_balance:.2f}'
-                )
-        
-        return cleaned_data
 
 
-class AdmissionPaymentForm(forms.ModelForm):
-    """Enhanced form for admission payments supporting both billing office and wallet payments"""
-
-    payment_source = forms.ChoiceField(
-        choices=[
-            ('billing_office', 'Billing Office Payment'),
-            ('patient_wallet', 'Patient Wallet Payment')
-        ],
-        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
-        label='Payment Source',
-        initial='billing_office'
-    )
+class AdmissionPaymentForm(BillingOfficeFormMixin, forms.ModelForm):
+    """Enhanced form for admission payments with billing office integration"""
 
     class Meta:
         model = Payment
@@ -147,49 +98,6 @@ class AdmissionPaymentForm(forms.ModelForm):
             'transaction_id': forms.TextInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
-
-    def __init__(self, *args, **kwargs):
-        self.invoice = kwargs.pop('invoice', None)
-        self.patient_wallet = kwargs.pop('patient_wallet', None)
-        super().__init__(*args, **kwargs)
-
-        if self.invoice:
-            remaining_amount = self.invoice.get_balance()
-            self.fields['amount'].initial = remaining_amount
-            self.fields['amount'].widget.attrs['max'] = str(remaining_amount)
-
-        # Update payment method choices based on payment source
-        if self.patient_wallet:
-            wallet_balance = self.patient_wallet.balance
-            self.fields['payment_source'].help_text = f'Patient wallet balance: ₦{wallet_balance:.2f}'
-
-    def clean(self):
-        cleaned_data = super().clean()
-        payment_source = cleaned_data.get('payment_source')
-        amount = cleaned_data.get('amount')
-        payment_method = cleaned_data.get('payment_method')
-
-        if payment_source == 'patient_wallet':
-            # Force wallet payment method for wallet payments
-            cleaned_data['payment_method'] = 'wallet'
-
-            # Allow wallet payments even with insufficient balance (negative balance allowed)
-            # Wallet balance validation removed to support negative balances
-            
-        elif payment_source == 'billing_office':
-            # Ensure wallet is not selected for billing office payments
-            if payment_method == 'wallet':
-                raise forms.ValidationError('Wallet payment method is only available for patient wallet payments.')
-
-        # Validate amount against invoice balance
-        if self.invoice and amount:
-            remaining_amount = self.invoice.get_balance()
-            if amount > remaining_amount:
-                raise forms.ValidationError(
-                    f'Payment amount cannot exceed the remaining balance of ₦{remaining_amount:.2f}'
-                )
-
-        return cleaned_data
 
 class ServiceForm(forms.ModelForm):
     """Form for creating and editing services"""

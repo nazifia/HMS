@@ -110,7 +110,9 @@ class PrescriptionForm(forms.ModelForm):
     doctor = forms.ModelChoiceField(
         queryset=CustomUser.objects.filter(is_active=True, roles__name='doctor').distinct(),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
-        empty_label="Select Doctor"
+        empty_label="Select Doctor",
+        required=False,
+        help_text="Optional: Select a doctor if applicable"
     )
 
     prescription_date = forms.DateField(
@@ -127,6 +129,25 @@ class PrescriptionForm(forms.ModelForm):
             'placeholder': 'Enter authorization code (if required)'
         }),
         help_text="Required for NHIA patients from non-NHIA consultations"
+    )
+    
+    # Override model fields to make them optional
+    diagnosis = forms.CharField(
+        max_length=200,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter diagnosis (optional)'
+        })
+    )
+    
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'class': 'form-control',
+            'placeholder': 'Enter additional notes (optional)'
+        })
     )
 
     def __init__(self, *args, **kwargs):
@@ -215,8 +236,7 @@ class PrescriptionForm(forms.ModelForm):
         if not cleaned_data.get('patient'):
             raise forms.ValidationError("Patient is required.")
         
-        if not cleaned_data.get('doctor'):
-            raise forms.ValidationError("Doctor is required.")
+        # Doctor is now optional - no validation needed
 
         return cleaned_data
 
@@ -236,9 +256,9 @@ class PrescriptionForm(forms.ModelForm):
             'patient', 'doctor', 'prescription_date', 'diagnosis', 'notes', 'prescription_type'
         ]
         widgets = {
-            'diagnosis': forms.TextInput(attrs={'class': 'form-control'}),
+            'diagnosis': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter diagnosis (optional)'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Enter additional notes (optional)'}),
             'prescription_type': forms.Select(attrs={'class': 'form-select'}),
         }
 
@@ -270,7 +290,12 @@ import logging
 class DispenseItemForm(forms.Form):
     """Form for a single item in the dispensing process."""
     item_id = forms.IntegerField(widget=forms.HiddenInput())
-    dispense_this_item = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    # Changed from BooleanField with CheckboxInput to ChoiceField with RadioSelect for single medication selection
+    dispense_this_item = forms.ChoiceField(
+        required=False,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input dispense-radio'}),
+        choices=[]  # Will be set dynamically in the view
+    )
     quantity_to_dispense = forms.IntegerField(
         min_value=1,
         required=False,
