@@ -1,6 +1,6 @@
 /* === HMS Standalone Sidebar CSS (Context7 MCP Best Practice) === */
 
-/* 1. Sidebar Container */
+/* 1. Sidebar Container - Manual Operation Only */
 #sidebar, .sidebar {
     width: 14rem; /* Adjusted width */
     min-width: 14rem;
@@ -20,7 +20,12 @@
     font-family: 'Segoe UI', Arial, sans-serif;
     overflow-y: auto;
     background-attachment: local;
-    transition: all 0.3s; /* Added transition for smooth toggle */
+    transition: all 0.3s;
+    /* Prevent auto-refresh and auto-reload behaviors */
+    scroll-behavior: auto !important;
+    scroll-snap-type: none !important;
+    pointer-events: auto;
+    user-select: auto;
 }
 
 /* 2. Sidebar Branding */
@@ -84,8 +89,8 @@
     border-top: 1px solid #444950;
 }
 
-/* 7. Responsive: Stack Sidebar on Small Screens */
-@media (max-width: 768px) { /* Changed to 768px for consistency with JS */
+/* 7. Responsive: Stack Sidebar on Small Screens - Manual Only */
+@media (max-width: 768px) {
     #sidebar, .sidebar {
         position: fixed; /* Fixed position for overlay */
         left: 0;
@@ -100,6 +105,9 @@
         background-attachment: local;
         overflow-y: auto;
         z-index: 1050 !important; /* Higher z-index for overlay */
+        /* Manual operation only - disable auto-behaviors */
+        scroll-behavior: auto !important;
+        will-change: transform;
     }
 
     .sidebar.sidebar-open, #sidebar-container.sidebar-open { /* Class added by JS when sidebar is open */
@@ -139,12 +147,15 @@
     outline-offset: 2px;
 }
 
-/* Sidebar Toggler for desktop */
+/* Sidebar Toggler for desktop - Manual Only */
 .sidebar-toggled #sidebar {
     width: 6.5rem !important; /* Collapsed width */
     min-width: 6.5rem !important;
     max-width: 6.5rem !important;
     overflow: hidden;
+    /* Disable any auto-animation or auto-behavior */
+    animation: none !important;
+    transition: transform 0.3s ease !important;
 }
 
 .sidebar-toggled .sidebar .sidebar-brand .sidebar-brand-text {
@@ -176,9 +187,9 @@
     left: calc(6.5rem + 1.5rem / 2);
     z-index: 1;
     top: 2px;
-    animation-name: growIn;
-    animation-duration: 200ms;
-    animation-timing-function: transform cubic-bezier(0.18, 1.25, 0.4, 1), opacity cubic-bezier(0, 1, 0.4, 1);
+    /* Manual dropdown only - disable auto-animation */
+    animation: none !important;
+    transition: opacity 0.15s ease !important;
 }
 
 .sidebar-toggled .sidebar .nav-item .collapse .collapse-inner {

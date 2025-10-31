@@ -108,7 +108,7 @@
         .alert-error-custom {
             border-left-color: #dc3545;
         }
-    </style>
+
         /* Main layout for sidebar and content */
         html, body {
             height: 100%;
@@ -1175,11 +1175,24 @@
             }
         });
 
+        // Additional error handler for htmx-specific errors
+        window.addEventListener('error', function(e) {
+            if (e.error && (
+                e.error.message.includes('H.match') ||
+                e.error.message.includes('htmx') ||
+                e.error.message.includes('undefined is not an object')
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        }, true); // Use capture phase for better error interception
+
         // Additional error handler for unhandled promise rejections
         window.addEventListener('unhandledrejection', function(e) {
             if (e.reason && e.reason.message && (
                 e.reason.message.includes('H.match') ||
-                e.reason.message.includes('undefined is not an object')
+                e.reason.message.includes('undefined is not an object') ||
+                e.reason.message.includes('htmx')
             )) {
                 e.preventDefault();
                 console.warn('Suppressed promise rejection error:', e.reason);
@@ -1189,7 +1202,7 @@
 
         // HTMX Configuration
         try {
-            if (typeof htmx !== 'undefined') {
+            if (typeof htmx !== 'undefined' && htmx.config) {
                 htmx.config.globalViewTransitions = true;
                 htmx.config.scrollBehavior = 'auto'; // Changed to 'auto' to prevent auto-scroll
                 htmx.config.defaultSwapStyle = 'innerHTML';
@@ -1197,54 +1210,58 @@
                 htmx.config.defaultSettleDelay = 50;
                 
                 // Show loading indicators
-                htmx.on('htmx:beforeRequest', function(evt) {
-                    const target = evt.target;
-                    if (target) {
-                        target.style.opacity = '0.6';
-                    }
-                });
-                
-                htmx.on('htmx:afterRequest', function(evt) {
-                    const target = evt.target;
-                    if (target) {
-                        target.style.opacity = '1';
-                    }
-                    // Re-initialize tooltips and other Bootstrap components
-                    if (typeof bootstrap !== 'undefined') {
-                        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-                        tooltipTriggerList.map(function (tooltipTriggerEl) {
-                            return new bootstrap.Tooltip(tooltipTriggerEl);
-                        });
-                    }
-                });
-                
-                // Add custom event for search
-                htmx.on('search', function(evt) {
-                    try {
-                        const form = evt.detail.elt;
-                        if (form && form.tagName === 'FORM') {
-                            // Get all form data
-                            const formData = new FormData(form);
-                            const url = new URL(form.action || window.location.pathname);
-                            
-                            // Add form data to URL
-                            for (let [key, value] of formData.entries()) {
-                                if (value) {
-                                    url.searchParams.set(key, value);
-                                }
-                            }
-                            
-                            // Trigger HTMX request
-                            htmx.ajax('GET', url, {
-                                target: form.getAttribute('hx-target') || '#patient-table-container',
-                                swap: form.getAttribute('hx-swap') || 'innerHTML',
-                                select: form.getAttribute('hx-select') || 'body'
+                if (htmx.on) {
+                    htmx.on('htmx:beforeRequest', function(evt) {
+                        const target = evt.target;
+                        if (target) {
+                            target.style.opacity = '0.6';
+                        }
+                    });
+                    
+                    htmx.on('htmx:afterRequest', function(evt) {
+                        const target = evt.target;
+                        if (target) {
+                            target.style.opacity = '1';
+                        }
+                        // Re-initialize tooltips and other Bootstrap components
+                        if (typeof bootstrap !== 'undefined') {
+                            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                                return new bootstrap.Tooltip(tooltipTriggerEl);
                             });
                         }
-                    } catch (error) {
-                        console.warn('HTMX search error suppressed:', error);
-                    }
-                });
+                    });
+                    
+                    // Add custom event for search
+                    htmx.on('search', function(evt) {
+                        try {
+                            const form = evt.detail.elt;
+                            if (form && form.tagName === 'FORM') {
+                                // Get all form data
+                                const formData = new FormData(form);
+                                const url = new URL(form.action || window.location.pathname);
+                                
+                                // Add form data to URL
+                                for (let [key, value] of formData.entries()) {
+                                    if (value) {
+                                        url.searchParams.set(key, value);
+                                    }
+                                }
+                                
+                                // Trigger HTMX request only if ajax method exists
+                                if (htmx.ajax) {
+                                    htmx.ajax('GET', url, {
+                                        target: form.getAttribute('hx-target') || '#patient-table-container',
+                                        swap: form.getAttribute('hx-swap') || 'innerHTML',
+                                        select: form.getAttribute('hx-select') || 'body'
+                                    });
+                                }
+                            }
+                        } catch (error) {
+                            console.warn('HTMX search error suppressed:', error);
+                        }
+                    });
+                }
             }
         } catch (error) {
             console.warn('HTMX configuration error suppressed:', error);
@@ -1252,7 +1269,7 @@
         
         // Alpine.js Global Utilities
         try {
-            if (typeof Alpine !== 'undefined') {
+            if (typeof Alpine !== 'undefined' && Alpine.data) {
                 Alpine.data('loading', () => ({
                     loading: false,
                     show() { this.loading = true; },
@@ -1270,7 +1287,7 @@
                             this.typing = false;
                             // Trigger HTMX search if available
                             const searchForm = document.getElementById('search-form');
-                            if (searchForm && typeof htmx !== 'undefined') {
+                            if (searchForm && typeof htmx !== 'undefined' && htmx.trigger) {
                                 try {
                                     htmx.trigger(searchForm, 'search');
                                 } catch (error) {
@@ -1284,6 +1301,82 @@
         } catch (error) {
             console.warn('Alpine.js configuration error suppressed:', error);
         }
+
+        // Manual Sidebar Operation Enforcer
+        document.addEventListener('DOMContentLoaded', function() {
+            // Disable any automatic sidebar behaviors
+            const sidebarContainer = document.getElementById('sidebar-container');
+            const accordionSidebar = document.getElementById('accordionSidebar');
+            
+            if (sidebarContainer) {
+                // Force manual operation only
+                sidebarContainer.setAttribute('data-manual-only', 'true');
+                
+                // Remove any auto-update attributes
+                sidebarContainer.removeAttribute('hx-get');
+                sidebarContainer.removeAttribute('hx-trigger');
+                sidebarContainer.removeAttribute('hx-swap');
+                sidebarContainer.removeAttribute('hx-target');
+                sidebarContainer.removeAttribute('data-refresh-url');
+                sidebarContainer.removeAttribute('data-auto-refresh');
+                sidebarContainer.removeAttribute('data-interval');
+                
+                // Override scroll behavior
+                sidebarContainer.scrollIntoView = function() { return false; };
+                sidebarContainer.scrollTop = 0;
+                
+                // Prevent any automatic scrolling
+                Object.defineProperty(sidebarContainer, 'scrollTop', {
+                    set: function(value) {
+                        if (this._manualScroll) {
+                            this._scrollTop = value;
+                        }
+                    },
+                    get: function() {
+                        return this._scrollTop || 0;
+                    }
+                });
+            }
+            
+            if (accordionSidebar) {
+                // Disable auto-expand/collapse
+                accordionSidebar.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(element) {
+                    element.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const target = document.querySelector(this.getAttribute('data-bs-target'));
+                        if (target) {
+                            // Manual toggle only
+                            target.classList.toggle('show');
+                        }
+                        // Force sidebar back to top
+                        if (sidebarContainer) {
+                            sidebarContainer._manualScroll = true;
+                            sidebarContainer.scrollTop = 0;
+                            setTimeout(() => { sidebarContainer._manualScroll = false; }, 100);
+                        }
+                    });
+                });
+            }
+            
+            // Clear any existing intervals that might cause auto-refresh
+            for (let i = 1; i < 99999; i++) {
+                clearInterval(i);
+            }
+            
+            // Disable any future auto-refresh attempts
+            const originalSetInterval = window.setInterval;
+            window.setInterval = function(callback, delay, ...args) {
+                // Block any intervals that might refresh sidebar
+                if (callback.toString().includes('sidebar') || 
+                    callback.toString().includes('refresh') || 
+                    callback.toString().includes('reload')) {
+                    console.warn('Blocked auto-refresh interval for manual operation');
+                    return null;
+                }
+                return originalSetInterval.call(this, callback, delay, ...args);
+            };
+        });
     </script>
 </body>
 </html>

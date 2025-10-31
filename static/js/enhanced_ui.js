@@ -5,7 +5,7 @@ const HMSUI = {
     config: {
         animationDuration: 300,
         notificationTimeout: 5000,
-        autoRefreshInterval: 30000,
+        autoRefreshInterval: 0, // Disabled for manual operation
         sessionWarningTime: 600000, // 10 minutes
         sessionLogoutTime: 1200000 // 20 minutes
     },
