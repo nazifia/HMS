@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ page_title }}</h1>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-plus me-2"></i>Add New Purchase Item
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Adding item to Purchase #<strong>{{ purchase.invoice_number }}</strong>
+                from <strong>{{ purchase.supplier.name }}</strong>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_medication" class="form-label">
+                                <i class="fas fa-pills me-1"></i>Medication <span class="text-danger">*</span>
+                            </label>
+                            <select name="medication" class="form-select" id="id_medication" required>
+                                <option value="">Select Medication</option>
+                                {% for med in all_medications %}
+                                <option value="{{ med.id }}">{{ med.name }} 
+                                    {% if med.strength %}({{ med.strength }}){% endif %}
+                                    {% if med.unit %}- {{ med.unit }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select medication from the available inventory</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_quantity" class="form-label">
+                                <i class="fas fa-sort-numeric-up me-1"></i>Quantity <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" name="quantity" class="form-control" id="id_quantity" 
+                                   min="1" step="1" required placeholder="Enter quantity">
+                            <div class="form-text">Number of units to purchase</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_unit_price" class="form-label">
+                                <i class="fas fa-tag me-1"></i>Unit Price (₦) <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">₦</span>
+                                <input type="number" name="unit_price" class="form-control" id="id_unit_price" 
+                                       min="0" step="0.01" required placeholder="0.00">
+                            </div>
+                            <div class="form-text">Price per unit</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_total_price" class="form-label">
+                                <i class="fas fa-calculator me-1"></i>Total Price (₦)
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">₦</span>
+                                <input type="number" name="total_price" class="form-control" id="id_total_price" 
+                                       min="0" step="0.01" readonly placeholder="0.00">
+                            </div>
+                            <div class="form-text text-muted">Will be calculated automatically</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_batch_number" class="form-label">
+                                <i class="fas fa-barcode me-1"></i>Batch Number
+                            </label>
+                            <input type="text" name="batch_number" class="form-control" id="id_batch_number" 
+                                   maxlength="50" placeholder="e.g., BATCH001">
+                            <div class="form-text">Manufacturer batch identifier</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_expiry_date" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Expiry Date <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" name="expiry_date" class="form-control" id="id_expiry_date" 
+                                   required min="{% now 'Y-m-d' %}">
+                            <div class="form-text">Medication expiration date</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label for="id_item_notes" class="form-label">
+                                <i class="fas fa-sticky-note me-1"></i>Item Notes
+                            </label>
+                            <textarea name="item_notes" class="form-control" id="id_item_notes" rows="2" 
+                                      placeholder="Any special instructions or notes for this item..."></textarea>
+                            <div class="form-text">Any special instructions or notes</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Back to Purchase
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus me-1"></i> Add Item
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityField = document.getElementById('id_quantity');
+    const unitPriceField = document.getElementById('id_unit_price');
+    const totalPriceField = document.getElementById('id_total_price');
+    
+    if (quantityField && unitPriceField && totalPriceField) {
+        function calculateTotal() {
+            const quantity = parseFloat(quantityField.value) || 0;
+            const unitPrice = parseFloat(unitPriceField.value) || 0;
+            const total = (quantity * unitPrice).toFixed(2);
+            totalPriceField.value = total;
+        }
+        
+        quantityField.addEventListener('input', calculateTotal);
+        unitPriceField.addEventListener('input', calculateTotal);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Purchase for Approval - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-paper-plane me-2"></i>Submit Purchase for Approval
+        </h1>
+        <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Purchase
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i>Purchase Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Invoice Number:</th>
+                            <td><strong>{{ purchase.invoice_number }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Supplier:</th>
+                            <td>{{ purchase.supplier.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Created Date:</th>
+                            <td>{{ purchase.created_at|date:"Y-m-d" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Total Amount:</th>
+                            <td>₦{{ purchase.total_amount|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Approval Status:</th>
+                            <td>
+                                <span class="badge bg-warning">{{ purchase.get_approval_status_display }}</span>
+                            </td>
+                        </tr>
+                        {% if purchase.submitted_for_approval_at %}
+                        <tr>
+                            <th>Submitted for Approval:</th>
+                            <td>{{ purchase.submitted_for_approval_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if purchase.expected_delivery_date %}
+                        <tr>
+                            <th>Expected Delivery:</th>
+                            <td>{{ purchase.expected_delivery_date|date:"Y-m-d" }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-exclamation-triangle"></i>Confirm Submission
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'pharmacy:submit_purchase_for_approval' purchase.id %}">
+                        {% csrf_token %}
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Are you sure you want to submit Purchase #<strong>{{ purchase.invoice_number }}</strong> for approval?
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="approval_notes" class="form-label">Approval Notes (Optional)</label>
+                            <textarea class="form-control" id="approval_notes" name="approval_notes" rows="3" 
+                                      placeholder="Add any notes for the approval process...">{{ purchase.approval_notes|default:"" }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="priority_level" class="form-label">Priority Level</label>
+                            <select class="form-select" id="priority_level" name="priority_level">
+                                <option value="normal" {% if purchase.priority_level == 'normal' %}selected{% endif %}>Normal</option>
+                                <option value="urgent" {% if purchase.priority_level == 'urgent' %}selected{% endif %}>Urgent</option>
+                                <option value="critical" {% if purchase.priority_level == 'critical' %}selected{% endif %}>Critical</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="expected_delivery_date" class="form-label">Expected Delivery Date</label>
+                            <input type="date" class="form-control" id="expected_delivery_date" name="expected_delivery_date" 
+                                   value="{{ purchase.expected_delivery_date|date:'Y-m-d'|default:'' }}" required>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-paper-plane me-1"></i>Submit for Approval
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

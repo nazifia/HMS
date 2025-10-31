@@ -64,16 +64,27 @@ class PurchaseForm(forms.ModelForm):
     purchase_date = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+    
+    invoice_number = forms.CharField(
+        max_length=50,
+        help_text="Enter a unique invoice number"
+    )
 
     class Meta:
         model = Purchase
         fields = [
-            'supplier', 'purchase_date', 'payment_status', 'notes'
+            'supplier', 'invoice_number', 'purchase_date', 'payment_status', 'notes'
         ]
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 3}),
             'payment_status': forms.Select(attrs={'class': 'form-select'}),
         }
+    
+    def clean_invoice_number(self):
+        invoice_number = self.cleaned_data.get('invoice_number')
+        if Purchase.objects.filter(invoice_number=invoice_number).exists():
+            raise ValidationError('This invoice number already exists. Please enter a unique invoice number.')
+        return invoice_number
 
 class PurchaseItemForm(forms.ModelForm):
     """Form for creating and editing purchase items"""

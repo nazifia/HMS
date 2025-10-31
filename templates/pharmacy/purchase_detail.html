@@ -389,9 +389,8 @@
                 <h5 class="modal-title" id="addItemModalLabel">Add Purchase Item</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post">
+            <form method="post" action="{% url 'pharmacy:add_purchase_item' purchase.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="add_item">
                 <div class="modal-body">
                     {% if item_form.non_field_errors %}
                         <div class="alert alert-danger">

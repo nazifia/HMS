@@ -1,0 +1,833 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% load static %}
+{% load pharmacy_tags %}
+
+{% block title %}Dispense Medications - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateX(-50%) translateY(0);
+        }
+        40% {
+            transform: translateX(-50%) translateY(-10px);
+        }
+        60% {
+            transform: translateX(-50%) translateY(-5px);
+        }
+    }
+
+    /* Dispensed row styling */
+    tr.dispensed-row {
+        background-color: #f8f9fa;
+        opacity: 0.7;
+    }
+
+    tr.dispensed-row td {
+        color: #6c757d;
+    }
+
+    /* Disabled checkbox styling */
+    input[type="checkbox"]:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    /* Message styling */
+    .alert {
+        border-left: 4px solid;
+        border-radius: 0.375rem;
+    }
+
+    .alert-success {
+        background-color: #d1e7dd;
+        border-left-color: #0f5132;
+        color: #0f5132;
+    }
+
+    .alert-info {
+        background-color: #cff4fc;
+        border-left-color: #055160;
+        color: #055160;
+    }
+
+    .alert-warning {
+        background-color: #fff3cd;
+        border-left-color: #664d03;
+        color: #664d03;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        border-left-color: #842029;
+        color: #842029;
+    }
+
+    /* Badge for dispensed status */
+    .badge-dispensed {
+        background-color: #198754;
+        color: white;
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 600;
+        border-radius: 0.25rem;
+    }
+
+    .badge-pending {
+        background-color: #ffc107;
+        color: #000;
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 600;
+        border-radius: 0.25rem;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <!-- Info: Invoice will be generated after dispensing -->
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> The invoice for dispensed medicines will be generated and sent to billing only after you confirm dispensing below.
+                </div>
+                <!-- Prescription Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Prescription Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Prescription ID:</div>
+                                    <div class="col-md-8">{{ prescription.id }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Date:</div>
+                                    <div class="col-md-8">{{ prescription.prescription_date|date:"F d, Y" }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Diagnosis:</div>
+                                    <div class="col-md-8">{{ prescription.diagnosis }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Status:</div>
+                                    <div class="col-md-8">
+                                        {% if prescription.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif prescription.status == 'processing' %}
+                                            <span class="badge bg-info">Processing</span>
+                                        {% elif prescription.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif prescription.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient:</div>
+                                    <div class="col-md-8">
+                                        <a href="{% url 'patients:detail' prescription.patient.id %}">
+                                            {{ prescription.patient.get_full_name }}
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Patient ID:</div>
+                                    <div class="col-md-8">{{ prescription.patient.patient_id }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Doctor:</div>
+                                    <div class="col-md-8">Dr. {{ prescription.doctor.get_full_name }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 text-muted">Department:</div>
+                                    <div class="col-md-8">{{ prescription.doctor.profile.department|default:"Not specified" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NHIA Payment Information - Prominent Display -->
+                {% if is_nhia_patient %}
+                <div class="card border-success shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>NHIA Patient - Payment Breakdown
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <small class="text-muted d-block mb-1">Total Medication Cost</small>
+                                    <h4 class="text-primary mb-0">₦{{ total_medication_cost|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-warning bg-opacity-10 rounded border border-warning">
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="fas fa-user me-1"></i>Patient Pays (10%)
+                                    </small>
+                                    <h3 class="text-warning mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <small class="text-success mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> Only 10% required
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-success bg-opacity-10 rounded border border-success">
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="fas fa-shield-alt me-1"></i>NHIA Covers (90%)
+                                    </small>
+                                    <h4 class="text-success mb-0">₦{{ total_nhia_covers|floatformat:2 }}</h4>
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-check-circle"></i> Covered by insurance
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>₦{{ total_nhia_covers|floatformat:2 }}</strong> (90% of total cost).
+                            You only need to pay <strong>₦{{ total_patient_pays|floatformat:2 }}</strong> for all medications.
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card border-primary shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user me-2"></i>Payment Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 offset-md-3">
+                                <div class="text-center p-3 bg-primary bg-opacity-10 rounded border border-primary">
+                                    <small class="text-muted d-block mb-1">Total Amount Due</small>
+                                    <h3 class="text-primary mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <small class="text-muted mt-1 d-block">Full payment required</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Dispense Form -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Dispense Medications</h5>
+                    </div>
+                    <div class="card-body bg-info bg-opacity-10 border-start border-4 border-info mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-info-circle text-info me-3 mt-1"></i>
+                            <div class="small">
+                                <strong>Single Medication Dispensing:</strong> Select ONE medication at a time using the radio button, specify the quantity to dispense, and select the dispensary.
+                                The system validates against stock levels and allows flexible quantity dispensing up to available stock.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="dispenseForm">
+                            {% csrf_token %}
+                            {{ formset.management_form }}
+
+                            {% if formset.non_form_errors %}
+                                <div class="alert alert-danger">
+                                    {{ formset.non_form_errors }}
+                                </div>
+                            {% endif %}
+
+                            <!-- Dispensary Selection -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="dispensary_select" class="form-label">Select Dispensary</label>
+                                    <select name="dispensary_select" id="dispensary_select" class="form-select" required>
+                                        <option value="">-- Select a Dispensary --</option>
+                                        {% for dispensary in dispensaries %}
+                                            <option value="{{ dispensary.id }}" {% if selected_dispensary_id == dispensary.id|stringformat:"s" %}selected{% endif %}>{{ dispensary.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Show per-form errors for debugging -->
+                            {% for form in formset %}
+                                {% if form.errors %}
+                                    <div class="alert alert-danger">
+                                        <strong>Medication #{{ forloop.counter }} error(s):</strong>
+                                        <ul>
+                                            {% for field, errors in form.errors.items %}
+                                                <li>{{ field }}: {{ errors|join:', ' }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center">
+                                                Select
+                                            </th>
+                                            <th>Medication</th>
+                                            <th>Prescribed Qty</th>
+                                            <th>Available Stock</th>
+                                            <th>Unit Price</th>
+                                            <th>Qty to Dispense</th>
+                                            <th>Status</th>
+                                            {% if is_nhia_patient %}
+                                            <th class="text-end">Item Total</th>
+                                            <th class="text-end bg-warning bg-opacity-10">You Pay (10%)</th>
+                                            <th class="text-end bg-success bg-opacity-10">NHIA Covers (90%)</th>
+                                            {% else %}
+                                            <th class="text-end">Item Total</th>
+                                            {% endif %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for form in formset %}
+                                            {% with item=form.prescription_item %}
+                                            <tr id="item-row-{{ forloop.counter0 }}" data-item-id="{{ item.id }}" data-unit-price="{{ item.medication.price }}"
+                                                class="{% if item.is_dispensed %}dispensed-row{% endif %}">
+                                                <td class="text-center">
+                                                    {{ form.item_id }}
+                                                    {{ form.dispensary }}
+                                                    {{ form.stock_quantity_display }}
+                                                    <input type="radio" class="dispense-radio item-radio" name="selected_medication" value="{{ forloop.counter0 }}"
+                                                           {% if item.is_dispensed %}disabled{% endif %}
+                                                           title="Select this medication to dispense">
+                                                    {% if form.dispense_this_item.errors %}<div class="text-danger small">{{ form.dispense_this_item.errors|join:", " }}</div>{% endif %}
+                                                </td>
+                                                <td>
+                                                    <strong>{{ item.medication.name }}</strong> ({{ item.medication.strength }})
+                                                    <div class="small text-muted">{{ item.medication.dosage_form }}</div>
+                                                    {% if item.quantity_dispensed_so_far > 0 %}
+                                                        <div class="small text-info mt-1">
+                                                            <i class="fas fa-info-circle"></i> Previously dispensed: {{ item.quantity_dispensed_so_far }} units
+                                                        </div>
+                                                    {% endif %}
+                                                </td>
+                                                <td><strong>{{ item.quantity }}</strong> units</td>
+                                                <td class="text-center">
+                    {% if selected_dispensary %}
+                        {% if form.stock_quantity_display.value %}
+                            {% with stock_qty=form.stock_quantity_display.value|add:0 %}
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <span class="badge badge-{% if stock_qty > 20 %}success{% elif stock_qty > 0 %}warning{% else %}danger{% endif %} mr-2">
+                                        {{ stock_qty }} units
+                                    </span>
+                                    {% if stock_qty <= 20 %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary add-stock-btn" 
+                                                data-medication-id="{{ item.medication.id }}" 
+                                                data-medication-name="{{ item.medication.name }}" 
+                                                data-dispensary-id="{{ selected_dispensary.id }}" 
+                                                data-dispensary-name="{{ selected_dispensary.name }}" 
+                                                title="Add stock for this medication">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                                {% if stock_qty == 0 %}
+                                    <div class="small text-danger mt-1">Out of stock</div>
+                                {% elif stock_qty < 10 %}
+                                    <div class="small text-warning mt-1">Low stock</div>
+                                {% endif %}
+                            {% endwith %}
+                        {% else %}
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="badge badge-secondary mr-2">No stock data</span>
+                                <button type="button" class="btn btn-sm btn-outline-primary add-stock-btn" 
+                                        data-medication-id="{{ item.medication.id }}" 
+                                        data-medication-name="{{ item.medication.name }}" 
+                                        data-dispensary-id="{{ selected_dispensary.id }}" 
+                                        data-dispensary-name="{{ selected_dispensary.name }}" 
+                                        title="Add stock for this medication">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge badge-info">Select dispensary</span>
+                    {% endif %}
+                </td>
+                                                <td>₦{{ item.medication.price|floatformat:2 }}</td>
+                                                <td>
+                                                    {{ form.quantity_to_dispense|add_class:"form-control form-control-sm quantity-input" }}
+                                                    {% if form.quantity_to_dispense.errors %}
+                                                        <div class="text-danger small">{{ form.quantity_to_dispense.errors|join:", " }}</div>
+                                                    {% endif %}
+                                                    {% if selected_dispensary and form.stock_quantity_display.value %}
+                                                        <div class="small text-muted mt-1">
+                                                            <i class="fas fa-info-circle"></i> Max available: {{ form.stock_quantity_display.value }} units
+                                                        </div>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if item.is_dispensed %}
+                                                        <span class="badge badge-dispensed">
+                                                            <i class="fas fa-check-circle"></i> Fully Dispensed
+                                                        </span>
+                                                    {% elif item.quantity_dispensed_so_far > 0 %}
+                                                        <span class="badge badge-pending">
+                                                            <i class="fas fa-clock"></i> Partially Dispensed ({{ item.quantity_dispensed_so_far }}/{{ item.quantity }})
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-hourglass-start"></i> Pending
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                {% if is_nhia_patient %}
+                                                {% for pricing in items_with_pricing %}
+                                                    {% if pricing.item.id == item.id %}
+                                                <td class="text-end">
+                                                    <span class="item-total-price">₦{{ pricing.total_cost|floatformat:2 }}</span>
+                                                </td>
+                                                <td class="text-end bg-warning bg-opacity-10">
+                                                    <strong class="text-warning item-patient-pays">₦{{ pricing.patient_pays|floatformat:2 }}</strong>
+                                                    <div class="small text-muted">10%</div>
+                                                </td>
+                                                <td class="text-end bg-success bg-opacity-10">
+                                                    <strong class="text-success item-nhia-covers">₦{{ pricing.nhia_covers|floatformat:2 }}</strong>
+                                                    <div class="small text-muted">90%</div>
+                                                </td>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% else %}
+                                                {% for pricing in items_with_pricing %}
+                                                    {% if pricing.item.id == item.id %}
+                                                <td class="text-end">
+                                                    <span class="item-total-price">₦{{ pricing.total_cost|floatformat:2 }}</span>
+                                                </td>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% endif %}
+                                            </tr>
+                                            {% endwith %}
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="{% if is_nhia_patient %}10{% else %}8{% endif %}" class="text-center text-muted">
+                                                    {% if prescription.status == 'completed' %}
+                                                        All medications in this prescription have been dispensed.
+                                                    {% else %}
+                                                        No items available for dispensing or all items have zero stock.
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        {% if is_nhia_patient %}
+                                        <tr class="fw-bold">
+                                            <td colspan="7" class="text-end">TOTAL:</td>
+                                            <td id="overall-total-price" class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td class="text-end bg-warning bg-opacity-10">
+                                                <span class="text-warning">₦{{ total_patient_pays|floatformat:2 }}</span>
+                                            </td>
+                                            <td class="text-end bg-success bg-opacity-10">
+                                                <span class="text-success">₦{{ total_nhia_covers|floatformat:2 }}</span>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr class="fw-bold">
+                                            <td colspan="7" class="text-end">TOTAL:</td>
+                                            <td id="overall-total-price" class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </tfoot>
+                                </table>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back to Prescription
+                                </a>
+                                <!-- Dispense via Cart Button -->
+                                <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" 
+                                   class="btn btn-warning me-2" 
+                                   title="Create dispensing cart for all prescription items">
+                                    <i class="fas fa-shopping-cart"></i> Dispense via Cart
+                                </a>
+                                <button type="submit" class="btn btn-success" {% if not formset.forms %}disabled{% endif %}>
+                                    <i class="fas fa-prescription-bottle-alt"></i> Quick Dispense
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<script>
+    console.log('Dispensaries:', {{ dispensaries|safe }});
+    
+    // Handle dispensary selection change
+    document.addEventListener('DOMContentLoaded', function() {
+        const dispensarySelect = document.getElementById('dispensary_select');
+        if (dispensarySelect) {
+            dispensarySelect.addEventListener('change', function() {
+                const selectedDispensaryId = this.value;
+                if (selectedDispensaryId) {
+                    // Update all dispensary hidden fields immediately
+                    updateDispensaryFields(selectedDispensaryId);
+                    // Update stock quantities via AJAX instead of page reload
+                    updateStockQuantities(selectedDispensaryId);
+                } else {
+                    // Clear dispensary fields and stock quantities if no dispensary selected
+                    updateDispensaryFields('');
+                    clearStockQuantities();
+                }
+            });
+        }
+    });
+
+    // Function to update stock quantities via AJAX
+    function updateStockQuantities(dispensaryId) {
+        // Show loading indicator
+        showLoadingIndicator();
+        
+        // Get prescription ID from URL
+        const prescriptionId = window.location.pathname.split('/')[3];
+        
+        fetch(`/pharmacy/prescriptions/${prescriptionId}/stock-quantities/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                dispensary_id: dispensaryId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update stock quantities in the table
+                updateStockDisplay(data.stock_data);
+                // Update form hidden fields
+                updateFormFields(data.form_data);
+            } else {
+                console.error('Error fetching stock quantities:', data.error);
+                alert('Error fetching stock quantities. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error fetching stock quantities. Please try again.');
+        })
+        .finally(() => {
+            hideLoadingIndicator();
+        });
+    }
+
+    // Function to update stock display in the table
+    function updateStockDisplay(stockData) {
+        stockData.forEach(item => {
+            const row = document.querySelector(`tr[data-item-id="${item.prescription_item_id}"]`);
+            if (row) {
+                // Find the stock column (4th column in the table)
+                const stockCell = row.querySelector('td:nth-child(4)');
+                const dispenseRadio = row.querySelector('.dispense-radio');
+                const quantityInput = row.querySelector('.quantity-input');
+                const addStockBtn = row.querySelector('.add-stock-btn');
+
+                if (stockCell) {
+                    if (item.stock_quantity === 0) {
+                        stockCell.innerHTML = '<span class="badge bg-danger">Out of Stock</span>';
+                        if (dispenseRadio) {
+                            dispenseRadio.disabled = true;
+                            dispenseRadio.checked = false;
+                        }
+                        if (quantityInput) {
+                            quantityInput.disabled = true;
+                            quantityInput.value = 0;
+                        }
+                    } else if (item.stock_quantity === null || item.stock_quantity === undefined) {
+                        stockCell.innerHTML = '<span class="badge bg-secondary">Unknown</span>';
+                        if (dispenseRadio) {
+                            dispenseRadio.disabled = true;
+                            dispenseRadio.checked = false;
+                        }
+                        if (quantityInput) {
+                            quantityInput.disabled = true;
+                            quantityInput.value = 0;
+                        }
+                    } else {
+                        stockCell.innerHTML = `<span class="badge bg-success">${item.stock_quantity} units</span>`;
+                        if (dispenseRadio) {
+                            dispenseRadio.disabled = false;
+                        }
+                        if (quantityInput) {
+                            quantityInput.disabled = !dispenseRadio.checked;
+                            // Set max attribute for quantity validation
+                            quantityInput.setAttribute('max', Math.min(item.stock_quantity, item.remaining_qty));
+                        }
+                    }
+                }
+
+                // Update add stock button data
+                if (addStockBtn) {
+                    addStockBtn.dataset.dispensaryId = item.dispensary_id;
+                    addStockBtn.dataset.dispensaryName = item.dispensary_name;
+                }
+            }
+        });
+    }
+
+    // Function to update dispensary fields for all forms
+    function updateDispensaryFields(dispensaryId) {
+        // Update all dispensary hidden fields
+        const dispensaryFields = document.querySelectorAll('select[name$="-dispensary"]');
+        dispensaryFields.forEach(function(field) {
+            field.value = dispensaryId;
+        });
+    }
+
+    // Function to update form hidden fields
+    function updateFormFields(formData) {
+        formData.forEach((fieldData, index) => {
+            // Update stock quantity display field
+            const stockField = document.querySelector(`input[name="form-${index}-stock_quantity_display"]`);
+            if (stockField) {
+                stockField.value = fieldData.stock_quantity_display || '';
+            }
+
+            // Update dispensary field
+            const dispensaryField = document.querySelector(`select[name="form-${index}-dispensary"]`);
+            if (dispensaryField) {
+                dispensaryField.value = fieldData.dispensary || '';
+            }
+        });
+    }
+
+    // Function to clear stock quantities
+    function clearStockQuantities() {
+        // Update the stock column (4th column) in each row
+        document.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
+            const stockCell = row.querySelector('td:nth-child(4)');
+            if (stockCell) {
+                stockCell.innerHTML = '<span class="badge bg-secondary">Select Dispensary</span>';
+            }
+        });
+
+        document.querySelectorAll('.dispense-radio').forEach(radio => {
+            radio.disabled = true;
+            radio.checked = false;
+        });
+
+        document.querySelectorAll('.quantity-input').forEach(input => {
+            input.disabled = true;
+            input.value = 0;
+            input.removeAttribute('max');
+        });
+
+        // Clear stock quantity display fields
+        document.querySelectorAll('input[name$="-stock_quantity_display"]').forEach(input => {
+            input.value = 'Select a dispensary';
+        });
+    }
+
+    // Loading indicator functions
+    function showLoadingIndicator() {
+        // Update the stock column (4th column) in each row
+        document.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
+            const stockCell = row.querySelector('td:nth-child(4)');
+            if (stockCell) {
+                stockCell.innerHTML = '<span class="badge bg-info"><i class="fas fa-spinner fa-spin"></i> Loading...</span>';
+            }
+        });
+    }
+
+    function hideLoadingIndicator() {
+        // Loading indicator will be replaced by actual stock data
+    }
+</script>
+    </div>
+</div>
+{% if invoice_generated %}
+<div class="alert alert-success mt-4">
+    <i class="fas fa-file-invoice-dollar me-2"></i>
+    Invoice <a href="{% url 'billing:detail' invoice_id %}">#{{ invoice_number }}</a> has been generated and sent to billing/MCP.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const formsetTable = document.getElementById('dispenseForm');
+        if (!formsetTable) return;
+
+        // Individual radio button functionality for single medication selection
+        const itemRadios = document.querySelectorAll('.dispense-radio');
+
+        function updateTotals() {
+            let overallTotal = 0;
+            formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach((row, index) => {
+                const dispenseRadio = row.querySelector(`.dispense-radio`);
+                const quantityInput = row.querySelector(`.quantity-input`);
+                const itemTotalPriceSpan = row.querySelector('.item-total-price');
+                const unitPrice = parseFloat(row.dataset.unitPrice) || 0;
+                let itemTotal = 0;
+                if (dispenseRadio && dispenseRadio.checked && !dispenseRadio.disabled && quantityInput) {
+                    const quantity = parseInt(quantityInput.value) || 0;
+                    itemTotal = quantity * unitPrice;
+                    overallTotal += itemTotal;
+                }
+                if (itemTotalPriceSpan) {
+                    itemTotalPriceSpan.textContent = '₦' + itemTotal.toFixed(2);
+                }
+            });
+            const overallTotalElement = document.getElementById('overall-total-price');
+            if (overallTotalElement) {
+                overallTotalElement.textContent = '₦' + overallTotal.toFixed(2);
+            }
+        }
+
+        formsetTable.addEventListener('change', function(event) {
+            const target = event.target;
+            if (target.classList.contains('dispense-radio')) {
+                // Disable all quantity inputs first
+                formsetTable.querySelectorAll('.quantity-input').forEach(input => {
+                    input.disabled = true;
+                });
+
+                // Enable only the selected medication's quantity input
+                const row = target.closest('tr');
+                const quantityInput = row.querySelector('.quantity-input');
+                if (quantityInput && !target.disabled) {
+                    quantityInput.disabled = false;
+                    if (!quantityInput.value || quantityInput.value == '0') {
+                        // Set quantity to 1 as default, let user decide the actual quantity
+                        quantityInput.value = 1;
+                    }
+                    // Focus the quantity input for easy editing
+                    quantityInput.focus();
+                    quantityInput.select();
+                }
+                updateTotals();
+            } else if (target.classList.contains('quantity-input')) {
+                // Just update totals when quantity changes
+                updateTotals();
+            }
+        });
+
+        // Initial calculation on page load and setup of quantity input disabled state
+        formsetTable.querySelectorAll('tbody tr[data-item-id]').forEach(row => {
+            const dispenseRadio = row.querySelector('.dispense-radio');
+            const quantityInput = row.querySelector('.quantity-input');
+            if (dispenseRadio && quantityInput) {
+                if (dispenseRadio.disabled) {
+                    quantityInput.disabled = true;
+                } else {
+                    quantityInput.disabled = !dispenseRadio.checked;
+                }
+            }
+        });
+        updateTotals();
+
+        // Ensure selected radio button's quantity input is enabled before submit
+        formsetTable.addEventListener('submit', function(event) {
+            const selectedRadio = formsetTable.querySelector('.dispense-radio:checked');
+            if (!selectedRadio) {
+                event.preventDefault();
+                alert('Please select a medication to dispense.');
+                return false;
+            }
+
+            const row = selectedRadio.closest('tr');
+            const quantityInput = row.querySelector('.quantity-input');
+            if (quantityInput) {
+                quantityInput.disabled = false;
+                if (!quantityInput.value || quantityInput.value <= 0) {
+                    event.preventDefault();
+                    alert('Please enter a valid quantity to dispense.');
+                    quantityInput.focus();
+                    return false;
+                }
+            }
+        });
+
+        // Quick add stock functionality
+        document.querySelectorAll('.add-stock-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const medicationId = this.dataset.medicationId;
+                const medicationName = this.dataset.medicationName;
+                const dispensaryId = this.dataset.dispensaryId;
+                const dispensaryName = this.dataset.dispensaryName;
+                
+                // Prompt for quantity to add
+                const quantityToAdd = prompt(`Add stock for ${medicationName} at ${dispensaryName}:\n\nEnter quantity to add:`);
+                
+                if (quantityToAdd && !isNaN(quantityToAdd) && parseInt(quantityToAdd) > 0) {
+                    // Send AJAX request to add stock
+                    fetch('{% url "pharmacy:quick_add_stock" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify({
+                            medication_id: medicationId,
+                            dispensary_id: dispensaryId,
+                            quantity_to_add: parseInt(quantityToAdd)
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success message
+                            alert(`Successfully added ${quantityToAdd} units to ${medicationName} stock.\nNew stock level: ${data.new_stock_quantity} units`);
+                            
+                            // Reload the page to update stock displays
+                            window.location.reload();
+                        } else {
+                            alert('Error adding stock: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error adding stock. Please try again.');
+                    });
+                } else if (quantityToAdd !== null) {
+                    alert('Please enter a valid positive number.');
+                }
+            });
+        });
+    });
+</script>
+
+{% comment %}
+Helper templatetag to access list item by index. Create this in a templatetags file.
+Example: pharmacy/templatetags/pharmacy_extras.py
+
+from django import template
+register = template.Library()
+
+@register.filter
+def get_item(list_data, index):
+    try:
+        return list_data[index]
+    except IndexError:
+        return None
+{% endcomment %}
+
+{% endblock %}

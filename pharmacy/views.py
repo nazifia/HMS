@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, F, Count
-from django.db import models, transaction
+from django.db import models, transaction, IntegrityError
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
@@ -413,6 +413,10 @@ def create_procurement_request(request, medication_id):
         is_active=True
     ).distinct()
     
+    # If no previous suppliers found, show all active suppliers
+    if not suppliers.exists():
+        suppliers = Supplier.objects.filter(is_active=True)
+    
     context = {
         'medication': medication,
         'suppliers': suppliers,
@@ -634,11 +638,59 @@ def procurement_dashboard(request):
     # Get recent purchases
     recent_purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')[:10]
     
+    # Get pending orders for template
+    pending_orders = Purchase.objects.filter(approval_status='pending').select_related('supplier')[:5]
+    total_pending_orders = pending_purchases
+    
+    # Calculate total pending value
+    total_pending_value = Purchase.objects.filter(approval_status='pending').aggregate(
+        total=Sum('total_amount')
+    )['total'] or Decimal('0.00')
+    
+    # Get low stock medications
+    low_stock_items = ActiveStoreInventory.objects.filter(
+        stock_quantity__lte=models.F('reorder_level')
+    ).select_related('medication', 'active_store__dispensary')
+    
+    low_stock_medications = []
+    for item in low_stock_items:
+        # Create a compatible object for template
+        low_stock_medications.append({
+            'medication': item.medication,
+            'dispensary': item.active_store.dispensary,
+            'stock_quantity': item.stock_quantity,
+            'reorder_level': item.reorder_level,
+        })
+    
+    low_stock_count = low_stock_items.count()
+    
+    # Get recent orders (all recent purchases, not just pending)
+    recent_orders = recent_purchases
+    
+    # Get top suppliers (last 90 days)
+    from datetime import timedelta
+    ninety_days_ago = timezone.now() - timedelta(days=90)
+    top_suppliers = Purchase.objects.filter(
+        purchase_date__gte=ninety_days_ago
+    ).values(
+        'supplier__name'
+    ).annotate(
+        order_count=Count('id'),
+        total_value=Sum('total_amount')
+    ).order_by('-total_value')[:5]
+    
     context = {
         'total_purchases': total_purchases,
         'pending_purchases': pending_purchases,
         'approved_purchases': approved_purchases,
         'recent_purchases': recent_purchases,
+        'total_pending_orders': total_pending_orders,
+        'total_pending_value': total_pending_value,
+        'low_stock_count': low_stock_count,
+        'low_stock_medications': low_stock_medications,
+        'pending_orders': pending_orders,
+        'recent_orders': recent_orders,
+        'top_suppliers': top_suppliers,
         'page_title': 'Procurement Dashboard',
         'active_nav': 'pharmacy',
     }
@@ -1085,14 +1137,6 @@ def comprehensive_revenue_analysis_debug(request):
     if query:
         return redirect(f"{target}?{query}")
     return redirect(target)
-@login_required
-def create_procurement_request(request, medication_id):
-    """View for creating a procurement request"""
-    medication = get_object_or_404(Medication, id=medication_id)
-    # Implementation for creating procurement request
-    pass
-
-
 @login_required
 def api_suppliers(request):
     """API endpoint for suppliers"""
@@ -1686,6 +1730,11 @@ def cancel_dispensary_transfer(request, transfer_id):
 @login_required
 def manage_purchases(request):
     """View for managing purchases"""
+    # Only superusers can manage purchases
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to manage purchases.')
+        return redirect('pharmacy:pharmacy_dashboard')
+    
     # Get all purchases
     purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')
     
@@ -1722,6 +1771,11 @@ def manage_purchases(request):
 @login_required
 def add_purchase(request):
     """View for adding a new purchase"""
+    # Only superusers can add purchases
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to add purchases.')
+        return redirect('pharmacy:pharmacy_dashboard')
+    
     if request.method == 'POST':
         form = PurchaseForm(request.POST)
         if form.is_valid():
@@ -1734,10 +1788,16 @@ def add_purchase(request):
             # Set creator if available
             if hasattr(request, 'user') and request.user.is_authenticated:
                 purchase.created_by = request.user
-            purchase.save()
-            # If any items are created immediately afterwards they will call update_total_amount()
-            messages.success(request, f'Purchase #{purchase.invoice_number} created successfully.')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            try:
+                with transaction.atomic():
+                    purchase.save()
+                    # If save succeeded
+                    messages.success(request, f'Purchase #{purchase.invoice_number} created successfully.')
+                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            except IntegrityError:
+                # Likely duplicate invoice_number (unique constraint). Add a form error and re-render.
+                form.add_error('invoice_number', 'This invoice number already exists. Please enter a unique invoice number.')
+                # Fall through to render the form with errors
     else:
         form = PurchaseForm()
     
@@ -1755,16 +1815,69 @@ def purchase_detail(request, purchase_id):
     """View for displaying purchase details"""
     purchase = get_object_or_404(Purchase, id=purchase_id)
     
+    # Superusers have access to all purchases
+    if not request.user.is_superuser:
+        # Add any additional permission checks for non-superusers here if needed
+        pass
+
+    # Handle POST requests for various actions
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'submit_for_approval':
+            # Handle submit for approval - this is handled by a separate view
+            messages.info(request, 'Use the Submit for Approval modal to submit this purchase.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+        elif action == 'approve_purchase':
+            # Handle approval - superusers can approve any purchase
+            if not request.user.is_superuser:
+                messages.error(request, 'You do not have permission to approve purchases.')
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            
+            purchase.approval_status = 'approved'
+            purchase.save()
+            messages.success(request, 'Purchase approved successfully.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+        elif action == 'reject_purchase':
+            # Handle rejection - superusers can reject any purchase
+            if not request.user.is_superuser:
+                messages.error(request, 'You do not have permission to reject purchases.')
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            
+            purchase.approval_status = 'rejected'
+            purchase.save()
+            messages.warning(request, 'Purchase rejected.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+        elif action == 'process_payment':
+            # Handle payment processing - superusers can process any payment
+            if not request.user.is_superuser:
+                messages.error(request, 'You do not have permission to process purchase payments.')
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            
+            purchase.payment_status = 'paid'
+            purchase.save()
+            messages.success(request, 'Payment processed successfully.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
     # Get purchase items
     purchase_items = purchase.items.select_related('medication')
-    
+
+    # Initialize the item form for the modal
+    from .forms import PurchaseItemForm
+    item_form = PurchaseItemForm()
+
     context = {
         'purchase': purchase,
         'purchase_items': purchase_items,
+        'item_form': item_form,
+        'all_medications': Medication.objects.filter(is_active=True).order_by('name'),
         'page_title': f'Purchase Details - #{purchase.invoice_number}',
         'active_nav': 'pharmacy',
     }
-    
+
     return render(request, 'pharmacy/purchase_detail.html', context)
 
 
@@ -1781,14 +1894,136 @@ from pharmacy.models import Patient, Prescription, PrescriptionItem, Purchase
 def process_purchase_payment(request, purchase_id):
     """View for processing purchase payment"""
     purchase = get_object_or_404(Purchase, id=purchase_id)
-    # Implementation for processing purchase payment
-    pass
+    
+    # Only superusers can process purchase payments
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to process purchase payments.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    
+    if request.method == 'POST':
+        payment_amount = Decimal(request.POST.get('payment_amount', '0'))
+        payment_method = request.POST.get('payment_method', '')
+        payment_date = request.POST.get('payment_date', timezone.now().date())
+        reference_number = request.POST.get('reference_number', '')
+        payment_notes = request.POST.get('payment_notes', '')
+        
+        # Validate payment amount
+        if payment_amount <= 0:
+            messages.error(request, 'Payment amount must be greater than 0.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        
+        if payment_amount > purchase.total_amount:
+            messages.error(request, 'Payment amount cannot exceed total purchase amount.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        
+        # Update payment status
+        purchase.payment_status = 'paid' if payment_amount >= purchase.total_amount else 'partial'
+        purchase.payment_method = payment_method
+        purchase.payment_date = payment_date
+        purchase.reference_number = reference_number
+        purchase.payment_notes = payment_notes
+        purchase.paid_by = request.user
+        purchase.paid_at = timezone.now()
+        purchase.save()
+        
+        status_msg = 'paid in full' if purchase.payment_status == 'paid' else f'partial payment of ₦{payment_amount}'
+        messages.success(request, f'Purchase #{purchase.invoice_number} payment processed successfully ({status_msg}).')
+        
+        # Log the action
+        from core.audit_utils import log_audit_action
+        log_audit_action(
+            request.user,
+            'update',
+            purchase,
+            f'Processed payment for purchase #{purchase.invoice_number}: {status_msg}'
+        )
+        
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    
+    context = {
+        'purchase': purchase,
+        'page_title': f'Process Payment - {purchase.invoice_number}',
+        'active_nav': 'pharmacy',
+    }
+    return render(request, 'pharmacy/process_purchase_payment.html', context)
 
+
+@login_required
+def add_purchase_item(request, purchase_id):
+    """View for adding a new item to an existing purchase"""
+    from django.http import JsonResponse
+
+    purchase = get_object_or_404(Purchase, id=purchase_id)
+    
+    # Only superusers can add items to purchases
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to add items to purchases.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+    if request.method == 'POST':
+        form = PurchaseItemForm(request.POST)
+        if form.is_valid():
+            # Create purchase item
+            item = form.save(commit=False)
+            item.purchase = purchase
+            item.save()
+
+            # Update purchase total
+            new_total = sum(p_item.total_price for p_item in purchase.items.all())
+            purchase.total_amount = new_total
+            purchase.save()
+
+            # Handle AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Item "{item.medication.name}" added to purchase successfully.',
+                    'item': {
+                        'id': item.id,
+                        'medication_name': item.medication.name,
+                        'quantity': item.quantity,
+                        'unit_price': str(item.unit_price),
+                        'total_price': str(item.total_price),
+                        'batch_number': item.batch_number or 'N/A',
+                        'expiry_date': item.expiry_date.strftime('%Y-%m-%d'),
+                    },
+                    'purchase_total': str(purchase.total_amount)
+                })
+
+            messages.success(request, f'Item "{item.medication.name}" added to purchase successfully.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        else:
+            # Handle AJAX validation errors
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+    else:
+        form = PurchaseItemForm()
+
+    # Get all active medications for dropdown
+    all_medications = Medication.objects.filter(is_active=True).order_by('name')
+
+    context = {
+        'form': form,
+        'purchase': purchase,
+        'all_medications': all_medications,
+        'page_title': f'Add Item - Purchase #{purchase.invoice_number}',
+        'active_nav': 'pharmacy',
+    }
+    return render(request, 'pharmacy/add_purchase_item.html', context)
 
 @login_required
 def delete_purchase_item(request, item_id):
     """View for deleting a purchase item"""
     item = get_object_or_404(PurchaseItem, id=item_id)
+    
+    # Only superusers can delete purchase items
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to delete purchase items.')
+        return redirect('pharmacy:purchase_detail', purchase_id=item.purchase.id)
+    
     # Implementation for deleting purchase item
     pass
 
@@ -1805,16 +2040,82 @@ def submit_purchase_for_approval(request, purchase_id):
 def approve_purchase(request, purchase_id):
     """View for approving a purchase"""
     purchase = get_object_or_404(Purchase, id=purchase_id)
-    # Implementation for approving purchase
-    pass
+    
+    # Only superusers can approve purchases
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to approve purchases.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    
+    if request.method == 'POST':
+        approval_notes = request.POST.get('approval_notes', '')
+        
+        # Update purchase status
+        purchase.approval_status = 'approved'
+        purchase.approval_notes = approval_notes
+        purchase.approved_by = request.user
+        purchase.approved_at = timezone.now()
+        purchase.save()
+        
+        messages.success(request, f'Purchase #{purchase.invoice_number} approved successfully.')
+        
+        # Log the action
+        from core.audit_utils import log_audit_action
+        log_audit_action(
+            request.user,
+            'update',
+            purchase,
+            f'Approved purchase #{purchase.invoice_number}'
+        )
+        
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    
+    context = {
+        'purchase': purchase,
+        'page_title': f'Approve Purchase - {purchase.invoice_number}',
+        'active_nav': 'pharmacy',
+    }
+    return render(request, 'pharmacy/approve_purchase.html', context)
 
 
 @login_required
 def reject_purchase(request, purchase_id):
     """View for rejecting a purchase"""
     purchase = get_object_or_404(Purchase, id=purchase_id)
-    # Implementation for rejecting purchase
-    pass
+    
+    # Only superusers can reject purchases
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to reject purchases.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    
+    if request.method == 'POST':
+        rejection_notes = request.POST.get('rejection_notes', '')
+        
+        # Update purchase status
+        purchase.approval_status = 'rejected'
+        purchase.approval_notes = rejection_notes
+        purchase.rejected_by = request.user
+        purchase.rejected_at = timezone.now()
+        purchase.save()
+        
+        messages.warning(request, f'Purchase #{purchase.invoice_number} rejected.')
+        
+        # Log the action
+        from core.audit_utils import log_audit_action
+        log_audit_action(
+            request.user,
+            'update',
+            purchase,
+            f'Rejected purchase #{purchase.invoice_number}'
+        )
+        
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    
+    context = {
+        'purchase': purchase,
+        'page_title': f'Reject Purchase - {purchase.invoice_number}',
+        'active_nav': 'pharmacy',
+    }
+    return render(request, 'pharmacy/reject_purchase.html', context)
 
 
 @login_required
@@ -2634,8 +2935,48 @@ def dispense_prescription(request, prescription_id):
 def dispense_prescription_original(request, prescription_id):
     """View for dispensing a prescription (original)"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    # Implementation for dispensing prescription (original)
-    pass
+    
+    # Get all dispensaries
+    dispensaries = Dispensary.objects.filter(is_active=True)
+    
+    # Check inventory for each dispensary
+    inventory_info = []
+    for dispensary in dispensaries:
+        dispensary_info = {
+            'dispensary': dispensary,
+            'medications': []
+        }
+        
+        # Check inventory for each medication in prescription
+        for item in prescription.items.all():
+            try:
+                inventory = MedicationInventory.objects.get(
+                    medication=item.medication,
+                    dispensary=dispensary
+                )
+                dispensary_info['medications'].append({
+                    'medication': item.medication,
+                    'in_inventory': True,
+                    'stock_quantity': inventory.stock_quantity,
+                    'reorder_level': inventory.reorder_level
+                })
+            except MedicationInventory.DoesNotExist:
+                dispensary_info['medications'].append({
+                    'medication': item.medication,
+                    'in_inventory': False,
+                    'stock_quantity': 0,
+                    'reorder_level': 0
+                })
+        
+        inventory_info.append(dispensary_info)
+    
+    context = {
+        'prescription': prescription,
+        'inventory_info': inventory_info,
+        'page_title': f'Debug Dispense Prescription - #{prescription.id}'
+    }
+    
+    return render(request, 'pharmacy/debug_dispense_prescription.html', context)
 
 
 @login_required
@@ -3548,6 +3889,106 @@ def pharmacist_generate_invoice(request, prescription_id):
     }
 
     return render(request, 'pharmacy/pharmacist_generate_invoice.html', context)
+
+
+@login_required
+def api_suppliers(request):
+    """API endpoint for suppliers"""
+    from django.http import JsonResponse
+    
+    # Get all active suppliers
+    suppliers = Supplier.objects.filter(is_active=True).order_by('name')
+    
+    # Build response data
+    data = []
+    for supplier in suppliers:
+        data.append({
+            'id': supplier.id,
+            'name': supplier.name,
+            'contact_person': supplier.contact_person,
+            'phone': supplier.phone,
+            'email': supplier.email,
+            'address': supplier.address,
+        })
+    
+    return JsonResponse(data, safe=False)
+
+
+@login_required
+def create_procurement_request(request, medication_id):
+    """View for creating procurement request for a specific medication"""
+    medication = get_object_or_404(Medication, id=medication_id, is_active=True)
+    
+    if request.method == 'POST':
+        supplier_id = request.POST.get('supplier')
+        quantity = request.POST.get('quantity')
+        unit_price = request.POST.get('unit_price')
+        notes = request.POST.get('notes', '')
+        
+        # Validate inputs
+        if not all([supplier_id, quantity, unit_price]):
+            messages.error(request, 'All fields are required.')
+            return redirect('pharmacy:procurement_dashboard')
+        
+        try:
+            quantity = int(quantity)
+            unit_price = Decimal(unit_price)
+        except ValueError:
+            messages.error(request, 'Invalid quantity or price.')
+            return redirect('pharmacy:procurement_dashboard')
+        
+        if quantity <= 0:
+            messages.error(request, 'Quantity must be greater than 0.')
+            return redirect('pharmacy:procurement_dashboard')
+        
+        if unit_price <= 0:
+            messages.error(request, 'Unit price must be greater than 0.')
+            return redirect('pharmacy:procurement_dashboard')
+        
+        try:
+            supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
+            
+            # Create purchase for procurement request
+            purchase = Purchase.objects.create(
+                supplier=supplier,
+                purchase_date=timezone.now().date(),
+                invoice_number=f'PR-{timezone.now().strftime("%Y%m%d%H%M%S")}',
+                total_amount=quantity * unit_price,
+                approval_status='pending',
+                notes=f'Procurement request for {medication.name}. {notes}'
+            )
+            
+            # Add purchase item
+            PurchaseItem.objects.create(
+                purchase=purchase,
+                medication=medication,
+                quantity=quantity,
+                unit_price=unit_price,
+                total_price=quantity * unit_price
+            )
+            
+            messages.success(
+                request, 
+                f'Procurement request created successfully for {quantity} units of {medication.name} from {supplier.name}. '
+                f'Order ID: {purchase.invoice_number}'
+            )
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            
+        except Exception as e:
+            messages.error(request, f'Error creating procurement request: {str(e)}')
+            return redirect('pharmacy:procurement_dashboard')
+    
+    # GET request - show form
+    suppliers = Supplier.objects.filter(is_active=True).order_by('name')
+    
+    context = {
+        'medication': medication,
+        'suppliers': suppliers,
+        'page_title': f'Create Procurement Request - {medication.name}',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/create_procurement_request.html', context)
 
 
 @login_required

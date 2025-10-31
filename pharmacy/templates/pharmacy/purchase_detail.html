@@ -1,6 +1,181 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* CRITICAL FIX for Add Purchase Item Modal */
+    /* Override problematic global modal CSS that breaks form fields */
+
+    /* HIGHEST PRIORITY: Fix modal width */
+    div#addPurchaseItemModal.modal .modal-dialog.modal-lg {
+        max-width: 800px !important;
+        width: 90% !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-content {
+        display: block !important;
+        position: relative !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body {
+        display: block !important;
+        padding: 1.5rem !important;
+        position: static !important;
+        overflow: visible !important;
+    }
+
+    /* CRITICAL: Override .modal * { position: relative; } that breaks layout */
+    div#addPurchaseItemModal.modal .modal-body .row,
+    div#addPurchaseItemModal.modal .modal-body .col-md-6,
+    div#addPurchaseItemModal.modal .modal-body .mb-3,
+    div#addPurchaseItemModal.modal .modal-body .form-group,
+    div#addPurchaseItemModal.modal .modal-body div {
+        position: static !important;
+        display: block !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body .row {
+        display: flex !important;
+    }
+
+    /* ULTRA SPECIFIC: Ensure form controls are visible and properly sized */
+    div#addPurchaseItemModal.modal .modal-body input.form-control,
+    div#addPurchaseItemModal.modal .modal-body select.form-select,
+    div#addPurchaseItemModal.modal .modal-body textarea.form-control,
+    div#addPurchaseItemModal.modal .modal-body input[type="number"],
+    div#addPurchaseItemModal.modal .modal-body input[type="text"],
+    div#addPurchaseItemModal.modal .modal-body input[type="date"],
+    div#addPurchaseItemModal.modal .modal-body select {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 38px !important;
+        max-height: none !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: static !important;
+        border: 1px solid #d1d3e2 !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 1rem !important;
+        line-height: 1.5 !important;
+        color: #495057 !important;
+        background-color: #fff !important;
+        background-clip: padding-box !important;
+        border-radius: 0.25rem !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+        clip: auto !important;
+        clip-path: none !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body textarea.form-control {
+        min-height: 60px !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body input.form-control:focus,
+    div#addPurchaseItemModal.modal .modal-body select.form-select:focus,
+    div#addPurchaseItemModal.modal .modal-body textarea.form-control:focus {
+        border-color: #80bdff !important;
+        outline: 0 !important;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body .row {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        margin-right: -0.75rem !important;
+        margin-left: -0.75rem !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body .col-md-6 {
+        flex: 0 0 auto !important;
+        width: 50% !important;
+        padding-right: 0.75rem !important;
+        padding-left: 0.75rem !important;
+        display: block !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body .mb-3 {
+        margin-bottom: 1rem !important;
+        display: block !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body label.form-label {
+        display: block !important;
+        margin-bottom: 0.5rem !important;
+        font-weight: 500 !important;
+        position: static !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body .input-group {
+        display: flex !important;
+        position: relative !important;
+        flex-wrap: wrap !important;
+        align-items: stretch !important;
+        width: 100% !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body .input-group-text {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 1rem !important;
+        font-weight: 400 !important;
+        line-height: 1.5 !important;
+        color: #495057 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        background-color: #e9ecef !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 0.25rem !important;
+    }
+
+    div#addPurchaseItemModal.modal .modal-body .input-group > .form-control {
+        position: relative !important;
+        flex: 1 1 auto !important;
+        width: 1% !important;
+        min-width: 0 !important;
+    }
+
+    /* Ensure Select2 works properly */
+    div#addPurchaseItemModal.modal .select2-container {
+        width: 100% !important;
+        display: block !important;
+    }
+
+    /* Fix for readonly fields */
+    div#addPurchaseItemModal.modal .modal-body input.form-control[readonly] {
+        background-color: #e9ecef !important;
+        opacity: 1 !important;
+    }
+
+    /* Alert styling */
+    div#addPurchaseItemModal.modal .modal-body .alert {
+        position: static !important;
+        display: block !important;
+    }
+
+    /* NUCLEAR OPTION: Force all form elements to be visible */
+    div#addPurchaseItemModal.modal * {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    div#addPurchaseItemModal.modal input,
+    div#addPurchaseItemModal.modal select,
+    div#addPurchaseItemModal.modal textarea {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        height: auto !important;
+        min-height: 38px !important;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -13,60 +188,685 @@
             <h6 class="m-0 font-weight-bold text-primary">Purchase Information</h6>
         </div>
         <div class="card-body">
-            <p><strong>Invoice Number:</strong> {{ purchase.invoice_number }}</p>
-            <p><strong>Supplier:</strong> {{ purchase.supplier.name }}</p>
-            <p><strong>Purchase Date:</strong> {{ purchase.purchase_date }}</p>
-            <p><strong>Total Amount:</strong> {{ purchase.total_amount }}</p>
-            <p><strong>Payment Status:</strong> {{ purchase.get_payment_status_display }}</p>
-            <p><strong>Dispensary:</strong> {{ purchase.dispensary.name|default:"N/A" }}</p>
-            <p><strong>Notes:</strong> {{ purchase.notes|default:"N/A" }}</p>
-            <p><strong>Created By:</strong> {{ purchase.created_by.get_full_name|default:"N/A" }}</p>
-            <p><strong>Created At:</strong> {{ purchase.created_at|date:"Y-m-d H:i" }}</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong><i class="fas fa-file-invoice me-2"></i>Invoice Number:</strong> 
+                        <span class="badge bg-secondary">{{ purchase.invoice_number|default:"N/A" }}</span>
+                    </p>
+                    <p><strong><i class="fas fa-truck me-2"></i>Supplier:</strong> {{ purchase.supplier.name|default:"N/A" }}</p>
+                    <p><strong><i class="fas fa-calendar me-2"></i>Purchase Date:</strong> {{ purchase.purchase_date|date:"Y-m-d"|default:"N/A" }}</p>
+                    <p><strong><i class="fas fa-money-bill-wave me-2"></i>Total Amount:</strong> 
+                        <span class="text-success fw-bold">₦{{ purchase.total_amount|floatformat:2|default:"0.00" }}</span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong><i class="fas fa-credit-card me-2"></i>Payment Status:</strong> 
+                        {% if purchase.payment_status == 'pending' %}
+                            <span class="badge bg-warning">Pending</span>
+                        {% elif purchase.payment_status == 'partial' %}
+                            <span class="badge bg-info">Partial</span>
+                        {% elif purchase.payment_status == 'paid' %}
+                            <span class="badge bg-success">Paid</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ purchase.get_payment_status_display }}</span>
+                        {% endif %}
+                    </p>
+                    <p><strong><i class="fas fa-hospital me-2"></i>Dispensary:</strong> {{ purchase.dispensary.name|default:"N/A" }}</p>
+                    <p><strong><i class="fas fa-sticky-note me-2"></i>Notes:</strong> {{ purchase.notes|default:"No notes" }}</p>
+                    <p><strong><i class="fas fa-user me-2"></i>Created By:</strong> {{ purchase.created_by.get_full_name|default:"System" }}</p>
+                    <p><strong><i class="fas fa-clock me-2"></i>Created At:</strong> {{ purchase.created_at|date:"Y-m-d H:i"|default:"N/A" }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Purchase Items</h6>
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary mb-0">
+                <i class="fas fa-pills me-2"></i>Purchase Items
+            </h6>
+            {% if purchase.payment_status == 'pending' %}
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPurchaseItemModal">
+                <i class="fas fa-plus me-1"></i>Add Item
+            </button>
+            {% endif %}
         </div>
         <div class="card-body">
             {% if purchase_items %}
             <div class="table-responsive">
-                <table class="table table-bordered" width="100%" cellspacing="0">
-                    <thead>
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead class="table-light">
                         <tr>
-                            <th>Medication</th>
-                            <th>Quantity</th>
-                            <th>Unit Price</th>
-                            <th>Total Price</th>
-                            <th>Batch Number</th>
-                            <th>Expiry Date</th>
+                            <th><i class="fas fa-pills me-1"></i> Medication</th>
+                            <th><i class="fas fa-sort-numeric-up me-1"></i> Quantity</th>
+                            <th><i class="fas fa-tag me-1"></i> Unit Price</th>
+                            <th><i class="fas fa-calculator me-1"></i> Total Price</th>
+                            <th><i class="fas fa-barcode me-1"></i> Batch Number</th>
+                            <th><i class="fas fa-calendar me-1"></i> Expiry Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in purchase_items %}
                         <tr>
-                            <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
+                            <td>
+                                <strong>{{ item.medication.name }}</strong>
+                                {% if item.medication.strength %}
+                                    <br><small class="text-muted">{{ item.medication.strength }}</small>
+                                {% endif %}
+                            </td>
                             <td>{{ item.quantity }}</td>
-                            <td>{{ item.unit_price }}</td>
-                            <td>{{ item.total_price }}</td>
+                            <td>₦{{ item.unit_price|floatformat:2 }}</td>
+                            <td>₦{{ item.total_price|floatformat:2 }}</td>
                             <td>{{ item.batch_number|default:"N/A" }}</td>
-                            <td>{{ item.expiry_date|date:"Y-m-d" }}</td>
+                            <td>
+                                {{ item.expiry_date|date:"Y-m-d" }}
+                                {% if item.expiry_date %}
+                                    {% with today=now|date:"Y-m-d" %}
+                                        {% if item.expiry_date < today %}
+                                            <span class="badge bg-danger ms-1">Expired</span>
+                                        {% elif item.expiry_date|timeuntil == "0 days" %}
+                                            <span class="badge bg-warning ms-1">Expires Today</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="3"><strong>Total:</strong></th>
+                            <th><strong>₦{{ purchase.total_amount|floatformat:2 }}</strong></th>
+                            <th colspan="2"></th>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             {% else %}
-            <p>No items for this purchase.</p>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>No items found.</strong> This purchase doesn't have any medication items yet.
+            </div>
             {% endif %}
         </div>
     </div>
 
     <div class="card-footer d-flex gap-2">
-        <a href="{% url 'pharmacy:manage_purchases' %}" class="btn btn-secondary">Back to Purchases</a>
-        <a href="{% url 'pharmacy:submit_purchase_for_approval' purchase.id %}" class="btn btn-warning">Submit for Approval</a>
-        <a href="{% url 'pharmacy:process_purchase_payment' purchase.id %}" class="btn btn-success">Process Payment</a>
+        <a href="{% url 'pharmacy:manage_purchases' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Purchases
+        </a>
+        
+        {% if purchase.payment_status == 'pending' %}
+            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#submitApprovalModal">
+                <i class="fas fa-paper-plane me-1"></i> Submit for Approval
+            </button>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
+                <i class="fas fa-credit-card me-1"></i> Process Payment
+            </button>
+        {% elif purchase.payment_status == 'partial' %}
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
+                <i class="fas fa-credit-card me-1"></i> Complete Payment
+            </button>
+            <button class="btn btn-warning" disabled>
+                <i class="fas fa-exclamation-triangle me-1"></i> Partial Payment
+            </button>
+        {% elif purchase.payment_status == 'paid' %}
+            <button class="btn btn-success" disabled>
+                <i class="fas fa-check-circle me-1"></i> Paid
+            </button>
+        {% endif %}
+        
+        
     </div>
 </div>
+
+<!-- Add Purchase Item Modal -->
+<div class="modal fade" id="addPurchaseItemModal" tabindex="-1" aria-labelledby="addPurchaseItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPurchaseItemModalLabel">
+                    <i class="fas fa-plus me-2"></i>Add Purchase Item
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:add_purchase_item' purchase.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Adding item to Purchase #<strong>{{ purchase.invoice_number }}</strong>
+                        from <strong>{{ purchase.supplier.name }}</strong>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_medication" class="form-label">
+                                    <i class="fas fa-pills me-1"></i>Medication <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="modal_medication" name="medication" required>
+                                    <option value="">Select Medication</option>
+                                    {% for med in all_medications %}
+                                    <option value="{{ med.id }}">
+                                        {{ med.name }}{% if med.strength %} ({{ med.strength }}){% endif %}{% if med.unit %} - {{ med.unit }}{% endif %}
+                                    </option>
+                                    {% empty %}
+                                    <option value="" disabled>No medications available</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Select medication from inventory ({{ all_medications|length }} available)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_quantity" class="form-label">
+                                    <i class="fas fa-sort-numeric-up me-1"></i>Quantity <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="modal_quantity"
+                                       name="quantity" min="1" step="1" required
+                                       placeholder="Enter quantity">
+                                <div class="form-text">Number of units to purchase</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_unit_price" class="form-label">
+                                    <i class="fas fa-tag me-1"></i>Unit Price (₦) <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₦</span>
+                                    <input type="number" class="form-control" id="modal_unit_price"
+                                           name="unit_price" min="0" step="0.01" required
+                                           placeholder="0.00">
+                                </div>
+                                <div class="form-text">Price per unit</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_total_price" class="form-label">
+                                    <i class="fas fa-calculator me-1"></i>Total Price (₦)
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₦</span>
+                                    <input type="number" class="form-control bg-light" id="modal_total_price"
+                                           name="total_price" min="0" step="0.01" readonly
+                                           placeholder="0.00">
+                                </div>
+                                <div class="form-text text-muted">Auto-calculated (Quantity × Unit Price)</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_batch_number" class="form-label">
+                                    <i class="fas fa-barcode me-1"></i>Batch Number
+                                </label>
+                                <input type="text" class="form-control" id="modal_batch_number"
+                                       name="batch_number" maxlength="50"
+                                       placeholder="e.g., BATCH001">
+                                <div class="form-text">Manufacturer batch identifier (optional)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_expiry_date" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Expiry Date <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="modal_expiry_date"
+                                       name="expiry_date" required
+                                       min="{% now 'Y-m-d' %}">
+                                <div class="form-text">Medication expiration date</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="modal_item_notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Item Notes
+                        </label>
+                        <textarea class="form-control" id="modal_item_notes" name="item_notes" rows="2"
+                                  placeholder="Any special instructions or notes for this item..."></textarea>
+                        <div class="form-text">Optional notes about this purchase item</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success" id="addItemSubmitBtn">
+                        <i class="fas fa-plus me-1"></i>Add Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Submit for Approval Modal -->
+<div class="modal fade" id="submitApprovalModal" tabindex="-1" aria-labelledby="submitApprovalModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="submitApprovalModalLabel">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Purchase for Approval
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:submit_purchase_for_approval' purchase.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Are you sure you want to submit Purchase #<strong>{{ purchase.invoice_number }}</strong> for approval?
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="approval_notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Approval Notes (Optional)
+                        </label>
+                        <textarea class="form-control" id="approval_notes" name="approval_notes" rows="3" 
+                                  placeholder="Add any notes for the approval process..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="priority_level" class="form-label">
+                            <i class="fas fa-flag me-1"></i>Priority Level
+                        </label>
+                        <select class="form-select" id="priority_level" name="priority_level">
+                            <option value="normal">Normal</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="expected_delivery_date" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>Expected Delivery Date
+                        </label>
+                        <input type="date" class="form-control" id="expected_delivery_date" name="expected_delivery_date" 
+                               required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-paper-plane me-1"></i>Submit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Process Payment Modal -->
+<div class="modal fade" id="processPaymentModal" tabindex="-1" aria-labelledby="processPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="processPaymentModalLabel">
+                    <i class="fas fa-credit-card me-2"></i>Process Purchase Payment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:process_purchase_payment' purchase.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Processing payment for Purchase #<strong>{{ purchase.invoice_number }}</strong>
+                        from <strong>{{ purchase.supplier.name }}</strong>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payment_amount" class="form-label">
+                                    <i class="fas fa-money-bill me-1"></i>Payment Amount
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₦</span>
+                                    <input type="number" class="form-control" id="payment_amount" 
+                                           name="payment_amount" value="{{ purchase.total_amount }}" 
+                                           step="0.01" min="0" required>
+                                </div>
+                                <div class="form-text">Total due: ₦{{ purchase.total_amount|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payment_method" class="form-label">
+                                    <i class="fas fa-wallet me-1"></i>Payment Method
+                                </label>
+                                <select class="form-select" id="payment_method" name="payment_method" required>
+                                    <option value="">Select Payment Method</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="check">Check</option>
+                                    <option value="credit_card">Credit Card</option>
+                                    <option value="wallet">Wallet</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payment_date" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Payment Date
+                                </label>
+                                <input type="date" class="form-control" id="payment_date" 
+                                       name="payment_date" value="{% now 'Y-m-d' %}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reference_number" class="form-label">
+                                    <i class="fas fa-hashtag me-1"></i>Reference Number
+                                </label>
+                                <input type="text" class="form-control" id="reference_number" 
+                                       name="reference_number" placeholder="Transaction reference...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Payment Notes
+                        </label>
+                        <textarea class="form-control" id="payment_notes" name="payment_notes" rows="2" 
+                                  placeholder="Add any payment-related notes..."></textarea>
+                    </div>
+                    
+                    {% if purchase.payment_status == 'partial' %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        This is a <strong>partial payment</strong>. Current status will be updated accordingly.
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check me-1"></i>Process Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Purchase Detail Page - JavaScript Loaded');
+
+    // Handle modal events
+    const addPurchaseItemModal = document.getElementById('addPurchaseItemModal');
+    console.log('Modal element found:', addPurchaseItemModal !== null);
+
+    if (addPurchaseItemModal) {
+        // Reset form when modal is hidden
+        addPurchaseItemModal.addEventListener('hidden.bs.modal', function () {
+            const form = this.querySelector('form');
+            if (form) {
+                form.reset();
+                // Reset total price
+                document.getElementById('modal_total_price').value = '';
+                // Remove validation classes
+                form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+                    el.classList.remove('is-valid', 'is-invalid');
+                });
+            }
+        });
+
+        // Focus on first field when modal opens
+        addPurchaseItemModal.addEventListener('shown.bs.modal', function () {
+            setTimeout(function() {
+                // Debug: Check if form fields are visible
+                const medication = document.getElementById('modal_medication');
+                const quantity = document.getElementById('modal_quantity');
+                const unitPrice = document.getElementById('modal_unit_price');
+                const totalPrice = document.getElementById('modal_total_price');
+                const batchNumber = document.getElementById('modal_batch_number');
+                const expiryDate = document.getElementById('modal_expiry_date');
+                const itemNotes = document.getElementById('modal_item_notes');
+
+                console.log('=== MODAL FORM FIELDS DEBUG ===');
+                console.log('Medication field:', medication, 'Visible:', medication ? window.getComputedStyle(medication).display : 'N/A');
+                console.log('Quantity field:', quantity, 'Visible:', quantity ? window.getComputedStyle(quantity).display : 'N/A');
+                console.log('Unit Price field:', unitPrice, 'Visible:', unitPrice ? window.getComputedStyle(unitPrice).display : 'N/A');
+                console.log('Total Price field:', totalPrice, 'Visible:', totalPrice ? window.getComputedStyle(totalPrice).display : 'N/A');
+                console.log('Batch Number field:', batchNumber, 'Visible:', batchNumber ? window.getComputedStyle(batchNumber).display : 'N/A');
+                console.log('Expiry Date field:', expiryDate, 'Visible:', expiryDate ? window.getComputedStyle(expiryDate).display : 'N/A');
+                console.log('Item Notes field:', itemNotes, 'Visible:', itemNotes ? window.getComputedStyle(itemNotes).display : 'N/A');
+                console.log('===============================');
+
+                if (medication) {
+                    medication.focus();
+                }
+            }, 300);
+        });
+    }
+
+    // Auto-calculate total price
+    function calculateModalTotal() {
+        const quantity = parseFloat(document.getElementById('modal_quantity').value) || 0;
+        const unitPrice = parseFloat(document.getElementById('modal_unit_price').value) || 0;
+        const total = (quantity * unitPrice).toFixed(2);
+        document.getElementById('modal_total_price').value = total;
+    }
+
+    // Add event listeners for auto-calculation
+    const quantityInput = document.getElementById('modal_quantity');
+    const unitPriceInput = document.getElementById('modal_unit_price');
+
+    if (quantityInput && unitPriceInput) {
+        quantityInput.addEventListener('input', calculateModalTotal);
+        unitPriceInput.addEventListener('input', calculateModalTotal);
+    }
+
+    // AJAX Form submission
+    const addItemForm = addPurchaseItemModal ? addPurchaseItemModal.querySelector('form') : null;
+    if (addItemForm) {
+        addItemForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const medication = document.getElementById('modal_medication').value;
+            const quantity = document.getElementById('modal_quantity').value;
+            const unitPrice = document.getElementById('modal_unit_price').value;
+            const expiryDate = document.getElementById('modal_expiry_date').value;
+
+            // Validate required fields
+            if (!medication) {
+                alert('Please select a medication.');
+                return false;
+            }
+
+            if (!quantity || quantity <= 0) {
+                alert('Please enter a valid quantity (greater than 0).');
+                return false;
+            }
+
+            if (!unitPrice || unitPrice < 0) {
+                alert('Please enter a valid unit price.');
+                return false;
+            }
+
+            if (!expiryDate) {
+                alert('Please select an expiry date.');
+                return false;
+            }
+
+            // Check if expiry date is in the future
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const expiry = new Date(expiryDate);
+
+            if (expiry < today) {
+                alert('Expiry date must be in the future.');
+                return false;
+            }
+
+            // Show loading state on submit button
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalBtnContent = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Adding Item...';
+
+            // Get form data
+            const formData = new FormData(this);
+
+            // Submit via AJAX
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.errors ? JSON.stringify(data.errors) : 'Failed to add item');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+
+                    // Insert alert at the top of the page
+                    const container = document.querySelector('.container-fluid');
+                    container.insertBefore(alertDiv, container.firstChild);
+
+                    // Auto-dismiss after 5 seconds
+                    setTimeout(() => {
+                        alertDiv.remove();
+                    }, 5000);
+
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(addPurchaseItemModal);
+                    modal.hide();
+
+                    // Reload page to show updated items
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Failed to add item');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding item: ' + error.message);
+
+                // Restore button state
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnContent;
+            });
+        });
+    }
+
+    // Add visual feedback for form fields
+    const formInputs = addPurchaseItemModal ? addPurchaseItemModal.querySelectorAll('input, select, textarea') : [];
+    formInputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            if (this.hasAttribute('required') && !this.value) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+                if (this.value) {
+                    this.classList.add('is-valid');
+                }
+            }
+        });
+
+        input.addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+        });
+    });
+
+    // Helper function to show toast notifications
+    function showToast(message, type = 'success') {
+        const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+        const toastId = 'toast-' + Date.now();
+
+        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+
+        // Remove toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            this.remove();
+        });
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Escape key to close modal
+        if (e.key === 'Escape' && addPurchaseItemModal.classList.contains('show')) {
+            const modal = bootstrap.Modal.getInstance(addPurchaseItemModal);
+            if (modal) modal.hide();
+        }
+    });
+
+    // Prevent accidental form submission on Enter key in text inputs
+    if (addItemForm) {
+        addItemForm.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                // Move to next input field
+                const inputs = Array.from(this.querySelectorAll('input:not([readonly]), select, textarea'));
+                const index = inputs.indexOf(e.target);
+                if (index > -1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

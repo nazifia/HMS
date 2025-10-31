@@ -60,6 +60,7 @@ urlpatterns = [
     path('purchases/create/', views.add_purchase, name='create_purchase'),
     path('purchases/<int:purchase_id>/', views.purchase_detail, name='purchase_detail'),
     path('purchases/<int:purchase_id>/payment/', views.process_purchase_payment, name='process_purchase_payment'),
+    path('purchases/<int:purchase_id>/items/add/', views.add_purchase_item, name='add_purchase_item'),
     path('purchases/items/<int:item_id>/delete/', views.delete_purchase_item, name='delete_purchase_item'),
 
     # Purchase Approval Workflow

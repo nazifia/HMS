@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load pharmacy_filters %}
 
 {% block title %}Authorize Prescription - NHIA Authorization{% endblock %}
 
@@ -20,6 +21,26 @@
 .required-field::after {
     content: " *";
     color: #dc3545;
+}
+.amount-column {
+    text-align: right;
+    font-weight: 600;
+    color: #28a745;
+}
+.total-amount {
+    background-color: #d1ecf1;
+    border-top: 2px solid #28a745;
+}
+.table-sm th {
+    font-size: 0.85rem;
+}
+@media (max-width: 768px) {
+    .cost-summary-card {
+        margin-bottom: 1.5rem;
+    }
+    .amount-display {
+        font-size: 1.1rem;
+    }
 }
 </style>
 {% endblock %}
@@ -163,6 +184,8 @@
                                         <th>Medication</th>
                                         <th>Strength</th>
                                         <th>Quantity</th>
+                                        <th>Unit Price (₦)</th>
+                                        <th>Total Price (₦)</th>
                                         <th>Frequency</th>
                                         <th>Duration</th>
                                     </tr>
@@ -173,11 +196,19 @@
                                         <td>{{ item.medication.name }}</td>
                                         <td>{{ item.strength|default:"-" }}</td>
                                         <td>{{ item.quantity }}</td>
+                                        <td class="amount-column">{{ item.medication.price|default:"0.00"|floatformat:2 }}</td>
+                                        <td class="amount-column">{{ item.medication.price|default:"0.00"|floatformat:2|multiply:item.quantity|default:"0.00"|floatformat:2 }}</td>
                                         <td>{{ item.frequency|default:"-" }}</td>
                                         <td>{{ item.duration|default:"-" }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
+                                <tfoot>
+                                    <tr class="table-info fw-bold total-amount">
+                                        <td colspan="4">Total Amount:</td>
+                                        <td colspan="3">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
@@ -197,6 +228,51 @@
     <!-- Authorization Form -->
     <div class="row">
         <div class="col-lg-8">
+            <!-- Prescription Cost Summary -->
+            <div class="card shadow mb-4 border-success cost-summary-card">
+                <div class="card-header bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-calculator"></i> Prescription Cost Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1">
+                                <strong>Total Medication Cost:</strong> 
+                                <span class="text-success h5 amount-display">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</span>
+                            </p>
+                            {% if prescription.patient.patient_type == 'nhia' %}
+                            <p class="mb-1">
+                                <strong>NHIA Coverage (90%):</strong> 
+                                <span class="text-info h6 amount-display">₦{{ prescription.get_total_prescribed_price|multiply:0.9|default:"0.00"|floatformat:2 }}</span>
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if prescription.patient.patient_type == 'nhia' %}
+                            <p class="mb-1">
+                                <strong>Patient Payable (10%):</strong> 
+                                <span class="text-warning h6 amount-display">₦{{ prescription.get_total_prescribed_price|multiply:0.1|default:"0.00"|floatformat:2 }}</span>
+                            </p>
+                            {% else %}
+                            <p class="mb-1">
+                                <strong>Patient Payable (100%):</strong> 
+                                <span class="text-warning h6 amount-display">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</span>
+                            </p>
+                            {% endif %}
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Recommended Authorization Amount:</strong>
+                                <span class="h5 amount-display">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</span>
+                                <br>
+                                <small class="text-muted">This covers the full cost of medications in this prescription</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card shadow auth-form">
                 <div class="card-header py-3 bg-warning text-dark">
                     <h6 class="m-0 font-weight-bold">
@@ -217,7 +293,7 @@
                                            class="form-control" 
                                            id="amount" 
                                            name="amount" 
-                                           value="0.00"
+                                           value="{{ prescription.get_total_prescribed_price|default:'0.00'|floatformat:2 }}"
                                            step="0.01" 
                                            min="0" 
                                            required>

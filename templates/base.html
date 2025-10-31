@@ -1146,6 +1146,27 @@
 
     <!-- HTMX/Alpine.js Performance Optimizations -->
     <script>
+        // Prevent H.match errors at the source by overriding problematic HTMX functions
+        if (typeof window !== 'undefined') {
+            // Override any potential H.match access before HTMX loads
+            Object.defineProperty(window, 'H', {
+                get: function() {
+                    return {
+                        match: function() { return true; },
+                        find: function() { return null; }
+                    };
+                },
+                set: function(value) {
+                    // Allow HTMX to set H but ensure match method is safe
+                    if (value && typeof value === 'object') {
+                        value.match = value.match || function() { return true; };
+                        value.find = value.find || function() { return null; };
+                    }
+                    window._htmxH = value;
+                }
+            });
+        }
+
         // Global error handler to prevent JavaScript errors
         window.addEventListener('error', function(e) {
             // Suppress H.match errors that might break functionality
