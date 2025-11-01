@@ -6,9 +6,55 @@
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        {% if user.is_superuser %}
         <a href="{% url 'pharmacy:add_purchase' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> Add New Purchase
         </a>
+        {% endif %}
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.GET.search }}" placeholder="Invoice, Supplier, Notes...">
+                </div>
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Approval Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending Approval</option>
+                        <option value="approved" {% if request.GET.status == 'approved' %}selected{% endif %}>Approved</option>
+                        <option value="rejected" {% if request.GET.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="payment_status" class="form-label">Payment Status</label>
+                    <select class="form-select" id="payment_status" name="payment_status">
+                        <option value="">All Payment Statuses</option>
+                        <option value="pending" {% if request.GET.payment_status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="partial" {% if request.GET.payment_status == 'partial' %}selected{% endif %}>Partial</option>
+                        <option value="paid" {% if request.GET.payment_status == 'paid' %}selected{% endif %}>Paid</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div class="card shadow mb-4">
@@ -18,13 +64,14 @@
         <div class="card-body">
             {% if purchases %}
             <div class="table-responsive">
-                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                    <thead>
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead class="table-light">
                         <tr>
                             <th>Invoice Number</th>
                             <th>Supplier</th>
                             <th>Purchase Date</th>
                             <th>Total Amount</th>
+                            <th>Approval Status</th>
                             <th>Payment Status</th>
                             <th>Created By</th>
                             <th>Actions</th>
@@ -33,25 +80,140 @@
                     <tbody>
                         {% for purchase in purchases %}
                         <tr>
-                            <td>{{ purchase.invoice_number }}</td>
-                            <td>{{ purchase.supplier.name }}</td>
-                            <td>{{ purchase.purchase_date }}</td>
-                            <td>{{ purchase.total_amount }}</td>
-                            <td>{{ purchase.get_payment_status_display }}</td>
-                            <td>{{ purchase.created_by.get_full_name|default:"N/A" }}</td>
                             <td>
-                                <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-info btn-sm">View</a>
-                                <!-- Add edit/delete if needed, but typically purchases are immutable after creation -->
+                                <span class="badge bg-secondary">{{ purchase.invoice_number }}</span>
+                            </td>
+                            <td>{{ purchase.supplier.name|default:"N/A" }}</td>
+                            <td>{{ purchase.purchase_date|date:"Y-m-d"|default:"N/A" }}</td>
+                            <td class="text-end fw-bold">₦{{ purchase.total_amount|floatformat:2|default:"0.00" }}</td>
+                            <td>
+                                {% if purchase.approval_status == 'draft' %}
+                                    <span class="badge bg-secondary">Draft</span>
+                                {% elif purchase.approval_status == 'pending' %}
+                                    <span class="badge bg-warning">Pending Approval</span>
+                                {% elif purchase.approval_status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% elif purchase.approval_status == 'rejected' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% elif purchase.approval_status == 'cancelled' %}
+                                    <span class="badge bg-dark">Cancelled</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ purchase.get_approval_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if purchase.payment_status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif purchase.payment_status == 'partial' %}
+                                    <span class="badge bg-info">Partial</span>
+                                {% elif purchase.payment_status == 'paid' %}
+                                    <span class="badge bg-success">Paid</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ purchase.get_payment_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ purchase.created_by.get_full_name|default:"System" }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-info btn-sm" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if user.is_superuser and purchase.approval_status == 'pending' %}
+                                        <a href="{% url 'pharmacy:approve_purchase' purchase.id %}" class="btn btn-success btn-sm" title="Approve">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        <a href="{% url 'pharmacy:reject_purchase' purchase.id %}" class="btn btn-danger btn-sm" title="Reject">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div class="text-muted">
+                    Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} purchases
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if search_query %}search={{ search_query|urlencode }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if payment_status %}payment_status={{ payment_status }}&{% endif %}page=1">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if search_query %}search={{ search_query|urlencode }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if payment_status %}payment_status={{ payment_status }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">First</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if search_query %}search={{ search_query|urlencode }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if payment_status %}payment_status={{ payment_status }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if search_query %}search={{ search_query|urlencode }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if payment_status %}payment_status={{ payment_status }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if search_query %}search={{ search_query|urlencode }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if payment_status %}payment_status={{ payment_status }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Last</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Last</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
             {% else %}
-            <p>No purchases found.</p>
+            <div class="text-center py-4">
+                <i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-600">No purchases found</h5>
+                <p class="text-muted">
+                    {% if search_query or status or payment_status %}
+                        Try adjusting your search criteria or filters.
+                    {% else %}
+                        {% if user.is_superuser %}
+                            Click "Add New Purchase" to create your first purchase.
+                        {% else %}
+                            No purchases available at the moment.
+                        {% endif %}
+                    {% endif %}
+                </p>
+                {% if user.is_superuser and not search_query and not status and not payment_status %}
+                <a href="{% url 'pharmacy:add_purchase' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Add New Purchase
+                </a>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     </div>
+    
+    
 </div>
 {% endblock %}

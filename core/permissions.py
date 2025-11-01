@@ -51,6 +51,8 @@ APP_PERMISSIONS = {
         'view_prescriptions': 'Can view prescription history',
         'manage_dispensary': 'Can manage dispensary operations',
         'transfer_medication': 'Can transfer medication between dispensaries',
+        'can_approve_purchases': 'Can approve purchase orders',
+        'can_process_payments': 'Can process purchase payments',
     },
     'laboratory_management': {
         'create_test_request': 'Can create lab test requests',

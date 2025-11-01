@@ -9,7 +9,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 
-from .models import InterDispensaryTransfer, MedicationInventory, Dispensary
+from .models import InterDispensaryTransfer, MedicationInventory, Dispensary, Medication
 from .inter_dispensary_forms import (
     InterDispensaryTransferForm,
     InterDispensaryTransferSearchForm,

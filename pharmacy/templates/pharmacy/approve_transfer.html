@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Approve Medication Transfer{% endblock %}
+{% block title %}{{ title|default:"Approve Medication Transfer" }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Approve Medication Transfer</h1>
+        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Approve Medication Transfer" }}</h1>
         <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-secondary btn-sm">Back to Bulk Store</a>
     </div>
     

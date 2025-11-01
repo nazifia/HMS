@@ -93,6 +93,15 @@ class Purchase(models.Model):
     current_approver = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='pending_purchase_approvals')
     approval_notes = models.TextField(blank=True, null=True)
     approval_updated_at = models.DateTimeField(null=True, blank=True)
+    submitted_for_approval_at = models.DateTimeField(null=True, blank=True)
+
+    PRIORITY_LEVEL_CHOICES = [
+        ('normal', 'Normal'),
+        ('urgent', 'Urgent'),
+        ('critical', 'Critical'),
+    ]
+    priority_level = models.CharField(max_length=20, choices=PRIORITY_LEVEL_CHOICES, default='normal')
+    expected_delivery_date = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return f"Purchase #{self.invoice_number} - {self.supplier.name}"
@@ -133,6 +142,13 @@ class Purchase(models.Model):
             self.approval_status == 'approved' and
             self.payment_status in ['pending', 'partial']
         )
+
+    class Meta:
+        ordering = ['-created_at']
+        permissions = [
+            ('can_approve_purchases', 'Can approve purchase orders'),
+            ('can_process_payments', 'Can process purchase payments'),
+        ]
 
 class PurchaseApproval(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='approvals')

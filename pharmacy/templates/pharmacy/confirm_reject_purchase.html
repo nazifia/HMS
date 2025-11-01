@@ -18,8 +18,8 @@
             <form method="post">
                 {% csrf_token %}
                 <div class="form-group">
-                    <label for="approval_notes">Reason for Rejection (Optional):</label>
-                    <textarea name="approval_notes" id="approval_notes" class="form-control"></textarea>
+                    <label for="rejection_reason">Reason for Rejection (Required):</label>
+                    <textarea name="rejection_reason" id="rejection_reason" class="form-control" required></textarea>
                 </div>
                 <button type="submit" class="btn btn-danger">Reject Purchase</button>
                 <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-secondary">Cancel</a>

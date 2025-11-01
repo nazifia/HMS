@@ -46,7 +46,7 @@
     <!-- Key Metrics Row -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2 analytics-card">
+            <div class="card border-start border-primary border-4 shadow h-100 py-2 analytics-card">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
@@ -64,7 +64,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2 analytics-card">
+            <div class="card border-start border-success border-4 shadow h-100 py-2 analytics-card">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
@@ -88,7 +88,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2 analytics-card">
+            <div class="card border-start border-info border-4 shadow h-100 py-2 analytics-card">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
@@ -106,7 +106,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2 analytics-card">
+            <div class="card border-start border-warning border-4 shadow h-100 py-2 analytics-card">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
@@ -134,7 +134,14 @@
                 </div>
                 <div class="card-body">
                     <div class="chart-container">
-                        <canvas id="monthlyChart"></canvas>
+                        {% if monthly_costs %}
+                            <canvas id="monthlyChart"></canvas>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No monthly procurement data available</p>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -148,7 +155,14 @@
                 </div>
                 <div class="card-body">
                     <div class="chart-container">
-                        <canvas id="categoryChart"></canvas>
+                        {% if category_performance %}
+                            <canvas id="categoryChart"></canvas>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No category performance data available</p>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -176,22 +190,31 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for supplier in supplier_performance %}
-                                <tr>
-                                    <td>{{ supplier.supplier__name }}</td>
-                                    <td>{{ supplier.total_orders }}</td>
-                                    <td>₦{{ supplier.total_value|floatformat:2 }}</td>
-                                    <td>₦{{ supplier.avg_order_value|floatformat:2 }}</td>
-                                    <td>{{ supplier.on_time_deliveries }}</td>
-                                    <td>
-                                        {% with score=supplier.on_time_deliveries|mul:100|div:supplier.total_orders %}
-                                            <span class="badge badge-{% if score >= 90 %}success{% elif score >= 70 %}warning{% else %}danger{% endif %}">
-                                                {{ score|floatformat:1 }}%
-                                            </span>
-                                        {% endwith %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                                {% if supplier_performance %}
+                                    {% for supplier in supplier_performance %}
+                                    <tr>
+                                        <td>{{ supplier.supplier__name }}</td>
+                                        <td>{{ supplier.total_orders }}</td>
+                                        <td>₦{{ supplier.total_value|floatformat:2 }}</td>
+                                        <td>₦{{ supplier.avg_order_value|floatformat:2 }}</td>
+                                        <td>{{ supplier.on_time_deliveries }}</td>
+                                        <td>
+                                            {% with score=supplier.on_time_deliveries|mul:100|div:supplier.total_orders %}
+                                                <span class="badge bg-{% if score >= 90 %}success{% elif score >= 70 %}warning{% else %}danger{% endif %}">
+                                                    {{ score|floatformat:1 }}%
+                                                </span>
+                                            {% endwith %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-3">
+                                            <i class="fas fa-building text-muted mb-2"></i>
+                                            <p class="text-muted mb-0">No supplier performance data available</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -216,13 +239,22 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for med in medication_analysis|slice:":10" %}
-                                <tr>
-                                    <td>{{ med.medication__name|truncatechars:20 }}</td>
-                                    <td>₦{{ med.total_cost|floatformat:2 }}</td>
-                                    <td>{{ med.total_quantity }}</td>
-                                </tr>
-                                {% endfor %}
+                                {% if medication_analysis %}
+                                    {% for med in medication_analysis|slice:":10" %}
+                                    <tr>
+                                        <td>{{ med.medication__name|truncatechars:20 }}</td>
+                                        <td>₦{{ med.total_cost|floatformat:2 }}</td>
+                                        <td>{{ med.total_quantity }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center py-3">
+                                            <i class="fas fa-pills text-muted mb-2"></i>
+                                            <p class="text-muted mb-0">No medication analysis data available</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -252,32 +284,41 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for item in inventory_turnover|slice:":20" %}
-                                <tr>
-                                    <td>{{ item.medication.name }}</td>
-                                    <td>{{ item.stock_quantity }}</td>
-                                    <td>{{ item.total_dispensed|default:0 }}</td>
-                                    <td>{{ item.turnover_ratio|floatformat:2|default:"N/A" }}</td>
-                                    <td>
-                                        {% with ratio=item.turnover_ratio|default:0 %}
-                                            <span class="badge badge-{% if ratio >= 4 %}success{% elif ratio >= 2 %}warning{% else %}danger{% endif %}">
-                                                {% if ratio >= 4 %}Fast Moving{% elif ratio >= 2 %}Moderate{% else %}Slow Moving{% endif %}
-                                            </span>
-                                        {% endwith %}
-                                    </td>
-                                    <td>
-                                        {% with ratio=item.turnover_ratio|default:0 %}
-                                            {% if ratio >= 4 %}
-                                                Increase stock
-                                            {% elif ratio >= 2 %}
-                                                Monitor closely
-                                            {% else %}
-                                                Reduce orders
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                                {% if inventory_turnover %}
+                                    {% for item in inventory_turnover|slice:":20" %}
+                                    <tr>
+                                        <td>{{ item.medication.name }}</td>
+                                        <td>{{ item.stock_quantity }}</td>
+                                        <td>{{ item.total_dispensed|default:0 }}</td>
+                                        <td>{{ item.turnover_ratio|floatformat:2|default:"N/A" }}</td>
+                                        <td>
+                                            {% with ratio=item.turnover_ratio|default:0 %}
+                                                <span class="badge bg-{% if ratio >= 4 %}success{% elif ratio >= 2 %}warning{% else %}danger{% endif %}">
+                                                    {% if ratio >= 4 %}Fast Moving{% elif ratio >= 2 %}Moderate{% else %}Slow Moving{% endif %}
+                                                </span>
+                                            {% endwith %}
+                                        </td>
+                                        <td>
+                                            {% with ratio=item.turnover_ratio|default:0 %}
+                                                {% if ratio >= 4 %}
+                                                    Increase stock
+                                                {% elif ratio >= 2 %}
+                                                    Monitor closely
+                                                {% else %}
+                                                    Reduce orders
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-3">
+                                            <i class="fas fa-exchange-alt text-muted mb-2"></i>
+                                            <p class="text-muted mb-0">No inventory turnover data available</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -291,6 +332,7 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
+{% if monthly_costs %}
 // Monthly Procurement Costs Chart
 const monthlyData = {
     labels: [
@@ -302,7 +344,7 @@ const monthlyData = {
         label: 'Procurement Costs',
         data: [
             {% for item in monthly_costs %}
-                {{ item.total_cost|default:0 }}{% if not forloop.last %},{% endif %}
+                {{ item.total_cost|default:0|floatformat:2 }}{% if not forloop.last %},{% endif %}
             {% endfor %}
         ],
         borderColor: 'rgb(75, 192, 192)',
@@ -329,18 +371,20 @@ const monthlyChart = new Chart(document.getElementById('monthlyChart'), {
         }
     }
 });
+{% endif %}
 
+{% if category_performance %}
 // Category Performance Chart
 const categoryData = {
     labels: [
         {% for item in category_performance|slice:":6" %}
-            '{{ item.medication__category__name }}'{% if not forloop.last %},{% endif %}
+            '{{ item.medication__category__name|default:"Uncategorized" }}'{% if not forloop.last %},{% endif %}
         {% endfor %}
     ],
     datasets: [{
         data: [
             {% for item in category_performance|slice:":6" %}
-                {{ item.total_value|default:0 }}{% if not forloop.last %},{% endif %}
+                {{ item.total_value|default:0|floatformat:2 }}{% if not forloop.last %},{% endif %}
             {% endfor %}
         ],
         backgroundColor: [
@@ -362,6 +406,7 @@ const categoryChart = new Chart(document.getElementById('categoryChart'), {
         }
     }
 });
+{% endif %}
 
 // Export functionality
 function exportReport() {
@@ -370,10 +415,18 @@ function exportReport() {
 
 // Initialize DataTables for better table functionality
 $(document).ready(function() {
-    $('#supplierTable, #turnoverTable').DataTable({
-        pageLength: 10,
-        order: [[2, 'desc']]
-    });
+    try {
+        $('#supplierTable, #turnoverTable').DataTable({
+            pageLength: 10,
+            order: [[2, 'desc']],
+            responsive: true,
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                 '<"row"<"col-sm-12"tr>>' +
+                 '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
+        });
+    } catch (e) {
+        console.error('DataTable initialization error:', e);
+    }
 });
 </script>
 {% endblock %}

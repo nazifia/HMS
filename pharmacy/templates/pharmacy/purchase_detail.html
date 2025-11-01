@@ -182,7 +182,7 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
     </div>
-
+    
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Purchase Information</h6>
@@ -197,6 +197,21 @@
                     <p><strong><i class="fas fa-calendar me-2"></i>Purchase Date:</strong> {{ purchase.purchase_date|date:"Y-m-d"|default:"N/A" }}</p>
                     <p><strong><i class="fas fa-money-bill-wave me-2"></i>Total Amount:</strong> 
                         <span class="text-success fw-bold">₦{{ purchase.total_amount|floatformat:2|default:"0.00" }}</span>
+                    </p>
+                    <p><strong><i class="fas fa-check-circle me-2"></i>Approval Status:</strong> 
+                        {% if purchase.approval_status == 'draft' %}
+                            <span class="badge bg-secondary">Draft</span>
+                        {% elif purchase.approval_status == 'pending' %}
+                            <span class="badge bg-warning">Pending Approval</span>
+                        {% elif purchase.approval_status == 'approved' %}
+                            <span class="badge bg-success">Approved</span>
+                        {% elif purchase.approval_status == 'rejected' %}
+                            <span class="badge bg-danger">Rejected</span>
+                        {% elif purchase.approval_status == 'cancelled' %}
+                            <span class="badge bg-dark">Cancelled</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ purchase.get_approval_status_display }}</span>
+                        {% endif %}
                     </p>
                 </div>
                 <div class="col-md-6">
@@ -291,32 +306,226 @@
         </div>
     </div>
 
+    <!-- Approval History Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-history me-2"></i>Approval History
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if purchase.approval_status_history %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th><i class="fas fa-user me-1"></i> Changed By</th>
+                            <th><i class="fas fa-exchange-alt me-1"></i> Status Change</th>
+                            <th><i class="fas fa-calendar me-1"></i> Date/Time</th>
+                            <th><i class="fas fa-sticky-note me-1"></i> Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in purchase.approval_status_history %}
+                        <tr>
+                            <td>{% if history.changed_by %}{{ history.changed_by.get_full_name|default:history.changed_by.username }}{% else %}System{% endif %}</td>
+                            <td>
+                                {% if history.old_status %}
+                                    <span class="badge bg-{% if history.old_status == 'draft' %}secondary{% elif history.old_status == 'pending' %}warning{% elif history.old_status == 'approved' %}success{% elif history.old_status == 'rejected' %}danger{% else %}secondary{% endif %}">{{ history.old_status|title }}</span>
+                                    <i class="fas fa-arrow-right mx-2"></i>
+                                {% else %}
+                                    <span class="badge bg-info">Created</span>
+                                    <i class="fas fa-arrow-right mx-2"></i>
+                                {% endif %}
+                                <span class="badge bg-{% if history.new_status == 'approved' %}success{% elif history.new_status == 'rejected' %}danger{% elif history.new_status == 'pending' %}warning{% else %}secondary{% endif %}">{{ history.new_status|title }}</span>
+                            </td>
+                            <td>{{ history.changed_at|date:"Y-m-d H:i:s" }}</td>
+                            <td>{{ history.notes|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                No approval history available for this purchase.
+                <br><small class="text-muted">Status history is tracked when approval status changes are made.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Payment History Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-money-bill-wave me-2"></i>Payment History
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if purchase.payment_history %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th><i class="fas fa-user me-1"></i> Processed By</th>
+                            <th><i class="fas fa-money-bill me-1"></i> Amount</th>
+                            <th><i class="fas fa-credit-card me-1"></i> Payment Method</th>
+                            <th><i class="fas fa-calendar me-1"></i> Date</th>
+                            <th><i class="fas fa-hashtag me-1"></i> Reference</th>
+                            <th><i class="fas fa-sticky-note me-1"></i> Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in purchase.payment_history %}
+                        <tr {% if payment.payment_method == 'pending' %}class="table-warning"{% endif %}>
+                            <td>{% if payment.processed_by %}{{ payment.processed_by.get_full_name|default:payment.processed_by.username }}{% else %}<span class="text-muted">Pending</span>{% endif %}</td>
+                            <td class="fw-bold">₦{{ payment.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if payment.payment_method == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ payment.payment_method|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ payment.payment_date|date:"Y-m-d H:i:s" }}</td>
+                            <td>{{ payment.reference_number|default:"-" }}</td>
+                            <td>{{ payment.notes|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="2"><strong>Total Paid:</strong></th>
+                            <th colspan="4"><strong>₦{{ purchase.total_paid|floatformat:2 }}</strong></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                No payment history available for this purchase.
+                <br><small class="text-muted">Payment history is tracked when payments are processed.</small>
+            </div>
+            {% endif %}
+            
+            {% if purchase.payment_status != 'paid' %}
+            <div class="mt-3">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Payment Status:</strong> {{ purchase.get_payment_status_display }}
+                    <br><small>Amount Due: ₦{{ purchase.amount_due|floatformat:2 }}</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Activity Log Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-clipboard-list me-2"></i>Activity Log
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th><i class="fas fa-user me-1"></i> User</th>
+                            <th><i class="fas fa-cog me-1"></i> Action</th>
+                            <th><i class="fas fa-calendar me-1"></i> Date/Time</th>
+                            <th><i class="fas fa-sticky-note me-1"></i> Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Initial Creation -->
+                        <tr>
+                            <td>{% if purchase.created_by %}{{ purchase.created_by.get_full_name|default:purchase.created_by.username }}{% else %}System{% endif %}</td>
+                            <td>
+                                <span class="badge bg-primary">Created</span>
+                            </td>
+                            <td>{{ purchase.created_at|date:"Y-m-d H:i:s" }}</td>
+                            <td>Purchase created with {{ purchase.items.count }} items. Total: ₦{{ purchase.total_amount|floatformat:2 }}</td>
+                        </tr>
+                        
+                        <!-- Last Updated -->
+                        {% if purchase.approval_updated_at and purchase.approval_updated_at != purchase.created_at %}
+                        <tr>
+                            <td>{% if purchase.current_approver %}{{ purchase.current_approver.get_full_name|default:purchase.current_approver.username }}{% else %}{% if purchase.created_by %}{{ purchase.created_by.get_full_name|default:purchase.created_by.username }}{% else %}System{% endif %}{% endif %}</td>
+                            <td>
+                                <span class="badge bg-secondary">Updated</span>
+                            </td>
+                            <td>{{ purchase.approval_updated_at|date:"Y-m-d H:i:s" }}</td>
+                            <td>Purchase details were last modified</td>
+                        </tr>
+                        {% endif %}
+                        
+                        <!-- Current Status Display -->
+                        <tr>
+                            <td>System</td>
+                            <td>
+                                <span class="badge bg-info">Current Status</span>
+                            </td>
+                            <td>{% now "Y-m-d H:i:s" %}</td>
+                            <td>
+                                Approval: <span class="badge bg-{% if purchase.approval_status == 'approved' %}success{% elif purchase.approval_status == 'rejected' %}danger{% elif purchase.approval_status == 'pending' %}warning{% else %}secondary{% endif %}">{{ purchase.approval_status|title }}</span>
+                                | 
+                                Payment: <span class="badge bg-{% if purchase.payment_status == 'paid' %}success{% elif purchase.payment_status == 'partial' %}info{% elif purchase.payment_status == 'pending' %}warning{% else %}secondary{% endif %}">{{ purchase.payment_status|title }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div class="card-footer d-flex gap-2">
         <a href="{% url 'pharmacy:manage_purchases' %}" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-1"></i> Back to Purchases
         </a>
         
-        {% if purchase.payment_status == 'pending' %}
+        <!-- Approval/Rejection Buttons (for users with permission) -->
+        {% if user.is_superuser or perms.pharmacy.can_approve_purchases %}
+            {% if purchase.approval_status == 'pending' %}
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approvePurchaseModal">
+                    <i class="fas fa-check-circle me-1"></i> Approve Purchase
+                </button>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectPurchaseModal">
+                    <i class="fas fa-times-circle me-1"></i> Reject Purchase
+                </button>
+            {% endif %}
+        {% endif %}
+        
+        <!-- Submit for Approval Button (only for draft status) -->
+        {% if purchase.approval_status == 'draft' %}
             <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#submitApprovalModal">
                 <i class="fas fa-paper-plane me-1"></i> Submit for Approval
             </button>
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
-                <i class="fas fa-credit-card me-1"></i> Process Payment
-            </button>
-        {% elif purchase.payment_status == 'partial' %}
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
-                <i class="fas fa-credit-card me-1"></i> Complete Payment
-            </button>
-            <button class="btn btn-warning" disabled>
-                <i class="fas fa-exclamation-triangle me-1"></i> Partial Payment
-            </button>
-        {% elif purchase.payment_status == 'paid' %}
-            <button class="btn btn-success" disabled>
-                <i class="fas fa-check-circle me-1"></i> Paid
-            </button>
         {% endif %}
-        
-        
+
+        <!-- Payment Processing Buttons (only for approved purchases) -->
+        {% if purchase.approval_status == 'approved' %}
+            {% if purchase.payment_status == 'pending' %}
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
+                    <i class="fas fa-credit-card me-1"></i> Process Payment
+                </button>
+            {% elif purchase.payment_status == 'partial' %}
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
+                    <i class="fas fa-credit-card me-1"></i> Complete Payment
+                </button>
+                <button class="btn btn-warning" disabled>
+                    <i class="fas fa-exclamation-triangle me-1"></i> Partial Payment
+                </button>
+            {% elif purchase.payment_status == 'paid' %}
+                <button class="btn btn-success" disabled>
+                    <i class="fas fa-check-circle me-1"></i> Paid
+                </button>
+            {% endif %}
+        {% endif %}
     </div>
 </div>
 
@@ -867,6 +1076,114 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Handle Submit for Approval modal
+    const submitApprovalModal = document.getElementById('submitApprovalModal');
+    if (submitApprovalModal) {
+        const approvalForm = submitApprovalModal.querySelector('form');
+        if (approvalForm) {
+            approvalForm.addEventListener('submit', function(e) {
+                // Allow normal form submission
+                // Show loading state on submit button
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalBtnContent = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Submitting...';
+                
+                // Submit form normally (not via AJAX)
+                // The form will redirect on success
+                setTimeout(() => {
+                    // If we're still on the page after 3 seconds, something went wrong
+                    if (!submitBtn.disabled) {
+                        return; // Form was already reset
+                    }
+                    // Restore button state if submission failed
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnContent;
+                    alert('Submission appears to have failed. Please check for error messages above.');
+                }, 3000);
+            });
+        }
+    }
 });
 </script>
+
+<!-- Approve Purchase Modal -->
+<div class="modal fade" id="approvePurchaseModal" tabindex="-1" aria-labelledby="approvePurchaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="approvePurchaseModalLabel">
+                    <i class="fas fa-check-circle me-2"></i>Approve Purchase
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:approve_purchase' purchase.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Are you sure you want to approve Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="approve_notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Approval Notes (Optional)
+                        </label>
+                        <textarea class="form-control" id="approve_notes" name="approval_notes" rows="3"
+                                  placeholder="Add any notes for this approval..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle me-1"></i>Approve Purchase
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Purchase Modal -->
+<div class="modal fade" id="rejectPurchaseModal" tabindex="-1" aria-labelledby="rejectPurchaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="rejectPurchaseModalLabel">
+                    <i class="fas fa-times-circle me-2"></i>Reject Purchase
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:reject_purchase' purchase.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Are you sure you want to reject Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reject_reason" class="form-label">
+                            <i class="fas fa-comment me-1"></i>Rejection Reason (Required) <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="reject_reason" name="rejection_reason" rows="4"
+                                  placeholder="Enter the reason for rejecting this purchase..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times-circle me-1"></i>Reject Purchase
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

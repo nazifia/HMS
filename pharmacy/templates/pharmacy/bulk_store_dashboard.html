@@ -68,7 +68,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
+            <div class="card shadow h-100 py-2 border-success border-start border-4">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
@@ -86,7 +86,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card shadow h-100 py-2 border-warning border-start border-4">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
@@ -104,7 +104,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card shadow h-100 py-2 border-danger border-start border-4">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
@@ -226,13 +226,13 @@
                                     <td>{{ item.supplier.name|default:"N/A" }}</td>
                                     <td>
                                         {% if item.is_expired %}
-                                            <span class="badge badge-danger">Expired</span>
+                                            <span class="badge bg-danger">Expired</span>
                                         {% elif item.days_until_expiry <= 30 %}
-                                            <span class="badge badge-warning">Expiring Soon</span>
+                                            <span class="badge bg-warning">Expiring Soon</span>
                                         {% elif item.stock_quantity <= 50 %}
-                                            <span class="badge badge-warning">Low Stock</span>
+                                            <span class="badge bg-warning">Low Stock</span>
                                         {% else %}
-                                            <span class="badge badge-success">Good</span>
+                                            <span class="badge bg-success">Good</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -258,7 +258,7 @@
                     <div class="row">
                         {% for dispensary in dispensaries %}
                         <div class="col-md-4 mb-3">
-                            <div class="card border-left-primary h-100">
+                            <div class="card h-100 border-primary border-start border-4">
                                 <div class="card-body">
                                     <h6 class="card-title text-primary">
                                         <i class="fas fa-store-alt"></i> {{ dispensary.name }}
@@ -272,7 +272,7 @@
                                     <p class="card-text">{{ dispensary.description|truncatewords:15 }}</p>
                                     {% endif %}
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <span class="badge badge-{% if dispensary.is_active %}success{% else %}secondary{% endif %}">
+                                        <span class="badge bg-{% if dispensary.is_active %}success{% else %}secondary{% endif %}">
                                             {% if dispensary.is_active %}Active{% else %}Inactive{% endif %}
                                         </span>
                                         {% if dispensary.manager %}
@@ -326,7 +326,7 @@
                                     <td>{{ transfer.quantity }}</td>
                                     <td>{{ transfer.to_active_store.dispensary.name }}</td>
                                     <td>
-                                        <span class="badge transfer-status badge-{% if transfer.status == 'completed' %}success{% elif transfer.status == 'pending' %}warning{% elif transfer.status == 'in_transit' %}info{% else %}secondary{% endif %}">
+                                        <span class="badge transfer-status bg-{% if transfer.status == 'completed' %}success{% elif transfer.status == 'pending' %}warning{% elif transfer.status == 'in_transit' %}info{% else %}secondary{% endif %}">
                                             {{ transfer.get_status_display }}
                                         </span>
                                     </td>
@@ -352,7 +352,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" action="{% url 'pharmacy:request_medication_transfer' %}">
+            <form method="post" action="{% url 'pharmacy:request_medication_transfer' %}" id="transferForm">
                 <div class="modal-body">
                     {% csrf_token %}
 
@@ -365,7 +365,7 @@
                             <div class="row">
                                 {% for dispensary in dispensaries %}
                                 <div class="col-md-6 mb-3">
-                                    <div class="card border-left-primary h-100" style="border-left: 4px solid #4e73df;">
+                                    <div class="card h-100 border-primary border-start border-4">
                                         <div class="card-body p-3">
                                             <h6 class="card-title text-primary mb-1">
                                                 <i class="fas fa-store-alt me-1"></i>{{ dispensary.name }}
@@ -380,7 +380,7 @@
                                                 <i class="fas fa-user me-1"></i>Manager: {{ dispensary.manager.get_full_name }}
                                             </p>
                                             {% endif %}
-                                            <span class="badge badge-{% if dispensary.is_active %}success{% else %}secondary{% endif %} small">
+                                            <span class="badge bg-{% if dispensary.is_active %}success{% else %}secondary{% endif %} small">
                                                 {% if dispensary.is_active %}Active{% else %}Inactive{% endif %}
                                             </span>
                                         </div>
@@ -475,67 +475,142 @@
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    $('#inventoryTable').DataTable({
-        pageLength: 25,
-        order: [[0, 'asc']]
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize DataTable with Bootstrap 5 compatibility
+    try {
+        if (typeof $ !== 'undefined' && $('#inventoryTable').length) {
+            $('#inventoryTable').DataTable({
+                pageLength: 25,
+                order: [[0, 'asc']],
+                responsive: true,
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                     '<"row"<"col-sm-12"tr>>' +
+                     '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
+            });
+        }
+    } catch (e) {
+        console.error('DataTable initialization error:', e);
+    }
 
     // Enhanced transfer modal functionality
-    $('#medication').on('change', function() {
-        var selectedOption = $(this).find('option:selected');
-        var availableQuantity = selectedOption.data('available');
+    const medicationSelect = document.getElementById('medication');
+    const quantityInput = document.getElementById('quantity');
+    const quantityHelp = document.getElementById('quantity-help');
+    const activeStoreSelect = document.getElementById('active_store');
+    const transferForm = document.getElementById('transferForm');
+    const transferModal = document.getElementById('transferModal');
 
-        if (availableQuantity) {
-            $('#quantity').attr('max', availableQuantity);
-            $('#quantity-help').text('Enter quantity to transfer (Max: ' + availableQuantity + ' available)');
-        } else {
-            $('#quantity').removeAttr('max');
-            $('#quantity-help').text('Enter the quantity to transfer');
-        }
-    });
+    if (medicationSelect) {
+        medicationSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const availableQuantity = selectedOption.getAttribute('data-available');
+
+            if (availableQuantity !== null && availableQuantity !== '') {
+                quantityInput.setAttribute('max', availableQuantity);
+                if (quantityHelp) {
+                    quantityHelp.textContent = 'Enter quantity to transfer (Max: ' + availableQuantity + ' available)';
+                }
+            } else {
+                quantityInput.removeAttribute('max');
+                if (quantityHelp) {
+                    quantityHelp.textContent = 'Enter the quantity to transfer';
+                }
+            }
+        });
+    }
 
     // Validate quantity against available stock
-    $('#quantity').on('input', function() {
-        var quantity = parseInt($(this).val());
-        var maxQuantity = parseInt($(this).attr('max'));
+    if (quantityInput) {
+        quantityInput.addEventListener('input', function() {
+            const quantity = parseInt(this.value) || 0;
+            const maxQuantity = parseInt(this.getAttribute('max')) || 0;
 
-        if (maxQuantity && quantity > maxQuantity) {
-            $(this).addClass('is-invalid');
-            $('#quantity-help').text('Quantity cannot exceed available stock (' + maxQuantity + ')').addClass('text-danger');
-        } else {
-            $(this).removeClass('is-invalid');
-            $('#quantity-help').text('Enter quantity to transfer (Max: ' + maxQuantity + ' available)').removeClass('text-danger');
-        }
-    });
+            if (maxQuantity && quantity > maxQuantity) {
+                this.classList.add('is-invalid');
+                if (quantityHelp) {
+                    quantityHelp.textContent = 'Quantity cannot exceed available stock (' + maxQuantity + ')';
+                    quantityHelp.classList.add('text-danger');
+                }
+            } else {
+                this.classList.remove('is-invalid');
+                if (quantityHelp) {
+                    quantityHelp.textContent = 'Enter quantity to transfer (Max: ' + maxQuantity + ' available)';
+                    quantityHelp.classList.remove('text-danger');
+                }
+            }
+        });
+    }
 
     // Show dispensary details when selected
-    $('#active_store').on('change', function() {
-        var selectedOption = $(this).find('option:selected');
-        var dispensaryName = selectedOption.data('dispensary-name');
-        var location = selectedOption.data('location');
-        var manager = selectedOption.data('manager');
+    if (activeStoreSelect) {
+        activeStoreSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const dispensaryName = selectedOption.getAttribute('data-dispensary-name');
+            const location = selectedOption.getAttribute('data-location');
+            const manager = selectedOption.getAttribute('data-manager');
 
-        if (dispensaryName) {
-            var details = 'Transferring to: ' + dispensaryName;
-            if (location) details += ' (' + location + ')';
-            if (manager) details += ' - Manager: ' + manager;
+            // Remove existing details
+            const existingDetails = document.getElementById('dispensary-details');
+            if (existingDetails) {
+                existingDetails.remove();
+            }
 
-            // Show details below the select
-            $('#dispensary-details').remove();
-            $(this).after('<div id="dispensary-details" class="form-text text-info mt-1"><i class="fas fa-info-circle me-1"></i>' + details + '</div>');
-        } else {
-            $('#dispensary-details').remove();
-        }
-    });
+            if (dispensaryName) {
+                let details = 'Transferring to: ' + dispensaryName;
+                if (location) details += ' (' + location + ')';
+                if (manager) details += ' - Manager: ' + manager;
+
+                // Show details below the select
+                const detailsDiv = document.createElement('div');
+                detailsDiv.id = 'dispensary-details';
+                detailsDiv.className = 'form-text text-info mt-1';
+                detailsDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>' + details;
+                this.parentNode.insertBefore(detailsDiv, this.nextSibling);
+            }
+        });
+    }
 
     // Reset form when modal is closed
-    $('#transferModal').on('hidden.bs.modal', function() {
-        $(this).find('form')[0].reset();
-        $('#quantity').removeClass('is-invalid');
-        $('#quantity-help').text('Enter the quantity to transfer').removeClass('text-danger');
-        $('#dispensary-details').remove();
-    });
+    if (transferModal) {
+        transferModal.addEventListener('hidden.bs.modal', function() {
+            if (transferForm) {
+                transferForm.reset();
+            }
+            if (quantityInput) {
+                quantityInput.classList.remove('is-invalid');
+            }
+            if (quantityHelp) {
+                quantityHelp.textContent = 'Enter the quantity to transfer';
+                quantityHelp.classList.remove('text-danger');
+            }
+            const existingDetails = document.getElementById('dispensary-details');
+            if (existingDetails) {
+                existingDetails.remove();
+            }
+        });
+    }
+
+    // Form validation before submit
+    if (transferForm) {
+        transferForm.addEventListener('submit', function(e) {
+            const medication = medicationSelect.value;
+            const activeStore = activeStoreSelect.value;
+            const quantity = quantityInput.value;
+
+            if (!medication || !activeStore || !quantity) {
+                e.preventDefault();
+                alert('Please fill in all required fields.');
+                return false;
+            }
+
+            const maxQuantity = parseInt(quantityInput.getAttribute('max')) || 0;
+            if (maxQuantity && parseInt(quantity) > maxQuantity) {
+                e.preventDefault();
+                alert('Quantity cannot exceed available stock (' + maxQuantity + ').');
+                return false;
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

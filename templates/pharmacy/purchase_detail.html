@@ -469,22 +469,53 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="submitApprovalModalLabel">Submit for Approval</h5>
+                <h5 class="modal-title" id="submitApprovalModalLabel">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Purchase for Approval
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post">
+            <form method="post" action="{% url 'pharmacy:submit_purchase_for_approval' purchase.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="submit_for_approval">
                 <div class="modal-body">
-                    <p>Are you sure you want to submit this purchase for approval?</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Are you sure you want to submit Purchase #<strong>{{ purchase.invoice_number }}</strong> for approval?
+                    </div>
+
                     <div class="mb-3">
-                        <label for="approval_comments" class="form-label">Comments (Optional)</label>
-                        <textarea class="form-control" id="approval_comments" name="approval_comments" rows="3"></textarea>
+                        <label for="approval_notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Approval Notes (Optional)
+                        </label>
+                        <textarea class="form-control" id="approval_notes" name="approval_notes" rows="3"
+                                  placeholder="Add any notes for the approval process..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="priority_level" class="form-label">
+                            <i class="fas fa-flag me-1"></i>Priority Level
+                        </label>
+                        <select class="form-select" id="priority_level" name="priority_level">
+                            <option value="normal">Normal</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="expected_delivery_date" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>Expected Delivery Date
+                        </label>
+                        <input type="date" class="form-control" id="expected_delivery_date" name="expected_delivery_date"
+                               required>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning">Submit for Approval</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-paper-plane me-1"></i>Submit for Approval
+                    </button>
                 </div>
             </form>
         </div>
@@ -495,23 +526,35 @@
 <div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="approveModalLabel">Approve Purchase</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="approveModalLabel">
+                    <i class="fas fa-check-circle me-2"></i>Approve Purchase
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post">
+            <form method="post" action="{% url 'pharmacy:approve_purchase' purchase.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="approve_purchase">
                 <div class="modal-body">
-                    <p>Are you sure you want to approve this purchase?</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Are you sure you want to approve Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                    </div>
+
                     <div class="mb-3">
-                        <label for="approval_notes" class="form-label">Approval Notes</label>
-                        <textarea class="form-control" id="approval_notes" name="approval_notes" rows="3" placeholder="Enter approval notes..."></textarea>
+                        <label for="approve_notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Approval Notes (Optional)
+                        </label>
+                        <textarea class="form-control" id="approve_notes" name="approval_notes" rows="3"
+                                  placeholder="Add any notes for this approval..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Approve Purchase</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle me-1"></i>Approve Purchase
+                    </button>
                 </div>
             </form>
         </div>
@@ -522,23 +565,35 @@
 <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="rejectModalLabel">Reject Purchase</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="rejectModalLabel">
+                    <i class="fas fa-times-circle me-2"></i>Reject Purchase
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post">
+            <form method="post" action="{% url 'pharmacy:reject_purchase' purchase.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="reject_purchase">
                 <div class="modal-body">
-                    <p>Are you sure you want to reject this purchase?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Are you sure you want to reject Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                    </div>
+
                     <div class="mb-3">
-                        <label for="rejection_notes" class="form-label">Rejection Reason <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="rejection_notes" name="rejection_notes" rows="3" placeholder="Enter reason for rejection..." required></textarea>
+                        <label for="reject_reason" class="form-label">
+                            <i class="fas fa-comment me-1"></i>Rejection Reason (Required) <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="reject_reason" name="rejection_reason" rows="4"
+                                  placeholder="Enter the reason for rejecting this purchase..." required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Reject Purchase</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times-circle me-1"></i>Reject Purchase
+                    </button>
                 </div>
             </form>
         </div>
