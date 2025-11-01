@@ -1880,8 +1880,12 @@ def purchase_detail(request, purchase_id):
     can_approve = request.user.is_superuser or request.user.has_perm('pharmacy.can_approve_purchases')
     can_pay = request.user.is_superuser or request.user.has_perm('pharmacy.can_process_payments')
 
-    # Get payments list (placeholder for now)
-    payments = []
+    # Get approval history
+    from .models import PurchaseApproval, PurchasePayment
+    approval_history = PurchaseApproval.objects.filter(purchase=purchase).select_related('approver').order_by('-decided_at')
+
+    # Get payment history
+    payments = PurchasePayment.objects.filter(purchase=purchase).select_related('received_by').order_by('-payment_date')
 
     context = {
         'purchase': purchase,
@@ -1889,6 +1893,7 @@ def purchase_detail(request, purchase_id):
         'item_form': item_form,
         'can_approve': can_approve,
         'can_pay': can_pay,
+        'approval_history': approval_history,
         'payments': payments,
         'all_medications': Medication.objects.filter(is_active=True).order_by('name'),
         'page_title': f'Purchase Details - #{purchase.invoice_number}',
@@ -1910,9 +1915,74 @@ from pharmacy.models import Patient, Prescription, PrescriptionItem, Purchase
 @login_required
 def process_purchase_payment(request, purchase_id):
     """View for processing purchase payment"""
+    from django.db import transaction
+    from django.utils import timezone
+    from django.contrib import messages
+
     purchase = get_object_or_404(Purchase, id=purchase_id)
-    # Implementation for processing purchase payment
-    pass
+
+    # Check permissions
+    if not (request.user.is_superuser or request.user.has_perm('pharmacy.can_process_payments')):
+        messages.error(request, 'You do not have permission to process payments.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+    # Check if purchase can be paid
+    if purchase.approval_status != 'approved':
+        messages.error(request, 'Only approved purchases can be paid.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+    if purchase.payment_status == 'paid':
+        messages.warning(request, 'This purchase has already been paid.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+    if request.method == 'POST':
+        payment_amount = request.POST.get('payment_amount')
+        payment_method = request.POST.get('payment_method')
+        payment_reference = request.POST.get('payment_reference', '')
+        payment_notes = request.POST.get('payment_notes', '')
+
+        try:
+            payment_amount = float(payment_amount)
+
+            # Validate payment amount
+            if payment_amount <= 0:
+                messages.error(request, 'Payment amount must be greater than zero.')
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+            if payment_amount != float(purchase.total_amount):
+                messages.error(request, f'Payment amount must match the total amount (₦{purchase.total_amount}).')
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+            with transaction.atomic():
+                # Update purchase payment status
+                purchase.payment_status = 'paid'
+                purchase.payment_date = timezone.now()
+                purchase.save()
+
+                # Create payment record
+                from .models import PurchasePayment
+                PurchasePayment.objects.create(
+                    purchase=purchase,
+                    amount=payment_amount,
+                    payment_method=payment_method,
+                    transaction_id=payment_reference,
+                    notes=payment_notes,
+                    received_by=request.user,
+                    payment_date=timezone.now()
+                )
+
+                messages.success(request, f'Payment of ₦{payment_amount:,.2f} processed successfully for Purchase #{purchase.invoice_number}.')
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+        except ValueError:
+            messages.error(request, 'Invalid payment amount.')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        except Exception as e:
+            messages.error(request, f'Error processing payment: {str(e)}')
+            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+    # GET request - should not happen as we use modal
+    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
 
 
 @login_required

@@ -77,6 +77,7 @@ class Purchase(models.Model):
         ('partial', 'Partial'),
         ('paid', 'Paid'),
     ), default='pending')
+    payment_date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
     dispensary = models.ForeignKey('Dispensary', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchases') # New field
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
@@ -165,6 +166,33 @@ class PurchaseApproval(models.Model):
 
     def __str__(self):
         return f"{self.purchase.invoice_number} - Step {self.step_order} - {self.approver.get_full_name()} ({self.status})"
+
+
+class PurchasePayment(models.Model):
+    """Payment records for purchase orders"""
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('bank_transfer', 'Bank Transfer'),
+        ('cheque', 'Cheque'),
+        ('credit_card', 'Credit Card'),
+        ('mobile_money', 'Mobile Money'),
+        ('other', 'Other'),
+    ]
+
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(default=timezone.now)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='purchase_payments_received')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-payment_date']
+
+    def __str__(self):
+        return f"Payment of ₦{self.amount} for Purchase #{self.purchase.invoice_number}"
 
 class PurchaseItem(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='items')

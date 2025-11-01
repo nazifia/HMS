@@ -179,8 +179,8 @@
                     <h6 class="m-0 font-weight-bold text-primary">Approval History</h6>
                 </div>
                 <div class="card-body">
-                    {% if approvals %}
-                        {% for approval in approvals %}
+                    {% if approval_history %}
+                        {% for approval in approval_history %}
                         <div class="d-flex align-items-center mb-3">
                             <div class="mr-3">
                                 <div class="icon-circle
@@ -608,9 +608,8 @@
                 <h5 class="modal-title" id="paymentModalLabel">Process Payment</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post">
+            <form method="post" action="{% url 'pharmacy:process_purchase_payment' purchase.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="process_payment">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
