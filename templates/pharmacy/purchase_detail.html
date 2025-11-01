@@ -83,6 +83,26 @@
                                 <div class="col-md-4 text-muted">Dispensary:</div>
                                 <div class="col-md-8">{{ purchase.dispensary.name|default:"Not Assigned" }}</div>
                             </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4 text-muted">Expected Delivery:</div>
+                                <div class="col-md-8" id="delivery-date-display">
+                                    {% if purchase.expected_delivery_date %}
+                                        <span>{{ purchase.expected_delivery_date|date:"F d, Y" }}</span>
+                                        {% if purchase.approval_status == 'draft' or purchase.approval_status == 'pending' or purchase.approval_status == 'approved' %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary ml-2 edit-delivery-date-btn">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Not set</span>
+                                        {% if purchase.approval_status == 'draft' or purchase.approval_status == 'pending' or purchase.approval_status == 'approved' %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary ml-2 edit-delivery-date-btn">
+                                                <i class="fas fa-plus"></i> Set Date
+                                            </button>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <div class="row mb-3">
@@ -659,7 +679,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- TEMPLATE: templates/pharmacy/purchase_detail.html - EDITED VERSION -->
 <script>
+    console.log('✅ USING CORRECT TEMPLATE: templates/pharmacy/purchase_detail.html');
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize modals and form functionality
         const addItemModal = document.getElementById('addItemModal');
@@ -737,6 +759,100 @@
                 return false;
             }
         });
+
+        // Edit Delivery Date functionality
+        // Click handler for edit delivery date button
+        $(document).on('click', '.edit-delivery-date-btn', function() {
+            // Get current delivery date
+            $.get('{% url "pharmacy:edit_purchase_delivery_date" purchase.id %}', function(data) {
+                if (data.success) {
+                    // Set the current date in the modal
+                    $('#delivery-date-input').val(data.delivery_date);
+                    // Show the modal using Bootstrap 5
+                    var modal = new bootstrap.Modal(document.getElementById('editDeliveryDateModal'));
+                    modal.show();
+                }
+            }).fail(function() {
+                alert('Error loading delivery date. Please try again.');
+            });
+        });
+
+        // Save Delivery Date functionality
+        $('#save-delivery-date-btn').click(function() {
+            var deliveryDate = $('#delivery-date-input').val();
+
+            if (!deliveryDate) {
+                alert('Please select a delivery date');
+                return;
+            }
+
+            // Save via AJAX
+            $.post('{% url "pharmacy:edit_purchase_delivery_date" purchase.id %}', {
+                'expected_delivery_date': deliveryDate,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            }, function(data) {
+                if (data.success) {
+                    // Update the display
+                    var editButton = '';
+                    {% if purchase.approval_status == 'draft' or purchase.approval_status == 'pending' or purchase.approval_status == 'approved' %}
+                        editButton = '<button type="button" class="btn btn-sm btn-outline-primary ml-2 edit-delivery-date-btn">' +
+                                    '<i class="fas fa-edit"></i>' +
+                                    '</button>';
+                    {% endif %}
+
+                    $('#delivery-date-display').html(
+                        '<span>' + data.delivery_date + '</span>' + editButton
+                    );
+
+                    // Hide the modal using Bootstrap 5
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('editDeliveryDateModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+
+                    // Show success message
+                    alert(data.message || 'Delivery date updated successfully');
+                } else {
+                    alert(data.message || 'Error updating delivery date');
+                }
+            }).fail(function() {
+                alert('Error updating delivery date. Please try again.');
+            });
+        });
     });
 </script>
+
+<!-- Edit Delivery Date Modal -->
+<div class="modal fade" id="editDeliveryDateModal" tabindex="-1" aria-labelledby="editDeliveryDateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="editDeliveryDateModalLabel">
+                    <i class="fas fa-calendar-alt"></i> Edit Expected Delivery Date
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-delivery-date-form">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="delivery-date-input" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>Expected Delivery Date
+                        </label>
+                        <input type="date" class="form-control" id="delivery-date-input" name="expected_delivery_date" required>
+                        <div class="form-text">Select the expected delivery date for this purchase.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-info" id="save-delivery-date-btn">
+                    <i class="fas fa-save"></i> Save Date
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

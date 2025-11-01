@@ -68,6 +68,7 @@ urlpatterns = [
     path('purchases/<int:purchase_id>/submit/', views.submit_purchase_for_approval, name='submit_purchase_for_approval'),
     path('purchases/<int:purchase_id>/approve/', views.approve_purchase, name='approve_purchase'),
     path('purchases/<int:purchase_id>/reject/', views.reject_purchase, name='reject_purchase'),
+    path('purchases/<int:purchase_id>/edit-delivery-date/', views.edit_purchase_delivery_date, name='edit_purchase_delivery_date'),
 
     # Prescription Management
     path('prescriptions/', views.prescription_list, name='prescriptions'),

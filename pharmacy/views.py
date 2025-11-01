@@ -2365,6 +2365,74 @@ def reject_purchase(request, purchase_id):
 
 
 @login_required
+def edit_purchase_delivery_date(request, purchase_id):
+    """View for editing the expected delivery date of a purchase"""
+    from django.http import JsonResponse
+    from django.utils import timezone
+    
+    purchase = get_object_or_404(Purchase, id=purchase_id)
+    
+    # Allow editing for draft, pending, approved, and paid purchases
+    if purchase.approval_status not in ['draft', 'pending', 'approved', 'paid']:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': 'Cannot edit delivery date for rejected or cancelled purchases.'
+            }, status=400)
+        messages.error(request, 'Cannot edit delivery date for rejected or cancelled purchases.')
+        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    
+    if request.method == 'POST':
+        new_delivery_date = request.POST.get('expected_delivery_date')
+        
+        if new_delivery_date:
+            try:
+                # Parse and validate the date
+                from datetime import datetime
+                parsed_date = datetime.strptime(new_delivery_date, '%Y-%m-%d').date()
+                
+                # Update the purchase
+                purchase.expected_delivery_date = parsed_date
+                purchase.save(update_fields=['expected_delivery_date'])
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Delivery date updated successfully.',
+                        'delivery_date': parsed_date.strftime('%B %d, %Y')
+                    })
+                
+                messages.success(request, 'Delivery date updated successfully.')
+                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                
+            except ValueError:
+                error_msg = 'Invalid date format. Please enter a valid date.'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_msg
+                    }, status=400)
+                messages.error(request, error_msg)
+        else:
+            error_msg = 'Please provide a delivery date.'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': error_msg
+                }, status=400)
+            messages.error(request, error_msg)
+    
+    # For GET request, return current delivery date
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'delivery_date': purchase.expected_delivery_date.strftime('%Y-%m-%d') if purchase.expected_delivery_date else ''
+        })
+    
+    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+
+
+@login_required
 def prescription_list(request):
     """View for listing prescriptions with enhanced search and filtering"""
     # Get all prescriptions with prefetch for efficient dispensing status calculation
