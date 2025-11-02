@@ -50,8 +50,10 @@ urlpatterns = [
     # Bulk Store Management
     path('bulk-store/', views.bulk_store_dashboard, name='bulk_store_dashboard'),
     path('bulk-store/transfer/request/', views.request_medication_transfer, name='request_medication_transfer'),
+    path('bulk-store/transfer/instant/', views.instant_medication_transfer, name='instant_medication_transfer'),
     path('bulk-store/transfer/<int:transfer_id>/approve/', views.approve_medication_transfer, name='approve_medication_transfer'),
     path('bulk-store/transfer/<int:transfer_id>/execute/', views.execute_medication_transfer, name='execute_medication_transfer'),
+    path('bulk-store/transfer/<int:transfer_id>/cancel/', views.cancel_medication_transfer, name='cancel_medication_transfer'),
 
     # Purchase Management
     path('purchases/', views.manage_purchases, name='manage_purchases'),

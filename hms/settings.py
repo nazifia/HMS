@@ -69,15 +69,24 @@ SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False' if DEBUG
 CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'False' if DEBUG else 'True') == 'True'
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False' if DEBUG else 'True') == 'True'
 
-# HSTS settings - Set to 0 in development to avoid warning, 1 year in production
+# HSTS settings - Set to 0 in development (warning suppressed), 1 year in production
 if DEBUG:
     SECURE_HSTS_SECONDS = 0
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
 else:
+    # Production: Enable HSTS with 1 year duration (31536000 seconds)
     SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000'))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True') == 'True'
     SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'True') == 'True'
+
+# Silence security warnings that are expected in development
+if DEBUG:
+    SILENCED_SYSTEM_CHECKS = [
+        'security.W004',  # SECURE_HSTS_SECONDS is 0 in development (expected)
+    ]
+else:
+    SILENCED_SYSTEM_CHECKS = []
 
 # Content security
 SECURE_CONTENT_TYPE_NOSNIFF = True

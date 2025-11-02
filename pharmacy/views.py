@@ -1437,6 +1437,71 @@ def request_medication_transfer(request):
 
 
 @login_required
+def instant_medication_transfer(request):
+    """View for instant medication transfer from bulk store to active store"""
+    if request.method == 'POST':
+        try:
+            medication_id = request.POST.get('medication')
+            active_store_id = request.POST.get('active_store')
+            quantity = int(request.POST.get('quantity'))
+            notes = request.POST.get('notes', '').strip()
+            
+            if not medication_id or not active_store_id or not quantity:
+                messages.error(request, 'Please fill in all required fields.')
+                return redirect('pharmacy:bulk_store_dashboard')
+                
+            medication = get_object_or_404(Medication, id=medication_id)
+            active_store = get_object_or_404(ActiveStore, id=active_store_id)
+            
+            # Find available bulk inventory for this medication
+            from datetime import date
+            bulk_inventory = BulkStoreInventory.objects.filter(
+                medication=medication,
+                stock_quantity__gte=quantity
+            ).select_related('bulk_store').order_by('expiry_date').first()
+            
+            if not bulk_inventory:
+                messages.error(request, f'Insufficient stock in bulk store for {medication.name}.')
+                return redirect('pharmacy:bulk_store_dashboard')
+                
+            # Check if medication is expired
+            if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
+                messages.error(request, f'Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}.')
+                return redirect('pharmacy:bulk_store_dashboard')
+            
+            # Create and execute transfer instantly
+            transfer = MedicationTransfer.objects.create(
+                medication=medication,
+                from_bulk_store=bulk_inventory.bulk_store,
+                to_active_store=active_store,
+                quantity=quantity,
+                batch_number=bulk_inventory.batch_number,
+                expiry_date=bulk_inventory.expiry_date,
+                unit_cost=bulk_inventory.unit_cost,
+                notes=notes,
+                status='completed',
+                requested_by=request.user,
+                approved_by=request.user,
+                transferred_by=request.user,
+                approved_at=timezone.now(),
+                transferred_at=timezone.now()
+            )
+            
+            # Execute the actual stock transfer
+            transfer.execute_transfer(request.user)
+            
+            messages.success(request, f'Instant transfer #{transfer.id} completed successfully!')
+            return redirect('pharmacy:bulk_store_dashboard')
+            
+        except Exception as e:
+            messages.error(request, f'Error executing instant transfer: {str(e)}')
+            return redirect('pharmacy:bulk_store_dashboard')
+    
+    # For GET request, redirect to bulk store dashboard
+    return redirect('pharmacy:bulk_store_dashboard')
+
+
+@login_required
 def approve_medication_transfer(request, transfer_id):
     """View for approving a medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
@@ -1471,7 +1536,7 @@ def approve_medication_transfer(request, transfer_id):
 
 @login_required
 def execute_medication_transfer(request, transfer_id):
-    """View for executing a medication transfer"""
+    """View for executing a medication transfer and completing delivery process"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
 
     if request.method == 'POST':
@@ -1483,7 +1548,29 @@ def execute_medication_transfer(request, transfer_id):
             # Execute the transfer
             transfer.execute_transfer(request.user)
 
-            messages.success(request, f'Transfer #{transfer.id} executed successfully.')
+            # Update transfer status to delivered to complete the delivery process
+            transfer.status = 'delivered'
+            transfer.delivered_by = request.user
+            transfer.delivered_at = timezone.now()
+            transfer.save()
+
+            # Create dispensing log for the completed delivery
+            try:
+                from .models import DispensingLog
+                DispensingLog.objects.create(
+                    prescription_item=None,  # Not related to specific prescription
+                    dispensed_by=request.user,
+                    dispensed_quantity=transfer.quantity,
+                    unit_price_at_dispense=transfer.unit_cost,
+                    total_price_for_this_log=transfer.quantity * transfer.unit_cost,
+                    dispensary=transfer.to_active_store.dispensary,
+                    notes=f"Transfer delivery - Transfer ID: {transfer.id}"
+                )
+            except ImportError:
+                # Handle case where DispensingLog model might not be available
+                pass
+
+            messages.success(request, f'Transfer #{transfer.id} executed and delivered successfully.')
             return redirect('pharmacy:bulk_store_dashboard')
 
         except Exception as e:
@@ -1497,6 +1584,41 @@ def execute_medication_transfer(request, transfer_id):
     }
 
     return render(request, 'pharmacy/execute_transfer.html', context)
+
+
+@login_required
+def cancel_medication_transfer(request, transfer_id):
+    """View for cancelling a medication transfer"""
+    transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
+
+    if request.method == 'POST':
+        try:
+            if transfer.status == 'completed':
+                messages.error(request, 'Cannot cancel a completed transfer.')
+                return redirect('pharmacy:bulk_store_dashboard')
+            
+            if transfer.status == 'cancelled':
+                messages.error(request, 'Transfer is already cancelled.')
+                return redirect('pharmacy:bulk_store_dashboard')
+
+            # Cancel the transfer
+            transfer.status = 'cancelled'
+            transfer.save()
+
+            messages.success(request, f'Transfer #{transfer.id} has been cancelled successfully.')
+            return redirect('pharmacy:bulk_store_dashboard')
+
+        except Exception as e:
+            messages.error(request, f'Error cancelling transfer: {str(e)}')
+            return redirect('pharmacy:bulk_store_dashboard')
+
+    context = {
+        'transfer': transfer,
+        'page_title': f'Cancel Transfer #{transfer.id}',
+        'active_nav': 'pharmacy',
+    }
+
+    return render(request, 'pharmacy/cancel_transfer.html', context)
 
 
 @login_required

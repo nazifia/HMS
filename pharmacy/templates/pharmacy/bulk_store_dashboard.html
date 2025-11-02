@@ -44,6 +44,8 @@
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
                 <i class="fas fa-exchange-alt"></i> Request Transfer
             </button>
+            <!-- DEBUG: Instant transfer button added -->
+            <span class="badge bg-info ms-2">INSTANT TRANSFER ENABLED</span>
         </div>
     </div>
 
@@ -162,6 +164,20 @@
                                            class="btn btn-sm btn-primary">
                                             <i class="fas fa-shipping-fast"></i> Execute
                                         </a>
+                                        <!-- Instant Transfer Button for Pending Transfers -->
+                                        {% if transfer.can_approve %}
+                                        <button type="button" class="btn btn-sm btn-warning instant-transfer-btn"
+                                                    data-transfer-id="{{ transfer.id }}"
+                                                    data-instant-url="{% url 'pharmacy:instant_medication_transfer' %}">
+                                            <i class="fas fa-bolt"></i> Instant Transfer
+                                        </button>
+                                        {% endif %}
+                                        <!-- Cancel Button -->
+                                        <button type="button" class="btn btn-sm btn-danger cancel-transfer-btn"
+                                                data-transfer-id="{{ transfer.id }}"
+                                                data-cancel-url="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -317,6 +333,7 @@
                                     <th>To Dispensary</th>
                                     <th>Status</th>
                                     <th>Date</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -326,11 +343,24 @@
                                     <td>{{ transfer.quantity }}</td>
                                     <td>{{ transfer.to_active_store.dispensary.name }}</td>
                                     <td>
-                                        <span class="badge transfer-status bg-{% if transfer.status == 'completed' %}success{% elif transfer.status == 'pending' %}warning{% elif transfer.status == 'in_transit' %}info{% else %}secondary{% endif %}">
+                                        <span class="badge transfer-status bg-{% if transfer.status == 'completed' %}success{% elif transfer.status == 'pending' %}warning{% elif transfer.status == 'in_transit' %}info{% elif transfer.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
                                             {{ transfer.get_status_display }}
                                         </span>
                                     </td>
                                     <td>{{ transfer.requested_at|date:"M d, Y g:i A" }}</td>
+                                    <td>
+                                        {% if transfer.status == 'pending' or transfer.status == 'in_transit' %}
+                                        <a href="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}" 
+                                           class="btn btn-sm btn-danger"
+                                           onclick="return confirmCancelTransfer({{ transfer.id }});">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </a>
+                                        {% elif transfer.status == 'cancelled' %}
+                                        <span class="badge bg-secondary">Already Cancelled</span>
+                                        {% elif transfer.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -349,7 +379,10 @@
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
                     <i class="fas fa-exchange-alt me-2"></i>Request Medication Transfer
+                    <span class="badge bg-warning ms-2">INSTANT TRANSFER AVAILABLE</span>
                 </h5>
+                <!-- DEBUG: Modal form ID: transferForm -->
+                <!-- DEBUG: Instant Transfer Button ID: instantTransferBtn -->
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="{% url 'pharmacy:request_medication_transfer' %}" id="transferForm">
@@ -454,6 +487,19 @@
                         <div class="form-text">Select the dispensary where you want to transfer the medication</div>
                     </div>
 
+                    <div class="mb-3 border border-warning rounded p-3 bg-light">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="instant_transfer" name="instant_transfer">
+                            <label class="form-check-label" for="instant_transfer">
+                                <i class="fas fa-bolt text-warning"></i>
+                                <strong class="text-warning">Instant Transfer</strong> - Transfer medication immediately (bypasses approval process)
+                            </label>
+                            <div class="form-text">
+                                <small class="text-info">Check this box to execute the transfer instantly. The medication will be moved from bulk store to the selected dispensary immediately.</small>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="notes" class="form-label">
                             <i class="fas fa-sticky-note me-1"></i>Transfer Notes
@@ -465,9 +511,100 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Request Transfer</button>
+                    <button type="button" class="btn btn-outline-primary" id="requestTransferBtn">
+                        <span class="btn-text">Request Transfer</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="btn btn-warning btn-lg" id="instantTransferBtn" style="display: inline-block !important;">
+                        <i class="fas fa-bolt"></i> <strong class="btn-text">Instant Transfer</strong>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Instant Transfer Confirmation Modal -->
+<div class="modal fade" id="instantTransferConfirmModal" tabindex="-1" aria-labelledby="instantTransferConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning border-3">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="instantTransferConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Instant Transfer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning mb-3">
+                    <i class="fas fa-bolt me-2"></i>
+                    <strong>Warning:</strong> This will bypass the approval process and transfer the medication immediately!
+                </div>
+
+                <h6 class="text-primary mb-3">Transfer Details:</h6>
+                <table class="table table-sm table-bordered">
+                    <tr>
+                        <th width="40%">Medication:</th>
+                        <td id="confirm-medication">-</td>
+                    </tr>
+                    <tr>
+                        <th>Quantity:</th>
+                        <td id="confirm-quantity">-</td>
+                    </tr>
+                    <tr>
+                        <th>Destination:</th>
+                        <td id="confirm-destination">-</td>
+                    </tr>
+                    <tr>
+                        <th>Notes:</th>
+                        <td id="confirm-notes">-</td>
+                    </tr>
+                </table>
+
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    The medication will be transferred immediately and the stock will be updated in both stores.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmInstantTransferBtn">
+                    <i class="fas fa-bolt"></i> <strong>Confirm Instant Transfer</strong>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Transfer Confirmation Modal -->
+<div class="modal fade" id="cancelTransferConfirmModal" tabindex="-1" aria-labelledby="cancelTransferConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger border-3">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="cancelTransferConfirmModalLabel">
+                    <i class="fas fa-times-circle me-2"></i>Confirm Cancel Transfer
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This action cannot be undone!
+                </div>
+
+                <p class="mb-3">Are you sure you want to cancel <strong>Transfer #<span id="cancel-transfer-id">-</span></strong>?</p>
+
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You will be redirected to provide a cancellation reason.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep Transfer</button>
+                <a href="#" class="btn btn-danger" id="confirmCancelTransferBtn">
+                    <i class="fas fa-times"></i> Yes, Cancel Transfer
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -477,6 +614,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize DataTable with Bootstrap 5 compatibility
+    console.log('DEBUG: Page loaded, checking for instantTransferBtn...');
     try {
         if (typeof $ !== 'undefined' && $('#inventoryTable').length) {
             $('#inventoryTable').DataTable({
@@ -499,27 +637,43 @@ document.addEventListener('DOMContentLoaded', function() {
     const activeStoreSelect = document.getElementById('active_store');
     const transferForm = document.getElementById('transferForm');
     const transferModal = document.getElementById('transferModal');
+    const requestTransferBtn = document.getElementById('requestTransferBtn');
+    const instantTransferBtn = document.getElementById('instantTransferBtn');
 
+    // Function to get form elements safely
+    function getFormElements() {
+        return {
+            medication: document.getElementById('medication'),
+            quantity: document.getElementById('quantity'),
+            quantityHelp: document.getElementById('quantity-help'),
+            activeStore: document.getElementById('active_store'),
+            transferForm: document.getElementById('transferForm')
+        };
+    }
+
+    // Medication selection handler
     if (medicationSelect) {
         medicationSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            const availableQuantity = selectedOption.getAttribute('data-available');
+            const availableQuantity = selectedOption ? selectedOption.getAttribute('data-available') : null;
 
-            if (availableQuantity !== null && availableQuantity !== '') {
-                quantityInput.setAttribute('max', availableQuantity);
-                if (quantityHelp) {
-                    quantityHelp.textContent = 'Enter quantity to transfer (Max: ' + availableQuantity + ' available)';
-                }
-            } else {
-                quantityInput.removeAttribute('max');
-                if (quantityHelp) {
-                    quantityHelp.textContent = 'Enter the quantity to transfer';
+            if (quantityInput) {
+                if (availableQuantity !== null && availableQuantity !== '') {
+                    quantityInput.setAttribute('max', availableQuantity);
+                    if (quantityHelp) {
+                        quantityHelp.textContent = 'Enter quantity to transfer (Max: ' + availableQuantity + ' available)';
+                    }
+                } else {
+                    quantityInput.removeAttribute('max');
+                    if (quantityHelp) {
+                        quantityHelp.textContent = 'Enter the quantity to transfer';
+                    }
                 }
             }
         });
     }
 
-    // Validate quantity against available stock
+    // Quantity validation handler
     if (quantityInput) {
         quantityInput.addEventListener('input', function() {
             const quantity = parseInt(this.value) || 0;
@@ -541,13 +695,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Show dispensary details when selected
+    // Active store selection handler
     if (activeStoreSelect) {
         activeStoreSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            const dispensaryName = selectedOption.getAttribute('data-dispensary-name');
-            const location = selectedOption.getAttribute('data-location');
-            const manager = selectedOption.getAttribute('data-manager');
+            const dispensaryName = selectedOption ? selectedOption.getAttribute('data-dispensary-name') : null;
+            const location = selectedOption ? selectedOption.getAttribute('data-location') : null;
+            const manager = selectedOption ? selectedOption.getAttribute('data-manager') : null;
 
             // Remove existing details
             const existingDetails = document.getElementById('dispensary-details');
@@ -573,6 +727,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset form when modal is closed
     if (transferModal) {
         transferModal.addEventListener('hidden.bs.modal', function() {
+            console.log('DEBUG: Modal opened, checking for instantTransferBtn...');
+            console.log('DEBUG: instantTransferBtn element:', document.getElementById('instantTransferBtn'));
+            console.log('DEBUG: All buttons with [id*=TransferBtn]:', document.querySelectorAll('[id*=TransferBtn]'));
+            console.log('DEBUG: All buttons in modal footer:', document.querySelectorAll('.modal-footer button'));
             if (transferForm) {
                 transferForm.reset();
             }
@@ -590,26 +748,216 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Form validation before submit
-    if (transferForm) {
-        transferForm.addEventListener('submit', function(e) {
-            const medication = medicationSelect.value;
-            const activeStore = activeStoreSelect.value;
-            const quantity = quantityInput.value;
+    // DEBUG: Force show modal after 2 seconds to test button visibility
+    setTimeout(function() {
+        console.log('DEBUG: Forcing modal open to check button visibility...');
+        const modal = new bootstrap.Modal(document.getElementById('transferModal'));
+        if (modal) {
+            modal.show();
+        }
+    }, 2000);
 
-            if (!medication || !activeStore || !quantity) {
-                e.preventDefault();
-                alert('Please fill in all required fields.');
-                return false;
+    // Function to show validation error
+    function showValidationError(message) {
+        // Remove any existing error alerts
+        const existingAlert = transferModal.querySelector('.validation-alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        // Create new error alert
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show validation-alert';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong>Validation Error:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        // Insert at the top of modal body
+        const modalBody = transferModal.querySelector('.modal-body');
+        modalBody.insertBefore(alert, modalBody.firstChild);
+
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alert && alert.parentNode) {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 150);
             }
+        }, 5000);
+    }
 
-            const maxQuantity = parseInt(quantityInput.getAttribute('max')) || 0;
-            if (maxQuantity && parseInt(quantity) > maxQuantity) {
-                e.preventDefault();
-                alert('Quantity cannot exceed available stock (' + maxQuantity + ').');
-                return false;
+    // Form validation function
+
+    // Handle instant transfer button clicks for pending transfers
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('instant-transfer-btn')) {
+            e.preventDefault();
+            const transferId = e.target.getAttribute('data-transfer-id');
+            if (transferId && confirm('Execute instant transfer for #' + transferId + '? This will complete the transfer immediately.')) {
+                const url = e.target.getAttribute('data-instant-url');
+                if (url) {
+                    // Create a form and submit the instant transfer
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = url;
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                    if (csrfToken) {
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = 'csrfmiddlewaretoken';
+                        csrfInput.value = csrfToken.value;
+                        form.appendChild(csrfInput);
+                    }
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            }
+        }
+    });
+
+    // Handle cancel transfer button clicks
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('cancel-transfer-btn')) {
+            e.preventDefault();
+            const transferId = e.target.getAttribute('data-transfer-id');
+            const cancelUrl = e.target.getAttribute('data-cancel-url');
+            if (transferId && confirmCancelTransfer(transferId)) {
+                if (cancelUrl) {
+                    window.location.href = cancelUrl;
+                }
+            }
+        }
+    });
+    function validateTransferForm() {
+        const elements = getFormElements();
+        const medication = elements.medication ? elements.medication.value : null;
+        const activeStore = elements.activeStore ? elements.activeStore.value : null;
+        const quantity = elements.quantity ? elements.quantity.value : null;
+
+        if (!medication || !activeStore || !quantity) {
+            showValidationError('Please fill in all required fields (Medication, Quantity, and Destination Dispensary).');
+            return false;
+        }
+
+        if (parseInt(quantity) <= 0) {
+            showValidationError('Quantity must be greater than zero.');
+            return false;
+        }
+
+        const maxQuantity = parseInt(elements.quantity.getAttribute('max')) || 0;
+        if (maxQuantity && parseInt(quantity) > maxQuantity) {
+            showValidationError(`Quantity cannot exceed available stock (${maxQuantity} units available).`);
+            return false;
+        }
+
+        return true;
+    }
+
+    // Function to show loading state on button
+    function setButtonLoading(button, isLoading) {
+        if (!button) return;
+
+        const btnText = button.querySelector('.btn-text');
+        const spinner = button.querySelector('.spinner-border');
+
+        if (isLoading) {
+            button.disabled = true;
+            if (btnText) btnText.classList.add('d-none');
+            if (spinner) spinner.classList.remove('d-none');
+        } else {
+            button.disabled = false;
+            if (btnText) btnText.classList.remove('d-none');
+            if (spinner) spinner.classList.add('d-none');
+        }
+    }
+
+    // Handle Request Transfer button click
+    if (requestTransferBtn) {
+        requestTransferBtn.addEventListener('click', function() {
+            if (validateTransferForm()) {
+                if (transferForm) {
+                    setButtonLoading(requestTransferBtn, true);
+                    transferForm.action = '{% url "pharmacy:request_medication_transfer" %}';
+                    transferForm.submit();
+                }
             }
         });
+    }
+
+    // Handle Instant Transfer button click - Show confirmation modal
+    if (instantTransferBtn) {
+        instantTransferBtn.addEventListener('click', function() {
+            if (validateTransferForm()) {
+                // Populate confirmation modal with transfer details
+                const elements = getFormElements();
+                const medicationSelect = elements.medication;
+                const quantityInput = elements.quantity;
+                const activeStoreSelect = elements.activeStore;
+                const notesInput = document.getElementById('notes');
+
+                // Get selected option texts
+                const medicationText = medicationSelect.options[medicationSelect.selectedIndex].text;
+                const destinationText = activeStoreSelect.options[activeStoreSelect.selectedIndex].text;
+
+                // Update confirmation modal
+                document.getElementById('confirm-medication').textContent = medicationText;
+                document.getElementById('confirm-quantity').textContent = quantityInput.value;
+                document.getElementById('confirm-destination').textContent = destinationText;
+                document.getElementById('confirm-notes').textContent = notesInput ? notesInput.value || 'None' : 'None';
+
+                // Hide transfer modal and show confirmation modal
+                const transferModalInstance = bootstrap.Modal.getInstance(transferModal);
+                if (transferModalInstance) {
+                    transferModalInstance.hide();
+                }
+
+                const confirmModal = new bootstrap.Modal(document.getElementById('instantTransferConfirmModal'));
+                confirmModal.show();
+            }
+        });
+    } else {
+        console.log('DEBUG: instantTransferBtn not found!');
+    }
+
+    // Handle Instant Transfer Confirmation
+    const confirmInstantTransferBtn = document.getElementById('confirmInstantTransferBtn');
+    if (confirmInstantTransferBtn) {
+        confirmInstantTransferBtn.addEventListener('click', function() {
+            if (transferForm) {
+                setButtonLoading(confirmInstantTransferBtn, true);
+                transferForm.action = '{% url "pharmacy:instant_medication_transfer" %}';
+                transferForm.submit();
+            }
+        });
+    }
+
+    // Handle Cancel Transfer button clicks
+    const cancelTransferButtons = document.querySelectorAll('.cancel-transfer-btn');
+    const cancelTransferModal = document.getElementById('cancelTransferConfirmModal');
+    const confirmCancelBtn = document.getElementById('confirmCancelTransferBtn');
+
+    cancelTransferButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const transferId = this.getAttribute('data-transfer-id');
+            const cancelUrl = this.getAttribute('data-cancel-url');
+
+            // Update modal content
+            document.getElementById('cancel-transfer-id').textContent = transferId;
+            confirmCancelBtn.setAttribute('href', cancelUrl);
+
+            // Show modal
+            const modal = new bootstrap.Modal(cancelTransferModal);
+            modal.show();
+        });
+    });
+
+    // Legacy function for backward compatibility (if any old code still uses it)
+    function confirmCancelTransfer(transferId) {
+        if (confirm('Are you sure you want to cancel transfer #' + transferId + '? This action cannot be undone.')) {
+            return true;
+        }
+        return false;
     }
 });
 </script>

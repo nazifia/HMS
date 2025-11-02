@@ -406,6 +406,7 @@ class MedicationTransfer(models.Model):
         ('pending', 'Pending'),
         ('in_transit', 'In Transit'),
         ('completed', 'Completed'),
+        ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
     ]
 
@@ -420,6 +421,8 @@ class MedicationTransfer(models.Model):
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='requested_transfers')
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_transfers')
     transferred_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='executed_transfers')
+    delivered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='delivered_transfers')
+    delivered_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
     requested_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)
@@ -437,6 +440,10 @@ class MedicationTransfer(models.Model):
     def can_execute(self):
         """Check if transfer can be executed"""
         return self.status in ['pending', 'in_transit'] and self.approved_by is not None
+
+    def can_deliver(self):
+        """Check if transfer can be marked as delivered"""
+        return self.status == 'completed'
 
     def execute_transfer(self, user):
         """Execute the transfer by moving stock from bulk store to active store"""
@@ -966,6 +973,7 @@ class DispensaryTransfer(models.Model):
         ('pending', 'Pending'),
         ('in_transit', 'In Transit'),
         ('completed', 'Completed'),
+        ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
     ]
 
