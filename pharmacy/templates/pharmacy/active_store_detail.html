@@ -356,8 +356,8 @@
 </div>
 {% endblock %}
 
-<!-- JavaScript for handling transfers -->
 {% block extra_js %}
+<!-- JavaScript for handling transfers -->
 <script>
 $(document).ready(function() {
     console.log("Document ready - transfer script loaded");
@@ -469,22 +469,42 @@ $(document).ready(function() {
         updateSubmitButton();
     });
 
-    // Handle medication checkbox changes
-    $('.medication-checkbox').on('change', function() {
-        var quantityInput = $(this).closest('tr').find('.quantity-input');
-        var available = parseInt($(this).data('available'));
+    // Handle medication checkbox changes - using event delegation for collapsed sections
+    $(document).on('change', '.medication-checkbox', function() {
+        console.log('Checkbox changed!', this.checked);
+        var $checkbox = $(this);
+        var $row = $checkbox.closest('tr');
+        var $quantityInput = $row.find('.quantity-input');
+        var available = parseInt($checkbox.data('available')) || 0;
 
-        if ($(this).is(':checked')) {
-            quantityInput.prop('disabled', false).val(1).attr('max', available);
+        console.log('Quantity input found:', $quantityInput.length, 'Available:', available);
+
+        if ($checkbox.is(':checked')) {
+            console.log('Enabling quantity input');
+            $quantityInput.prop('disabled', false);
+            $quantityInput.val(1);
+            $quantityInput.attr('max', available);
         } else {
-            quantityInput.prop('disabled', true).val(0);
+            console.log('Disabling quantity input');
+            $quantityInput.prop('disabled', true);
+            $quantityInput.val(0);
         }
 
         updateSubmitButton();
     });
 
-    // Handle quantity input changes
-    $('.quantity-input').on('input', function() {
+    // Backup: Also handle click events
+    $(document).on('click', '.medication-checkbox', function() {
+        console.log('Checkbox clicked!');
+        // Trigger change event after a short delay to ensure checkbox state is updated
+        var $this = $(this);
+        setTimeout(function() {
+            $this.trigger('change');
+        }, 10);
+    });
+
+    // Handle quantity input changes - using event delegation for collapsed sections
+    $(document).on('input', '.quantity-input', function() {
         var max = parseInt($(this).attr('max'));
         var value = parseInt($(this).val()) || 0;
 
