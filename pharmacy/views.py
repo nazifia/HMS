@@ -1123,9 +1123,16 @@ def bulk_store_dashboard(request):
 
     # Get low stock items (stock_quantity < reorder_level)
     low_stock_items = BulkStoreInventory.objects.filter(
-        stock_quantity__lt=F('medication__reorder_level'),
         stock_quantity__gt=0
-    ).select_related('medication', 'bulk_store').order_by('stock_quantity')[:10]
+    ).select_related('medication', 'bulk_store').order_by('medication__name')
+    
+    # Filter manually for low stock
+    low_stock_list = []
+    for item in low_stock_items:
+        if item.stock_quantity <= item.medication.reorder_level:
+            low_stock_list.append(item)
+    
+    low_stock_items = low_stock_list[:10]  # Limit to first 10
 
     # Get out of stock items
     out_of_stock_count = BulkStoreInventory.objects.filter(
@@ -1441,6 +1448,30 @@ def instant_medication_transfer(request):
     """View for instant medication transfer from bulk store to active store"""
     if request.method == 'POST':
         try:
+            # Check if this is an instant transfer for an existing transfer
+            transfer_id = request.POST.get('transfer_id')
+            if transfer_id:
+                # Handle instant transfer of existing pending transfer
+                transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
+                if transfer.status not in ['pending']:
+                    messages.error(request, 'Only pending transfers can be executed instantly.')
+                    return redirect('pharmacy:bulk_store_dashboard')
+                
+                # Execute the transfer
+                transfer.approved_by = request.user
+                transfer.approved_at = timezone.now()
+                transfer.transferred_by = request.user
+                transfer.transferred_at = timezone.now()
+                transfer.status = 'completed'
+                transfer.save()
+                
+                # Execute the actual stock transfer
+                transfer.execute_transfer(request.user)
+                
+                messages.success(request, f'Instant transfer #{transfer.id} completed successfully!')
+                return redirect('pharmacy:bulk_store_dashboard')
+            
+            # Handle new instant transfer from form
             medication_id = request.POST.get('medication')
             active_store_id = request.POST.get('active_store')
             quantity = int(request.POST.get('quantity'))
@@ -2887,6 +2918,19 @@ def update_prescription_status(request, prescription_id):
     }
 
     return render(request, 'pharmacy/update_prescription_status.html', context)
+
+
+@login_required
+def dispense_prescription_choice(request, prescription_id):
+    """View for choosing dispensing method"""
+    prescription = get_object_or_404(Prescription, id=prescription_id)
+    
+    context = {
+        'prescription': prescription,
+        'title': f'Choose Dispensing Method - #{prescription.id}',
+        'page_title': f'Choose Dispensing Method - #{prescription.id}',
+    }
+    return render(request, 'pharmacy/dispense_prescription_new.html', context)
 
 
 @login_required

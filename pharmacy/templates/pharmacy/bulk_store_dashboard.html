@@ -165,13 +165,11 @@
                                             <i class="fas fa-shipping-fast"></i> Execute
                                         </a>
                                         <!-- Instant Transfer Button for Pending Transfers -->
-                                        {% if transfer.can_approve %}
                                         <button type="button" class="btn btn-sm btn-warning instant-transfer-btn"
-                                                    data-transfer-id="{{ transfer.id }}"
-                                                    data-instant-url="{% url 'pharmacy:instant_medication_transfer' %}">
+                                                data-transfer-id="{{ transfer.id }}"
+                                                data-instant-url="{% url 'pharmacy:instant_medication_transfer' %}">
                                             <i class="fas fa-bolt"></i> Instant Transfer
                                         </button>
-                                        {% endif %}
                                         <!-- Cancel Button -->
                                         <button type="button" class="btn btn-sm btn-danger cancel-transfer-btn"
                                                 data-transfer-id="{{ transfer.id }}"
@@ -230,25 +228,39 @@
                                     <td>{{ item.batch_number|default:"N/A" }}</td>
                                     <td>
                                         {% if item.expiry_date %}
-                                            {% if item.days_until_expiry <= 30 %}
-                                                <span class="expiring-soon">{{ item.expiry_date|date:"M d, Y" }}</span>
-                                            {% else %}
-                                                {{ item.expiry_date|date:"M d, Y" }}
-                                            {% endif %}
+                                            {% with days=(item.expiry_date|timeuntil_days) %}
+                                                {% if days <= 30 and days >= 0 %}
+                                                    <span class="expiring-soon">{{ item.expiry_date|date:"M d, Y" }}</span>
+                                                {% elif days < 0 %}
+                                                    <span class="text-danger">{{ item.expiry_date|date:"M d, Y" }} (Expired)</span>
+                                                {% else %}
+                                                    {{ item.expiry_date|date:"M d, Y" }}
+                                                {% endif %}
+                                            {% endwith %}
                                         {% else %}
                                             N/A
                                         {% endif %}
                                     </td>
                                     <td>{{ item.supplier.name|default:"N/A" }}</td>
                                     <td>
-                                        {% if item.is_expired %}
-                                            <span class="badge bg-danger">Expired</span>
-                                        {% elif item.days_until_expiry <= 30 %}
-                                            <span class="badge bg-warning">Expiring Soon</span>
-                                        {% elif item.stock_quantity <= 50 %}
-                                            <span class="badge bg-warning">Low Stock</span>
+                                        {% if item.expiry_date %}
+                                            {% with days=(item.expiry_date|timeuntil_days) %}
+                                                {% if days < 0 %}
+                                                    <span class="badge bg-danger">Expired</span>
+                                                {% elif days <= 30 %}
+                                                    <span class="badge bg-warning">Expiring Soon</span>
+                                                {% elif item.stock_quantity <= 50 %}
+                                                    <span class="badge bg-warning">Low Stock</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Good</span>
+                                                {% endif %}
+                                            {% endwith %}
                                         {% else %}
-                                            <span class="badge bg-success">Good</span>
+                                            {% if item.stock_quantity <= 50 %}
+                                                <span class="badge bg-warning">Low Stock</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Good</span>
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -748,14 +760,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // DEBUG: Force show modal after 2 seconds to test button visibility
-    setTimeout(function() {
-        console.log('DEBUG: Forcing modal open to check button visibility...');
-        const modal = new bootstrap.Modal(document.getElementById('transferModal'));
-        if (modal) {
-            modal.show();
-        }
-    }, 2000);
+    // Modal initialization removed - no auto-open
 
     // Function to show validation error
     function showValidationError(message) {
@@ -809,6 +814,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         csrfInput.value = csrfToken.value;
                         form.appendChild(csrfInput);
                     }
+                    // Add transfer ID to form
+                    const transferIdInput = document.createElement('input');
+                    transferIdInput.type = 'hidden';
+                    transferIdInput.name = 'transfer_id';
+                    transferIdInput.value = transferId;
+                    form.appendChild(transferIdInput);
+                    // Add instant transfer flag
+                    const instantInput = document.createElement('input');
+                    instantInput.type = 'hidden';
+                    instantInput.name = 'instant_transfer';
+                    instantInput.value = 'true';
+                    form.appendChild(instantInput);
                     document.body.appendChild(form);
                     form.submit();
                 }
