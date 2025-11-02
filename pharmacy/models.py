@@ -1077,6 +1077,8 @@ class DispensaryTransfer(models.Model):
     @classmethod
     def create_transfer(cls, medication, from_active_store, to_dispensary, quantity, requested_by, **kwargs):
         """Create a new dispensary transfer with validation"""
+        from datetime import date
+
         # Check if sufficient stock exists
         active_inventory = ActiveStoreInventory.objects.filter(
             medication=medication,
@@ -1086,6 +1088,10 @@ class DispensaryTransfer(models.Model):
 
         if not active_inventory:
             raise ValueError(f"Insufficient stock in {from_active_store.name}. Required: {quantity}")
+
+        # Check if medication is expired
+        if active_inventory.expiry_date and active_inventory.expiry_date < date.today():
+            raise ValueError(f"Cannot transfer expired medication. Batch {active_inventory.batch_number} expired on {active_inventory.expiry_date}")
 
         # Create the transfer
         transfer = cls.objects.create(

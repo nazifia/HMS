@@ -207,6 +207,40 @@
                                                     </td>
                                                 </tr>
                                                 {% for med_inventory in bulk_data.medications %}
+                                                    {% load tz %}
+                                                    {% now "Y-m-d" as today %}
+                                                    {% if med_inventory.expiry_date %}
+                                                        {% if med_inventory.expiry_date|date:"Y-m-d" < today %}
+                                                            {% with is_expired=True %}
+                                                    <tr class="medication-row table-danger" data-bulk-store="{{ bulk_data.bulk_store.id }}" style="display:none;" title="Expired medication - cannot be transferred">
+                                                        <td>
+                                                            <input type="checkbox" name="transfer_medications"
+                                                                   value="{{ med_inventory.medication.id }}"
+                                                                   class="form-check-input medication-checkbox"
+                                                                   data-available="{{ med_inventory.stock_quantity }}"
+                                                                   disabled>
+                                                        </td>
+                                                        <td>
+                                                            {{ med_inventory.medication.name }}
+                                                            <span class="badge bg-danger ms-1">EXPIRED</span>
+                                                        </td>
+                                                        <td>{{ med_inventory.stock_quantity }}</td>
+                                                        <td>
+                                                            <input type="number" name="transfer_quantities"
+                                                                   min="0" max="{{ med_inventory.stock_quantity }}"
+                                                                   value="0" class="form-control form-control-sm quantity-input"
+                                                                   disabled>
+                                                        </td>
+                                                        <td>{{ med_inventory.batch_number|default:"N/A" }}</td>
+                                                        <td>
+                                                            <span class="text-danger">
+                                                                <i class="fas fa-exclamation-triangle"></i>
+                                                                {{ med_inventory.expiry_date|date:"M d, Y" }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                            {% endwith %}
+                                                        {% else %}
                                                     <tr class="medication-row" data-bulk-store="{{ bulk_data.bulk_store.id }}" style="display:none;">
                                                         <td>
                                                             <input type="checkbox" name="transfer_medications"
@@ -223,8 +257,29 @@
                                                                    disabled>
                                                         </td>
                                                         <td>{{ med_inventory.batch_number|default:"N/A" }}</td>
-                                                        <td>{{ med_inventory.expiry_date|date:"M d, Y"|default:"N/A" }}</td>
+                                                        <td>{{ med_inventory.expiry_date|date:"M d, Y" }}</td>
                                                     </tr>
+                                                        {% endif %}
+                                                    {% else %}
+                                                    <tr class="medication-row" data-bulk-store="{{ bulk_data.bulk_store.id }}" style="display:none;">
+                                                        <td>
+                                                            <input type="checkbox" name="transfer_medications"
+                                                                   value="{{ med_inventory.medication.id }}"
+                                                                   class="form-check-input medication-checkbox"
+                                                                   data-available="{{ med_inventory.stock_quantity }}">
+                                                        </td>
+                                                        <td>{{ med_inventory.medication.name }}</td>
+                                                        <td>{{ med_inventory.stock_quantity }}</td>
+                                                        <td>
+                                                            <input type="number" name="transfer_quantities"
+                                                                   min="0" max="{{ med_inventory.stock_quantity }}"
+                                                                   value="0" class="form-control form-control-sm quantity-input"
+                                                                   disabled>
+                                                        </td>
+                                                        <td>{{ med_inventory.batch_number|default:"N/A" }}</td>
+                                                        <td>N/A</td>
+                                                    </tr>
+                                                    {% endif %}
                                                 {% endfor %}
                                             {% empty %}
                                                 <tr>

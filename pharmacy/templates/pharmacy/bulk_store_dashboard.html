@@ -156,26 +156,33 @@
                                     <td>{{ transfer.requested_by.get_full_name }}</td>
                                     <td>{{ transfer.requested_at|date:"M d, Y g:i A" }}</td>
                                     <td>
-                                        <a href="{% url 'pharmacy:approve_medication_transfer' transfer.id %}" 
-                                           class="btn btn-sm btn-success">
-                                            <i class="fas fa-check"></i> Approve
-                                        </a>
-                                        <a href="{% url 'pharmacy:execute_medication_transfer' transfer.id %}" 
-                                           class="btn btn-sm btn-primary">
-                                            <i class="fas fa-shipping-fast"></i> Execute
-                                        </a>
-                                        <!-- Instant Transfer Button for Pending Transfers -->
-                                        <button type="button" class="btn btn-sm btn-warning instant-transfer-btn"
-                                                data-transfer-id="{{ transfer.id }}"
-                                                data-instant-url="{% url 'pharmacy:instant_medication_transfer' %}">
-                                            <i class="fas fa-bolt"></i> Instant Transfer
-                                        </button>
-                                        <!-- Cancel Button -->
+                                        {% if transfer.status == 'pending' and not transfer.approved_by %}
+                                            <!-- Show Approve button for pending transfers -->
+                                            <a href="{% url 'pharmacy:approve_medication_transfer' transfer.id %}"
+                                               class="btn btn-sm btn-success">
+                                                <i class="fas fa-check"></i> Approve
+                                            </a>
+                                            <!-- Instant Transfer Button for Pending Transfers -->
+                                            <button type="button" class="btn btn-sm btn-warning instant-transfer-btn"
+                                                    data-transfer-id="{{ transfer.id }}"
+                                                    data-instant-url="{% url 'pharmacy:instant_medication_transfer' %}">
+                                                <i class="fas fa-bolt"></i> Instant Transfer
+                                            </button>
+                                        {% elif transfer.status == 'in_transit' or transfer.approved_by %}
+                                            <!-- Show Execute button for approved/in_transit transfers -->
+                                            <a href="{% url 'pharmacy:execute_medication_transfer' transfer.id %}"
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-shipping-fast"></i> Execute
+                                            </a>
+                                        {% endif %}
+                                        <!-- Cancel Button (always available for pending/in_transit) -->
+                                        {% if transfer.status in 'pending,in_transit' %}
                                         <button type="button" class="btn btn-sm btn-danger cancel-transfer-btn"
                                                 data-transfer-id="{{ transfer.id }}"
                                                 data-cancel-url="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}">
                                             <i class="fas fa-times"></i> Cancel
                                         </button>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}

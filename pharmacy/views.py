@@ -1302,6 +1302,12 @@ def active_store_detail(request, dispensary_id):
                                         errors.append(f'Medication ID {medication_id} not found in bulk store')
                                         continue
 
+                                    # Check if medication is expired
+                                    from datetime import date
+                                    if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
+                                        errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
+                                        continue
+
                                     # Check if sufficient stock
                                     if bulk_inventory.stock_quantity < quantity:
                                         errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
@@ -1650,6 +1656,44 @@ def cancel_medication_transfer(request, transfer_id):
     }
 
     return render(request, 'pharmacy/cancel_transfer.html', context)
+
+
+@login_required
+def get_bulk_batch_info(request, medication_id):
+    """API endpoint to get batch information for a medication in bulk store"""
+    try:
+        from datetime import date
+
+        # Find available bulk inventory for this medication (FIFO - earliest expiry first)
+        bulk_inventory = BulkStoreInventory.objects.filter(
+            medication_id=medication_id,
+            stock_quantity__gt=0
+        ).select_related('bulk_store').order_by('expiry_date').first()
+
+        if not bulk_inventory:
+            return JsonResponse({
+                'success': False,
+                'message': 'No stock available for this medication in bulk store.'
+            })
+
+        # Check if medication is expired
+        is_expired = bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today()
+
+        return JsonResponse({
+            'success': True,
+            'batch_number': bulk_inventory.batch_number,
+            'expiry_date': bulk_inventory.expiry_date.strftime('%Y-%m-%d') if bulk_inventory.expiry_date else 'N/A',
+            'available_stock': bulk_inventory.stock_quantity,
+            'unit_cost': str(bulk_inventory.unit_cost),
+            'bulk_store_name': bulk_inventory.bulk_store.name,
+            'is_expired': is_expired,
+            'warning': 'This medication is expired!' if is_expired else None
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error fetching batch information: {str(e)}'
+        })
 
 
 @login_required

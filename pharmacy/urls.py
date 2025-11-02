@@ -54,6 +54,7 @@ urlpatterns = [
     path('bulk-store/transfer/<int:transfer_id>/approve/', views.approve_medication_transfer, name='approve_medication_transfer'),
     path('bulk-store/transfer/<int:transfer_id>/execute/', views.execute_medication_transfer, name='execute_medication_transfer'),
     path('bulk-store/transfer/<int:transfer_id>/cancel/', views.cancel_medication_transfer, name='cancel_medication_transfer'),
+    path('bulk-store/api/batch-info/<int:medication_id>/', views.get_bulk_batch_info, name='get_bulk_batch_info'),
 
     # Purchase Management
     path('purchases/', views.manage_purchases, name='manage_purchases'),

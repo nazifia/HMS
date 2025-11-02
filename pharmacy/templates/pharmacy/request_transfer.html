@@ -32,22 +32,12 @@
                         <div class="form-group">
                             <label for="quantity">Quantity</label>
                             <input type="number" name="quantity" id="quantity" class="form-control" min="1" required>
+                            <small class="form-text text-muted" id="available-stock"></small>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="bulk_store">From Bulk Store</label>
-                            <select name="bulk_store" id="bulk_store" class="form-control" required>
-                                <option value="">Select Bulk Store</option>
-                                {% for store in bulk_stores %}
-                                <option value="{{ store.id }}">{{ store.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="active_store">To Active Store</label>
@@ -59,11 +49,29 @@
                             </select>
                         </div>
                     </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="notes">Notes (Optional)</label>
+                            <textarea name="notes" id="notes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="batch_number">Batch Number</label>
-                    <input type="text" name="batch_number" id="batch_number" class="form-control" required>
+
+                <!-- Batch Information Display (Auto-populated) -->
+                <div id="batch-info" class="alert alert-info" style="display: none;">
+                    <h6 class="mb-2"><i class="fas fa-info-circle"></i> Batch Information</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Batch Number:</strong> <span id="batch-display"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Expiry Date:</strong> <span id="expiry-display"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Available Stock:</strong> <span id="stock-display"></span>
+                        </div>
+                    </div>
+                    <small class="text-muted">The system will automatically select the batch with the earliest expiry date (FIFO).</small>
                 </div>
                 
                 <button type="submit" class="btn btn-primary">Request Transfer</button>
@@ -71,4 +79,71 @@
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Fetch batch information when medication is selected
+    $('#medication').on('change', function() {
+        const medicationId = $(this).val();
+
+        if (!medicationId) {
+            $('#batch-info').hide();
+            $('#available-stock').text('');
+            return;
+        }
+
+        // Fetch batch information via AJAX
+        $.ajax({
+            url: `/pharmacy/bulk-store/api/batch-info/${medicationId}/`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    // Display batch information
+                    $('#batch-display').text(response.batch_number);
+                    $('#expiry-display').text(response.expiry_date);
+                    $('#stock-display').text(response.available_stock + ' units');
+                    $('#available-stock').text(`Available: ${response.available_stock} units in ${response.bulk_store_name}`);
+
+                    // Show warning if expired
+                    if (response.is_expired) {
+                        $('#batch-info').removeClass('alert-info').addClass('alert-danger');
+                        $('#batch-info h6').html('<i class="fas fa-exclamation-triangle"></i> Warning: Expired Medication');
+                        $('#batch-info small').text(response.warning);
+                    } else {
+                        $('#batch-info').removeClass('alert-danger').addClass('alert-info');
+                        $('#batch-info h6').html('<i class="fas fa-info-circle"></i> Batch Information');
+                        $('#batch-info small').text('The system will automatically select the batch with the earliest expiry date (FIFO).');
+                    }
+
+                    $('#batch-info').show();
+                } else {
+                    $('#batch-info').hide();
+                    $('#available-stock').text(response.message).css('color', 'red');
+                }
+            },
+            error: function() {
+                $('#batch-info').hide();
+                $('#available-stock').text('Error fetching batch information').css('color', 'red');
+            }
+        });
+    });
+
+    // Validate quantity against available stock
+    $('#quantity').on('input', function() {
+        const quantity = parseInt($(this).val());
+        const availableStock = parseInt($('#stock-display').text());
+
+        if (quantity > availableStock) {
+            $(this).addClass('is-invalid');
+            if (!$(this).next('.invalid-feedback').length) {
+                $(this).after('<div class="invalid-feedback">Quantity exceeds available stock!</div>');
+            }
+        } else {
+            $(this).removeClass('is-invalid');
+            $(this).next('.invalid-feedback').remove();
+        }
+    });
+});
+</script>
 {% endblock %}
