@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py shell -c \"\nfrom pharmacy.models import ActiveStoreInventory\nprint(''Active Store Inventory (Top 10):'')\nprint(''-'' * 70)\ninventories = ActiveStoreInventory.objects.select_related(''medication'', ''active_store'').order_by(''-stock_quantity'')[:10]\nfor inv in inventories:\n    print(f''{inv.medication.name:30} | {inv.active_store.dispensary.name:20} | Stock: {inv.stock_quantity:5} | Batch: {inv.batch_number}'')\n\")",
+      "Bash(python manage.py shell -c \"\nfrom pharmacy.models import ActiveStoreInventory\nprint(''Recently Delivered Items in Active Store:'')\nprint(''-'' * 70)\n# Check for the specific items we delivered\nitems = [''Adhesive Tape'', ''Diclofenac'', ''Paracetamol'']\nfor item_name in items:\n    try:\n        from pharmacy.models import Medication\n        med = Medication.objects.get(name__icontains=item_name)\n        invs = ActiveStoreInventory.objects.filter(medication=med).select_related(''active_store'', ''medication'')\n        for inv in invs:\n            print(f''{inv.medication.name:30} | {inv.active_store.dispensary.name:20} | Stock: {inv.stock_quantity:5} | Batch: {inv.batch_number}'')\n    except Exception as e:\n        print(f''Error checking {item_name}: {e}'')\n\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

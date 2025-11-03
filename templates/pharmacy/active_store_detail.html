@@ -495,12 +495,25 @@
 
 {% block extra_js %}
 <script>
-console.log('=== ACTIVE STORE DETAIL PAGE LOADED ===');
-
 $(document).ready(function() {
-    console.log('Document ready - active store detail');
+    console.log('=== ACTIVE STORE DETAIL PAGE - Script Loaded ===');
 
-    // Medication checkbox handler using event delegation
+    // Function to update submit button state - DEFINED FIRST
+    function updateSubmitButton() {
+        const hasSelectedItems = $('.medication-checkbox:checked').length > 0;
+        let hasValidQuantities = true;
+
+        $('.medication-checkbox:checked').each(function() {
+            const quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
+            if (quantity <= 0) {
+                hasValidQuantities = false;
+            }
+        });
+
+        $('#submitTransferBtn').prop('disabled', !hasSelectedItems || !hasValidQuantities);
+    }
+
+    // Medication checkbox handler using EVENT DELEGATION (works with dynamically shown/hidden elements)
     $(document).on('change', '.medication-checkbox', function() {
         console.log('Checkbox changed:', this.checked);
         const $checkbox = $(this);
@@ -509,10 +522,12 @@ $(document).ready(function() {
         const availableQty = parseInt($checkbox.data('available')) || 0;
 
         if ($checkbox.is(':checked')) {
+            console.log('Enabling input for quantity:', availableQty);
             $quantityInput.prop('disabled', false);
             $quantityInput.val(1);
             $quantityInput.attr('max', availableQty);
         } else {
+            console.log('Disabling input');
             $quantityInput.prop('disabled', true);
             $quantityInput.val(0);
         }
@@ -550,7 +565,7 @@ $(document).ready(function() {
 
     setTimeout(initializeFormState, 100);
 
-    // Handle quantity input changes
+    // Handle quantity input changes using EVENT DELEGATION
     $(document).on('input', '.quantity-input', function() {
         const max = parseInt($(this).attr('max'));
         const value = parseInt($(this).val()) || 0;
@@ -561,21 +576,6 @@ $(document).ready(function() {
 
         updateSubmitButton();
     });
-
-    // Function to update submit button state
-    function updateSubmitButton() {
-        const hasSelectedItems = $('.medication-checkbox:checked').length > 0;
-        let hasValidQuantities = true;
-
-        $('.medication-checkbox:checked').each(function() {
-            const quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
-            if (quantity <= 0) {
-                hasValidQuantities = false;
-            }
-        });
-
-        $('#submitTransferBtn').prop('disabled', !hasSelectedItems || !hasValidQuantities);
-    }
 
     // Handle form submission
     $('#bulkTransferForm').on('submit', function(e) {
@@ -618,7 +618,7 @@ $(document).ready(function() {
         });
     });
 
-    console.log('Script loaded successfully');
+    console.log('=== Script initialization complete ===');
 });
 </script>
 {% endblock %}

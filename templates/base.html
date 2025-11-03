@@ -1072,6 +1072,36 @@
 
     {% block extra_js %}{% endblock %}
 
+    <!-- Global Event Delegation for Pharmacy Active Store -->
+    <script>
+    $(document).ready(function() {
+        // Global event delegation for medication checkboxes (works with dynamically shown/hidden elements)
+        $(document).on('change', '.medication-checkbox', function() {
+            console.log('Global: Medication checkbox changed', this.checked);
+            const $checkbox = $(this);
+            const $row = $checkbox.closest('tr');
+            const $quantityInput = $row.find('.quantity-input');
+            const available = parseInt($checkbox.data('available')) || 0;
+
+            if ($checkbox.is(':checked')) {
+                console.log('Global: Enabling quantity input, available:', available);
+                $quantityInput.prop('disabled', false);
+                $quantityInput.val(1);
+                $quantityInput.attr('max', available);
+            } else {
+                console.log('Global: Disabling quantity input');
+                $quantityInput.prop('disabled', true);
+                $quantityInput.val(0);
+            }
+
+            // Trigger updateSubmitButton if it exists
+            if (typeof updateSubmitButton === 'function') {
+                updateSubmitButton();
+            }
+        });
+    });
+    </script>
+
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>

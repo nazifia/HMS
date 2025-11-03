@@ -462,27 +462,36 @@ class MedicationTransfer(models.Model):
             if not bulk_inventory:
                 raise ValueError("Insufficient stock in bulk store")
 
+            # Check if medication is expired
+            if bulk_inventory.expiry_date and bulk_inventory.expiry_date < timezone.now().date():
+                raise ValueError(f"Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}")
+
             # Reduce bulk store inventory
             bulk_inventory.stock_quantity -= self.quantity
             bulk_inventory.save()
 
             # Add to active store inventory
+            # Use get_or_create to update existing item or create new one
             active_inventory, created = ActiveStoreInventory.objects.get_or_create(
                 medication=self.medication,
                 active_store=self.to_active_store,
                 batch_number=self.batch_number,
                 defaults={
                     'stock_quantity': 0,
+                    'reorder_level': self.medication.reorder_level if hasattr(self.medication, 'reorder_level') else 10,
                     'expiry_date': self.expiry_date or bulk_inventory.expiry_date,
-                    'unit_cost': self.unit_cost or bulk_inventory.unit_cost
+                    'unit_cost': self.unit_cost or bulk_inventory.unit_cost,
+                    'last_restock_date': timezone.now().date()
                 }
             )
 
+            # Update stock quantity
             if created:
                 active_inventory.stock_quantity = self.quantity
             else:
                 active_inventory.stock_quantity += self.quantity
-            
+                active_inventory.last_restock_date = timezone.now().date()
+
             active_inventory.save()
 
             # Update transfer status

@@ -58,7 +58,7 @@ def add_medication(request):
             return redirect('pharmacy:medication_detail', medication_id=form.instance.id)
     else:
         form = MedicationForm()
-        return render(request, 'pharmacy/add_medication.html', {'form': form, 'active_nav': 'pharmacy'})
+        return render(request, 'pharmacy/medication_form.html', {'form': form, 'active_nav': 'pharmacy'})
 
 @login_required
 def edit_medication(request, medication_id):
@@ -72,7 +72,7 @@ def edit_medication(request, medication_id):
             return redirect('pharmacy:medication_detail', medication_id=medication.id)
     else:
         form = MedicationForm(instance=medication)
-        return render(request, 'pharmacy/edit_medication.html', {'form': form, 'active_nav': 'pharmacy'})
+        return render(request, 'pharmacy/medication_form.html', {'form': form, 'active_nav': 'pharmacy'})
 
 @login_required
 def delete_medication(request, medication_id):
@@ -81,7 +81,7 @@ def delete_medication(request, medication_id):
     if request.method == 'POST':
         medication.delete()
         messages.success(request, f'Medication {medication.name} deleted successfully.')
-            return redirect('pharmacy:inventory_list')
+        return redirect('pharmacy:inventory_list')
     return render(request, 'pharmacy/medication_detail.html', {'medication': medication, 'active_nav': 'pharmacy'})
 
 # Supplier management

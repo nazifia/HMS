@@ -450,9 +450,25 @@ $(document).ready(function() {
 
     // ========== BULK TRANSFER LOGIC ==========
 
+    // Function to update submit button state - DEFINED FIRST
+    function updateSubmitButton() {
+        var hasSelectedItems = $('.medication-checkbox:checked').length > 0;
+        var hasValidQuantities = true;
+
+        $('.medication-checkbox:checked').each(function() {
+            var quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
+            if (quantity <= 0) {
+                hasValidQuantities = false;
+            }
+        });
+
+        $('#submitTransferBtn').prop('disabled', !hasSelectedItems || !hasValidQuantities);
+    }
+
     // Handle bulk store selection
     $('#id_bulk_store').on('change', function() {
         var selectedBulkStore = $(this).val();
+        console.log('Bulk store selected:', selectedBulkStore);
 
         // Show/hide medications based on selected bulk store
         $('.medication-row').hide();
@@ -469,9 +485,9 @@ $(document).ready(function() {
         updateSubmitButton();
     });
 
-    // Handle medication checkbox changes - using event delegation for collapsed sections
+    // Handle medication checkbox changes - using EVENT DELEGATION for dynamically shown/hidden elements
     $(document).on('change', '.medication-checkbox', function() {
-        console.log('Checkbox changed!', this.checked);
+        console.log('=== MEDICATION CHECKBOX CHANGED ===', this.checked);
         var $checkbox = $(this);
         var $row = $checkbox.closest('tr');
         var $quantityInput = $row.find('.quantity-input');
@@ -493,17 +509,7 @@ $(document).ready(function() {
         updateSubmitButton();
     });
 
-    // Backup: Also handle click events
-    $(document).on('click', '.medication-checkbox', function() {
-        console.log('Checkbox clicked!');
-        // Trigger change event after a short delay to ensure checkbox state is updated
-        var $this = $(this);
-        setTimeout(function() {
-            $this.trigger('change');
-        }, 10);
-    });
-
-    // Handle quantity input changes - using event delegation for collapsed sections
+    // Handle quantity input changes - using EVENT DELEGATION for dynamically shown/hidden elements
     $(document).on('input', '.quantity-input', function() {
         var max = parseInt($(this).attr('max'));
         var value = parseInt($(this).val()) || 0;
@@ -514,21 +520,6 @@ $(document).ready(function() {
 
         updateSubmitButton();
     });
-
-    // Function to update submit button state
-    function updateSubmitButton() {
-        var hasSelectedItems = $('.medication-checkbox:checked').length > 0;
-        var hasValidQuantities = true;
-
-        $('.medication-checkbox:checked').each(function() {
-            var quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
-            if (quantity <= 0) {
-                hasValidQuantities = false;
-            }
-        });
-
-        $('#submitTransferBtn').prop('disabled', !hasSelectedItems || !hasValidQuantities);
-    }
 
     // Handle bulk transfer form submission
     $('#bulkTransferForm').on('submit', function(e) {

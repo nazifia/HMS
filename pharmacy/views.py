@@ -170,7 +170,7 @@ def add_medication(request):
         'title': 'Add Medication'  # Add title for the template
     }
 
-    return render(request, 'pharmacy/add_edit_medication.html', context)
+    return render(request, 'pharmacy/medication_form.html', context)
 
 
 @login_required
@@ -215,7 +215,7 @@ def edit_medication(request, medication_id):
         'title': f'Edit Medication - {medication.name}'  # Add title for the template
     }
 
-    return render(request, 'pharmacy/add_edit_medication.html', context)
+    return render(request, 'pharmacy/medication_form.html', context)
 
 
 @login_required
@@ -1158,9 +1158,9 @@ def bulk_store_dashboard(request):
         status='pending'
     ).select_related('medication', 'from_bulk_store', 'to_active_store', 'requested_by').order_by('-requested_at')[:10]
 
-    # Get recent transfers (last 10)
+    # Get recent transfers (last 10) - including delivered
     recent_transfers = MedicationTransfer.objects.filter(
-        status__in=['completed', 'in_transit']
+        status__in=['completed', 'delivered', 'in_transit']
     ).select_related('medication', 'from_bulk_store', 'to_active_store').order_by('-requested_at')[:10]
 
     # Calculate total value (approximate)
@@ -1462,50 +1462,52 @@ def instant_medication_transfer(request):
                 if transfer.status not in ['pending']:
                     messages.error(request, 'Only pending transfers can be executed instantly.')
                     return redirect('pharmacy:bulk_store_dashboard')
-                
+
                 # Execute the transfer
                 transfer.approved_by = request.user
                 transfer.approved_at = timezone.now()
                 transfer.transferred_by = request.user
                 transfer.transferred_at = timezone.now()
-                transfer.status = 'completed'
+                transfer.status = 'delivered'
+                transfer.delivered_by = request.user
+                transfer.delivered_at = timezone.now()
                 transfer.save()
-                
+
                 # Execute the actual stock transfer
                 transfer.execute_transfer(request.user)
-                
-                messages.success(request, f'Instant transfer #{transfer.id} completed successfully!')
+
+                messages.success(request, f'✅ Instant transfer #{transfer.id} completed and delivered successfully!')
                 return redirect('pharmacy:bulk_store_dashboard')
-            
+
             # Handle new instant transfer from form
             medication_id = request.POST.get('medication')
             active_store_id = request.POST.get('active_store')
             quantity = int(request.POST.get('quantity'))
             notes = request.POST.get('notes', '').strip()
-            
+
             if not medication_id or not active_store_id or not quantity:
                 messages.error(request, 'Please fill in all required fields.')
                 return redirect('pharmacy:bulk_store_dashboard')
-                
+
             medication = get_object_or_404(Medication, id=medication_id)
             active_store = get_object_or_404(ActiveStore, id=active_store_id)
-            
+
             # Find available bulk inventory for this medication
             from datetime import date
             bulk_inventory = BulkStoreInventory.objects.filter(
                 medication=medication,
                 stock_quantity__gte=quantity
             ).select_related('bulk_store').order_by('expiry_date').first()
-            
+
             if not bulk_inventory:
                 messages.error(request, f'Insufficient stock in bulk store for {medication.name}.')
                 return redirect('pharmacy:bulk_store_dashboard')
-                
+
             # Check if medication is expired
             if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
                 messages.error(request, f'Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}.')
                 return redirect('pharmacy:bulk_store_dashboard')
-            
+
             # Create and execute transfer instantly
             transfer = MedicationTransfer.objects.create(
                 medication=medication,
@@ -1516,18 +1518,24 @@ def instant_medication_transfer(request):
                 expiry_date=bulk_inventory.expiry_date,
                 unit_cost=bulk_inventory.unit_cost,
                 notes=notes,
-                status='completed',
+                status='delivered',
                 requested_by=request.user,
                 approved_by=request.user,
                 transferred_by=request.user,
+                delivered_by=request.user,
                 approved_at=timezone.now(),
-                transferred_at=timezone.now()
+                transferred_at=timezone.now(),
+                delivered_at=timezone.now()
             )
-            
+
             # Execute the actual stock transfer
             transfer.execute_transfer(request.user)
-            
-            messages.success(request, f'Instant transfer #{transfer.id} completed successfully!')
+
+            messages.success(
+                request,
+                f'✅ Instant transfer #{transfer.id} completed and delivered successfully! '
+                f'{quantity} units of {medication.name} moved to {active_store.dispensary.name}.'
+            )
             return redirect('pharmacy:bulk_store_dashboard')
             
         except Exception as e:
@@ -1540,7 +1548,7 @@ def instant_medication_transfer(request):
 
 @login_required
 def approve_medication_transfer(request, transfer_id):
-    """View for approving a medication transfer"""
+    """View for approving and automatically executing a medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
 
     if request.method == 'POST':
@@ -1555,20 +1563,40 @@ def approve_medication_transfer(request, transfer_id):
             transfer.status = 'in_transit'
             transfer.save()
 
-            messages.success(request, f'Transfer #{transfer.id} approved successfully.')
+            # Automatically execute the transfer immediately after approval
+            try:
+                # Execute the transfer (move stock from bulk to active store)
+                transfer.execute_transfer(request.user)
+
+                # Mark as delivered
+                transfer.status = 'delivered'
+                transfer.delivered_by = request.user
+                transfer.delivered_at = timezone.now()
+                transfer.save()
+
+                messages.success(
+                    request,
+                    f'✅ Transfer #{transfer.id} approved and delivered successfully! '
+                    f'{transfer.quantity} units of {transfer.medication.name} moved to {transfer.to_active_store.dispensary.name}.'
+                )
+            except ValueError as ve:
+                # Handle insufficient stock or other validation errors
+                messages.error(request, f'Transfer approved but could not be executed: {str(ve)}')
+                # Keep transfer as in_transit for manual resolution
+            except Exception as e:
+                # Handle unexpected errors during execution
+                messages.error(request, f'Transfer approved but execution failed: {str(e)}')
+                # Keep transfer as in_transit for manual resolution
+
             return redirect('pharmacy:bulk_store_dashboard')
 
         except Exception as e:
             messages.error(request, f'Error approving transfer: {str(e)}')
             return redirect('pharmacy:bulk_store_dashboard')
 
-    context = {
-        'transfer': transfer,
-        'page_title': f'Approve Transfer #{transfer.id}',
-        'active_nav': 'pharmacy',
-    }
-
-    return render(request, 'pharmacy/approve_transfer.html', context)
+    # For GET requests, redirect to bulk store dashboard
+    # The approve action can be done via POST from the dashboard
+    return redirect('pharmacy:bulk_store_dashboard')
 
 
 @login_required
@@ -1591,22 +1619,6 @@ def execute_medication_transfer(request, transfer_id):
             transfer.delivered_at = timezone.now()
             transfer.save()
 
-            # Create dispensing log for the completed delivery
-            try:
-                from .models import DispensingLog
-                DispensingLog.objects.create(
-                    prescription_item=None,  # Not related to specific prescription
-                    dispensed_by=request.user,
-                    dispensed_quantity=transfer.quantity,
-                    unit_price_at_dispense=transfer.unit_cost,
-                    total_price_for_this_log=transfer.quantity * transfer.unit_cost,
-                    dispensary=transfer.to_active_store.dispensary,
-                    notes=f"Transfer delivery - Transfer ID: {transfer.id}"
-                )
-            except ImportError:
-                # Handle case where DispensingLog model might not be available
-                pass
-
             messages.success(request, f'Transfer #{transfer.id} executed and delivered successfully.')
             return redirect('pharmacy:bulk_store_dashboard')
 
@@ -1614,13 +1626,9 @@ def execute_medication_transfer(request, transfer_id):
             messages.error(request, f'Error executing transfer: {str(e)}')
             return redirect('pharmacy:bulk_store_dashboard')
 
-    context = {
-        'transfer': transfer,
-        'page_title': f'Execute Transfer #{transfer.id}',
-        'active_nav': 'pharmacy',
-    }
-
-    return render(request, 'pharmacy/execute_transfer.html', context)
+    # For GET requests, redirect to bulk store dashboard
+    # The execute action can be done via POST from the dashboard
+    return redirect('pharmacy:bulk_store_dashboard')
 
 
 @login_required
@@ -1633,7 +1641,7 @@ def cancel_medication_transfer(request, transfer_id):
             if transfer.status == 'completed':
                 messages.error(request, 'Cannot cancel a completed transfer.')
                 return redirect('pharmacy:bulk_store_dashboard')
-            
+
             if transfer.status == 'cancelled':
                 messages.error(request, 'Transfer is already cancelled.')
                 return redirect('pharmacy:bulk_store_dashboard')
@@ -1649,13 +1657,9 @@ def cancel_medication_transfer(request, transfer_id):
             messages.error(request, f'Error cancelling transfer: {str(e)}')
             return redirect('pharmacy:bulk_store_dashboard')
 
-    context = {
-        'transfer': transfer,
-        'page_title': f'Cancel Transfer #{transfer.id}',
-        'active_nav': 'pharmacy',
-    }
-
-    return render(request, 'pharmacy/cancel_transfer.html', context)
+    # For GET requests, redirect to bulk store dashboard
+    # The cancel action can be done via POST from the dashboard
+    return redirect('pharmacy:bulk_store_dashboard')
 
 
 @login_required
@@ -1698,42 +1702,9 @@ def get_bulk_batch_info(request, medication_id):
 
 @login_required
 def manage_transfers(request):
-    """View for managing all types of transfers"""
-    # Get data for bulk store to active store transfers
-    medications = Medication.objects.filter(is_active=True).order_by('name')
-    bulk_stores = BulkStore.objects.filter(is_active=True)
-    active_stores = ActiveStore.objects.filter(is_active=True)
-    dispensaries = Dispensary.objects.filter(is_active=True)
-
-    # Get pending transfers
-    pending_bulk_transfers = MedicationTransfer.objects.filter(status='pending').select_related(
-        'medication', 'from_bulk_store', 'to_active_store', 'requested_by'
-    )
-
-    # Get transfer history
-    medication_transfers = MedicationTransfer.objects.all().select_related(
-        'medication', 'from_bulk_store', 'to_active_store', 'requested_by'
-    )
-    dispensary_transfers = DispensaryTransfer.objects.all().select_related(
-        'medication', 'from_active_store', 'to_dispensary', 'requested_by'
-    )
-
-    # Combine and sort transfers by date
-    all_transfers = list(medication_transfers) + list(dispensary_transfers)
-    all_transfers.sort(key=lambda x: x.requested_at, reverse=True)
-
-    context = {
-        'medications': medications,
-        'bulk_stores': bulk_stores,
-        'active_stores': active_stores,
-        'dispensaries': dispensaries,
-        'pending_bulk_transfers': pending_bulk_transfers,
-        'all_transfers': all_transfers[:50],  # Limit to last 50 transfers
-        'title': 'Manage Transfers',
-        'active_nav': 'pharmacy',
-    }
-
-    return render(request, 'pharmacy/manage_transfers.html', context)
+    """View for managing all types of transfers - redirects to enhanced transfer dashboard"""
+    # Redirect to the enhanced transfer dashboard which has comprehensive transfer management
+    return redirect('pharmacy:enhanced_transfer_dashboard')
 
 
 @login_required
@@ -2965,19 +2936,6 @@ def update_prescription_status(request, prescription_id):
 
 
 @login_required
-def dispense_prescription_choice(request, prescription_id):
-    """View for choosing dispensing method"""
-    prescription = get_object_or_404(Prescription, id=prescription_id)
-    
-    context = {
-        'prescription': prescription,
-        'title': f'Choose Dispensing Method - #{prescription.id}',
-        'page_title': f'Choose Dispensing Method - #{prescription.id}',
-    }
-    return render(request, 'pharmacy/dispense_prescription_new.html', context)
-
-
-@login_required
 def dispense_prescription(request, prescription_id):
     """View for dispensing a prescription"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
@@ -3241,8 +3199,7 @@ def dispense_prescription(request, prescription_id):
                                             prescription_item.quantity_dispensed_so_far += qty
                                             if prescription_item.quantity_dispensed_so_far >= prescription_item.quantity:
                                                 prescription_item.is_dispensed = True
-                                                prescription_item.dispensed_date = timezone.now()
-                                                prescription_item.dispensed_by = request.user
+                                                prescription_item.dispensed_at = timezone.now()
                                             prescription_item.save()
 
                                             any_dispensed = True
