@@ -11,3 +11,16 @@
 .kiro/steering/byterover-rules.md
 .qoder/rules/byterover-rules.md
 .augment/rules/byterover-rules.md
+
+# Ignore Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore SQLite database
+db.sqlite3
+
+# Ignore virtual environments
+venv/
+env/
+.myenv/
