@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
 from django.contrib import messages
 from django.db.models import Q, Sum, F, Count
 from django.db import models, transaction, IntegrityError
@@ -100,6 +101,7 @@ def features_showcase(request):
     return render(request, 'pharmacy/features.html')
 
 
+@never_cache
 @login_required
 def inventory_list(request):
     """View for listing pharmacy inventory"""
@@ -148,7 +150,11 @@ def inventory_list(request):
         'active_nav': 'pharmacy',
     }
 
-    return render(request, 'pharmacy/inventory_list.html', context)
+    response = render(request, 'pharmacy/inventory_list.html', context)
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 @login_required

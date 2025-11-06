@@ -1,178 +1,199 @@
 (function($) {
-    "use strict"; // Start of use strict
+    "use strict";
 
-    // Function to toggle mobile sidebar - Manual only
+    // Function to toggle mobile sidebar
     function toggleMobileSidebar() {
         const sidebar = $('#sidebar-container');
         const overlay = $('#sidebar-overlay');
-        sidebar.toggleClass('sidebar-open');
-        overlay.toggleClass('active');
-        $('body').toggleClass('sidebar-open');
+        const isOpen = sidebar.hasClass('sidebar-open');
+        
+        if (isOpen) {
+            closeMobileSidebar();
+        } else {
+            openMobileSidebar();
+        }
     }
 
-    // Disable all auto-refresh, auto-reload, and auto-scroll functionality
-    $(document).ready(function() {
-        // Force sidebar to stay at top - no auto-scroll
-        $('#sidebar-container').scrollTop(0);
+    // Function to open mobile sidebar
+    function openMobileSidebar() {
+        const sidebar = $('#sidebar-container');
+        const overlay = $('#sidebar-overlay');
         
-        // Completely disable Bootstrap's auto-scroll for accordion
-        $('#accordionSidebar .collapse').off('show.bs.collapse').on('show.bs.collapse', function(e) {
-            e.stopPropagation();
-            e.preventDefault();
-            // Manual toggle only - prevent any automatic behaviors
-            return false;
-        });
+        sidebar.addClass('sidebar-open');
+        overlay.addClass('active');
+        $('body').addClass('sidebar-open');
         
-        // Disable any auto-refresh intervals
-        if (typeof window.sidebarRefreshInterval !== 'undefined') {
-            clearInterval(window.sidebarRefreshInterval);
-        }
-        if (typeof window.sidebarUpdateInterval !== 'undefined') {
-            clearInterval(window.sidebarUpdateInterval);
-        }
-        
-        // Disable any hash-based scrolling
-        if (window.location.hash) {
-            window.scrollTo(0, 0);
-            $('#sidebar-container').scrollTop(0);
-        }
-        
-        // Remove any data attributes that might trigger auto-behaviors
-        $('#sidebar-container, #accordionSidebar').removeAttr('data-refresh-url data-auto-refresh data-interval');
-        
-        // Override scrollIntoView for all sidebar elements
-        $('#sidebar-container *').each(function() {
-            if (this.scrollIntoView) {
-                this.scrollIntoView = function() { return false; };
-            }
-        });
+        console.log('Mobile sidebar opened');
+    }
 
     // Function to close mobile sidebar
     function closeMobileSidebar() {
         const sidebar = $('#sidebar-container');
         const overlay = $('#sidebar-overlay');
+        
         sidebar.removeClass('sidebar-open');
         overlay.removeClass('active');
         $('body').removeClass('sidebar-open');
+        
+        console.log('Mobile sidebar closed');
     }
 
-    // Toggle the side navigation for desktop
-    $("#sidebarToggle, #sidebarToggleTop").on('click', function(e) {
-        e.preventDefault();
-        if ($(window).width() >= 768) { // Only for desktop
-            $("body").toggleClass("sidebar-toggled");
-            $(".sidebar").toggleClass("toggled");
-            if ($(".sidebar").hasClass("toggled")) {
-                $('.sidebar .collapse').collapse('hide');
-            }
-        } else { // For mobile
-            toggleMobileSidebar();
-        }
-    });
-
-    // Close mobile sidebar when overlay is clicked
-    $('#sidebar-overlay').on('click', function() {
-        closeMobileSidebar();
-    });
-
-    // Close mobile sidebar when close button is clicked
-    $('#mobileSidebarClose').on('click', function() {
-        closeMobileSidebar();
-    });
-
-    // Manual responsive behavior - no auto-resize triggers
-    let resizeTimer;
-    $(window).off('resize').on('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            // Only manual resize actions
-            enforceManualOperation();
-        }, 250);
-    });
-
-    // Manual sidebar scrolling only - no auto-behaviors
-    $('#sidebar-container').on('wheel mousewheel DOMMouseScroll', function(e) {
-        if ($(window).width() > 768) {
-            this._userScrolling = true;
-            setTimeout(() => { this._userScrolling = false; }, 150);
-        }
-    });
-
-    // Complete manual-only sidebar operation
-    function enforceManualOperation() {
-        // Disable all potential auto-scroll triggers
-        if (window.location.hash) {
-            window.history.replaceState('', document.title, window.location.pathname);
-        }
+    // Function to toggle desktop sidebar collapse state
+    function toggleDesktopSidebar() {
+        const sidebar = $("#sidebar-container");
+        const isCollapsed = sidebar.hasClass("sidebar-collapsed");
         
-        // Force disable scrollIntoView for all sidebar elements
-        document.querySelectorAll('#sidebar-container *, #accordionSidebar *').forEach(function(element) {
-            if (element.scrollIntoView) {
-                element.scrollIntoView = function() { return false; };
-            }
+        // Toggle collapsed state
+        $("body").toggleClass("sidebar-toggled");
+        $(".sidebar, #sidebar-container").toggleClass("sidebar-collapsed");
+
+        // Update toggle button icon
+        const icon = $("#sidebarToggle").find('i');
+        if (isCollapsed) {
+            icon.removeClass('fa-angle-right').addClass('fa-angle-left');
+            console.log('Desktop sidebar expanded');
+        } else {
+            icon.removeClass('fa-angle-left').addClass('fa-angle-right');
+            console.log('Desktop sidebar collapsed');
+        }
+
+        // Collapse all dropdown menus when sidebar is collapsed
+        if (!isCollapsed) {
+            $('.sidebar .collapse').collapse('hide');
+        }
+    }
+
+    $(document).ready(function() {
+        console.log('Sidebar toggle initialized');
+
+        // Desktop sidebar toggle (circular button at bottom of sidebar)
+        $("#sidebarToggle").on('click', function(e) {
+            e.preventDefault();
+            toggleDesktopSidebar();
         });
-        
-        // Force sidebar to stay at top always
-        const sidebar = document.getElementById('sidebar-container');
-        if (sidebar) {
-            sidebar.scrollTop = 0;
-            // Override any scroll changes that aren't user-initiated
-            Object.defineProperty(sidebar, 'scrollTop', {
-                set: function(value) {
-                    // Only allow scroll if it's a manual user interaction
-                    if (this._userScrolling) {
-                        this._scrollTop = value;
+
+        // Mobile sidebar toggle (hamburger button in topbar)
+        $("#sidebarToggleTop").on('click', function(e) {
+            e.preventDefault();
+            toggleMobileSidebar();
+        });
+
+        // Close mobile sidebar when overlay is clicked
+        $('#sidebar-overlay').on('click', function() {
+            closeMobileSidebar();
+        });
+
+        // Close mobile sidebar when close button is clicked
+        $('#mobileSidebarClose').on('click', function() {
+            closeMobileSidebar();
+        });
+
+        // Handle window resize events
+        let resizeTimer;
+        $(window).on('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                const windowWidth = $(window).width();
+                
+                if (windowWidth >= 768) {
+                    // If we're on desktop, remove mobile sidebar classes
+                    if ($('#sidebar-container').hasClass('sidebar-open')) {
+                        closeMobileSidebar();
                     }
-                },
-                get: function() {
-                    return this._scrollTop || 0;
+                } else {
+                    // On mobile, ensure sidebar is properly collapsed
+                    if (!$('#sidebar-container').hasClass('sidebar-open')) {
+                        closeMobileSidebar();
+                    }
+                }
+            }, 250); // Debounce resize event
+        });
+
+        // Bootstrap collapse accordion behavior for sidebar dropdowns
+        $('#accordionSidebar .collapse').on('show.bs.collapse', function() {
+            const $thisCollapse = $(this);
+            $('#accordionSidebar .collapse.show').each(function() {
+                if ($(this).attr('id') !== $thisCollapse.attr('id')) {
+                    $(this).collapse('hide');
                 }
             });
+        });
+
+        // Prevent dropdown collapse when clicking inside the collapse content
+        $('#accordionSidebar .collapse-inner').on('click', function(e) {
+            e.stopPropagation();
+        });
+
+        // Scroll to top functionality
+        $(document).on('click', 'a.scroll-to-top', function(e) {
+            e.preventDefault();
+            $('html, body').animate({
+                scrollTop: 0
+            }, 300);
+        });
+
+        // Show/hide scroll-to-top button based on scroll position
+        $(window).scroll(function() {
+            if ($(this).scrollTop() > 100) {
+                $('.scroll-to-top').fadeIn();
+            } else {
+                $('.scroll-to-top').fadeOut();
+            }
+        });
+
+        // Initialize sidebar state on page load
+        initializeSidebarState();
+
+        // Handle ESC key to close mobile sidebar
+        $(document).on('keydown', function(e) {
+            if (e.key === "Escape" && $('#sidebar-container').hasClass('sidebar-open')) {
+                closeMobileSidebar();
+            }
+        });
+    });
+
+    // Initialize sidebar state based on screen size
+    function initializeSidebarState() {
+        const windowWidth = $(window).width();
+        
+        if (windowWidth < 768) {
+            // Mobile: ensure sidebar starts closed
+            closeMobileSidebar();
+            console.log('Mobile view: sidebar initialized as closed');
+        } else {
+            // Desktop: check for saved sidebar state
+            const savedState = localStorage.getItem('sidebarCollapsed');
+            const sidebar = $("#sidebar-container");
+            const icon = $("#sidebarToggle").find('i');
+            
+            if (savedState === 'true' && !sidebar.hasClass('sidebar-collapsed')) {
+                // Apply collapsed state if it was saved
+                $("body").addClass("sidebar-toggled");
+                $(".sidebar, #sidebar-container").addClass("sidebar-collapsed");
+                icon.removeClass('fa-angle-left').addClass('fa-angle-right');
+                $('.sidebar .collapse').collapse('hide');
+                console.log('Desktop view: sidebar restored as collapsed');
+            } else {
+                console.log('Desktop view: sidebar initialized as expanded');
+            }
         }
     }
 
-    // Apply manual-only operation
+    // Save sidebar state to localStorage
+    function saveSidebarState(isCollapsed) {
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    }
+
+    // Update the desktop toggle function to save state
     $(document).ready(function() {
-        enforceManualOperation();
-        
-        // Remove any auto-refresh, auto-update capabilities
-        if (window.sidebarInterval) clearInterval(window.sidebarInterval);
-        if (window.updateInterval) clearInterval(window.updateInterval);
-        
-        // Manual dropdown toggle only - prevent auto-opening
-        $('.nav-link[data-bs-toggle="collapse"]').off('click').on('click', function(e) {
+        $("#sidebarToggle").off('click').on('click', function(e) {
             e.preventDefault();
-            e.stopPropagation();
-            const target = $(this).attr('data-bs-target');
-            $(target).collapse('toggle');
-            // Immediately force sidebar back to top to prevent any auto-scroll
-            $('#sidebar-container').scrollTop(0);
+            toggleDesktopSidebar();
+            
+            // Save the new state
+            const isCollapsed = $("#sidebar-container").hasClass("sidebar-collapsed");
+            saveSidebarState(isCollapsed);
         });
-        
-        // Prevent any form submissions that might trigger sidebar updates
-        $('form').off('submit').on('submit', function(e) {
-            // Allow normal form submission but prevent sidebar auto-updates
-            return true;
-        });
-        
-        // Force manual scroll position after any potential triggers
-        setInterval(function() {
-            const sidebar = document.getElementById('sidebar-container');
-            if (sidebar && sidebar.scrollTop !== 0) {
-                // If sidebar scrolled without user interaction, reset to top
-                if (!sidebar._userScrolling) {
-                    sidebar.scrollTop = 0;
-                }
-            }
-        }, 100);
-
-    // Disable scroll-to-top button auto-appear (manual only)
-    $('.scroll-to-top').hide();
-
-    // Manual scroll-to-top only if explicitly clicked
-    $(document).off('click', 'a.scroll-to-top').on('click', 'a.scroll-to-top', function(e) {
-        e.preventDefault();
-        window.scrollTo(0, 0);
     });
 
-})(jQuery); // End of use strict
+})(jQuery);

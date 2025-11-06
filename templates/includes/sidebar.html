@@ -838,7 +838,7 @@
 
         <!-- Sidebar Toggler (Sidebar) -->
         <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle">
+            <button class="rounded-circle border-0 btn btn-dark" id="sidebarToggle" style="width: 40px; height: 40px;">
                 <i class="fas fa-angle-left"></i>
             </button>
         </div>
@@ -849,30 +849,96 @@
 
 <style>
 /* Desktop sidebar collapsed state */
-.sidebar.sidebar-collapsed {
+.sidebar.sidebar-collapsed,
+#sidebar-container.sidebar-collapsed {
     width: 70px !important;
     min-width: 70px !important;
-    transition: width 0.2s;
+    max-width: 70px !important;
+    transition: width 0.3s ease;
 }
+
+/* Hide text and headings when sidebar is collapsed */
 .sidebar.sidebar-collapsed .sidebar-brand-text,
-.sidebar.sidebar-collapsed span.text-white,
+.sidebar.sidebar-collapsed .nav-link .text-white,
 .sidebar.sidebar-collapsed .sidebar-heading,
 .sidebar.sidebar-collapsed .collapse-inner,
-.sidebar.sidebar-collapsed .collapse-header {
-    display: inline !important;
-    opacity: 1 !important;
-    white-space: nowrap;
+.sidebar.sidebar-collapsed .collapse-header,
+#sidebar-container.sidebar-collapsed .sidebar-brand-text,
+#sidebar-container.sidebar-collapsed .nav-link .text-white,
+#sidebar-container.sidebar-collapsed .sidebar-heading,
+#sidebar-container.sidebar-collapsed .collapse-inner,
+#sidebar-container.sidebar-collapsed .collapse-header {
+    display: none !important;
 }
-.sidebar.sidebar-collapsed .nav-link {
-    justify-content: flex-start !important;
+
+/* Show only icons when collapsed */
+.sidebar.sidebar-collapsed .nav-link,
+#sidebar-container.sidebar-collapsed .nav-link {
+    justify-content: center !important;
+    padding: 1rem 0.5rem !important;
+    text-align: center !important;
 }
-.sidebar.sidebar-collapsed .nav-link .text-white {
-    display: inline !important;
-    opacity: 1 !important;
+
+/* Center icons when sidebar is collapsed */
+.sidebar.sidebar-collapsed .nav-link,
+.sidebar.toggled .nav-link,
+#sidebar-container.sidebar-collapsed .nav-link,
+#sidebar-container.toggled .nav-link {
+    justify-content: center !important;
+    text-align: center !important;
 }
-.sidebar .nav-link .text-white {
+
+/* Show text when sidebar is expanded (not collapsed) */
+.sidebar:not(.sidebar-collapsed):not(.toggled) .nav-link .text-white,
+#sidebar-container:not(.sidebar-collapsed):not(.toggled) .nav-link .text-white {
     display: inline;
     opacity: 1;
+}
+
+/* Adjust content wrapper when sidebar is collapsed */
+body.sidebar-toggled #content-wrapper {
+    margin-left: 70px;
+}
+
+/* Desktop sidebar hover effect when collapsed */
+.sidebar.sidebar-collapsed:hover,
+#sidebar-container.sidebar-collapsed:hover {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+}
+
+.sidebar.sidebar-collapsed:hover .sidebar-brand-text,
+.sidebar.sidebar-collapsed:hover .nav-link .text-white,
+.sidebar.sidebar-collapsed:hover .sidebar-heading,
+.sidebar.sidebar-collapsed:hover .collapse-inner,
+.sidebar.sidebar-collapsed:hover .collapse-header,
+#sidebar-container.sidebar-collapsed:hover .sidebar-brand-text,
+#sidebar-container.sidebar-collapsed:hover .nav-link .text-white,
+#sidebar-container.sidebar-collapsed:hover .sidebar-heading,
+#sidebar-container.sidebar-collapsed:hover .collapse-inner,
+#sidebar-container.sidebar-collapsed:hover .collapse-header {
+    display: block !important;
+    opacity: 1;
+}
+
+.sidebar.sidebar-collapsed:hover .nav-link,
+#sidebar-container.sidebar-collapsed:hover .nav-link {
+    justify-content: flex-start !important;
+    padding: 12px 24px !important;
+    text-align: left !important;
+}
+
+/* Prevent dropdown menu from expanding when collapsed */
+.sidebar.sidebar-collapsed .nav-link[data-bs-toggle="collapse"],
+#sidebar-container.sidebar-collapsed .nav-link[data-bs-toggle="collapse"] {
+    pointer-events: none;
+}
+
+/* Allow dropdown menu expansion on hover */
+.sidebar.sidebar-collapsed:hover .nav-link[data-bs-toggle="collapse"],
+#sidebar-container.sidebar-collapsed:hover .nav-link[data-bs-toggle="collapse"] {
+    pointer-events: auto;
 }
 
 /* Mobile sidebar styles */
@@ -885,6 +951,9 @@
         transition: left 0.3s ease;
         height: 100vh;
         box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+        width: 300px !important;
+        min-width: 300px !important;
+        max-width: 300px !important;
     }
 
     .sidebar.sidebar-open, #sidebar-container.sidebar-open {
@@ -900,10 +969,13 @@
         background: rgba(0,0,0,0.5);
         z-index: 1040;
         display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
     
     .sidebar-overlay.active {
         display: block;
+        opacity: 1;
     }
     
     .mobile-sidebar-header {
@@ -914,6 +986,59 @@
     
     body.sidebar-open {
         overflow: hidden;
+    }
+
+    /* Ensure mobile sidebar doesn't interfere with content */
+    .sidebar.sidebar-open ~ #content-wrapper,
+    #sidebar-container.sidebar-open ~ #content-wrapper {
+        margin-left: 0 !important;
+    }
+
+    /* Disable desktop collapse styles on mobile */
+    .sidebar.sidebar-collapsed,
+    #sidebar-container.sidebar-collapsed {
+        width: 300px !important;
+        min-width: 300px !important;
+        max-width: 300px !important;
+        left: -300px;
+    }
+
+    .sidebar.sidebar-collapsed.sidebar-open,
+    #sidebar-container.sidebar-collapsed.sidebar-open {
+        left: 0 !important;
+    }
+
+    /* Show all elements normally on mobile */
+    .sidebar.sidebar-collapsed .sidebar-brand-text,
+    .sidebar.sidebar-collapsed .nav-link .text-white,
+    .sidebar.sidebar-collapsed .sidebar-heading,
+    .sidebar.sidebar-collapsed .collapse-inner,
+    .sidebar.sidebar-collapsed .collapse-header,
+    #sidebar-container.sidebar-collapsed .sidebar-brand-text,
+    #sidebar-container.sidebar-collapsed .nav-link .text-white,
+    #sidebar-container.sidebar-collapsed .sidebar-heading,
+    #sidebar-container.sidebar-collapsed .collapse-inner,
+    #sidebar-container.sidebar-collapsed .collapse-header {
+        display: block !important;
+        opacity: 1;
+    }
+
+    .sidebar.sidebar-collapsed .nav-link,
+    #sidebar-container.sidebar-collapsed .nav-link {
+        justify-content: flex-start !important;
+        padding: 12px 24px !important;
+        text-align: left !important;
+    }
+
+    /* Hide desktop toggle button on mobile */
+    #sidebarToggle {
+        display: none !important;
+    }
+
+    /* Ensure hamburger menu is visible */
+    #sidebarToggleTop {
+        display: block !important;
+        visibility: visible !important;
     }
 }
 

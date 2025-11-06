@@ -6,7 +6,8 @@
       "Bash(del \"C:\\Users\\dell\\Desktop\\MY_PRODUCTS\\HMS\\templates\\pharmacy\\active_store_detail.html\")",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(python manage.py check:*)"
+      "Bash(python manage.py check:*)",
+      "Bash(python manage.py shell:*)"
     ],
     "deny": [],
     "ask": []
