@@ -1,7 +1,9 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load static %}
+{% load pharmacy_tags %}
+{% load pharmacy_form_filters %}
 
-{% block title %}Active Store - {{ active_store.name }}{% endblock %}
+{% block title %}Active Store - {{ active_store.name }} - {{ page_title }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -11,6 +13,27 @@
         padding: 2rem;
         border-radius: 8px;
         margin-bottom: 2rem;
+    }
+    .store-stats {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
     }
     .inventory-table {
         background: white;
@@ -31,6 +54,64 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
+            <!-- Store Statistics -->
+            <div class="store-stats">
+                <h5 class="mb-4">Store Statistics</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-primary">{{ inventory_items.count }}</div>
+                            <div class="text-muted">Total Items</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-success">
+                                {% with in_stock=0 %}
+                                    {% for item in inventory_items %}
+                                        {% if item.stock_quantity > 0 %}
+                                            {% with in_stock=in_stock|add:1 %}{% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {{ in_stock }}
+                                {% endwith %}
+                            </div>
+                            <div class="text-muted">In Stock</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-warning">
+                                {% with low_stock=0 %}
+                                    {% for item in inventory_items %}
+                                        {% if item.stock_quantity <= item.reorder_level|default:10 and item.stock_quantity > 0 %}
+                                            {% with low_stock=low_stock|add:1 %}{% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {{ low_stock }}
+                                {% endwith %}
+                            </div>
+                            <div class="text-muted">Low Stock</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-danger">
+                                {% with out_of_stock=0 %}
+                                    {% for item in inventory_items %}
+                                        {% if item.stock_quantity == 0 %}
+                                            {% with out_of_stock=out_of_stock|add:1 %}{% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {{ out_of_stock }}
+                                {% endwith %}
+                            </div>
+                            <div class="text-muted">Out of Stock</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Store Header -->
             <div class="store-header">
                 <div class="d-flex justify-content-between align-items-center">
@@ -61,15 +142,15 @@
             <!-- Store Information -->
             <div class="row mb-4">
                 <div class="col-md-6">
-                    <div class="card shadow">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Store Details</h6>
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Store Information</h6>
                         </div>
                         <div class="card-body">
                             <p><strong>Capacity:</strong> {{ active_store.capacity|default:"Not specified" }} units</p>
                             <p><strong>Status:</strong>
-                                <span class="badge {% if active_store.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                                    {% if active_store.is_active %}Active{% else %}Inactive{% endif %}
+                                <span class="badge {{ active_store.is_active|yesno:'bg-success bg-secondary' }}">
+                                    {{ active_store.is_active|yesno:'Active Inactive' }}
                                 </span>
                             </p>
                             {% if active_store.description %}
@@ -79,94 +160,231 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card shadow">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-clock me-2"></i>Activity</h6>
                         </div>
                         <div class="card-body">
-                            <p>Transfer medications from this active store to the dispensary inventory.</p>
-                            <button type="button" class="btn btn-primary" onclick="$('.transfer-btn:first').click()">
-                                <i class="fas fa-exchange-alt me-2"></i>Transfer Single Item
-                            </button>
-                            <button type="button" class="btn btn-success" data-bs-toggle="collapse" data-bs-target="#bulkTransferSection">
-                                <i class="fas fa-list me-2"></i>Bulk Transfer from Bulk Store
-                            </button>
+                            <p><strong>Created:</strong> {{ active_store.created_at|date:"M d, Y H:i" }}</p>
+                            <p><strong>Last Updated:</strong> {{ active_store.updated_at|date:"M d, Y H:i" }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Current Stock -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-boxes me-2"></i>Current Stock in Active Store
-                    </h6>
+            <!-- Inventory Items -->
+            <div class="inventory-table">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-boxes me-2"></i>
+                        Inventory Items ({{ inventory_items.count }})
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i>Print
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Medication</th>
+                                <th>Category</th>
+                                <th>Stock Quantity</th>
+                                <th>Reorder Level</th>
+                                <th>Status</th>
+                                <th>Last Restock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in inventory_items %}
+                                <tr class="{% if item.stock_quantity == 0 %}out-of-stock{% elif item.stock_quantity <= item.reorder_level|default:10 %}low-stock{% endif %}">
+                                    <td>
+                                        <strong>{{ item.medication.name }}</strong>
+                                        {% if item.medication.generic_name %}
+                                            <br><small class="text-muted">{{ item.medication.generic_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.medication.category %}
+                                            {{ item.medication.category.name }}
+                                        {% else %}
+                                            <span class="text-muted">No category</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if item.stock_quantity == 0 %}bg-danger{% elif item.stock_quantity <= item.reorder_level|default:10 %}bg-warning{% else %}bg-success{% endif %}">
+                                            {{ item.stock_quantity }}
+                                        </span>
+                                    </td>
+                                    <td>{{ item.reorder_level|default:10 }}</td>
+                                    <td>
+                                        {% if item.stock_quantity == 0 %}
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        {% elif item.stock_quantity <= item.reorder_level|default:10 %}
+                                            <span class="badge bg-warning">Low Stock</span>
+                                        {% else %}
+                                            <span class="badge bg-success">In Stock</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.last_restock_date %}
+                                            {{ item.last_restock_date|date:"M d, Y" }}
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="fas fa-box-open fa-3x mb-3"></i>
+                                        <p class="mb-0">No inventory items found in this store.</p>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Active Store to Dispensary Transfer Section -->
+            <div class="inventory-table mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-arrow-down me-2"></i>
+                        Transfer to Dispensary
+                    </h5>
+                    <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#dispensaryTransferSection">
+                        <i class="fas fa-arrow-down me-1"></i>Transfer to {{ dispensary.name }}
+                    </button>
+                </div>
+                <div class="collapse" id="dispensaryTransferSection">
+                    <div class="card-body">
+                        <form method="post" id="dispensaryTransferForm">
+                            {% csrf_token %}
+                            <input type="hidden" name="dispensary_transfer" value="1">
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="id_medication" class="form-label">Medication</label>
+                                    {{ dispensary_transfer_form.medication }}
+                                    {% if dispensary_transfer_form.medication.errors %}
+                                        <div class="text-danger">
+                                            {% for error in dispensary_transfer_form.medication.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_quantity" class="form-label">Quantity to Transfer</label>
+                                    {{ dispensary_transfer_form.quantity }}
+                                    {% if dispensary_transfer_form.quantity.errors %}
+                                        <div class="text-danger">
+                                            {% for error in dispensary_transfer_form.quantity.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <label for="id_notes" class="form-label">Notes</label>
+                                    {{ dispensary_transfer_form.notes }}
+                                    {% if dispensary_transfer_form.notes.errors %}
+                                        <div class="text-danger">
+                                            {% for error in dispensary_transfer_form.notes.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Inventory Information -->
+                            <div class="alert alert-info" id="dispensaryTransferInventoryInfo">
+                                <h6><i class="fas fa-info-circle"></i> Inventory Information</h6>
+                                <p class="mb-0">Select a medication to check available stock in the active store.</p>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-success" id="submitDispensaryTransferBtn">
+                                    <i class="fas fa-arrow-down me-2"></i>Transfer to Dispensary
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="collapse">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Dispensary Transfers -->
+            {% if pending_dispensary_transfers %}
+            <div class="inventory-table mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        Pending Transfers to Dispensary
+                    </h5>
                 </div>
                 <div class="card-body">
-                    {% if inventory_items %}
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead class="table-light">
+                        <table class="table table-sm">
+                            <thead>
                                 <tr>
+                                    <th>Transfer ID</th>
                                     <th>Medication</th>
-                                    <th>Batch Number</th>
-                                    <th>Expiry Date</th>
-                                    <th>Stock Quantity</th>
-                                    <th>Unit Cost</th>
+                                    <th>Quantity</th>
+                                    <th>Requested By</th>
+                                    <th>Requested At</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for stock in inventory_items %}
-                                <tr class="{% if stock.stock_quantity == 0 %}out-of-stock{% elif stock.stock_quantity <= 10 %}low-stock{% endif %}">
+                                {% for transfer in pending_dispensary_transfers %}
+                                <tr>
+                                    <td>#{{ transfer.id }}</td>
+                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>{{ transfer.quantity }}</td>
+                                    <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
+                                    <td>{{ transfer.requested_at|date:"M d, Y H:i" }}</td>
                                     <td>
-                                        <strong>{{ stock.medication.name }}</strong>
-                                        {% if stock.medication.generic_name %}
-                                            <br><small class="text-muted">{{ stock.medication.generic_name }}</small>
-                                        {% endif %}
+                                        <span class="badge bg-warning">Pending</span>
                                     </td>
-                                    <td>{{ stock.batch_number|default:"N/A" }}</td>
-                                    <td>{{ stock.expiry_date|date:"M d, Y"|default:"N/A" }}</td>
                                     <td>
-                                        <span class="badge {% if stock.stock_quantity == 0 %}bg-danger{% elif stock.stock_quantity <= 10 %}bg-warning{% else %}bg-success{% endif %}">
-                                            {{ stock.stock_quantity }}
-                                        </span>
-                                    </td>
-                                    <td>GH₵ {{ stock.unit_cost }}</td>
-                                    <td>
-                                        {% if stock.stock_quantity > 0 %}
-                                        <button type="button" class="btn btn-sm btn-primary transfer-btn"
-                                                data-medication="{{ stock.medication.id }}"
-                                                data-medication-name="{{ stock.medication.name }}"
-                                                data-batch="{{ stock.batch_number }}"
-                                                data-quantity="{{ stock.stock_quantity }}">
-                                            <i class="fas fa-exchange-alt me-1"></i>Transfer
-                                        </button>
-                                        {% else %}
-                                        <span class="text-muted">Out of Stock</span>
-                                        {% endif %}
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-sm btn-success"
+                                                    onclick="approveDispensaryTransfer({{ transfer.id }})">
+                                                <i class="fas fa-check"></i> Approve
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                    onclick="cancelDispensaryTransfer({{ transfer.id }})">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    {% else %}
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-box-open fa-3x mb-3"></i>
-                        <p class="mb-0">No medications in stock.</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
+            {% endif %}
 
             <!-- Bulk Transfer Section -->
             <div class="inventory-table mt-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fas fa-exchange-alt me-2"></i>
-                        Bulk Transfer from Bulk Store
+                        Bulk Transfer from Store [TEMPLATE TEST v2]
                     </h5>
                     <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#bulkTransferSection">
                         <i class="fas fa-plus me-1"></i>Request Transfer
@@ -179,9 +397,21 @@
                             <input type="hidden" name="bulk_transfer" value="1">
 
                             <div class="row mb-3">
-                                <div class="col-md-12">
-                                    <label for="{{ bulk_transfer_form.bulk_store.id_for_label }}" class="form-label">Source Bulk Store</label>
+                                <div class="col-md-6">
+                                    <label for="id_bulk_store" class="form-label">Source Bulk Store</label>
                                     {{ bulk_transfer_form.bulk_store }}
+                                    {% if bulk_transfer_form.bulk_store.errors %}
+                                        <div class="text-danger">
+                                            {% for error in bulk_transfer_form.bulk_store.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Target Active Store</label>
+                                    <input type="text" class="form-control" value="{{ active_store.name }}" readonly>
+                                    <small class="text-muted">Current active store: {{ active_store.name }}</small>
                                 </div>
                             </div>
 
@@ -200,92 +430,43 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for bulk_data in available_bulk_medications %}
-                                                <tr class="bulk-store-row" data-bulk-store="{{ bulk_data.bulk_store.id }}" style="display:none;">
-                                                    <td colspan="6" class="bg-light">
-                                                        <strong>{{ bulk_data.bulk_store.name }}</strong>
+                                            {% if available_bulk_medications %}
+                                                {% for bulk_data in available_bulk_medications %}
+                                                    <tr class="bulk-store-row" data-bulk-store="{{ bulk_data.bulk_store.id }}">
+                                                        <td colspan="6" class="bg-light">
+                                                            <strong>{{ bulk_data.bulk_store.name }}</strong>
+                                                        </td>
+                                                    </tr>
+                                                    {% for med_inventory in bulk_data.medications %}
+                                                        <tr class="medication-row" data-bulk-store="{{ bulk_data.bulk_store.id }}">
+                                                            <td>
+                                                                <input type="checkbox" name="transfer_medications"
+                                                                       value="{{ med_inventory.medication.id }}"
+                                                                       class="form-check-input medication-checkbox"
+                                                                       data-available="{{ med_inventory.stock_quantity }}">
+                                                            </td>
+                                                            <td>{{ med_inventory.medication.name }}</td>
+                                                            <td>{{ med_inventory.stock_quantity }}</td>
+                                                            <td>
+                                                                <input type="number" name="transfer_quantities"
+                                                                       min="0" max="{{ med_inventory.stock_quantity }}"
+                                                                       value="0" class="form-control form-control-sm quantity-input"
+                                                                       disabled>
+                                                            </td>
+                                                            <td>{{ med_inventory.batch_number }}</td>
+                                                            <td>{{ med_inventory.expiry_date|date:"M d, Y" }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted py-4">
+                                                        <i class="fas fa-box-open fa-2x mb-2"></i>
+                                                        <p>No medications available in bulk stores for transfer.</p>
+                                                        <small>Please ensure bulk stores have medications with stock > 0.</small>
                                                     </td>
                                                 </tr>
-                                                {% for med_inventory in bulk_data.medications %}
-                                                    {% load tz %}
-                                                    {% now "Y-m-d" as today %}
-                                                    {% if med_inventory.expiry_date %}
-                                                        {% if med_inventory.expiry_date|date:"Y-m-d" < today %}
-                                                            {% with is_expired=True %}
-                                                    <tr class="medication-row table-danger" data-bulk-store="{{ bulk_data.bulk_store.id }}" style="display:none;" title="Expired medication - cannot be transferred">
-                                                        <td>
-                                                            <input type="checkbox" name="transfer_medications"
-                                                                   value="{{ med_inventory.medication.id }}"
-                                                                   class="form-check-input medication-checkbox"
-                                                                   data-available="{{ med_inventory.stock_quantity }}"
-                                                                   disabled>
-                                                        </td>
-                                                        <td>
-                                                            {{ med_inventory.medication.name }}
-                                                            <span class="badge bg-danger ms-1">EXPIRED</span>
-                                                        </td>
-                                                        <td>{{ med_inventory.stock_quantity }}</td>
-                                                        <td>
-                                                            <input type="number" name="transfer_quantities"
-                                                                   min="0" max="{{ med_inventory.stock_quantity }}"
-                                                                   value="0" class="form-control form-control-sm quantity-input"
-                                                                   disabled>
-                                                        </td>
-                                                        <td>{{ med_inventory.batch_number|default:"N/A" }}</td>
-                                                        <td>
-                                                            <span class="text-danger">
-                                                                <i class="fas fa-exclamation-triangle"></i>
-                                                                {{ med_inventory.expiry_date|date:"M d, Y" }}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                            {% endwith %}
-                                                        {% else %}
-                                                    <tr class="medication-row" data-bulk-store="{{ bulk_data.bulk_store.id }}" style="display:none;">
-                                                        <td>
-                                                            <input type="checkbox" name="transfer_medications"
-                                                                   value="{{ med_inventory.medication.id }}"
-                                                                   class="form-check-input medication-checkbox"
-                                                                   data-available="{{ med_inventory.stock_quantity }}">
-                                                        </td>
-                                                        <td>{{ med_inventory.medication.name }}</td>
-                                                        <td>{{ med_inventory.stock_quantity }}</td>
-                                                        <td>
-                                                            <input type="number" name="transfer_quantities"
-                                                                   min="0" max="{{ med_inventory.stock_quantity }}"
-                                                                   value="0" class="form-control form-control-sm quantity-input"
-                                                                   disabled>
-                                                        </td>
-                                                        <td>{{ med_inventory.batch_number|default:"N/A" }}</td>
-                                                        <td>{{ med_inventory.expiry_date|date:"M d, Y" }}</td>
-                                                    </tr>
-                                                        {% endif %}
-                                                    {% else %}
-                                                    <tr class="medication-row" data-bulk-store="{{ bulk_data.bulk_store.id }}" style="display:none;">
-                                                        <td>
-                                                            <input type="checkbox" name="transfer_medications"
-                                                                   value="{{ med_inventory.medication.id }}"
-                                                                   class="form-check-input medication-checkbox"
-                                                                   data-available="{{ med_inventory.stock_quantity }}">
-                                                        </td>
-                                                        <td>{{ med_inventory.medication.name }}</td>
-                                                        <td>{{ med_inventory.stock_quantity }}</td>
-                                                        <td>
-                                                            <input type="number" name="transfer_quantities"
-                                                                   min="0" max="{{ med_inventory.stock_quantity }}"
-                                                                   value="0" class="form-control form-control-sm quantity-input"
-                                                                   disabled>
-                                                        </td>
-                                                        <td>{{ med_inventory.batch_number|default:"N/A" }}</td>
-                                                        <td>N/A</td>
-                                                    </tr>
-                                                    {% endif %}
-                                                {% endfor %}
-                                            {% empty %}
-                                                <tr>
-                                                    <td colspan="6" class="text-center text-muted">No bulk stores with medications available</td>
-                                                </tr>
-                                            {% endfor %}
+                                            {% endif %}
                                         </tbody>
                                     </table>
                                 </div>
@@ -295,8 +476,12 @@
                                 <button type="submit" class="btn btn-primary" id="submitTransferBtn" disabled>
                                     <i class="fas fa-paper-plane me-2"></i>Submit Transfer Requests
                                 </button>
-                                <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#bulkTransferSection">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="collapse">
                                     Cancel
+                                </button>
+                                <!-- Debug button for testing -->
+                                <button type="button" class="btn btn-warning btn-sm" onclick="testCheckboxFunction()">
+                                    Test Checkboxes
                                 </button>
                             </div>
                         </form>
@@ -306,157 +491,20 @@
         </div>
     </div>
 </div>
-
-<!-- Single Transfer Modal -->
-<div class="modal fade" id="transferModal" tabindex="-1" role="dialog" aria-labelledby="transferModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="transferModalLabel">Transfer Medication to Dispensary</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" action="{% url 'pharmacy:transfer_to_dispensary' dispensary_id=dispensary.id %}" id="singleTransferForm">
-                <div class="modal-body">
-                    {% csrf_token %}
-                    <input type="hidden" id="medicationId" name="medication_id">
-                    <input type="hidden" id="batchNumber" name="batch_number">
-                    <input type="hidden" id="maxQuantity" value="0">
-
-                    <div class="form-group mb-3">
-                        <label for="medicationName">Medication</label>
-                        <input type="text" class="form-control" id="medicationName" readonly>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label for="availableQuantity">Available Quantity</label>
-                        <input type="number" class="form-control" id="availableQuantity" readonly>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label for="transferQuantity">Transfer Quantity <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="transferQuantity" name="quantity" min="1" required>
-                        <small class="form-text text-muted">Enter quantity to transfer (max: <span id="maxQtyDisplay">0</span>)</small>
-                        <div class="invalid-feedback" id="quantityError"></div>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label for="dispensary">To Dispensary</label>
-                        <input type="text" class="form-control" id="dispensary" value="{{ dispensary.name }}" readonly>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="submitSingleTransfer">
-                        <i class="fas fa-exchange-alt me-1"></i>Transfer
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- JavaScript for handling transfers -->
 <script>
 $(document).ready(function() {
-    console.log("Document ready - transfer script loaded");
-
-    // Store the clicked button's data
-    var currentTransferData = {};
-
-    // ========== SINGLE TRANSFER LOGIC ==========
-
-    // Handle transfer button clicks - store data and open modal
-    $(document).on('click', '.transfer-btn', function() {
-        console.log("Transfer button clicked");
-        currentTransferData = {
-            medicationId: $(this).data('medication'),
-            medicationName: $(this).data('medication-name'),
-            batchNumber: $(this).data('batch'),
-            availableQuantity: $(this).data('quantity')
-        };
-
-        console.log("Transfer data stored:", currentTransferData);
-
-        // Manually open the modal after storing data
-        var transferModal = new bootstrap.Modal(document.getElementById('transferModal'));
-        transferModal.show();
-    });
-
-    // Populate form when modal is shown
-    $('#transferModal').on('show.bs.modal', function (e) {
-        console.log("Modal showing, populating form with:", currentTransferData);
-
-        // Populate form fields
-        $('#medicationId').val(currentTransferData.medicationId);
-        $('#medicationName').val(currentTransferData.medicationName);
-        $('#batchNumber').val(currentTransferData.batchNumber);
-        $('#availableQuantity').val(currentTransferData.availableQuantity);
-        $('#maxQuantity').val(currentTransferData.availableQuantity);
-        $('#maxQtyDisplay').text(currentTransferData.availableQuantity);
-        $('#transferQuantity').attr('max', currentTransferData.availableQuantity);
-        $('#transferQuantity').val(''); // Clear previous quantity
-        $('#transferQuantity').removeClass('is-invalid');
-        $('#quantityError').text('');
-
-        console.log("Form fields populated");
-    });
-
-    // Validate quantity input in real-time
-    $('#transferQuantity').on('input', function() {
-        var quantity = parseInt($(this).val()) || 0;
-        var maxQty = parseInt($('#maxQuantity').val()) || 0;
-
-        if (quantity > maxQty) {
-            $(this).addClass('is-invalid');
-            $('#quantityError').text('Quantity cannot exceed available stock (' + maxQty + ')');
-            $('#submitSingleTransfer').prop('disabled', true);
-        } else if (quantity <= 0) {
-            $(this).addClass('is-invalid');
-            $('#quantityError').text('Quantity must be greater than 0');
-            $('#submitSingleTransfer').prop('disabled', true);
-        } else {
-            $(this).removeClass('is-invalid');
-            $('#quantityError').text('');
-            $('#submitSingleTransfer').prop('disabled', false);
-        }
-    });
-
-    // Handle single transfer form submission
-    $('#singleTransferForm').on('submit', function(e) {
-        var quantity = parseInt($('#transferQuantity').val()) || 0;
-        var maxQty = parseInt($('#maxQuantity').val()) || 0;
-
-        if (quantity <= 0 || quantity > maxQty) {
-            e.preventDefault();
-            $('#transferQuantity').addClass('is-invalid');
-            $('#quantityError').text('Invalid quantity');
-            return false;
-        }
-
-        // Show loading state
-        $('#submitSingleTransfer').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Transferring...');
-    });
-
-    // Clear form when modal is hidden
-    $('#transferModal').on('hidden.bs.modal', function (e) {
-        console.log("Modal hidden, clearing form");
-        $('#transferQuantity').val('').removeClass('is-invalid');
-        $('#quantityError').text('');
-        $('#submitSingleTransfer').prop('disabled', false).html('<i class="fas fa-exchange-alt me-1"></i>Transfer');
-        currentTransferData = {};
-    });
-
-    // ========== BULK TRANSFER LOGIC ==========
+    console.log('=== ACTIVE STORE DETAIL PAGE - Script Loaded ===');
 
     // Function to update submit button state - DEFINED FIRST
     function updateSubmitButton() {
-        var hasSelectedItems = $('.medication-checkbox:checked').length > 0;
-        var hasValidQuantities = true;
+        const hasSelectedItems = $('.medication-checkbox:checked').length > 0;
+        let hasValidQuantities = true;
 
         $('.medication-checkbox:checked').each(function() {
-            var quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
+            const quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
             if (quantity <= 0) {
                 hasValidQuantities = false;
             }
@@ -465,18 +513,38 @@ $(document).ready(function() {
         $('#submitTransferBtn').prop('disabled', !hasSelectedItems || !hasValidQuantities);
     }
 
+    // Medication checkbox handler using EVENT DELEGATION (works with dynamically shown/hidden elements)
+    $(document).on('change', '.medication-checkbox', function() {
+        console.log('Checkbox changed:', this.checked);
+        const $checkbox = $(this);
+        const $row = $checkbox.closest('tr');
+        const $quantityInput = $row.find('.quantity-input');
+        const availableQty = parseInt($checkbox.data('available')) || 0;
+
+        if ($checkbox.is(':checked')) {
+            console.log('Enabling input for quantity:', availableQty);
+            $quantityInput.prop('disabled', false);
+            $quantityInput.val(1);
+            $quantityInput.attr('max', availableQty);
+        } else {
+            console.log('Disabling input');
+            $quantityInput.prop('disabled', true);
+            $quantityInput.val(0);
+        }
+
+        updateSubmitButton();
+    });
+
     // Handle bulk store selection
     $('#id_bulk_store').on('change', function() {
-        var selectedBulkStore = $(this).val();
+        const selectedBulkStore = $(this).val();
         console.log('Bulk store selected:', selectedBulkStore);
 
         // Show/hide medications based on selected bulk store
         $('.medication-row').hide();
-        $('.bulk-store-row').hide();
 
         if (selectedBulkStore) {
             $('.medication-row[data-bulk-store="' + selectedBulkStore + '"]').show();
-            $('.bulk-store-row[data-bulk-store="' + selectedBulkStore + '"]').show();
         }
 
         // Reset form
@@ -485,34 +553,22 @@ $(document).ready(function() {
         updateSubmitButton();
     });
 
-    // Handle medication checkbox changes - using EVENT DELEGATION for dynamically shown/hidden elements
-    $(document).on('change', '.medication-checkbox', function() {
-        console.log('=== MEDICATION CHECKBOX CHANGED ===', this.checked);
-        var $checkbox = $(this);
-        var $row = $checkbox.closest('tr');
-        var $quantityInput = $row.find('.quantity-input');
-        var available = parseInt($checkbox.data('available')) || 0;
-
-        console.log('Quantity input found:', $quantityInput.length, 'Available:', available);
-
-        if ($checkbox.is(':checked')) {
-            console.log('Enabling quantity input');
-            $quantityInput.prop('disabled', false);
-            $quantityInput.val(1);
-            $quantityInput.attr('max', available);
-        } else {
-            console.log('Disabling quantity input');
-            $quantityInput.prop('disabled', true);
-            $quantityInput.val(0);
+    // Initialize form state
+    function initializeFormState() {
+        $('.medication-row').hide();
+        const initialBulkStore = $('#id_bulk_store').val();
+        if (initialBulkStore) {
+            $('#id_bulk_store').trigger('change');
         }
-
         updateSubmitButton();
-    });
+    }
 
-    // Handle quantity input changes - using EVENT DELEGATION for dynamically shown/hidden elements
+    setTimeout(initializeFormState, 100);
+
+    // Handle quantity input changes using EVENT DELEGATION
     $(document).on('input', '.quantity-input', function() {
-        var max = parseInt($(this).attr('max'));
-        var value = parseInt($(this).val()) || 0;
+        const max = parseInt($(this).attr('max'));
+        const value = parseInt($(this).val()) || 0;
 
         if (value > max) {
             $(this).val(max);
@@ -521,30 +577,105 @@ $(document).ready(function() {
         updateSubmitButton();
     });
 
-    // Handle bulk transfer form submission
+    // Handle form submission
     $('#bulkTransferForm').on('submit', function(e) {
-        var transfers = [];
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const transfers = [];
 
         // Collect transfer data
         $('.medication-checkbox:checked').each(function() {
-            var quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
+            const medicationId = $(this).val();
+            const quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
+
             if (quantity > 0) {
                 transfers.push({
-                    medication_id: $(this).val(),
+                    medication_id: medicationId,
                     quantity: quantity
                 });
             }
         });
 
         if (transfers.length === 0) {
-            e.preventDefault();
             alert('Please select at least one medication with a valid quantity.');
-            return false;
+            return;
         }
 
-        // Show loading state
-        $('#submitTransferBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+        // Submit via AJAX
+        $.ajax({
+            url: window.location.href,
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                window.location.reload();
+            },
+            error: function(xhr, status, error) {
+                alert('Error submitting transfer request: ' + error);
+            }
+        });
     });
+
+    console.log('=== Script initialization complete ===');
 });
+
+// Functions for approving and cancelling dispensary transfers
+function approveDispensaryTransfer(transferId) {
+    if (!confirm('Are you sure you want to approve and execute this dispensary transfer?')) {
+        return;
+    }
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    $.ajax({
+        url: `/pharmacy/dispensary-transfer/${transferId}/approve/`,
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        success: function(response) {
+            // Show success message if available
+            if (response && response.message) {
+                alert(response.message);
+            }
+            // Reload the page to show updated status
+            window.location.reload();
+        },
+        error: function(xhr, status, error) {
+            const errorMessage = xhr.responseJSON?.error || xhr.responseText || error;
+            alert('Error approving transfer: ' + errorMessage);
+        }
+    });
+}
+
+function cancelDispensaryTransfer(transferId) {
+    if (!confirm('Are you sure you want to cancel this dispensary transfer? This action cannot be undone.')) {
+        return;
+    }
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    $.ajax({
+        url: `/pharmacy/dispensary-transfer/${transferId}/cancel/`,
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        success: function(response) {
+            // Show success message if available
+            if (response && response.message) {
+                alert(response.message);
+            }
+            // Reload the page to show updated status
+            window.location.reload();
+        },
+        error: function(xhr, status, error) {
+            const errorMessage = xhr.responseJSON?.error || xhr.responseText || error;
+            alert('Error cancelling transfer: ' + errorMessage);
+        }
+    });
+}
 </script>
 {% endblock %}

@@ -1132,6 +1132,7 @@ def bulk_store_dashboard(request):
         if item.stock_quantity <= item.medication.reorder_level:
             low_stock_list.append(item)
     
+    low_stock_count = len(low_stock_list)  # Get count before limiting
     low_stock_items = low_stock_list[:10]  # Limit to first 10
 
     # Get out of stock items
@@ -1141,22 +1142,28 @@ def bulk_store_dashboard(request):
 
     # Get expiring medications (expiring within 30 days)
     thirty_days_from_now = date.today() + timedelta(days=30)
-    expiring_soon = BulkStoreInventory.objects.filter(
+    expiring_soon_queryset = BulkStoreInventory.objects.filter(
         expiry_date__lte=thirty_days_from_now,
         expiry_date__gte=date.today(),
         stock_quantity__gt=0
-    ).select_related('medication', 'bulk_store').order_by('expiry_date')[:10]
+    ).select_related('medication', 'bulk_store').order_by('expiry_date')
+    expiring_soon_count = expiring_soon_queryset.count()
+    expiring_soon = expiring_soon_queryset[:10]
 
     # Get expired medications
-    expired_items = BulkStoreInventory.objects.filter(
+    expired_items_queryset = BulkStoreInventory.objects.filter(
         expiry_date__lt=date.today(),
         stock_quantity__gt=0
-    ).select_related('medication', 'bulk_store').order_by('expiry_date')[:10]
+    ).select_related('medication', 'bulk_store').order_by('expiry_date')
+    expired_count = expired_items_queryset.count()
+    expired_items = expired_items_queryset[:10]
 
     # Get pending transfers
-    pending_transfers = MedicationTransfer.objects.filter(
+    pending_transfers_queryset = MedicationTransfer.objects.filter(
         status='pending'
-    ).select_related('medication', 'from_bulk_store', 'to_active_store', 'requested_by').order_by('-requested_at')[:10]
+    ).select_related('medication', 'from_bulk_store', 'to_active_store', 'requested_by').order_by('-requested_at')
+    pending_transfers_count = pending_transfers_queryset.count()
+    pending_transfers = pending_transfers_queryset[:10]
 
     # Get recent transfers (last 10) - including delivered
     recent_transfers = MedicationTransfer.objects.filter(
@@ -1183,14 +1190,14 @@ def bulk_store_dashboard(request):
         'total_value': total_value,
         'total_stock_value': total_value,  # Add the variable expected by template
         'low_stock_items': low_stock_items,
-        'low_stock_count': low_stock_items.count(),
+        'low_stock_count': low_stock_count,
         'out_of_stock_count': out_of_stock_count,
         'expiring_soon': expiring_soon,
-        'expiring_soon_count': expiring_soon.count(),
+        'expiring_soon_count': expiring_soon_count,
         'expired_items': expired_items,
-        'expired_count': expired_items.count(),
+        'expired_count': expired_count,
         'pending_transfers': pending_transfers,
-        'pending_transfers_count': pending_transfers.count(),
+        'pending_transfers_count': pending_transfers_count,
         'recent_transfers': recent_transfers,
         'dispensaries': dispensaries,  # Add for the transfer modal
         'bulk_inventory': bulk_inventory,  # Add for the transfer modal
@@ -1464,17 +1471,22 @@ def instant_medication_transfer(request):
                     return redirect('pharmacy:bulk_store_dashboard')
 
                 # Execute the transfer
+                # First set to in_transit status so execute_transfer() can run
                 transfer.approved_by = request.user
                 transfer.approved_at = timezone.now()
-                transfer.transferred_by = request.user
-                transfer.transferred_at = timezone.now()
+                transfer.status = 'in_transit'
+                transfer.save()
+
+                # Execute the actual stock transfer (this sets status to 'completed')
+                transfer.execute_transfer(request.user)
+
+                # Now mark as delivered after successful execution
                 transfer.status = 'delivered'
                 transfer.delivered_by = request.user
                 transfer.delivered_at = timezone.now()
+                transfer.transferred_by = request.user
+                transfer.transferred_at = timezone.now()
                 transfer.save()
-
-                # Execute the actual stock transfer
-                transfer.execute_transfer(request.user)
 
                 messages.success(request, f'✅ Instant transfer #{transfer.id} completed and delivered successfully!')
                 return redirect('pharmacy:bulk_store_dashboard')
@@ -1509,6 +1521,7 @@ def instant_medication_transfer(request):
                 return redirect('pharmacy:bulk_store_dashboard')
 
             # Create and execute transfer instantly
+            # First create with in_transit status so execute_transfer() can run
             transfer = MedicationTransfer.objects.create(
                 medication=medication,
                 from_bulk_store=bulk_inventory.bulk_store,
@@ -1518,18 +1531,22 @@ def instant_medication_transfer(request):
                 expiry_date=bulk_inventory.expiry_date,
                 unit_cost=bulk_inventory.unit_cost,
                 notes=notes,
-                status='delivered',
+                status='in_transit',
                 requested_by=request.user,
                 approved_by=request.user,
-                transferred_by=request.user,
-                delivered_by=request.user,
-                approved_at=timezone.now(),
-                transferred_at=timezone.now(),
-                delivered_at=timezone.now()
+                approved_at=timezone.now()
             )
 
-            # Execute the actual stock transfer
+            # Execute the actual stock transfer (this sets status to 'completed')
             transfer.execute_transfer(request.user)
+
+            # Now mark as delivered after successful execution
+            transfer.status = 'delivered'
+            transfer.delivered_by = request.user
+            transfer.delivered_at = timezone.now()
+            transfer.transferred_by = request.user
+            transfer.transferred_at = timezone.now()
+            transfer.save()
 
             messages.success(
                 request,
@@ -4837,32 +4854,70 @@ def dispensary_inventory(request, dispensary_id):
         dispensary=dispensary
     ).select_related('medication', 'dispensary')
 
-    # Normalize legacy items into a common structure so template can iterate uniformly
-    # We'll create a list of dicts with expected attributes used by template: medication, stock_quantity, reorder_level, last_restock_date, id
-    inventory_items = []
+    # Merge duplicate medications from both sources
+    # Create a dictionary keyed by medication_id to merge quantities
+    medication_inventory = {}
+    
+    # Process active store items
     for item in active_store_items:
-        inventory_items.append({
-            'id': item.id,
-            'medication': item.medication,
-            'stock_quantity': item.stock_quantity,
-            'reorder_level': getattr(item, 'reorder_level', None),
-            'last_restock_date': getattr(item, 'last_restock_date', None),
-            'source': 'active_store',
-            'object': item,
-        })
+        med_id = item.medication.id
+        if med_id not in medication_inventory:
+            medication_inventory[med_id] = {
+                'medication': item.medication,
+                'stock_quantity': item.stock_quantity,
+                'reorder_level': getattr(item, 'reorder_level', None),
+                'last_restock_date': getattr(item, 'last_restock_date', None),
+                'sources': ['active_store'],
+                'ids': [item.id],
+                'objects': [item],
+                'batch_number': getattr(item, 'batch_number', None),
+                'expiry_date': getattr(item, 'expiry_date', None),
+            }
+        else:
+            # Merge quantities
+            medication_inventory[med_id]['stock_quantity'] += item.stock_quantity
+            medication_inventory[med_id]['sources'].append('active_store')
+            medication_inventory[med_id]['ids'].append(item.id)
+            medication_inventory[med_id]['objects'].append(item)
+            # Use the most recent restock date
+            if item.last_restock_date and medication_inventory[med_id]['last_restock_date']:
+                if item.last_restock_date > medication_inventory[med_id]['last_restock_date']:
+                    medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
+            elif item.last_restock_date:
+                medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
 
+    # Process legacy items
     for item in legacy_items:
-        inventory_items.append({
-            'id': item.id,
-            'medication': item.medication,
-            'stock_quantity': item.stock_quantity,
-            'reorder_level': getattr(item, 'reorder_level', None),
-            'last_restock_date': item.last_restock_date,
-            'source': 'legacy',
-            'object': item,
-        })
+        med_id = item.medication.id
+        if med_id not in medication_inventory:
+            medication_inventory[med_id] = {
+                'medication': item.medication,
+                'stock_quantity': item.stock_quantity,
+                'reorder_level': getattr(item, 'reorder_level', None),
+                'last_restock_date': item.last_restock_date,
+                'sources': ['legacy'],
+                'ids': [item.id],
+                'objects': [item],
+                'batch_number': getattr(item, 'batch_number', None),
+                'expiry_date': getattr(item, 'expiry_date', None),
+            }
+        else:
+            # Merge quantities
+            medication_inventory[med_id]['stock_quantity'] += item.stock_quantity
+            medication_inventory[med_id]['sources'].append('legacy')
+            medication_inventory[med_id]['ids'].append(item.id)
+            medication_inventory[med_id]['objects'].append(item)
+            # Use the most recent restock date
+            if item.last_restock_date and medication_inventory[med_id]['last_restock_date']:
+                if item.last_restock_date > medication_inventory[med_id]['last_restock_date']:
+                    medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
+            elif item.last_restock_date:
+                medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
 
-    # Optional: sort by medication name for consistent display
+    # Convert to list for template
+    inventory_items = list(medication_inventory.values())
+    
+    # Sort by medication name for consistent display
     inventory_items.sort(key=lambda x: (x['medication'].name.lower() if x['medication'] and x['medication'].name else ''))
 
     # Calculate inventory statistics

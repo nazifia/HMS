@@ -158,10 +158,12 @@
                                     <td>
                                         {% if transfer.status == 'pending' and not transfer.approved_by %}
                                             <!-- Show Approve button for pending transfers -->
-                                            <a href="{% url 'pharmacy:approve_medication_transfer' transfer.id %}"
-                                               class="btn btn-sm btn-success">
-                                                <i class="fas fa-check"></i> Approve & Deliver
-                                            </a>
+                                            <form method="post" action="{% url 'pharmacy:approve_medication_transfer' transfer.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-check"></i> Approve & Deliver
+                                                </button>
+                                            </form>
                                             <!-- Instant Transfer Button for Pending Transfers -->
                                             <button type="button" class="btn btn-sm btn-warning instant-transfer-btn"
                                                     data-transfer-id="{{ transfer.id }}"
@@ -241,7 +243,7 @@
                                     <td>{{ item.batch_number|default:"N/A" }}</td>
                                     <td>
                                         {% if item.expiry_date %}
-                                            {% with days=(item.expiry_date|timeuntil_days) %}
+                                            {% with days=item.expiry_date|timeuntil_days %}
                                                 {% if days <= 30 and days >= 0 %}
                                                     <span class="expiring-soon">{{ item.expiry_date|date:"M d, Y" }}</span>
                                                 {% elif days < 0 %}
@@ -257,7 +259,7 @@
                                     <td>{{ item.supplier.name|default:"N/A" }}</td>
                                     <td>
                                         {% if item.expiry_date %}
-                                            {% with days=(item.expiry_date|timeuntil_days) %}
+                                            {% with days=item.expiry_date|timeuntil_days %}
                                                 {% if days < 0 %}
                                                     <span class="badge bg-danger">Expired</span>
                                                 {% elif days <= 30 %}
@@ -375,11 +377,11 @@
                                     <td>{{ transfer.requested_at|date:"M d, Y g:i A" }}</td>
                                     <td>
                                         {% if transfer.status == 'pending' or transfer.status == 'in_transit' %}
-                                        <a href="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}" 
-                                           class="btn btn-sm btn-danger"
-                                           onclick="return confirmCancelTransfer({{ transfer.id }});">
+                                        <button type="button" class="btn btn-sm btn-danger cancel-transfer-btn"
+                                                data-transfer-id="{{ transfer.id }}"
+                                                data-cancel-url="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}">
                                             <i class="fas fa-times"></i> Cancel
-                                        </a>
+                                        </button>
                                         {% elif transfer.status == 'cancelled' %}
                                         <span class="badge bg-secondary">Already Cancelled</span>
                                         {% elif transfer.status == 'completed' %}
@@ -422,7 +424,7 @@
                             </h6>
                             <div class="row">
                                 {% for dispensary in dispensaries %}
-                                <div class="col-md-6 mb-3">
+                                {% comment %} <div class="col-md-6 mb-3">
                                     <div class="card h-100 border-primary border-start border-4">
                                         <div class="card-body p-3">
                                             <h6 class="card-title text-primary mb-1">
@@ -443,7 +445,7 @@
                                             </span>
                                         </div>
                                     </div>
-                                </div>
+                                </div> {% endcomment %}
                                 {% empty %}
                                 <div class="col-12">
                                     <div class="alert alert-warning">
@@ -626,9 +628,12 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep Transfer</button>
-                <a href="#" class="btn btn-danger" id="confirmCancelTransferBtn">
-                    <i class="fas fa-times"></i> Yes, Cancel Transfer
-                </a>
+                <form id="cancelTransferForm" method="POST" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" id="confirmCancelTransferBtn">
+                        <i class="fas fa-times"></i> Yes, Cancel Transfer
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -752,10 +757,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset form when modal is closed
     if (transferModal) {
         transferModal.addEventListener('hidden.bs.modal', function() {
-            console.log('DEBUG: Modal opened, checking for instantTransferBtn...');
-            console.log('DEBUG: instantTransferBtn element:', document.getElementById('instantTransferBtn'));
-            console.log('DEBUG: All buttons with [id*=TransferBtn]:', document.querySelectorAll('[id*=TransferBtn]'));
-            console.log('DEBUG: All buttons in modal footer:', document.querySelectorAll('.modal-footer button'));
+            console.log('DEBUG: Modal closed, resetting form...');
             if (transferForm) {
                 transferForm.reset();
             }
@@ -819,13 +821,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = url;
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-                    if (csrfToken) {
+                    // Get CSRF token from the transfer form or any form on the page
+                    const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                    if (csrfTokenElement) {
                         const csrfInput = document.createElement('input');
                         csrfInput.type = 'hidden';
                         csrfInput.name = 'csrfmiddlewaretoken';
-                        csrfInput.value = csrfToken.value;
+                        csrfInput.value = csrfTokenElement.value;
                         form.appendChild(csrfInput);
+                    } else {
+                        console.error('CSRF token not found on page');
                     }
                     // Add transfer ID to form
                     const transferIdInput = document.createElement('input');
@@ -846,19 +851,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Handle cancel transfer button clicks
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('cancel-transfer-btn')) {
-            e.preventDefault();
-            const transferId = e.target.getAttribute('data-transfer-id');
-            const cancelUrl = e.target.getAttribute('data-cancel-url');
-            if (transferId && confirmCancelTransfer(transferId)) {
-                if (cancelUrl) {
-                    window.location.href = cancelUrl;
-                }
-            }
-        }
-    });
     function validateTransferForm() {
         const elements = getFormElements();
         const medication = elements.medication ? elements.medication.value : null;
@@ -962,25 +954,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle Cancel Transfer button clicks
-    const cancelTransferButtons = document.querySelectorAll('.cancel-transfer-btn');
-    const cancelTransferModal = document.getElementById('cancelTransferConfirmModal');
-    const confirmCancelBtn = document.getElementById('confirmCancelTransferBtn');
+    // Handle Cancel Transfer button clicks - Using event delegation for dynamic content
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.closest('.cancel-transfer-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.cancel-transfer-btn');
+            const transferId = button.getAttribute('data-transfer-id');
+            const cancelUrl = button.getAttribute('data-cancel-url');
 
-    cancelTransferButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const transferId = this.getAttribute('data-transfer-id');
-            const cancelUrl = this.getAttribute('data-cancel-url');
+            const cancelTransferModal = document.getElementById('cancelTransferConfirmModal');
+            const cancelTransferForm = document.getElementById('cancelTransferForm');
 
             // Update modal content
             document.getElementById('cancel-transfer-id').textContent = transferId;
-            confirmCancelBtn.setAttribute('href', cancelUrl);
+
+            // Set form action
+            if (cancelTransferForm) {
+                cancelTransferForm.action = cancelUrl;
+            }
 
             // Show modal
             const modal = new bootstrap.Modal(cancelTransferModal);
             modal.show();
-        });
-    });
+        }
+    }, true); // Use capture phase to ensure it catches all clicks
 
     // Legacy function for backward compatibility (if any old code still uses it)
     function confirmCancelTransfer(transferId) {

@@ -471,26 +471,34 @@ class MedicationTransfer(models.Model):
             bulk_inventory.save()
 
             # Add to active store inventory
-            # Use get_or_create to update existing item or create new one
+            # Consolidate by medication only (not batch_number) to avoid duplicates
             active_inventory, created = ActiveStoreInventory.objects.get_or_create(
                 medication=self.medication,
                 active_store=self.to_active_store,
-                batch_number=self.batch_number,
                 defaults={
                     'stock_quantity': 0,
                     'reorder_level': self.medication.reorder_level if hasattr(self.medication, 'reorder_level') else 10,
+                    'batch_number': self.batch_number,
                     'expiry_date': self.expiry_date or bulk_inventory.expiry_date,
                     'unit_cost': self.unit_cost or bulk_inventory.unit_cost,
                     'last_restock_date': timezone.now().date()
                 }
             )
 
-            # Update stock quantity
+            # Update stock quantity and related fields
             if created:
                 active_inventory.stock_quantity = self.quantity
             else:
                 active_inventory.stock_quantity += self.quantity
                 active_inventory.last_restock_date = timezone.now().date()
+                # Update to latest batch info if transferring newer batch
+                if self.batch_number:
+                    active_inventory.batch_number = self.batch_number
+                if self.expiry_date or bulk_inventory.expiry_date:
+                    # Keep the later expiry date (better for the medication)
+                    new_expiry = self.expiry_date or bulk_inventory.expiry_date
+                    if not active_inventory.expiry_date or new_expiry > active_inventory.expiry_date:
+                        active_inventory.expiry_date = new_expiry
 
             active_inventory.save()
 
