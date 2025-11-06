@@ -35,15 +35,41 @@
     .inventory-table {
         border-radius: 10px;
         overflow: hidden;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+        border: 3px solid #2c3e50;
+        background: #ffffff;
+    }
+
+    .inventory-table-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .inventory-table-header th {
+        position: relative;
+        border-bottom: 3px solid rgba(255,255,255,0.3);
+    }
+
+    .inventory-table-header th:hover {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        cursor: pointer;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
     }
 
     .table th {
-        background: #f8f9fc;
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
         border: none;
-        font-weight: 600;
-        color: #5a5c69;
-        padding: 15px;
+        font-weight: 800;
+        color: #ffffff;
+        padding: 18px 15px;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        border-bottom: 3px solid #e74c3c;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.5);
     }
 
     .table td {
@@ -265,15 +291,15 @@
             {% if page_obj %}
             <div class="table-responsive">
                 <table class="table table-hover mb-0" width="100%" cellspacing="0">
-                    <thead>
+                    <thead class="inventory-table-header">
                         <tr>
-                            <th class="border-0">Medication Details</th>
-                            <th class="border-0">Category</th>
-                            <th class="border-0">Form & Strength</th>
-                            <th class="border-0">Price</th>
-                            <th class="border-0">Stock Status</th>
-                            <th class="border-0">Status</th>
-                            <th class="border-0 text-center">Actions</th>
+                            <th class="border-0"><i class="fas fa-pills me-2"></i>Medication Details</th>
+                            <th class="border-0"><i class="fas fa-tags me-2"></i>Category</th>
+                            <th class="border-0"><i class="fas fa-capsules me-2"></i>Form & Strength</th>
+                            <th class="border-0"><i class="fas fa-dollar-sign me-2"></i>Price</th>
+                            <th class="border-0"><i class="fas fa-chart-line me-2"></i>Stock Status</th>
+                            <th class="border-0"><i class="fas fa-toggle-on me-2"></i>Status</th>
+                            <th class="border-0 text-center"><i class="fas fa-cogs me-2"></i>Actions</th>
                         </tr>
                     </thead>
                     <tbody>

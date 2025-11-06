@@ -576,7 +576,7 @@ def edit_supplier(request, supplier_id):
         'active_nav': 'pharmacy',
     }
 
-    return render(request, 'pharmacy/edit_supplier.html', context)
+    return render(request, 'pharmacy/add_edit_supplier.html', context)
 
 
 @login_required
