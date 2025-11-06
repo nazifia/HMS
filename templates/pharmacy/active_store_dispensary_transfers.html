@@ -1,0 +1,535 @@
+{% extends 'pharmacy/layouts/base.html' %}
+{% load static %}
+{% load pharmacy_tags %}
+{% load pharmacy_form_filters %}
+{# Template Version: 2025.11.05.002 - Dispensary Transfers Separated #}
+
+{% block title %}Active Store Dispensary Transfers - {{ active_store.name }}{% endblock %}
+
+{% block extra_head %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .transfer-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    .transfer-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .stat-card {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Version indicator -->
+    <div class="alert alert-info mb-3" style="padding: 8px 15px; font-size: 12px;">
+        <i class="fas fa-code-branch me-1"></i>
+        <strong>Template:</strong> Dispensary Transfers v2025.11.05.002
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <!-- Transfer Header -->
+            <div class="transfer-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-2">
+                            <i class="fas fa-arrow-down me-2"></i>
+                            Active Store → Dispensary Transfers
+                        </h1>
+                        <p class="mb-0">
+                            <i class="fas fa-store me-2"></i>
+                            {{ active_store.name }} → {{ dispensary.name }}
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{% url 'pharmacy:active_store_detail' dispensary.id %}" class="btn btn-light">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Inventory
+                        </a>
+                        <a href="{% url 'pharmacy:active_store_bulk_transfers' dispensary.id %}" class="btn btn-info ms-2">
+                            <i class="fas fa-exchange-alt me-2"></i>Bulk Transfers
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transfer Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number text-warning">{{ pending_count }}</div>
+                        <div class="text-muted">Pending</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number text-primary">{{ in_transit_count }}</div>
+                        <div class="text-muted">In Transit</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number text-success">{{ completed_count }}</div>
+                        <div class="text-muted">Completed</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number text-danger">{{ cancelled_count }}</div>
+                        <div class="text-muted">Cancelled</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create New Transfer Section -->
+            <div class="transfer-card mb-4">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Create New Transfer Request
+                    </h5>
+                    <button class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#newTransferSection">
+                        <i class="fas fa-plus me-1"></i>New Transfer
+                    </button>
+                </div>
+                <div class="collapse" id="newTransferSection">
+                    <div class="card-body">
+                        <form method="post" id="dispensaryTransferForm" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="dispensary_transfer" value="1">
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="id_medication" class="form-label">
+                                        <i class="fas fa-pills me-1"></i>Medication
+                                    </label>
+                                    {{ dispensary_transfer_form.medication }}
+                                    {% if dispensary_transfer_form.medication.errors %}
+                                        <div class="text-danger">
+                                            {% for error in dispensary_transfer_form.medication.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_quantity" class="form-label">
+                                        <i class="fas fa-sort-numeric-up me-1"></i>Quantity to Transfer
+                                    </label>
+                                    {{ dispensary_transfer_form.quantity }}
+                                    {% if dispensary_transfer_form.quantity.errors %}
+                                        <div class="text-danger">
+                                            {% for error in dispensary_transfer_form.quantity.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <label for="id_notes" class="form-label">
+                                        <i class="fas fa-sticky-note me-1"></i>Notes (Optional)
+                                    </label>
+                                    {{ dispensary_transfer_form.notes }}
+                                    {% if dispensary_transfer_form.notes.errors %}
+                                        <div class="text-danger">
+                                            {% for error in dispensary_transfer_form.notes.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Inventory Information -->
+                            <div class="alert alert-info" id="dispensaryTransferInventoryInfo">
+                                <h6><i class="fas fa-info-circle"></i> Inventory Information</h6>
+                                <p class="mb-0">Select a medication to check available stock in the active store.</p>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-success" id="submitDispensaryTransferBtn">
+                                    <i class="fas fa-paper-plane me-2"></i>Submit Transfer Request
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#newTransferSection">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Transfers -->
+            <div class="transfer-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        Pending Transfer Requests ({{ pending_dispensary_transfers.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_dispensary_transfers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transfer ID</th>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>Requested By</th>
+                                    <th>Requested At</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in pending_dispensary_transfers %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary">#{{ transfer.id }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ transfer.medication.name }}</strong>
+                                        {% if transfer.medication.generic_name %}
+                                            <br><small class="text-muted">{{ transfer.medication.generic_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ transfer.quantity }} units</span>
+                                    </td>
+                                    <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
+                                    <td>{{ transfer.requested_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {% if transfer.notes %}
+                                            <small>{{ transfer.notes|truncatewords:10 }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-success"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#approveTransferModal{{ transfer.id }}">
+                                                <i class="fas fa-check"></i> Approve
+                                            </button>
+                                            <button type="button" class="btn btn-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#cancelTransferModal{{ transfer.id }}">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </div>
+
+                                        <!-- Approve Transfer Modal -->
+                                        <div class="modal fade" id="approveTransferModal{{ transfer.id }}" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header bg-success text-white">
+                                                        <h5 class="modal-title">
+                                                            <i class="fas fa-check-circle me-2"></i>
+                                                            Approve Transfer #{{ transfer.id }}
+                                                        </h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <form method="post" action="{% url 'pharmacy:approve_dispensary_transfer' transfer.id %}" class="approve-transfer-form">
+                                                        {% csrf_token %}
+                                                        <div class="modal-body">
+                                                            <div class="alert alert-info">
+                                                                <h6><i class="fas fa-info-circle me-1"></i>Transfer Details</h6>
+                                                                <ul class="mb-0">
+                                                                    <li><strong>Medication:</strong> {{ transfer.medication.name }}</li>
+                                                                    <li><strong>Quantity:</strong> {{ transfer.quantity }} units</li>
+                                                                    <li><strong>From:</strong> {{ transfer.from_active_store.name }}</li>
+                                                                    <li><strong>To:</strong> {{ transfer.to_dispensary.name }}</li>
+                                                                    <li><strong>Requested By:</strong> {{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</li>
+                                                                </ul>
+                                                            </div>
+
+                                                            <p class="mb-3">Are you sure you want to approve this transfer?</p>
+
+                                                            <div class="mb-3">
+                                                                <label for="approval_notes{{ transfer.id }}" class="form-label">
+                                                                    Approval Notes (Optional)
+                                                                </label>
+                                                                <textarea class="form-control"
+                                                                          id="approval_notes{{ transfer.id }}"
+                                                                          name="approval_notes"
+                                                                          rows="3"
+                                                                          placeholder="Add any notes about this approval..."></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary"
+                                                                    data-bs-dismiss="modal">
+                                                                <i class="fas fa-times me-1"></i>Cancel
+                                                            </button>
+                                                            <button type="submit" class="btn btn-success">
+                                                                <i class="fas fa-check me-1"></i>Approve Transfer
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Cancel Transfer Modal -->
+                                        <div class="modal fade" id="cancelTransferModal{{ transfer.id }}" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header bg-danger text-white">
+                                                        <h5 class="modal-title">
+                                                            <i class="fas fa-times-circle me-2"></i>
+                                                            Cancel Transfer #{{ transfer.id }}
+                                                        </h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <form method="post" action="{% url 'pharmacy:cancel_dispensary_transfer' transfer.id %}" class="cancel-transfer-form">
+                                                        {% csrf_token %}
+                                                        <div class="modal-body">
+                                                            <p>Are you sure you want to cancel this transfer?</p>
+                                                            <div class="mb-3">
+                                                                <label for="cancellation_reason{{ transfer.id }}" class="form-label">
+                                                                    Cancellation Reason (Optional)
+                                                                </label>
+                                                                <textarea class="form-control"
+                                                                          id="cancellation_reason{{ transfer.id }}"
+                                                                          name="cancellation_reason"
+                                                                          rows="3"
+                                                                          placeholder="Please provide a reason for cancellation..."></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary"
+                                                                    data-bs-dismiss="modal">Keep Transfer</button>
+                                                            <button type="submit" class="btn btn-danger">Cancel Transfer</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-4x mb-3 d-block"></i>
+                        <h5>No Pending Transfers</h5>
+                        <p>There are no pending transfer requests at this time.</p>
+                        <button class="btn btn-success mt-2" data-bs-toggle="collapse" data-bs-target="#newTransferSection">
+                            <i class="fas fa-plus me-2"></i>Create New Transfer
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Completed Transfers -->
+            {% if completed_transfers %}
+            <div class="transfer-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle me-2 text-success"></i>
+                        Recent Completed Transfers
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>Requested By</th>
+                                    <th>Approved By</th>
+                                    <th>Completed At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in completed_transfers %}
+                                <tr>
+                                    <td><span class="badge bg-success">#{{ transfer.id }}</span></td>
+                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>{{ transfer.quantity }}</td>
+                                    <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
+                                    <td>{{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}</td>
+                                    <td>{{ transfer.completed_at|date:"M d, Y H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    console.log('=== Dispensary Transfers Page Loaded ===');
+
+    // Handle medication selection in transfer form
+    $('#id_medication').on('change', function() {
+        const medicationId = $(this).val();
+        const dispensaryId = {{ dispensary.id|escapejs }};
+        const $inventoryInfo = $('#dispensaryTransferInventoryInfo');
+
+        if (!medicationId) {
+            $inventoryInfo.html(
+                '<h6><i class="fas fa-info-circle"></i> Inventory Information</h6>' +
+                '<p class="mb-0">Select a medication to check available stock in the active store.</p>'
+            );
+            return;
+        }
+
+        // Show loading state
+        $inventoryInfo.html(
+            '<h6><i class="fas fa-spinner fa-spin"></i> Loading...</h6>' +
+            '<p class="mb-0">Fetching inventory information...</p>'
+        );
+
+        // Fetch inventory data via AJAX
+        $.ajax({
+            url: '/pharmacy/api/active-store-inventory/' + dispensaryId + '/' + medicationId + '/',
+            method: 'GET',
+            success: function(data) {
+                if (data.stock_quantity > 0) {
+                    $inventoryInfo.removeClass('alert-info alert-warning alert-danger').addClass('alert-success');
+                    $inventoryInfo.html(
+                        '<h6><i class="fas fa-check-circle"></i> Inventory Information</h6>' +
+                        '<div class="row">' +
+                            '<div class="col-md-6">' +
+                                '<p class="mb-1"><strong>Medication:</strong> ' + data.medication_name + '</p>' +
+                                '<p class="mb-1"><strong>Available Stock:</strong> <span class="badge bg-success">' + data.stock_quantity + ' units</span></p>' +
+                                '<p class="mb-1"><strong>Batch Number:</strong> ' + (data.batch_number || 'N/A') + '</p>' +
+                            '</div>' +
+                            '<div class="col-md-6">' +
+                                '<p class="mb-1"><strong>Expiry Date:</strong> ' + (data.expiry_date || 'N/A') + '</p>' +
+                                '<p class="mb-1"><strong>Unit Cost:</strong> GH₵ ' + data.unit_cost + '</p>' +
+                                '<p class="mb-1"><strong>Reorder Level:</strong> ' + data.reorder_level + '</p>' +
+                            '</div>' +
+                        '</div>'
+                    );
+
+                    // Update quantity input max value
+                    $('#id_quantity').attr('max', data.stock_quantity);
+                    $('#id_quantity').attr('placeholder', 'Max: ' + data.stock_quantity);
+                } else {
+                    $inventoryInfo.removeClass('alert-info alert-success alert-danger').addClass('alert-warning');
+                    $inventoryInfo.html(
+                        '<h6><i class="fas fa-exclamation-triangle"></i> Inventory Information</h6>' +
+                        '<p class="mb-0"><strong>' + data.medication_name + '</strong> is currently out of stock in the active store.</p>' +
+                        '<p class="mb-0 mt-2"><small>Please restock from bulk store before transferring to dispensary.</small></p>'
+                    );
+
+                    // Disable quantity input
+                    $('#id_quantity').attr('max', 0);
+                    $('#id_quantity').val('');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error fetching inventory data:', error);
+                $inventoryInfo.removeClass('alert-info alert-success alert-warning').addClass('alert-danger');
+                $inventoryInfo.html(
+                    '<h6><i class="fas fa-exclamation-circle"></i> Error</h6>' +
+                    '<p class="mb-0">Failed to fetch inventory information. Please try again.</p>'
+                );
+            }
+        });
+    });
+
+    // Handle approve form submission with AJAX
+    $('.approve-transfer-form').on('submit', function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: form.attr('action'),
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                // Close modal
+                document.querySelectorAll('.modal').forEach(modalEl => {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                });
+                // Reload page to show updated transfers
+                setTimeout(() => location.reload(), 500);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error approving transfer:', error);
+                alert('Error approving transfer. Please try again.');
+            }
+        });
+    });
+
+    // Handle cancel form submission with AJAX
+    $('.cancel-transfer-form').on('submit', function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: form.attr('action'),
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                // Close all modals
+                document.querySelectorAll('.modal').forEach(modalEl => {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                });
+                setTimeout(() => location.reload(), 500);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error cancelling transfer:', error);
+                alert('Error cancelling transfer. Please try again.');
+            }
+        });
+    });
+
+    console.log('=== All event handlers initialized ===');
+});
+</script>
+{% endblock %}

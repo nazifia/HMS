@@ -1130,7 +1130,7 @@ class PackOrder(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='pack_orders')
     pack = models.ForeignKey('MedicalPack', on_delete=models.CASCADE)
     ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ordered_pack_orders')
-    ordered_at = models.DateTimeField(auto_now_add=True)
+    ordered_at = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')
     processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_pack_orders')
     processed_at = models.DateTimeField(null=True, blank=True)

@@ -12,15 +12,29 @@
 .qoder/rules/byterover-rules.md
 .augment/rules/byterover-rules.md
 
-# Ignore Python cache and compiled files
+
+
+# Django & Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Ignore SQLite database
 db.sqlite3
 
-# Ignore virtual environments
+# Logs & runtime
+*.log
+logs/
+server.log
+
+# Environment
 venv/
-env/
-.myenv/
+.env
+*.env
+
+# Backup & temp files
+*.backup
+*.bak
+
+# Test artifacts
+test_videos/
+test_screenshots/
+test_output.log

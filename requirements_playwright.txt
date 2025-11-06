@@ -1,0 +1,54 @@
+# Playwright Test Dependencies
+# Install with: pip install -r requirements_playwright.txt
+
+# Core testing framework
+pytest>=7.4.0
+pytest-html>=3.2.0
+pytest-xdist>=3.3.0
+pytest-playwright>=0.4.0
+
+# Playwright browser automation
+playwright>=1.40.0
+
+# Django test utilities
+pytest-django>=4.5.0
+django-pytest>=0.2.0
+
+# Additional utilities
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+pytest-timeout>=2.1.0
+pytest-sugar>=0.9.0
+
+# HTTP requests for API testing
+requests>=2.31.0
+
+# Data validation
+jsonschema>=4.19.0
+
+# Image comparison (for visual regression testing)
+Pillow>=10.0.0
+
+# Screenshots and documentation
+reportlab>=4.0.0
+
+# Async support
+pytest-asyncio>=0.21.0
+
+# JSON handling
+orjson>=3.9.0
+
+# Date/time utilities
+python-dateutil>=2.8.0
+
+# CLI utilities
+click>=8.1.0
+rich>=13.5.0
+
+# Type checking (optional)
+mypy>=1.5.0
+
+# Linting (optional)
+flake8>=6.0.0
+black>=23.7.0
+isort>=5.12.0
