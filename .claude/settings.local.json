@@ -7,7 +7,9 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(python manage.py check:*)",
-      "Bash(python manage.py shell:*)"
+      "Bash(python manage.py shell:*)",
+      "mcp__byterover-mcp__byterover-retrieve-knowledge",
+      "mcp__byterover-mcp__byterover-store-knowledge"
     ],
     "deny": [],
     "ask": []

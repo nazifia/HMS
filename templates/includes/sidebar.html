@@ -941,7 +941,92 @@ body.sidebar-toggled #content-wrapper {
     pointer-events: auto;
 }
 
-/* Mobile sidebar styles */
+/* Tablet sidebar styles (768px - 991px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .sidebar, #sidebar-container {
+        width: 80px !important;
+        min-width: 80px !important;
+        max-width: 80px !important;
+        transition: width 0.3s ease;
+    }
+
+    /* Hide text and headings on tablet by default */
+    .sidebar .sidebar-brand-text,
+    .sidebar .nav-link span,
+    .sidebar .sidebar-heading,
+    .sidebar .collapse-inner,
+    .sidebar .collapse-header,
+    #sidebar-container .sidebar-brand-text,
+    #sidebar-container .nav-link span,
+    #sidebar-container .sidebar-heading,
+    #sidebar-container .collapse-inner,
+    #sidebar-container .collapse-header {
+        display: none !important;
+    }
+
+    /* Center icons on tablet */
+    .sidebar .nav-link,
+    #sidebar-container .nav-link {
+        justify-content: center !important;
+        padding: 1rem 0.5rem !important;
+        text-align: center !important;
+    }
+
+    /* Tablet sidebar hover effect */
+    .sidebar:hover, #sidebar-container:hover {
+        width: 280px !important;
+        min-width: 280px !important;
+        max-width: 280px !important;
+    }
+
+    .sidebar:hover .sidebar-brand-text,
+    .sidebar:hover .nav-link span,
+    .sidebar:hover .sidebar-heading,
+    .sidebar:hover .collapse-inner,
+    .sidebar:hover .collapse-header,
+    #sidebar-container:hover .sidebar-brand-text,
+    #sidebar-container:hover .nav-link span,
+    #sidebar-container:hover .sidebar-heading,
+    #sidebar-container:hover .collapse-inner,
+    #sidebar-container:hover .collapse-header {
+        display: block !important;
+        opacity: 1;
+    }
+
+    .sidebar:hover .nav-link,
+    #sidebar-container:hover .nav-link {
+        justify-content: flex-start !important;
+        padding: 12px 24px !important;
+        text-align: left !important;
+    }
+
+    /* Prevent dropdown menu from expanding when collapsed on tablet */
+    .sidebar .nav-link[data-bs-toggle="collapse"],
+    #sidebar-container .nav-link[data-bs-toggle="collapse"] {
+        pointer-events: none;
+    }
+
+    /* Allow dropdown menu expansion on hover */
+    .sidebar:hover .nav-link[data-bs-toggle="collapse"],
+    #sidebar-container:hover .nav-link[data-bs-toggle="collapse"] {
+        pointer-events: auto;
+    }
+
+    /* Hide desktop brand on tablet */
+    .sidebar-brand.d-none.d-md-flex {
+        display: none !important;
+    }
+
+    /* Show simplified brand icon on tablet */
+    .sidebar .sidebar-brand-icon,
+    #sidebar-container .sidebar-brand-icon {
+        display: flex !important;
+        justify-content: center;
+        margin: 1rem 0;
+    }
+}
+
+/* Mobile sidebar styles (< 768px) */
 @media (max-width: 767.98px) {
     .sidebar, #sidebar-container {
         position: fixed;
@@ -1059,4 +1144,251 @@ body.sidebar-toggled #content-wrapper {
     color: #adb5bd !important;
     background: #23272b !important;
 }
+
+/* Desktop responsive styles (992px - 1199px) */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .sidebar, #sidebar-container {
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
+    }
+
+    .sidebar .nav-link,
+    #sidebar-container .nav-link {
+        font-size: 0.9rem;
+        padding: 10px 20px;
+    }
+
+    .sidebar .sidebar-brand-text,
+    #sidebar-container .sidebar-brand-text {
+        font-size: 1.1rem;
+    }
+}
+
+/* Large Desktop responsive styles (>= 1200px) */
+@media (min-width: 1200px) {
+    .sidebar, #sidebar-container {
+        width: 300px !important;
+        min-width: 300px !important;
+        max-width: 300px !important;
+    }
+
+    .sidebar .nav-link,
+    #sidebar-container .nav-link {
+        font-size: 1rem;
+        padding: 12px 24px;
+    }
+
+    .sidebar .sidebar-brand-text,
+    #sidebar-container .sidebar-brand-text {
+        font-size: 1.25rem;
+    }
+}
+
+/* Smooth scrolling for sidebar content */
+.sidebar, #sidebar-container {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar::-webkit-scrollbar,
+#sidebar-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+#sidebar-container::-webkit-scrollbar-track {
+    background: #1a1d20;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+#sidebar-container::-webkit-scrollbar-thumb {
+    background: #4a5568;
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+#sidebar-container::-webkit-scrollbar-thumb:hover {
+    background: #5a6778;
+}
+
+/* Ensure sidebar doesn't affect content layout on different screen sizes */
+@media (min-width: 768px) {
+    body {
+        transition: margin-left 0.3s ease;
+    }
+}
+
+/* Touch-friendly tap targets for mobile */
+@media (max-width: 767.98px) {
+    .sidebar .nav-link,
+    #sidebar-container .nav-link {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+}
+
+/* Accessibility: Focus styles */
+.sidebar .nav-link:focus,
+#sidebar-container .nav-link:focus,
+.sidebar .collapse-item:focus,
+#sidebar-container .collapse-item:focus {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+/* Prevent layout shifts during transitions */
+.sidebar, #sidebar-container {
+    will-change: width, left;
+}
+
+/* Handle orientation changes */
+@media (orientation: landscape) and (max-width: 991.98px) {
+    .sidebar, #sidebar-container {
+        max-height: 100vh;
+    }
+}
+
+@media (orientation: portrait) and (max-width: 767.98px) {
+    .sidebar, #sidebar-container {
+        width: 80vw !important;
+        min-width: 80vw !important;
+        max-width: 80vw !important;
+        left: -80vw;
+    }
+
+    .sidebar.sidebar-open, #sidebar-container.sidebar-open {
+        left: 0 !important;
+    }
+
+    .sidebar.sidebar-collapsed.sidebar-open,
+    #sidebar-container.sidebar-collapsed.sidebar-open {
+        left: 0 !important;
+    }
+}
 </style>
+
+<script>
+// Enhanced responsive sidebar behavior
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar-container') || document.querySelector('.sidebar');
+    const sidebarToggleTop = document.getElementById('sidebarToggleTop');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarOverlay = document.getElementById('sidebar-overlay') || document.querySelector('.sidebar-overlay');
+    const mobileSidebarClose = document.getElementById('mobileSidebarClose');
+
+    // Function to check screen size
+    function isMobile() {
+        return window.innerWidth < 768;
+    }
+
+    function isTablet() {
+        return window.innerWidth >= 768 && window.innerWidth < 992;
+    }
+
+    function isDesktop() {
+        return window.innerWidth >= 992;
+    }
+
+    // Mobile sidebar toggle
+    if (sidebarToggleTop && sidebar) {
+        sidebarToggleTop.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (isMobile() || isTablet()) {
+                sidebar.classList.toggle('sidebar-open');
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.toggle('active');
+                }
+                document.body.classList.toggle('sidebar-open');
+            }
+        });
+    }
+
+    // Desktop sidebar toggle
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (isDesktop()) {
+                sidebar.classList.toggle('sidebar-collapsed');
+                // Update toggle icon
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-angle-left');
+                    icon.classList.toggle('fa-angle-right');
+                }
+            }
+        });
+    }
+
+    // Close mobile sidebar
+    if (mobileSidebarClose && sidebar) {
+        mobileSidebarClose.addEventListener('click', function(e) {
+            e.preventDefault();
+            sidebar.classList.remove('sidebar-open');
+            if (sidebarOverlay) {
+                sidebarOverlay.classList.remove('active');
+            }
+            document.body.classList.remove('sidebar-open');
+        });
+    }
+
+    // Close sidebar when clicking overlay
+    if (sidebarOverlay && sidebar) {
+        sidebarOverlay.addEventListener('click', function() {
+            sidebar.classList.remove('sidebar-open');
+            this.classList.remove('active');
+            document.body.classList.remove('sidebar-open');
+        });
+    }
+
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            // Close mobile sidebar on resize to desktop
+            if (isDesktop() && sidebar) {
+                sidebar.classList.remove('sidebar-open');
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.remove('active');
+                }
+                document.body.classList.remove('sidebar-open');
+            }
+
+            // Remove collapsed state on mobile
+            if (isMobile() && sidebar) {
+                sidebar.classList.remove('sidebar-collapsed');
+            }
+        }, 250);
+    });
+
+    // Improve touch interactions on mobile
+    if (isMobile() && sidebar) {
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        sidebar.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        sidebar.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            // Swipe left to close
+            if (touchStartX - touchEndX > 50 && sidebar.classList.contains('sidebar-open')) {
+                sidebar.classList.remove('sidebar-open');
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.remove('active');
+                }
+                document.body.classList.remove('sidebar-open');
+            }
+        }
+    }
+});
+</script>

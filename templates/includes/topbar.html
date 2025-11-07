@@ -1,11 +1,14 @@
 {% load consultation_tags %}
 <!-- Topbar -->
-<nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow w-100">
+<nav class="navbar navbar-expand-lg navbar-light bg-white topbar mb-4 static-top shadow w-100">
 
     <!-- Sidebar Toggle (Topbar) -->
-    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+    <button id="sidebarToggleTop" class="btn btn-link d-lg-none rounded-circle mr-3">
         <i class="fa fa-bars"></i>
     </button>
+
+    <!-- Topbar Brand (visible on mobile/tablet) -->
+    <span class="navbar-brand d-lg-none mb-0 h5 text-dark">HMS</span>
 
     <!-- Topbar Search -->
     {% comment %} <form class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
@@ -20,7 +23,7 @@
     </form> {% endcomment %}
 
     <!-- Topbar Navbar -->
-    <ul class="navbar-nav ml-auto">
+    <ul class="navbar-nav ml-auto topbar-nav">
 
         <!-- Nav Item - Search Dropdown (Visible Only XS) -->
         <li class="nav-item dropdown no-arrow d-sm-none">
@@ -44,46 +47,46 @@
 
         <!-- Custom: Registration Links -->
         {% if user.is_authenticated %}
-            <li class="nav-item">
+            <!-- Quick Access Links - Hidden on small screens, shown as icons on medium, full on large -->
             <!-- Custom: Staff Management -->
             {% if user.is_authenticated %}
-                <li class="nav-item">
+                <li class="nav-item d-none d-xl-block">
                     <a class="nav-link" href="{% url 'inpatient:bed_dashboard' %}">
                         <i class="fas fa-bed fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Bed Dashboard
+                        <span class="d-none d-xxl-inline">Bed Dashboard</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item d-none d-xl-block">
                     <a class="nav-link" href="{% url 'pharmacy:dispensing_report' %}">
                         <i class="fas fa-pills fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Dispensing Report
+                        <span class="d-none d-xxl-inline">Dispensing Report</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item d-none d-xl-block">
                     {% load url_helpers %}
                     {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
                     <a class="nav-link" href="{{ revenue_url }}">
                         <i class="fas fa-chart-line fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Revenue Statistics
+                        <span class="d-none d-xxl-inline">Revenue Statistics</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item d-none d-lg-block">
                     <a class="nav-link" href="{% url 'accounts:user_dashboard' %}">
                         <i class="fas fa-user-shield fa-sm fa-fw mr-2 text-gray-400"></i>
-                        User Management
+                        <span class="d-none d-xxl-inline">User Management</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'core:notifications_list' %}">
                         <i class="fas fa-bell fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Notifications
+                        <span class="d-none d-lg-inline">Notifications</span>
                     </a>
                 </li>
             {% else %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'accounts:login' %}">
                         <i class="fas fa-sign-in-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Login
+                        <span class="d-none d-sm-inline">Login</span>
                     </a>
                 </li>
             {% endif %}
@@ -147,11 +150,168 @@
 
     </ul>
     <!-- End of Topbar -->
-    <!-- Custom CSS for Priority Colors -->
+    <!-- Custom CSS for Priority Colors and Responsive Topbar -->
     <style>
         .bg-emergency-light { background-color: #dc3545; }
         .bg-urgent-light { background-color: #ffc107; }
         .bg-normal-light { background-color: #28a745; }
+
+        /* Topbar Responsive Styles */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+            padding: 0.5rem 1rem;
+        }
+
+        .topbar-nav {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+
+        /* Mobile Styles (< 576px) */
+        @media (max-width: 575.98px) {
+            .topbar {
+                padding: 0.5rem;
+            }
+
+            .topbar .nav-link {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+
+            .topbar .navbar-brand {
+                font-size: 1rem;
+                margin-right: auto;
+            }
+
+            #sidebarToggleTop {
+                margin-right: 0.5rem;
+            }
+
+            .topbar-nav {
+                gap: 0.25rem;
+            }
+
+            .img-profile {
+                width: 32px;
+                height: 32px;
+            }
+        }
+
+        /* Tablet Styles (576px - 991px) */
+        @media (min-width: 576px) and (max-width: 991.98px) {
+            .topbar {
+                padding: 0.75rem 1rem;
+            }
+
+            .topbar .nav-link {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.9rem;
+            }
+
+            .topbar .navbar-brand {
+                font-size: 1.25rem;
+            }
+
+            .topbar-nav {
+                gap: 0.5rem;
+            }
+
+            .img-profile {
+                width: 36px;
+                height: 36px;
+            }
+
+            /* Show only icons on tablet for space efficiency */
+            .topbar .nav-link span {
+                display: none;
+            }
+
+            .topbar .nav-link i {
+                margin-right: 0 !important;
+            }
+        }
+
+        /* Desktop Styles (992px - 1199px) */
+        @media (min-width: 992px) and (max-width: 1199.98px) {
+            .topbar {
+                padding: 1rem;
+            }
+
+            .topbar .nav-link {
+                padding: 0.5rem 1rem;
+                font-size: 0.95rem;
+            }
+
+            .topbar-nav {
+                gap: 0.75rem;
+            }
+
+            .img-profile {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        /* Large Desktop Styles (>= 1200px) */
+        @media (min-width: 1200px) {
+            .topbar {
+                padding: 1rem 1.5rem;
+            }
+
+            .topbar .nav-link {
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+            }
+
+            .topbar-nav {
+                gap: 1rem;
+            }
+
+            .img-profile {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        /* Responsive dropdown menu */
+        .dropdown-menu {
+            max-width: 90vw;
+        }
+
+        @media (max-width: 575.98px) {
+            .dropdown-menu {
+                font-size: 0.875rem;
+            }
+
+            .dropdown-item {
+                padding: 0.5rem 1rem;
+            }
+        }
+
+        /* Ensure topbar doesn't overflow */
+        .topbar-nav::-webkit-scrollbar {
+            height: 2px;
+        }
+
+        .topbar-nav::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+
+        .topbar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* Responsive spacing for divider */
+        @media (max-width: 767.98px) {
+            .topbar-divider {
+                display: none !important;
+            }
+        }
     </style>
 
 </nav>
