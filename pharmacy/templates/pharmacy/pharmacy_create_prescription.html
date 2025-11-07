@@ -169,11 +169,7 @@
                                             {% endfor %}
                                         </select>
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="quantity_0">Quantity</label>
-                                        <input type="number" name="quantity[]" id="quantity_0" class="form-control quantity-input" min="1" value="1" required>
-                                    </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-3">
                                         <label for="dosage_0">Dosage</label>
                                         <input type="text" name="dosage[]" id="dosage_0" class="form-control" placeholder="e.g., 1 tablet" required>
                                     </div>
@@ -181,7 +177,7 @@
                                         <label for="frequency_0">Frequency</label>
                                         <input type="text" name="frequency[]" id="frequency_0" class="form-control" placeholder="e.g., twice daily" required>
                                     </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-3">
                                         <label for="duration_0">Duration</label>
                                         <input type="text" name="duration[]" id="duration_0" class="form-control" placeholder="e.g., 7 days" required>
                                     </div>
@@ -200,7 +196,7 @@
                                 <div class="row mt-2">
                                     <div class="col-md-12">
                                         <small class="text-muted">
-                                            <strong>Cost:</strong> <span class="item-cost">₦0.00</span>
+                                            <i class="fas fa-info-circle"></i> Quantity will be determined during dispensing at the cart level
                                         </small>
                                     </div>
                                 </div>
@@ -215,8 +211,11 @@
                             <div class="col-md-12">
                                 <div class="card bg-light">
                                     <div class="card-body">
-                                        <h5>Total Prescription Cost: <span id="total-cost">₦0.00</span></h5>
-                                        <small class="text-muted">This will be adjusted based on NHIA status during billing</small>
+                                        <p class="mb-0">
+                                            <i class="fas fa-info-circle text-info"></i>
+                                            <strong>Note:</strong> The quantity for each medication will be determined during the dispensing process at the cart level.
+                                            Focus on providing accurate dosage, frequency, and duration instructions.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -241,33 +240,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let medicationCounter = 1;
-    
-    function updateTotalCost() {
-        let total = 0;
-        document.querySelectorAll('.medication-item').forEach(function(item) {
-            const select = item.querySelector('.medication-select');
-            const quantityInput = item.querySelector('.quantity-input');
-            const costSpan = item.querySelector('.item-cost');
-            
-            if (select.value && quantityInput.value) {
-                const price = parseFloat(select.options[select.selectedIndex].dataset.price || 0);
-                const quantity = parseInt(quantityInput.value || 0);
-                const itemCost = price * quantity;
-                
-                costSpan.textContent = '₦' + itemCost.toFixed(2);
-                total += itemCost;
-            } else {
-                costSpan.textContent = '₦0.00';
-            }
-        });
-        
-        document.getElementById('total-cost').textContent = '₦' + total.toFixed(2);
-    }
-    
+
     document.getElementById('add-medication-item').addEventListener('click', function() {
         const container = document.getElementById('medication-items-container');
         const newItem = container.querySelector('.medication-item').cloneNode(true);
-        
+
         // Update IDs and clear values
         newItem.querySelectorAll('input, select').forEach(function(input) {
             if (input.id) {
@@ -277,39 +254,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.value = '';
             }
         });
-        
+
         // Update labels
         newItem.querySelectorAll('label').forEach(function(label) {
             if (label.getAttribute('for')) {
                 label.setAttribute('for', label.getAttribute('for').replace(/\d+/, medicationCounter));
             }
         });
-        
+
         container.appendChild(newItem);
         medicationCounter++;
-        updateTotalCost();
     });
-    
+
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('remove-medication-item') || e.target.closest('.remove-medication-item')) {
             const items = document.querySelectorAll('.medication-item');
             if (items.length > 1) {
                 e.target.closest('.medication-item').remove();
-                updateTotalCost();
             } else {
                 alert('At least one medication is required.');
             }
         }
     });
-    
-    document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('medication-select') || e.target.classList.contains('quantity-input')) {
-            updateTotalCost();
-        }
-    });
-    
-    // Initial cost calculation
-    updateTotalCost();
 });
 </script>
 {% endblock %}

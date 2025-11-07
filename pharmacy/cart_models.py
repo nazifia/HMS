@@ -7,6 +7,7 @@ generate invoices, and complete dispensing after payment.
 """
 
 from django.db import models
+from django.db.models import Sum
 from django.conf import settings
 from django.utils import timezone
 from decimal import Decimal
@@ -242,7 +243,38 @@ class PrescriptionCartItem(models.Model):
         default=0,
         help_text="Available stock at time of adding to cart (cached)"
     )
-    
+
+    # Substitution tracking
+    substitute_medication = models.ForeignKey(
+        'pharmacy.Medication',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='substituted_in_carts',
+        help_text="Alternative medication to be dispensed instead of prescribed medication"
+    )
+
+    substitute_reason = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Reason for medication substitution"
+    )
+
+    substituted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='medication_substitutions',
+        help_text="User who authorized the substitution"
+    )
+
+    substituted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the substitution was made"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -254,6 +286,75 @@ class PrescriptionCartItem(models.Model):
     
     def __str__(self):
         return f"{self.prescription_item.medication.name} x {self.quantity}"
+
+    def get_effective_medication(self):
+        """Get the medication that will actually be dispensed (original or substitute)"""
+        return self.substitute_medication if self.substitute_medication else self.prescription_item.medication
+
+    def is_substituted(self):
+        """Check if this item uses a substitute medication"""
+        return self.substitute_medication is not None
+
+    def can_substitute(self):
+        """Check if substitution is allowed for this item"""
+        # Can only substitute if cart is still active and item not yet dispensed
+        if self.cart.status != 'active':
+            return False, 'Cannot substitute items in non-active cart'
+
+        if self.quantity_dispensed > 0:
+            return False, 'Cannot substitute partially dispensed items'
+
+        return True, 'Substitution allowed'
+
+    def substitute_with(self, new_medication, reason, user):
+        """
+        Substitute the prescribed medication with an alternative.
+        Updates pricing and stock availability.
+        """
+        can_sub, message = self.can_substitute()
+        if not can_sub:
+            raise ValidationError(message)
+
+        # Validate the new medication
+        if new_medication.id == self.prescription_item.medication.id:
+            raise ValidationError('Substitute medication cannot be the same as prescribed medication')
+
+        # Update substitution fields
+        self.substitute_medication = new_medication
+        self.substitute_reason = reason
+        self.substituted_by = user
+        self.substituted_at = timezone.now()
+
+        # Update unit price to substitute medication's price
+        self.unit_price = new_medication.price or Decimal('0.00')
+
+        # Update available stock for the new medication
+        self.update_available_stock()
+
+        self.save()
+
+        return True
+
+    def remove_substitution(self):
+        """Remove the substitution and revert to original medication"""
+        if not self.is_substituted():
+            return False
+
+        # Revert to original medication
+        self.substitute_medication = None
+        self.substitute_reason = None
+        self.substituted_by = None
+        self.substituted_at = None
+
+        # Restore original medication price
+        self.unit_price = self.prescription_item.medication.price or Decimal('0.00')
+
+        # Update stock for original medication
+        self.update_available_stock()
+
+        self.save()
+
+        return True
     
     def clean(self):
         """Validate cart item"""
@@ -301,10 +402,11 @@ class PrescriptionCartItem(models.Model):
         if not self.cart.dispensary:
             self.available_stock = 0
             return
-        
+
         from pharmacy.models import ActiveStoreInventory, MedicationInventory
-        
-        medication = self.prescription_item.medication
+
+        # Use substitute medication if present, otherwise use prescribed medication
+        medication = self.get_effective_medication()
         dispensary = self.cart.dispensary
         
         # Check ActiveStoreInventory first
@@ -377,27 +479,97 @@ class PrescriptionCartItem(models.Model):
                 'status': 'fully_dispensed',
                 'message': 'Fully dispensed',
                 'css_class': 'success',
-                'icon': 'check-circle'
+                'icon': 'check-circle',
+                'alternatives': []
             }
         elif self.available_stock >= remaining:
             return {
                 'status': 'available',
                 'message': f'{self.available_stock} available (need {remaining})',
                 'css_class': 'success',
-                'icon': 'check-circle'
+                'icon': 'check-circle',
+                'alternatives': []
             }
         elif self.available_stock > 0:
             return {
                 'status': 'partial',
                 'message': f'Only {self.available_stock} available (need {remaining})',
                 'css_class': 'warning',
-                'icon': 'exclamation-triangle'
+                'icon': 'exclamation-triangle',
+                'alternatives': []
             }
         else:
+            # Check for alternative medications with similar name
+            alternatives = self.get_alternative_medications()
+
+            message = 'Out of stock'
+            if alternatives:
+                alt_info = ', '.join([f'{alt["name"]} ({alt["stock"]} units)' for alt in alternatives[:2]])
+                message = f'Out of stock. Similar available: {alt_info}'
+
             return {
                 'status': 'out_of_stock',
-                'message': 'Out of stock',
+                'message': message,
                 'css_class': 'danger',
-                'icon': 'times-circle'
+                'icon': 'times-circle',
+                'alternatives': alternatives
             }
+
+    def get_alternative_medications(self):
+        """Find alternative medications with similar name in the same dispensary"""
+        if not self.cart.dispensary:
+            return []
+
+        from pharmacy.models import ActiveStoreInventory
+
+        medication = self.prescription_item.medication
+        dispensary = self.cart.dispensary
+
+        alternatives = []
+
+        try:
+            active_store = getattr(dispensary, 'active_store', None)
+            if active_store:
+                # Find medications with same base name but different ID
+                similar_meds = ActiveStoreInventory.objects.filter(
+                    medication__name__iexact=medication.name,
+                    active_store=active_store,
+                    stock_quantity__gt=0
+                ).exclude(
+                    medication=medication
+                ).select_related('medication').values(
+                    'medication__id',
+                    'medication__name',
+                    'medication__strength',
+                    'medication__dosage_form'
+                ).annotate(
+                    total_stock=Sum('stock_quantity')
+                )
+
+                for med in similar_meds:
+                    strength = med['medication__strength'] or ''
+                    dosage = med['medication__dosage_form'] or ''
+                    name_parts = [med['medication__name'], strength, dosage]
+                    full_name = ' '.join([p for p in name_parts if p])
+
+                    # Get price from the medication
+                    from pharmacy.models import Medication as Med
+                    try:
+                        med_obj = Med.objects.get(id=med['medication__id'])
+                        price = float(med_obj.price) if med_obj.price else 0
+                    except:
+                        price = 0
+
+                    alternatives.append({
+                        'id': med['medication__id'],
+                        'name': full_name,
+                        'strength': strength,
+                        'dosage_form': dosage,
+                        'stock': med['total_stock'],
+                        'price': price
+                    })
+        except Exception:
+            pass
+
+        return alternatives
 

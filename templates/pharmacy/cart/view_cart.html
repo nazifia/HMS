@@ -269,6 +269,8 @@
                         <thead>
                             <tr>
                                 <th>Medication</th>
+                                <th>Strength</th>
+                                <th>Form</th>
                                 <th>Prescribed</th>
                                 <th>In Cart</th>
                                 <th>Dispensed</th>
@@ -283,8 +285,48 @@
                             {% for item in cart.items.all %}
                             <tr>
                                 <td>
-                                    <strong>{{ item.prescription_item.medication.name }}</strong><br>
-                                    <small class="text-muted">{{ item.prescription_item.medication.description|default:"" }}</small>
+                                    {% if item.is_substituted %}
+                                        <div class="mb-2">
+                                            <span class="badge badge-warning">
+                                                <i class="fas fa-exchange-alt"></i> SUBSTITUTED
+                                            </span>
+                                        </div>
+                                        <div class="mb-1">
+                                            <small class="text-muted">Prescribed:</small><br>
+                                            <del class="text-muted">{{ item.prescription_item.medication.name }}</del>
+                                        </div>
+                                        <div>
+                                            <small class="text-success"><strong>Dispensing:</strong></small><br>
+                                            <strong class="text-success">{{ item.substitute_medication.name }}</strong>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-info-circle"></i> {{ item.substitute_reason|truncatewords:15 }}
+                                        </small>
+                                    {% else %}
+                                        <strong>{{ item.prescription_item.medication.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ item.prescription_item.medication.description|default:"" }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.is_substituted %}
+                                        <div class="mb-1">
+                                            <del class="text-muted small">{{ item.prescription_item.medication.strength|default:"-" }}</del>
+                                        </div>
+                                        <span class="badge badge-success">{{ item.substitute_medication.strength|default:"-" }}</span>
+                                    {% else %}
+                                        <span class="badge badge-info">{{ item.prescription_item.medication.strength|default:"-" }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.is_substituted %}
+                                        <div class="mb-1">
+                                            <del class="text-muted small">{{ item.prescription_item.medication.dosage_form|default:"-" }}</del>
+                                        </div>
+                                        <span class="badge badge-success">{{ item.substitute_medication.dosage_form|default:"-" }}</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">{{ item.prescription_item.medication.dosage_form|default:"-" }}</span>
+                                    {% endif %}
                                 </td>
                                 <td>{{ item.prescription_item.quantity }}</td>
                                 <td>
@@ -323,15 +365,31 @@
                                 {% endif %}
                                 <td>
                                     {% if cart.status == 'active' %}
-                                    <button class="btn btn-sm btn-danger" onclick="removeItem({{ item.id }})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                        {% if item.is_substituted %}
+                                            <button class="btn btn-sm btn-warning" onclick="removeSubstitution({{ item.id }})" title="Revert to prescribed medication">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-primary"
+                                                    data-item-id="{{ item.id }}"
+                                                    data-prescribed-med="{{ item.prescription_item.medication.name }}"
+                                                    data-prescribed-strength="{{ item.prescription_item.medication.strength|default:'' }}"
+                                                    data-prescribed-form="{{ item.prescription_item.medication.dosage_form|default:'' }}"
+                                                    data-alternatives='{{ item.get_stock_status.alternatives|escapejs }}'
+                                                    onclick="showSubstituteModal(this)"
+                                                    title="Substitute medication">
+                                                <i class="fas fa-exchange-alt"></i>
+                                            </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-danger" onclick="removeItem({{ item.id }})" title="Remove from cart">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="{% if is_nhia_patient %}9{% else %}8{% endif %}" class="text-center py-4">
+                                <td colspan="{% if is_nhia_patient %}11{% else %}10{% endif %}" class="text-center py-4">
                                     <i class="fas fa-shopping-basket fa-3x text-muted mb-3"></i>
                                     <p class="text-muted">No items in cart</p>
                                 </td>
@@ -479,6 +537,77 @@
         </div>
     </div>
 </div>
+    <!-- Substitution Modal -->
+    <div class="modal fade" id="substituteModal" tabindex="-1" role="dialog" aria-labelledby="substituteModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="substituteModalLabel">
+                        <i class="fas fa-exchange-alt"></i> Substitute Medication
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="post" id="substituteForm">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Warning:</strong> Substituting medications requires proper authorization and documentation.
+                        </div>
+
+                        <div class="alert alert-info" id="prescribedMedicationInfo">
+                            <strong>Prescribed Medication:</strong>
+                            <span id="prescribedMedDisplay"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="medicationSearch">
+                                <i class="fas fa-search"></i> Search Medications
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="medicationSearch"
+                                   placeholder="Type to filter medications..."
+                                   onkeyup="filterMedications()">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="substitute_medication_id">Select Substitute Medication *</label>
+                            <select class="form-control"
+                                    id="substitute_medication_id"
+                                    name="substitute_medication_id"
+                                    size="8"
+                                    required
+                                    style="height: 250px;">
+                                <option value="">-- Select Alternative --</option>
+                            </select>
+                            <small class="form-text text-muted">
+                                <span class="badge badge-success">✓ Similar alternatives</span> shown first |
+                                Total medications available: <strong id="totalMedCount">0</strong>
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reason">Reason for Substitution *</label>
+                            <textarea class="form-control" id="reason" name="reason" rows="3" required
+                                      placeholder="e.g., Prescribed medication out of stock, same active ingredient, approved by doctor"></textarea>
+                            <small class="form-text text-muted">Please provide a clear reason for the substitution</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check"></i> Substitute Medication
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -524,5 +653,135 @@ document.getElementById('dispensarySelect')?.addEventListener('change', function
     // You could add AJAX here to update stock indicators without full page reload
     console.log('Dispensary changed to:', this.value);
 });
+
+// Substitution functions
+let currentItemId = null;
+let allMedications = {{ available_medications|default:"[]"|safe }};
+let currentAlternativeIds = [];
+
+function showSubstituteModal(button) {
+    const itemId = button.getAttribute('data-item-id');
+    const prescribedMed = button.getAttribute('data-prescribed-med');
+    const prescribedStrength = button.getAttribute('data-prescribed-strength');
+    const prescribedForm = button.getAttribute('data-prescribed-form');
+    let alternatives = button.getAttribute('data-alternatives');
+
+    currentItemId = itemId;
+
+    // Parse alternatives
+    try {
+        alternatives = JSON.parse(alternatives);
+        currentAlternativeIds = alternatives.map(alt => alt.id);
+    } catch (e) {
+        console.error('Error parsing alternatives:', e);
+        alternatives = [];
+        currentAlternativeIds = [];
+    }
+
+    // Display prescribed medication info
+    let prescribedDisplay = prescribedMed;
+    if (prescribedStrength) prescribedDisplay += ` ${prescribedStrength}`;
+    if (prescribedForm) prescribedDisplay += ` ${prescribedForm}`;
+    document.getElementById('prescribedMedDisplay').textContent = prescribedDisplay;
+
+    // Populate the select dropdown with all medications
+    const select = document.getElementById('substitute_medication_id');
+    select.innerHTML = '';
+
+    // First, add similar alternatives (marked)
+    if (alternatives && alternatives.length > 0) {
+        alternatives.forEach(alt => {
+            const option = document.createElement('option');
+            option.value = alt.id;
+            option.textContent = `✓ ${alt.name} (${alt.stock} units) - ₦${alt.price || 0}`;
+            option.className = 'similar-alternative';
+            option.style.backgroundColor = '#d4edda';
+            option.style.fontWeight = 'bold';
+            select.appendChild(option);
+        });
+
+        // Add separator
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '─────────────── Other Available Medications ───────────────';
+        select.appendChild(separator);
+    }
+
+    // Then add all other medications
+    if (allMedications && allMedications.length > 0) {
+        allMedications.forEach(med => {
+            // Skip if already in alternatives
+            if (currentAlternativeIds.includes(med.id)) {
+                return;
+            }
+
+            const option = document.createElement('option');
+            option.value = med.id;
+
+            // Build display text
+            let displayText = med.name;
+            if (med.strength) displayText += ` ${med.strength}`;
+            if (med.dosage_form) displayText += ` ${med.dosage_form}`;
+            displayText += ` (${med.stock} units)`;
+            displayText += ` - ₦${med.price}`;
+
+            if (med.generic_name) {
+                displayText += ` [${med.generic_name}]`;
+            }
+
+            option.textContent = displayText;
+            option.setAttribute('data-search-text', displayText.toLowerCase());
+            select.appendChild(option);
+        });
+    }
+
+    // Update count
+    document.getElementById('totalMedCount').textContent = select.options.length - 1; // Subtract separator
+
+    // Clear search box
+    document.getElementById('medicationSearch').value = '';
+
+    // Set form action
+    const form = document.getElementById('substituteForm');
+    form.action = `/pharmacy/cart/item/${itemId}/substitute/`;
+
+    // Show modal
+    $('#substituteModal').modal('show');
+}
+
+function filterMedications() {
+    const searchText = document.getElementById('medicationSearch').value.toLowerCase();
+    const select = document.getElementById('substitute_medication_id');
+    const options = select.options;
+
+    let visibleCount = 0;
+
+    for (let i = 0; i < options.length; i++) {
+        const option = options[i];
+        const optionText = option.textContent.toLowerCase();
+
+        if (option.disabled) {
+            // Keep separators visible
+            option.style.display = '';
+            continue;
+        }
+
+        if (searchText === '' || optionText.includes(searchText)) {
+            option.style.display = '';
+            visibleCount++;
+        } else {
+            option.style.display = 'none';
+        }
+    }
+
+    // Update visible count
+    document.getElementById('totalMedCount').textContent = visibleCount;
+}
+
+function removeSubstitution(itemId) {
+    if (confirm('Are you sure you want to revert to the original prescribed medication?')) {
+        window.location.href = `/pharmacy/cart/item/${itemId}/remove-substitution/`;
+    }
+}
 </script>
 {% endblock %}

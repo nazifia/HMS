@@ -390,10 +390,15 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Note:</strong> Quantity will be determined during the dispensing process at the cart level.
+                    Focus on providing accurate dosage, frequency, and duration instructions.
+                </div>
                 <form id="addMedicationForm" method="post" action="{% url 'pharmacy:add_prescription_item' prescription.id %}">
                     {% csrf_token %}
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="id_medication" class="form-label">Medication *</label>
                                 <select name="medication" id="id_medication" class="form-control" required>
@@ -404,14 +409,8 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="id_quantity" class="form-label">Quantity *</label>
-                                <input type="number" name="quantity" id="id_quantity" class="form-control" min="1" required>
-                            </div>
-                        </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -426,7 +425,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">

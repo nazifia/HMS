@@ -190,6 +190,8 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Medication</th>
+                                <th>Strength</th>
+                                <th>Form</th>
                                 <th>Category</th>
                                 <th>Stock Quantity</th>
                                 <th>Reorder Level</th>
@@ -204,6 +206,20 @@
                                         <strong>{{ item.medication.name }}</strong>
                                         {% if item.medication.generic_name %}
                                             <br><small class="text-muted">{{ item.medication.generic_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.medication.strength %}
+                                            <span class="badge badge-info">{{ item.medication.strength }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.medication.dosage_form %}
+                                            <span class="badge badge-secondary">{{ item.medication.dosage_form }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -238,7 +254,7 @@
                                 </tr>
                             {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">
+                                    <td colspan="8" class="text-center text-muted py-4">
                                         <i class="fas fa-box-open fa-3x mb-3"></i>
                                         <p class="mb-0">No inventory items found in this store.</p>
                                     </td>
@@ -340,6 +356,8 @@
                                 <tr>
                                     <th>Transfer ID</th>
                                     <th>Medication</th>
+                                    <th>Strength</th>
+                                    <th>Form</th>
                                     <th>Quantity</th>
                                     <th>Requested By</th>
                                     <th>Requested At</th>
@@ -351,7 +369,26 @@
                                 {% for transfer in pending_dispensary_transfers %}
                                 <tr>
                                     <td>#{{ transfer.id }}</td>
-                                    <td>{{ transfer.medication.name }}</td>
+                                    <td>
+                                        <strong>{{ transfer.medication.name }}</strong>
+                                        {% if transfer.medication.generic_name %}
+                                            <br><small class="text-muted">{{ transfer.medication.generic_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transfer.medication.strength %}
+                                            <span class="badge badge-info">{{ transfer.medication.strength }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transfer.medication.dosage_form %}
+                                            <span class="badge badge-secondary">{{ transfer.medication.dosage_form }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ transfer.quantity }}</td>
                                     <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
                                     <td>{{ transfer.requested_at|date:"M d, Y H:i" }}</td>
@@ -423,6 +460,8 @@
                                             <tr>
                                                 <th>Select</th>
                                                 <th>Medication</th>
+                                                <th>Strength</th>
+                                                <th>Form</th>
                                                 <th>Available Stock</th>
                                                 <th>Transfer Quantity</th>
                                                 <th>Batch</th>
@@ -433,7 +472,7 @@
                                             {% if available_bulk_medications %}
                                                 {% for bulk_data in available_bulk_medications %}
                                                     <tr class="bulk-store-row" data-bulk-store="{{ bulk_data.bulk_store.id }}">
-                                                        <td colspan="6" class="bg-light">
+                                                        <td colspan="8" class="bg-light">
                                                             <strong>{{ bulk_data.bulk_store.name }}</strong>
                                                         </td>
                                                     </tr>
@@ -445,7 +484,26 @@
                                                                        class="form-check-input medication-checkbox"
                                                                        data-available="{{ med_inventory.stock_quantity }}">
                                                             </td>
-                                                            <td>{{ med_inventory.medication.name }}</td>
+                                                            <td>
+                                                                <strong>{{ med_inventory.medication.name }}</strong>
+                                                                {% if med_inventory.medication.generic_name %}
+                                                                    <br><small class="text-muted">{{ med_inventory.medication.generic_name }}</small>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if med_inventory.medication.strength %}
+                                                                    <span class="badge badge-info">{{ med_inventory.medication.strength }}</span>
+                                                                {% else %}
+                                                                    <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if med_inventory.medication.dosage_form %}
+                                                                    <span class="badge badge-secondary">{{ med_inventory.medication.dosage_form }}</span>
+                                                                {% else %}
+                                                                    <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </td>
                                                             <td>{{ med_inventory.stock_quantity }}</td>
                                                             <td>
                                                                 <input type="number" name="transfer_quantities"
@@ -460,7 +518,7 @@
                                                 {% endfor %}
                                             {% else %}
                                                 <tr>
-                                                    <td colspan="6" class="text-center text-muted py-4">
+                                                    <td colspan="8" class="text-center text-muted py-4">
                                                         <i class="fas fa-box-open fa-2x mb-2"></i>
                                                         <p>No medications available in bulk stores for transfer.</p>
                                                         <small>Please ensure bulk stores have medications with stock > 0.</small>

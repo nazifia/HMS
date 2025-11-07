@@ -8,9 +8,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Sum
 from django.http import JsonResponse
 from decimal import Decimal
 from django.utils import timezone
+import json
 
 from .cart_models import PrescriptionCart, PrescriptionCartItem
 from .models import Prescription, PrescriptionItem, Dispensary, DispensingLog
@@ -124,7 +126,49 @@ def view_cart(request, cart_id):
     payment_details = None
     if cart.invoice and cart.invoice.payments.exists():
         payment_details = cart.invoice.payments.all().order_by('-payment_date')
-    
+
+    # Get all available medications in the dispensary for substitution
+    available_medications = []
+    if cart.dispensary and cart.status == 'active':
+        from pharmacy.models import ActiveStoreInventory, Medication
+
+        active_store = getattr(cart.dispensary, 'active_store', None)
+        if active_store:
+            # Get all medications with stock in this dispensary
+            med_stock = ActiveStoreInventory.objects.filter(
+                active_store=active_store,
+                stock_quantity__gt=0
+            ).select_related('medication').values(
+                'medication__id',
+                'medication__name',
+                'medication__strength',
+                'medication__dosage_form',
+                'medication__generic_name',
+                'medication__price'
+            ).annotate(
+                total_stock=Sum('stock_quantity')
+            ).order_by('medication__name')
+
+            for med in med_stock:
+                # Build full medication name
+                name_parts = [med['medication__name']]
+                if med['medication__strength']:
+                    name_parts.append(med['medication__strength'])
+                if med['medication__dosage_form']:
+                    name_parts.append(med['medication__dosage_form'])
+                full_name = ' '.join(name_parts)
+
+                available_medications.append({
+                    'id': med['medication__id'],
+                    'name': med['medication__name'],
+                    'full_name': full_name,
+                    'strength': med['medication__strength'] or '',
+                    'dosage_form': med['medication__dosage_form'] or '',
+                    'generic_name': med['medication__generic_name'] or '',
+                    'stock': med['total_stock'],
+                    'price': float(med['medication__price']) if med['medication__price'] else 0
+                })
+
     context = {
         'cart': cart,
         'dispensaries': dispensaries,
@@ -135,6 +179,7 @@ def view_cart(request, cart_id):
         'checkout_message': checkout_message,
         'is_nhia_patient': is_nhia_patient,
         'payment_details': payment_details,
+        'available_medications': json.dumps(available_medications),
         'page_title': f'Prescription Cart #{cart.id}',
         'active_nav': 'pharmacy',
     }
@@ -320,7 +365,8 @@ def complete_dispensing_from_cart(request, cart_id):
 
             for cart_item in cart.items.all():
                 p_item = cart_item.prescription_item
-                medication = p_item.medication
+                # Use substitute medication if present, otherwise use prescribed medication
+                medication = cart_item.get_effective_medication()
                 dispensary = cart.dispensary
 
                 # Get remaining quantity to dispense
@@ -577,4 +623,114 @@ def cart_receipt(request, cart_id):
     }
 
     return render(request, 'pharmacy/cart/cart_receipt.html', context)
+
+
+@login_required
+def substitute_cart_item(request, item_id):
+    """
+    Substitute a cart item with an alternative medication.
+    Requires pharmacist approval and reason.
+    """
+    cart_item = get_object_or_404(PrescriptionCartItem, id=item_id)
+    cart = cart_item.cart
+
+    # Check if substitution is allowed
+    can_sub, message = cart_item.can_substitute()
+    if not can_sub:
+        messages.error(request, f'Cannot substitute: {message}')
+        return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+    if request.method == 'POST':
+        substitute_med_id = request.POST.get('substitute_medication_id')
+        reason = request.POST.get('reason', '').strip()
+
+        # Validate inputs
+        if not substitute_med_id:
+            messages.error(request, 'Please select a substitute medication')
+            return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+        if not reason:
+            messages.error(request, 'Please provide a reason for substitution')
+            return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+        try:
+            from pharmacy.models import Medication
+
+            substitute_med = Medication.objects.get(id=substitute_med_id)
+
+            # Perform substitution
+            with transaction.atomic():
+                cart_item.substitute_with(substitute_med, reason, request.user)
+
+                # Log audit action
+                log_audit_action(
+                    request.user,
+                    'update',
+                    cart_item,
+                    f'Substituted {cart_item.prescription_item.medication.name} with {substitute_med.name}. Reason: {reason}'
+                )
+
+                messages.success(
+                    request,
+                    f'✅ Successfully substituted {cart_item.prescription_item.medication.name} '
+                    f'with {substitute_med.name} ({substitute_med.strength or ""} {substitute_med.dosage_form or ""})'
+                )
+
+                # Check if substitution resolved stock issues
+                cart_item.update_available_stock()
+                if cart_item.available_stock >= cart_item.quantity:
+                    messages.info(request, f'✓ {substitute_med.name} has sufficient stock ({cart_item.available_stock} units available)')
+                else:
+                    messages.warning(
+                        request,
+                        f'⚠️ Only {cart_item.available_stock} units of {substitute_med.name} available (need {cart_item.quantity})'
+                    )
+
+        except Medication.DoesNotExist:
+            messages.error(request, 'Invalid substitute medication selected')
+        except ValidationError as e:
+            messages.error(request, f'Substitution failed: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error during substitution: {str(e)}')
+
+    return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+
+@login_required
+def remove_substitution(request, item_id):
+    """
+    Remove substitution and revert to original prescribed medication.
+    """
+    cart_item = get_object_or_404(PrescriptionCartItem, id=item_id)
+    cart = cart_item.cart
+
+    if not cart_item.is_substituted():
+        messages.warning(request, 'This item is not substituted')
+        return redirect('pharmacy:view_cart', cart_id=cart.id)
+
+    try:
+        with transaction.atomic():
+            original_med = cart_item.prescription_item.medication
+            substitute_med = cart_item.substitute_medication
+
+            cart_item.remove_substitution()
+
+            # Log audit action
+            log_audit_action(
+                request.user,
+                'update',
+                cart_item,
+                f'Removed substitution of {substitute_med.name}, reverted to {original_med.name}'
+            )
+
+            messages.success(
+                request,
+                f'✅ Reverted to original medication: {original_med.name} '
+                f'({original_med.strength or ""} {original_med.dosage_form or ""})'
+            )
+
+    except Exception as e:
+        messages.error(request, f'Error removing substitution: {str(e)}')
+
+    return redirect('pharmacy:view_cart', cart_id=cart.id)
 

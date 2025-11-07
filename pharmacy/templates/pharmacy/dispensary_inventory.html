@@ -22,6 +22,8 @@
                     <thead>
                         <tr>
                             <th>Medication</th>
+                            <th>Strength</th>
+                            <th>Form</th>
                             <th>Current Stock</th>
                             <th>Reorder Level</th>
                             <th>Last Restock</th>
@@ -31,8 +33,34 @@
                     <tbody>
                         {% for item in inventory_items %}
                         <tr>
-                            <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
-                            <td>{{ item.stock_quantity }}</td>
+                            <td>
+                                <strong>{{ item.medication.name }}</strong>
+                                {% if item.medication.generic_name %}
+                                    <br><small class="text-muted">{{ item.medication.generic_name }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.medication.strength %}
+                                    <span class="badge badge-info">{{ item.medication.strength }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.medication.dosage_form %}
+                                    <span class="badge badge-secondary">{{ item.medication.dosage_form }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ item.stock_quantity }}</strong>
+                                {% if item.stock_quantity <= item.reorder_level %}
+                                    <span class="badge badge-danger ml-1">
+                                        <i class="fas fa-exclamation-triangle"></i> Low
+                                    </span>
+                                {% endif %}
+                            </td>
                             <td>{{ item.reorder_level }}</td>
                             <td>{{ item.last_restock_date|date:"Y-m-d H:i"|default:"N/A" }}</td>
                             <td>
