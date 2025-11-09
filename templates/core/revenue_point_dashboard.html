@@ -4,9 +4,16 @@
 
 {% block title %}{{ page_title }} - HMS{% endblock %}
 
+{% block head_extra %}
+<!-- Prevent caching of this page -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+{% endblock %}
+
 {% block extra_css %}
-<link href="{% static 'vendor/datatables/dataTables.bootstrap4.min.css' %}" rel="stylesheet">
-<link href="{% static 'css/sb-admin-2.min.css' %}" rel="stylesheet">
+<!-- DataTables CSS from CDN -->
+<link href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css" rel="stylesheet">
 <style>
     .revenue-card {
         transition: transform 0.2s;
@@ -75,6 +82,7 @@
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">
         <i class="fas fa-chart-pie fa-fw"></i> {{ page_title }}
+        <small class="text-muted" style="font-size: 0.7rem;">v2.0</small>
     </h1>
     <div class="export-buttons">
         <button class="btn btn-success btn-sm" onclick="exportData('csv')">
@@ -94,13 +102,17 @@
     <form method="GET" id="filter-form" class="row">
         <div class="col-md-3">
             <label for="date_filter" class="form-label">Date Range</label>
-            <select name="date_filter" id="date_filter" class="form-control">
-                {% for value, label in date_filter_options %}
-                    <option value="{{ value }}" {% if value == date_filter %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                {% endfor %}
+            <select name="date_filter" id="date_filter" class="form-control" data-role="date-range-filter">
+                <option value="current_month" {% if date_filter == "current_month" %}selected{% endif %}>Current Month</option>
+                <option value="previous_month" {% if date_filter == "previous_month" %}selected{% endif %}>Previous Month</option>
+                <option value="last_3_months" {% if date_filter == "last_3_months" %}selected{% endif %}>Last 3 Months</option>
+                <option value="current_year" {% if date_filter == "current_year" %}selected{% endif %}>Current Year</option>
+                <option value="custom_range" {% if date_filter == "custom_range" %}selected{% endif %}>Custom Range</option>
             </select>
+        </div>
+        <div class="col-md-2" id="month_picker_wrapper" style="display: none;">
+            <label for="month_picker" class="form-label">Month</label>
+            <input type="month" name="selected_month" id="month_picker" class="form-control" value="{{ start_date|date:'Y-m' }}">
         </div>
         <div class="col-md-2" id="custom-date-start" style="display: none;">
             <label for="start_date" class="form-label">Start Date</label>
@@ -408,7 +420,7 @@
                     {% for dept_name, dept_data in breakdown_data.specialty_departments.items %}
                     <div class="card border-left-secondary">
                         <div class="card-body p-3">
-                            <h6 class="font-weight-bold">{{ dept_name|title|replace:"_: " }}</h6>
+                            <h6 class="font-weight-bold">{{ dept_name|title }}</h6>
                             <p class="mb-1">
                                 <strong>Revenue:</strong> ₦{{ dept_data.revenue|floatformat:2|intcomma }}
                             </p>
@@ -461,138 +473,353 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'vendor/chart.js/Chart.min.js' %}"></script>
-<script src="{% static 'vendor/datatables/jquery.dataTables.min.js' %}"></script>
-<script src="{% static 'vendor/datatables/dataTables.bootstrap4.min.js' %}"></script>
+<!-- Chart.js from CDN - Using UNPKG (more reliable) -->
+<script src="https://unpkg.com/chart.js@2.9.4/dist/Chart.min.js"></script>
+<!-- DataTables from CDN (optional, can be removed if not needed) -->
+<script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+
+<!-- Debug: Data structure -->
+<script>
+console.log('=== REVENUE DASHBOARD DEBUG ===');
+console.log('Error status:', {{ error|yesno:"true,false" }});
+{% if not error %}
+console.log('Breakdown data exists:', {{ breakdown_data|yesno:"true,false" }});
+console.log('Summary by category:', {
+    clinical: {{ breakdown_data.summary_by_category.clinical_services.revenue|default:0 }},
+    support: {{ breakdown_data.summary_by_category.support_services.revenue|default:0 }},
+    administrative: {{ breakdown_data.summary_by_category.administrative_services.revenue|default:0 }},
+    specialty: {{ breakdown_data.summary_by_category.specialty_departments.revenue|default:0 }}
+});
+console.log('Has trends:', {{ breakdown_data.trends|yesno:"true,false" }});
+{% endif %}
+console.log('===============================');
+</script>
 
 <script>
+// Wait for Chart.js to load
+function waitForChartJS(callback, maxAttempts = 50) {
+    let attempts = 0;
+    const checkInterval = setInterval(function() {
+        attempts++;
+        if (typeof Chart !== 'undefined') {
+            console.log('Chart.js loaded successfully! Version:', Chart.version);
+            clearInterval(checkInterval);
+            callback();
+        } else if (attempts >= maxAttempts) {
+            console.error('Chart.js failed to load after', attempts, 'attempts');
+            clearInterval(checkInterval);
+            // Show error message to user
+            $('.chart-container').html('<div class="alert alert-warning text-center">Chart library failed to load. Please refresh the page or check your internet connection.</div>');
+        }
+    }, 100);
+}
+
 // Initialize charts and functionality
 $(document).ready(function() {
-    initializeCharts();
-    setupEventHandlers();
+    console.log('Document ready, waiting for Chart.js...');
+    waitForChartJS(function() {
+        console.log('Initializing charts now...');
+        initializeCharts();
+        setupEventHandlers();
+    });
 });
 
-// Date filter change handler
-$('#date_filter').change(function() {
-    if ($(this).val() === 'custom_range') {
+// Date filter change handler (toggle month/custom range inputs)
+$('#date_filter').on('change', function() {
+    const value = $(this).val();
+    console.log('Date filter changed to:', value);
+    
+    if (value === 'custom_range') {
         $('#custom-date-start, #custom-date-end').show();
+        $('#month_picker_wrapper').hide();
+    } else if (value === 'current_month' || value === 'previous_month' || value === 'current_year') {
+        $('#month_picker_wrapper').show();
+        $('#custom-date-start, #custom-date-end').hide();
     } else {
+        // For other options (last_3_months, etc.), hide both month picker and custom dates
+        $('#month_picker_wrapper').hide();
         $('#custom-date-start, #custom-date-end').hide();
     }
 });
 
-// Initialize on page load
+// Month picker change: update start/end dates and submit
+$('#month_picker').on('change', function() {
+    const monthValue = this.value; // format YYYY-MM
+    if (!monthValue) {
+        console.log('No month value selected');
+        return;
+    }
+    
+    const [year, month] = monthValue.split('-');
+    if (!year || !month) {
+        console.log('Invalid month value:', monthValue);
+        return;
+    }
+    
+    const start = `${year}-${month}-01`;
+    const endDate = new Date(year, parseInt(month), 0).getDate();
+    const end = `${year}-${month}-${String(endDate).padStart(2, '0')}`;
+    
+    console.log('Month picker changed:', { monthValue, start, end });
+    $('#start_date').val(start);
+    $('#end_date').val(end);
+    $('#filter-form').submit();
+});
+
+// Initialize on page load based on current selection
+console.log('Initializing date filter with value:', $('#date_filter').val());
 $('#date_filter').trigger('change');
 
 function initializeCharts() {
     {% if not error %}
-    // Revenue Distribution Chart
-    const distributionCtx = document.getElementById('revenueDistributionChart').getContext('2d');
-    new Chart(distributionCtx, {
-        type: 'doughnut',
-        data: {
-            labels: [
-                'Clinical Services',
-                'Support Services', 
-                'Administrative Services',
-                'Specialty Departments'
-            ],
-            datasets: [{
-                data: [
-                    {{ breakdown_data.summary_by_category.clinical_services.revenue }},
-                    {{ breakdown_data.summary_by_category.support_services.revenue }},
-                    {{ breakdown_data.summary_by_category.administrative_services.revenue }},
-                    {{ breakdown_data.summary_by_category.specialty_departments.revenue }}
-                ],
-                backgroundColor: [
-                    '#4e73df',
-                    '#1cc88a', 
-                    '#36b9cc',
-                    '#f6c23e'
-                ],
-                hoverBackgroundColor: [
-                    '#2e59d9',
-                    '#17a673',
-                    '#2c9faf',
-                    '#dda20a'
-                ],
-                hoverBorderColor: "rgba(234, 236, 244, 1)",
-            }],
-        },
-        options: {
-            maintainAspectRatio: false,
-            tooltips: {
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                xPadding: 15,
-                yPadding: 15,
-                displayColors: false,
-                caretPadding: 10,
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        const dataset = data.datasets[tooltipItem.datasetIndex];
-                        const value = dataset.data[tooltipItem.index];
-                        return data.labels[tooltipItem.index] + ': ₦' + 
-                               new Intl.NumberFormat().format(value);
-                    }
-                }
-            },
-            legend: {
-                display: true,
-                position: 'bottom'
-            },
-            cutoutPercentage: 80,
-        },
-    });
+    try {
+        // Revenue Distribution Chart (only if data is available)
+        const distributionEl = document.getElementById('revenueDistributionChart');
+        if (distributionEl) {
+            const distributionCtx = distributionEl.getContext('2d');
+            const distData = [
+                {{ breakdown_data.summary_by_category.clinical_services.revenue|default:0 }},
+                {{ breakdown_data.summary_by_category.support_services.revenue|default:0 }},
+                {{ breakdown_data.summary_by_category.administrative_services.revenue|default:0 }},
+                {{ breakdown_data.summary_by_category.specialty_departments.revenue|default:0 }}
+            ];
 
-    // Revenue Trends Chart (if trend data exists)
-    {% if breakdown_data.trends %}
-    const trendsCtx = document.getElementById('revenueTrendsChart').getContext('2d');
-    new Chart(trendsCtx, {
-        type: 'line',
-        data: {
-            labels: [
+            console.log('Distribution Data:', distData);
+
+            const hasDistData = distData.some(v => v && v > 0);
+            console.log('Distribution data check:', { distData, hasDistData });
+            
+            if (hasDistData) {
+                window.distributionChart = new Chart(distributionCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [
+                            'Clinical Services',
+                            'Support Services',
+                            'Administrative Services',
+                            'Specialty Departments'
+                        ],
+                        datasets: [{
+                            data: distData,
+                            backgroundColor: [
+                                '#4e73df',
+                                '#1cc88a',
+                                '#36b9cc',
+                                '#f6c23e'
+                            ],
+                            hoverBackgroundColor: [
+                                '#2e59d9',
+                                '#17a673',
+                                '#2c9faf',
+                                '#dda20a'
+                            ],
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                            callbacks: {
+                                label: function(tooltipItem, data) {
+                                    const dataset = data.datasets[tooltipItem.datasetIndex];
+                                    const value = dataset.data[tooltipItem.index];
+                                    return data.labels[tooltipItem.index] + ': ₦' +
+                                           new Intl.NumberFormat().format(value);
+                                }
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        cutoutPercentage: 80,
+                    }
+                });
+                console.log('Distribution chart created successfully');
+            } else {
+                console.log('No distribution data available, showing empty state');
+                
+                // Create a placeholder message
+                const emptyHTML = '<div class="text-center text-muted p-5"><i class="fas fa-chart-pie fa-3x mb-3"></i><h5>No revenue data for selected period</h5><p class="mb-0">Try selecting a different date range or check back later.</p><button class="btn btn-outline-primary btn-sm mt-3" onclick="createDemoChart(\'distribution\')"><i class="fas fa-eye"></i> Show Sample Chart</button></div>';
+                distributionEl.parentElement.innerHTML = emptyHTML;
+            }
+        }
+
+        // Revenue Trends Chart (if trend data exists)
+        {% if breakdown_data.trends %}
+        const trendsEl = document.getElementById('revenueTrendsChart');
+        if (trendsEl) {
+            const trendsCtx = trendsEl.getContext('2d');
+            const trendLabels = [
                 {% for month, data in breakdown_data.trends.items %}
                     '{{ month }}',
                 {% endfor %}
-            ],
-            datasets: [{
-                label: 'Total Revenue',
-                data: [
-                    {% for month, data in breakdown_data.trends.items %}
-                        {{ data.grand_total }},
-                    {% endfor %}
+            ];
+            const trendData = [
+                {% for month, data in breakdown_data.trends.items %}
+                    {{ data.grand_total|default:0 }},
+                {% endfor %}
+            ];
+
+            console.log('Trend Labels:', trendLabels);
+            console.log('Trend Data:', trendData);
+
+            const hasTrendData = trendData.some(v => v && v > 0);
+            console.log('Trends data check:', { trendData, hasTrendData });
+            
+            if (hasTrendData) {
+                window.trendsChart = new Chart(trendsCtx, {
+                    type: 'line',
+                    data: {
+                        labels: trendLabels,
+                        datasets: [{
+                            label: 'Total Revenue',
+                            data: trendData,
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero: true,
+                                    callback: function(value) {
+                                        return '₦' + new Intl.NumberFormat().format(value);
+                                    }
+                                }
+                            }]
+                        },
+                        tooltips: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return 'Revenue: ₦' + new Intl.NumberFormat().format(tooltipItem.yLabel);
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Trends chart created successfully');
+            } else {
+                console.log('No trend data available, showing empty state');
+                
+                // Create a placeholder message with demo option
+                const emptyHTML = '<div class="text-center text-muted p-5"><i class="fas fa-chart-line fa-3x mb-3"></i><h5>No trend data for selected period</h5><p class="mb-0">Try selecting a different date range or view a sample trend chart.</p><button class="btn btn-outline-primary btn-sm mt-3" onclick="createDemoChart(\'trends\')"><i class="fas fa-eye"></i> Show Sample Trend</button></div>';
+                trendsEl.parentElement.innerHTML = emptyHTML;
+            }
+        }
+        {% else %}
+        const trendsEl = document.getElementById('revenueTrendsChart');
+        if (trendsEl) {
+            trendsEl.parentElement.innerHTML = '<p class="text-center text-muted p-5">No trend data available</p>';
+        }
+        {% endif %}
+
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+    }
+    {% endif %}
+}
+
+// Global function to create demo charts when no data is available
+function createDemoChart(chartType) {
+    console.log('Creating demo chart for type:', chartType);
+    
+    // Get chart contexts
+    const distributionEl = document.getElementById('revenueDistributionChart');
+    const trendsEl = document.getElementById('revenueTrendsChart');
+    const distributionCtx = distributionEl ? distributionEl.getContext('2d') : null;
+    const trendsCtx = trendsEl ? trendsEl.getContext('2d') : null;
+    
+    if (chartType === 'distribution' && distributionCtx) {
+        // Create demo distribution chart
+        const demoData = [25, 35, 20, 20]; // Sample percentages
+        window.distributionChart = new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    'Clinical Services',
+                    'Support Services',
+                    'Administrative Services',
+                    'Specialty Departments'
                 ],
-                borderColor: '#4e73df',
-                backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                tension: 0.3
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '₦' + new Intl.NumberFormat().format(value);
+                datasets: [{
+                    data: demoData,
+                    backgroundColor: [
+                        '#4e73df',
+                        '#1cc88a',
+                        '#36b9cc',
+                        '#f6c23e'
+                    ],
+                    hoverBackgroundColor: [
+                        '#2e59d9',
+                        '#17a673',
+                        '#2c9faf',
+                        '#dda20a'
+                    ]
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    }
+                },
+                cutoutPercentage: 80
+            }
+        });
+        console.log('Demo distribution chart created successfully');
+        
+    } else if (chartType === 'trends' && trendsCtx) {
+        // Create demo trends chart
+        const demoMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const demoRevenue = [120000, 145000, 98000, 167000, 189000, 156000];
+        
+        window.trendsChart = new Chart(trendsCtx, {
+            type: 'line',
+            data: {
+                labels: demoMonths,
+                datasets: [{
+                    label: 'Total Revenue (Sample)',
+                    data: demoRevenue,
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₦' + new Intl.NumberFormat().format(value);
+                            }
                         }
                     }
                 }
-            },
-            tooltips: {
-                callbacks: {
-                    label: function(tooltipItem) {
-                        return 'Revenue: ₦' + new Intl.NumberFormat().format(tooltipItem.yLabel);
-                    }
-                }
             }
-        }
-    });
-    {% endif %}
-    {% endif %}
+        });
+        console.log('Demo trends chart created successfully');
+    } else {
+        console.log('Could not create demo chart - required elements not found');
+    }
 }
 
 function setupEventHandlers() {
@@ -603,12 +830,10 @@ function setupEventHandlers() {
 }
 
 function exportData(format) {
-    showLoading();
     const params = new URLSearchParams(window.location.search);
     params.set('format', format);
     
     window.location.href = '{% url "core:export_revenue_breakdown" %}?' + params.toString();
-    hideLoading();
 }
 
 function changeChartType(type) {
@@ -624,9 +849,22 @@ function hideLoading() {
     $('.loading-overlay').hide();
 }
 
-// Auto-refresh data every 5 minutes
+// Auto-refresh data every 10 minutes only when page is visible and not currently refreshing
+let lastRefresh = Date.now();
 setInterval(function() {
-    location.reload();
-}, 300000);
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefresh;
+    
+    // Only refresh if page is visible and it's been at least 10 minutes since last refresh
+    if (document.visibilityState === 'visible' && timeSinceLastRefresh > 600000) {
+        console.log('Auto-refreshing revenue dashboard data...');
+        lastRefresh = now;
+        // Use location.reload() but show a loading indicator first
+        showLoading();
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    }
+}, 30000); // Check every 30 seconds but only refresh every 10 minutes
 </script>
 {% endblock %}

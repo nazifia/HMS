@@ -50,7 +50,15 @@ def revenue_point_dashboard(request):
     try:
         # Get comprehensive breakdown
         breakdown_data = analyzer.get_revenue_point_breakdown(include_trends=True)
-        
+
+        # Debug: Print data structure
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Revenue breakdown data keys: {breakdown_data.keys()}")
+        logger.info(f"Has trends: {'trends' in breakdown_data}")
+        if 'trends' in breakdown_data:
+            logger.info(f"Trends data: {breakdown_data['trends']}")
+
         # Get department-specific calculator for detailed analysis
         dept_calculator = DepartmentRevenueCalculator(start_date, end_date)
         
@@ -165,7 +173,6 @@ def revenue_point_api(request):
 
 @login_required
 @require_http_methods(["GET"])
-@login_required
 def revenue_trends_view(request):
     """
     Revenue trends page with charts and data visualization
