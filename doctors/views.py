@@ -499,6 +499,34 @@ def manage_leave_requests(request):
     """Admin view for managing doctor leave requests"""
     leaves = DoctorLeave.objects.all().select_related('doctor', 'doctor__user').order_by('-created_at')
 
+    # Handle inline create from admin page without requiring doctor role context
+    if request.method == 'POST':
+        doctor_id = request.POST.get('doctor')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        reason = request.POST.get('reason')
+
+        if doctor_id and start_date and end_date and reason:
+            try:
+                doctor = Doctor.objects.get(pk=doctor_id)
+                form = DoctorLeaveForm({
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'reason': reason,
+                })
+                if form.is_valid():
+                    leave = form.save(commit=False)
+                    leave.doctor = doctor
+                    leave.save()
+                    messages.success(request, f"Leave request created for {doctor}.")
+                    return redirect('doctors:manage_leave_requests')
+                else:
+                    messages.error(request, "Please correct the errors in the leave request form.")
+            except Doctor.DoesNotExist:
+                messages.error(request, "Selected doctor not found.")
+        else:
+            messages.error(request, "All fields are required to create a leave request.")
+
     # Filter by status if provided
     status = request.GET.get('status')
     if status:
@@ -507,6 +535,7 @@ def manage_leave_requests(request):
     context = {
         'leaves': leaves,
         'current_status': status,
+        'doctors': Doctor.objects.all().select_related('user', 'specialization'),
     }
 
     return render(request, 'doctors/manage_leave_requests.html', context)

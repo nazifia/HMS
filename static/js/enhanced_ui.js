@@ -368,6 +368,10 @@ const HMSUI = {
             this.initValidation();
             this.initFileUploads();
         },
+
+        getNumericInputs(scope = document) {
+            return Array.from(scope.querySelectorAll('input[type="number"], input[data-type="number"]'));
+        },
         
         addGlobalEventListeners() {
             // Auto-save functionality
@@ -392,6 +396,20 @@ const HMSUI = {
             // Character counting
             document.querySelectorAll('[data-maxlength]').forEach(field => {
                 this.addCharacterCount(field);
+            });
+
+            // Prevent unintended numeric auto-adjustments; opt-in via data-auto-normalize="true"
+            this.getNumericInputs().forEach(input => {
+                if (input.dataset.autoNormalize === 'true') {
+                    input.addEventListener('change', () => {
+                        const raw = input.value;
+                        if (!raw) return;
+                        const num = parseFloat(raw);
+                        if (!isNaN(num)) {
+                            input.value = num.toFixed(input.step && !isNaN(parseFloat(input.step)) ? (input.step.split('.')[1] || '').length : 2);
+                        }
+                    });
+                }
             });
         },
         
