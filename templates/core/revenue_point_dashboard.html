@@ -288,6 +288,7 @@
                 <h6 class="m-0 font-weight-bold text-primary">Top Revenue Departments</h6>
             </div>
             <div class="card-body department-breakdown">
+                {# Clinical services (core departments) #}
                 {% for dept_name, dept_data in breakdown_data.clinical_services.items %}
                 <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -308,6 +309,28 @@
                     </small>
                 </div>
                 {% endfor %}
+
+                {# Specialty departments as part of clinical services breakdown #}
+                {% for dept_name, dept_data in breakdown_data.specialty_departments.items %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold">{{ dept_name|title }}</span>
+                        <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
+                    </div>
+                    <div class="progress progress-sm">
+                        <div class="progress-bar bg-secondary" role="progressbar" 
+                             style="width: {% widthratio dept_data.revenue breakdown_data.total_revenue 100 %}%" 
+                             aria-valuenow="{{ dept_data.revenue }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="{{ breakdown_data.total_revenue }}">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        {{ dept_data.transactions|default:0 }} txns • 
+                        Avg: ₦{{ dept_data.avg_transaction|default:0|floatformat:2|intcomma }}
+                    </small>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -323,7 +346,7 @@
             <div class="card-body">
                 <div class="row">
                     <!-- Pharmacy Details -->
-                    <div class="col-md-4 mb-4">
+                    <div class="col-md-3 mb-4">
                         <div class="card border-left-success">
                             <div class="card-body">
                                 <h6 class="font-weight-bold text-success">
@@ -334,12 +357,12 @@
                                     ₦{{ enhanced_data.pharmacy_details.total_revenue|floatformat:2|intcomma }}
                                 </p>
                                 <p class="mb-1">
-                                    <strong>Prescriptions:</strong> 
+                                    <strong>Dispense Logs:</strong> 
                                     {{ enhanced_data.pharmacy_details.total_dispensed|default:0 }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Avg Value:</strong> 
-                                    ₦{{ enhanced_data.pharmacy_details.avg_prescription_value|floatformat:2|intcomma }}
+                                    ₦{{ enhanced_data.pharmacy_details.avg_prescription_value|default:0|floatformat:2|intcomma }}
                                 </p>
                                 <a href="{% url 'core:department_revenue_detail' 'pharmacy' %}?date_filter={{ date_filter }}" 
                                    class="btn btn-sm btn-success">
@@ -349,25 +372,30 @@
                         </div>
                     </div>
 
-                    <!-- Laboratory Details -->
-                    <div class="col-md-4 mb-4">
+                    <!-- Laboratory Details (shows zero if unavailable) -->
+                    <div class="col-md-3 mb-4">
                         <div class="card border-left-info">
                             <div class="card-body">
                                 <h6 class="font-weight-bold text-info">
                                     <i class="fas fa-flask"></i> Laboratory
                                 </h6>
+                                {% with lab=enhanced_data.laboratory_details %}
                                 <p class="mb-1">
                                     <strong>Revenue:</strong> 
-                                    ₦{{ enhanced_data.laboratory_details.total_revenue|floatformat:2|intcomma }}
+                                    ₦{{ lab.total_revenue|default:0|floatformat:2|intcomma }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Tests:</strong> 
-                                    {{ enhanced_data.laboratory_details.total_requests|default:0 }}
+                                    {{ lab.total_requests|default:0 }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Completion:</strong> 
-                                    {{ enhanced_data.laboratory_details.completion_rate|default:0 }}%
+                                    {{ lab.completion_rate|default:0 }}%
                                 </p>
+                                {% if lab.error %}
+                                <small class="text-muted">{{ lab.error }}</small>
+                                {% endif %}
+                                {% endwith %}
                                 <a href="{% url 'core:department_revenue_detail' 'laboratory' %}?date_filter={{ date_filter }}" 
                                    class="btn btn-sm btn-info">
                                     View Details
@@ -376,27 +404,64 @@
                         </div>
                     </div>
 
-                    <!-- Consultation Details -->
-                    <div class="col-md-4 mb-4">
+                    <!-- Consultation Details (shows zero if unavailable) -->
+                    <div class="col-md-3 mb-4">
                         <div class="card border-left-warning">
                             <div class="card-body">
                                 <h6 class="font-weight-bold text-warning">
                                     <i class="fas fa-user-md"></i> Consultations
                                 </h6>
+                                {% with cons=enhanced_data.consultation_details %}
                                 <p class="mb-1">
                                     <strong>Revenue:</strong> 
-                                    ₦{{ enhanced_data.consultation_details.total_revenue|floatformat:2|intcomma }}
+                                    ₦{{ cons.total_revenue|default:0|floatformat:2|intcomma }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Consultations:</strong> 
-                                    {{ enhanced_data.consultation_details.total_payments|default:0 }}
+                                    {{ cons.total_payments|default:0 }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Avg Fee:</strong> 
-                                    ₦{{ enhanced_data.consultation_details.avg_consultation_fee|floatformat:2|intcomma }}
+                                    ₦{{ cons.avg_consultation_fee|default:0|floatformat:2|intcomma }}
                                 </p>
+                                {% if cons.error %}
+                                <small class="text-muted">{{ cons.error }}</small>
+                                {% endif %}
+                                {% endwith %}
                                 <a href="{% url 'core:department_revenue_detail' 'consultation' %}?date_filter={{ date_filter }}" 
                                    class="btn btn-sm btn-warning">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Theatre Details (shows zero if unavailable) -->
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-left-danger">
+                            <div class="card-body">
+                                <h6 class="font-weight-bold text-danger">
+                                    <i class="fas fa-procedures"></i> Theatre
+                                </h6>
+                                {% with th=enhanced_data.theatre_details %}
+                                <p class="mb-1">
+                                    <strong>Revenue:</strong> 
+                                    ₦{{ th.total_revenue|default:0|floatformat:2|intcomma }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Payments:</strong> 
+                                    {{ th.total_payments|default:0 }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Avg Fee:</strong> 
+                                    ₦{{ th.avg_surgery_fee|default:0|floatformat:2|intcomma }}
+                                </p>
+                                {% if th.error %}
+                                <small class="text-muted">{{ th.error }}</small>
+                                {% endif %}
+                                {% endwith %}
+                                <a href="{% url 'core:department_revenue_detail' 'theatre' %}?date_filter={{ date_filter }}" 
+                                   class="btn btn-sm btn-danger">
                                     View Details
                                 </a>
                             </div>
@@ -413,7 +478,7 @@
     <div class="col-12">
         <div class="card shadow mb-4">
             <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Specialty Departments</h6>
+                <h6 class="m-0 font-weight-bold text-primary">Specialty Departments (Clinical Units)</h6>
             </div>
             <div class="card-body">
                 <div class="specialty-grid">
@@ -482,7 +547,7 @@
 <!-- Debug: Data structure -->
 <script>
 console.log('=== REVENUE DASHBOARD DEBUG ===');
-console.log('Error status:', {{ error|yesno:"true,false" }});
+console.log('Error status:', {{ error|default:False|yesno:"true,false" }});
 {% if not error %}
 console.log('Breakdown data exists:', {{ breakdown_data|yesno:"true,false" }});
 console.log('Summary by category:', {
@@ -533,11 +598,10 @@ $('#date_filter').on('change', function() {
     if (value === 'custom_range') {
         $('#custom-date-start, #custom-date-end').show();
         $('#month_picker_wrapper').hide();
-    } else if (value === 'current_month' || value === 'previous_month' || value === 'current_year') {
+    } else if (value === 'current_month' || value === 'previous_month') {
         $('#month_picker_wrapper').show();
         $('#custom-date-start, #custom-date-end').hide();
     } else {
-        // For other options (last_3_months, etc.), hide both month picker and custom dates
         $('#month_picker_wrapper').hide();
         $('#custom-date-start, #custom-date-end').hide();
     }

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <h4 class="mb-3">{{ department_name|default:'Specialty' }} Revenue Detail</h4>
+
+    {% if detail_data %}
+        <div class="row mb-3">
+            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Total Revenue</h6><h4>{{ detail_data.total_revenue|default:0 }}</h4></div></div></div>
+            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Invoice Revenue</h6><h4>{{ detail_data.invoice_revenue|default:0 }}</h4></div></div></div>
+            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Wallet Revenue</h6><h4>{{ detail_data.wallet_revenue|default:0 }}</h4></div></div></div>
+            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Total Records</h6><h4>{{ detail_data.total_records|default:0 }}</h4></div></div></div>
+        </div>
+
+        {% if detail_data.top_services %}
+        <div class="card mt-3">
+            <div class="card-header">Top Services by Revenue</div>
+            <div class="card-body table-responsive">
+                <table class="table table-striped table-sm mb-0">
+                    <thead><tr><th>Service</th><th>Quantity</th><th>Total Revenue</th></tr></thead>
+                    <tbody>
+                    {% for s in detail_data.top_services %}
+                        <tr>
+                            <td>{{ s.service__name }}</td>
+                            <td>{{ s.total_quantity }}</td>
+                            <td>{{ s.total_revenue }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info">No {{ department_name|default:'specialty' }} revenue data available for the selected period.</div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -12,7 +12,7 @@ from collections import defaultdict
 
 from billing.models import Invoice, Payment as BillingPayment, InvoiceItem, Service
 # from pharmacy_billing.models import Payment as PharmacyPayment
-from pharmacy.models import DispensingLog, Medication, PrescriptionItem
+from pharmacy.models import DispensingLog, PrescriptionItem
 from patients.models import WalletTransaction, Patient
 from appointments.models import Appointment
 from consultations.models import Consultation
@@ -72,11 +72,10 @@ class DepartmentRevenueCalculator:
             top_medications = DispensingLog.objects.filter(
                 dispensed_date__date__range=[self.start_date, self.end_date]
             ).values(
-                'medication__name',
-                'medication__category'
+                'prescription_item__medication__name',
             ).annotate(
                 total_revenue=Sum('total_price_for_this_log'),
-                total_quantity=Sum('quantity_dispensed'),
+                total_quantity=Sum('dispensed_quantity'),
                 total_prescriptions=Count('prescription_item__prescription', distinct=True)
             ).order_by('-total_revenue')[:10]
             
@@ -84,7 +83,7 @@ class DepartmentRevenueCalculator:
             prescription_types = PrescriptionItem.objects.filter(
                 dispensing_logs__dispensed_date__date__range=[self.start_date, self.end_date]
             ).values(
-                'prescription__prescribed_by__profile__specialization'
+                'prescription__doctor__profile__specialization'
             ).annotate(
                 total_revenue=Sum('dispensing_logs__total_price_for_this_log'),
                 total_items=Count('id')
@@ -154,7 +153,12 @@ class DepartmentRevenueCalculator:
             ).order_by('-total_revenue')[:10]
             
             # Test requests analysis
-            test_requests = TestRequest.objects.filter(
+            # If TestRequest model is unavailable, skip detailed lab stats but keep payments
+            if 'TestRequest' not in globals():
+                test_requests = {'total_requests': 0, 'completed_requests': 0, 'avg_turnaround_time': None}
+                referral_analysis = []
+            else:
+                test_requests = TestRequest.objects.filter(
                 created_at__date__range=[self.start_date, self.end_date]
             ).aggregate(
                 total_requests=Count('id'),
@@ -166,14 +170,17 @@ class DepartmentRevenueCalculator:
             )
             
             # Department referral analysis
-            referral_analysis = TestRequest.objects.filter(
-                created_at__date__range=[self.start_date, self.end_date]
-            ).values(
-                'requested_by__profile__specialization'
-            ).annotate(
-                total_requests=Count('id'),
-                total_revenue=Sum('invoice_record__payments__amount')
-            ).order_by('-total_requests')
+            if 'TestRequest' in globals():
+                referral_analysis = TestRequest.objects.filter(
+                    created_at__date__range=[self.start_date, self.end_date]
+                ).values(
+                    'requested_by__profile__specialization'
+                ).annotate(
+                    total_requests=Count('id'),
+                    total_revenue=Sum('invoice_record__payments__amount')
+                ).order_by('-total_requests')
+            else:
+                referral_analysis = []
             
             return {
                 'total_revenue': lab_payments['total_amount'] or Decimal('0.00'),
@@ -215,38 +222,31 @@ class DepartmentRevenueCalculator:
             )
             
             # Doctor performance analysis
+            # Use known Appointment -> doctor relations (doctor is a FK to CustomUser)
             doctor_revenue = Appointment.objects.filter(
                 appointment_date__range=[self.start_date, self.end_date],
                 status='completed'
             ).values(
-                'doctor__user__first_name',
-                'doctor__user__last_name',
-                'doctor__specialization'
+                'doctor__first_name',
+                'doctor__last_name'
             ).annotate(
                 total_consultations=Count('id'),
                 total_revenue=Sum('invoices__payments__amount'),
                 avg_consultation_fee=Avg('invoices__total_amount')
             ).order_by('-total_revenue')[:10]
             
-            # Appointment type analysis
+            # Appointment type analysis (simplified: count by status)
             appointment_types = Consultation.objects.filter(
                 created_at__date__range=[self.start_date, self.end_date]
             ).values(
-                'appointment_type'
+                'status'
             ).annotate(
-                total_consultations=Count('id'),
-                avg_duration=Avg('duration_minutes')
+                total_consultations=Count('id')
             ).order_by('-total_consultations')
             
             # Time slot analysis
-            time_analysis = Appointment.objects.filter(
-                appointment_date__range=[self.start_date, self.end_date]
-            ).extra(
-                select={'hour': 'EXTRACT(hour FROM appointment_time)'}
-            ).values('hour').annotate(
-                total_appointments=Count('id'),
-                total_revenue=Sum('invoices__payments__amount')
-            ).order_by('hour')
+            # Time slot analysis disabled for SQLite compatibility; keep empty for now
+            time_analysis = []
             
             return {
                 'total_revenue': consultation_payments['total_amount'] or Decimal('0.00'),
@@ -279,6 +279,20 @@ class DepartmentRevenueCalculator:
                 total_payments=Count('id')
             )
             
+            # If Surgery model is unavailable, only show aggregate payments
+            if 'Surgery' not in globals():
+                return {
+                    'total_revenue': theatre_payments['total_amount'] or Decimal('0.00'),
+                    'total_payments': theatre_payments['total_payments'] or 0,
+                    'surgery_types': [],
+                    'surgeon_performance': [],
+                    'theatre_utilization': [],
+                    'avg_surgery_fee': self._calculate_average(
+                        theatre_payments['total_amount'],
+                        theatre_payments['total_payments']
+                    )
+                }
+
             # Surgery type analysis
             surgery_types = Surgery.objects.filter(
                 surgery_date__range=[self.start_date, self.end_date]
@@ -355,6 +369,25 @@ class DepartmentRevenueCalculator:
                 total_transactions=Count('id')
             )
             
+            # If Admission model is unavailable, return aggregate payments only
+            if 'Admission' not in globals():
+                return {
+                    'total_revenue': (
+                        (admission_payments['total_amount'] or Decimal('0.00')) +
+                        (daily_charges['total_amount'] or Decimal('0.00'))
+                    ),
+                    'admission_revenue': admission_payments['total_amount'] or Decimal('0.00'),
+                    'daily_charges_revenue': daily_charges['total_amount'] or Decimal('0.00'),
+                    'total_payments': admission_payments['total_payments'] or 0,
+                    'total_patient_days': daily_charges['total_transactions'] or 0,
+                    'ward_analysis': [],
+                    'discharge_analysis': [],
+                    'avg_daily_charge': self._calculate_average(
+                        daily_charges['total_amount'],
+                        daily_charges['total_transactions']
+                    )
+                }
+
             # Ward analysis
             ward_analysis = Admission.objects.filter(
                 admission_date__range=[self.start_date, self.end_date]

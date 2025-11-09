@@ -36,9 +36,22 @@ def revenue_point_dashboard(request):
     payment_method_filter = request.GET.get('payment_method_filter', 'all')
     custom_start_date = request.GET.get('start_date')
     custom_end_date = request.GET.get('end_date')
+    selected_month = request.GET.get('selected_month')
     
     # Determine date range based on filter
-    if date_filter == 'custom_range' and custom_start_date and custom_end_date:
+    if date_filter in ['current_month', 'previous_month'] and selected_month:
+        # Use selected_month explicitly if provided (YYYY-MM)
+        try:
+            year, month = map(int, selected_month.split('-'))
+            start_date = datetime(year, month, 1).date()
+            # last day of month
+            if month == 12:
+                end_date = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(year, month + 1, 1).date() - timedelta(days=1)
+        except ValueError:
+            start_date, end_date = _get_date_range(date_filter)
+    elif date_filter == 'custom_range' and custom_start_date and custom_end_date:
         start_date = datetime.strptime(custom_start_date, '%Y-%m-%d').date()
         end_date = datetime.strptime(custom_end_date, '%Y-%m-%d').date()
     else:
