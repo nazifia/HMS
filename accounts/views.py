@@ -1937,14 +1937,39 @@ def superuser_user_permissions(request):
 @superuser_required
 def superuser_manage_user_permissions(request, user_id):
     """Manage permissions for a specific user"""
+    from core.permissions import APP_PERMISSIONS
+
     user = get_object_or_404(User, id=user_id)
     user_permissions = user.user_permissions.all()
-    all_permissions = Permission.objects.select_related('content_type').order_by('content_type__model', 'name')
-    
+
+    # Get all permissions, prioritizing custom HMS permissions
+    all_permissions = Permission.objects.select_related('content_type').all()
+
+    # Separate custom HMS permissions from Django model permissions
+    custom_permission_codenames = set()
+    for category_perms in APP_PERMISSIONS.values():
+        custom_permission_codenames.update(category_perms.keys())
+
+    custom_permissions = []
+    model_permissions = []
+
+    for perm in all_permissions:
+        if perm.codename in custom_permission_codenames:
+            custom_permissions.append(perm)
+        else:
+            model_permissions.append(perm)
+
+    # Sort custom permissions by category (using APP_PERMISSIONS order)
+    custom_permissions.sort(key=lambda p: p.name)
+    model_permissions.sort(key=lambda p: (p.content_type.model, p.name))
+
+    # Combine: custom permissions first, then model permissions
+    ordered_permissions = custom_permissions + model_permissions
+
     if request.method == 'POST':
         permission_ids = request.POST.getlist('permissions')
         user.user_permissions.set(permission_ids)
-        
+
         # Log the action
         AuditLog.objects.create(
             user=request.user,
@@ -1952,14 +1977,17 @@ def superuser_manage_user_permissions(request, user_id):
             details=f'Superuser {request.user.username} updated permissions for {user.username}',
             timestamp=timezone.now()
         )
-        
+
         messages.success(request, f'Permissions for {user.username} updated successfully.')
         return redirect('accounts:superuser_user_permissions')
-    
+
     return render(request, 'accounts/superuser/manage_user_permissions.html', {
         'target_user': user,
         'user_permissions': user_permissions,
-        'all_permissions': all_permissions,
+        'all_permissions': ordered_permissions,
+        'custom_permissions': custom_permissions,
+        'model_permissions': model_permissions,
+        'app_permissions': APP_PERMISSIONS,
         'page_title': f'Manage Permissions: {user.username}',
         'active_nav': 'user_permissions',
     })

@@ -202,9 +202,57 @@
 
                         <!-- Permissions Grid -->
                         <div class="permissions-grid" id="permissionsGrid">
-                            {% regroup all_permissions by content_type.model as permission_groups %}
+                            <!-- Custom HMS Permissions (Organized by Category) -->
+                            {% if custom_permissions %}
+                            <div class="col-12 mb-3">
+                                <h5 class="text-primary border-bottom pb-2">
+                                    <i class="fas fa-star me-2"></i>
+                                    HMS Custom Permissions
+                                    <small class="text-muted">(For sidebar and feature access)</small>
+                                </h5>
+                            </div>
+
+                            {% for category, perms_dict in app_permissions.items %}
+                                <div class="permission-group" data-app="{{ category }}" data-category="custom">
+                                    <h6>
+                                        <i class="fas fa-star me-1 text-warning"></i>
+                                        {{ category|title }}
+                                    </h6>
+                                    {% for codename, description in perms_dict.items %}
+                                        {% for permission in custom_permissions %}
+                                            {% if permission.codename == codename %}
+                                                <div class="permission-item" data-permission="{{ permission.name|lower }}">
+                                                    <label>
+                                                        <input type="checkbox"
+                                                               name="permissions"
+                                                               value="{{ permission.id }}"
+                                                               {% if permission in user_permissions %}checked{% endif %}>
+                                                        <strong>{{ permission.name }}</strong>
+                                                        <br>
+                                                        <small class="text-muted ms-3">{{ permission.codename }}</small>
+                                                    </label>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+
+                            <!-- Divider -->
+                            <div class="col-12 my-4">
+                                <hr>
+                                <h5 class="text-secondary border-bottom pb-2">
+                                    <i class="fas fa-database me-2"></i>
+                                    Django Model Permissions
+                                    <small class="text-muted">(Auto-generated from models)</small>
+                                </h5>
+                            </div>
+                            {% endif %}
+
+                            <!-- Model Permissions -->
+                            {% regroup model_permissions by content_type.model as permission_groups %}
                             {% for group in permission_groups %}
-                                <div class="permission-group" data-app="{{ group.grouper }}">
+                                <div class="permission-group" data-app="{{ group.grouper }}" data-category="model">
                                     <h6>
                                         <i class="fas fa-cube me-1"></i>
                                         {{ group.grouper|title }}
@@ -213,8 +261,8 @@
                                     {% for permission in group.list %}
                                         <div class="permission-item" data-permission="{{ permission.name|lower }}">
                                             <label>
-                                                <input type="checkbox" 
-                                                       name="permissions" 
+                                                <input type="checkbox"
+                                                       name="permissions"
                                                        value="{{ permission.id }}"
                                                        {% if permission in user_permissions %}checked{% endif %}>
                                                 {{ permission.name|title }}

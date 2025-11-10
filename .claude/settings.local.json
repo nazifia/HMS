@@ -12,7 +12,8 @@
       "mcp__byterover-mcp__byterover-store-knowledge",
       "Bash(python manage.py runserver:*)",
       "Bash(timeout /t 3 /nobreak)",
-      "Bash(python manage.py collectstatic:*)"
+      "Bash(python manage.py collectstatic:*)",
+      "Bash(python manage.py:*)"
     ],
     "deny": [],
     "ask": []
