@@ -1,3 +1,5 @@
+{% load core_tags %}
+
 <!-- Mobile Overlay -->
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
@@ -29,13 +31,15 @@
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
 
-        <!-- Nav Item - Dashboard (Available to all authenticated users) -->
+        <!-- Nav Item - Dashboard: visible when user has dashboard access permission -->
+        {% if user|has_permission:'view_dashboard' %}
         <li class="nav-item {% if request.path == '/dashboard/' %}active{% endif %}">
             <a class="nav-link" href="{% url 'dashboard:dashboard' %}">
                 <i class="fas fa-fw fa-tachometer-alt text-white"></i>
                 <span class="text-white">Dashboard</span>
             </a>
         </li>
+        {% endif %}
 
         <!-- Divider -->
         <hr class="sidebar-divider">
@@ -51,7 +55,7 @@
         </div>
 
         <!-- Nav Item - Consultations (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse' %}
+        {% if user|has_any_permission:'view_consultations,create_consultation,view_patients' %}
         <li class="nav-item {% if '/consultations/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultations" aria-expanded="{% if '/consultations/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultations">
                 <i class="fas fa-fw fa-comments text-white"></i>
@@ -72,7 +76,7 @@
         {% endif %}
 
         <!-- Nav Item - Patients (Available to doctors, nurses, receptionists, health record officers, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,receptionist,health_record_officer' %}
+        {% if user|has_any_permission:'view_patients,create_patient' %}
         <li class="nav-item {% if '/patients/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/patients/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePatients" aria-expanded="{% if '/patients/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapsePatients">
                 <i class="fas fa-fw fa-user-injured text-white"></i>
@@ -134,7 +138,7 @@
         </li>
 
         <!-- Nav Item - Inpatient Management (Available to nurses, doctors, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,nurse,doctor' %}
+        {% if user|has_any_permission:'manage_admission,view_inpatient_records' %}
         <li class="nav-item {% if '/inpatient/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/inpatient/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseInpatient" aria-expanded="{% if '/inpatient/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseInpatient">
                 <i class="fas fa-fw fa-hospital-alt text-white"></i>
@@ -156,7 +160,7 @@
         {% endif %}
 
         <!-- Nav Item - Appointments (Available to doctors, receptionists, health record officers, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,receptionist,health_record_officer' %}
+        {% if user|has_any_permission:'view_appointments,create_appointment' %}
         <li class="nav-item {% if '/appointments/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/appointments/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAppointments" aria-expanded="{% if '/appointments/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseAppointments">
                 <i class="fas fa-fw fa-calendar-check text-white"></i>
@@ -182,7 +186,7 @@
         {% endif %}
 
         <!-- Nav Item - Consulting Rooms and Waiting List (Available to receptionists, doctors, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,doctor' %}
+        {% if user|has_any_permission:'view_consulting_rooms,view_waiting_list' %}
         <li class="nav-item {% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/consulting-rooms/' in request.path and not '/consultations/waiting-list/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultingRooms" aria-expanded="{% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultingRooms">
                 <i class="fas fa-fw fa-door-open text-white"></i>
@@ -222,7 +226,7 @@
         </div>
 
         <!-- Nav Item - Pharmacy (Available to pharmacists, doctors, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist,doctor' %}
+        {% if user|has_any_permission:'manage_inventory,dispense_medication,view_prescriptions' %}
         <li class="nav-item {% if '/pharmacy/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/pharmacy/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePharmacy" aria-expanded="{% if '/pharmacy/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapsePharmacy">
                 <i class="fas fa-fw fa-pills text-white"></i>
@@ -278,7 +282,7 @@
         {% endif %}
 
         <!-- Nav Item - Dispensary Management (Available to pharmacists and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
+        {% if user|has_any_permission:'manage_dispensary,transfer_medication' %}
         <li class="nav-item {% if '/pharmacy/dispensaries/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/pharmacy/dispensaries/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDispensary" aria-expanded="{% if '/pharmacy/dispensaries/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDispensary">
                 <i class="fas fa-fw fa-store-alt text-white"></i>
@@ -304,7 +308,7 @@
         </li> -->
 
         <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,lab_technician,doctor' %}
+        {% if user|has_any_permission:'create_test_request,view_tests,enter_results' %}
         <li class="nav-item {% if '/laboratory/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/laboratory/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="{% if '/laboratory/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseLaboratory">
                 <i class="fas fa-fw fa-flask text-white"></i>
@@ -340,15 +344,17 @@
         {% endif %}
 
         <!-- Nav Item - Laboratory Report Dashboard -->
+        {% if user|has_permission:'view_laboratory_reports' %}
         <li class="nav-item {% if '/laboratory/sales-report/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'laboratory:laboratory_sales_report' %}">
                 <i class="fas fa-fw fa-chart-bar text-white"></i>
                 <span class="text-white">Lab Report Dashboard</span>
             </a>
         </li>
+        {% endif %}
 
         <!-- Nav Item - Radiology (Available to radiology staff, doctors, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,radiology_staff,doctor' %}
+        {% if user|has_any_permission:'create_radiology_request,view_radiology' %}
         <li class="nav-item {% if '/radiology/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'radiology:index' %}">
                 <i class="fas fa-fw fa-x-ray text-white"></i>
@@ -358,7 +364,7 @@
         {% endif %}
 
         <!-- Dental Module -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+        {% if user|has_any_permission:'view_dental' %}
         <li class="nav-item {% if '/dental/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'dental:dashboard' %}">
                 <i class="fas fa-fw fa-tooth text-white"></i>
@@ -375,7 +381,7 @@
         {% endif %}
 
         <!-- Ophthalmic Module -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+        {% if user|has_any_permission:'view_ophthalmic' %}
         <li class="nav-item {% if '/ophthalmic/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'ophthalmic:dashboard' %}">
                 <i class="fas fa-fw fa-eye text-white"></i>
@@ -392,7 +398,7 @@
         {% endif %}
 
         <!-- ENT Module -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+        {% if user|has_any_permission:'view_ent' %}
         <li class="nav-item {% if '/ent/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'ent:dashboard' %}">
                 <i class="fas fa-fw fa-ear-listen text-white"></i>
@@ -409,7 +415,7 @@
         {% endif %}
 
         <!-- Oncology Module -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+        {% if user|has_any_permission:'view_oncology' %}
         <li class="nav-item {% if '/oncology/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'oncology:dashboard' %}">
                 <i class="fas fa-fw fa-ribbon text-white"></i>
@@ -426,7 +432,7 @@
         {% endif %}
 
         <!-- SCBU Module -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+        {% if user|has_any_permission:'view_scbu' %}
         <li class="nav-item {% if '/scbu/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'scbu:dashboard' %}">
                 <i class="fas fa-fw fa-baby text-white"></i>

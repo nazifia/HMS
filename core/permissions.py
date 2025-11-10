@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 # Define application-specific permissions
 APP_PERMISSIONS = {
     'user_management': {
+        'view_dashboard': 'Can view the main dashboard',
         'create_user': 'Can create new users',
         'edit_user': 'Can edit existing users',
         'delete_user': 'Can delete users',
@@ -82,6 +83,7 @@ APP_PERMISSIONS = {
         'manage_discharge': 'Can manage patient discharge',
     },
     'reporting': {
+        'view_laboratory_reports': 'Can view laboratory report dashboard',
         'view_reports': 'Can view system reports',
         'generate_reports': 'Can generate custom reports',
         'export_data': 'Can export data from the system',
@@ -123,6 +125,11 @@ class RolePermissionChecker:
         if permission_name in self._permissions_cache:
             return self._permissions_cache[permission_name]
         
+        # Include direct Django auth user_permissions codenames
+        if self.user.user_permissions.filter(codename=permission_name).exists():
+            self._permissions_cache[permission_name] = True
+            return True
+
         # Get all permissions from user's roles
         user_permissions = set()
         for role in self.user.roles.all():
@@ -170,11 +177,15 @@ class RolePermissionChecker:
         if self.user.is_superuser:
             return {perm_name for category_perms in APP_PERMISSIONS.values() for perm_name in category_perms.keys()}
         
-        user_permissions = set()
+        # Start with direct Django auth user_permissions (codenames)
+        user_permissions = set(self.user.user_permissions.values_list('codename', flat=True))
+
+        # Add permissions from all roles (and parent roles)
         for role in self.user.roles.all():
             role_permissions = role.get_all_permissions()
-            user_permissions.update(role_permissions)
-        
+            # role.get_all_permissions() returns Permission objects; use codenames for consistency
+            user_permissions.update([perm.codename for perm in role_permissions])
+
         return user_permissions
     
     def get_permissions_by_category(self, category: str) -> set:
