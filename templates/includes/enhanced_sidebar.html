@@ -385,8 +385,8 @@
                 </li>
                 {% endif %}
 
-                <!-- Settings & System -->
-                {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+                <!-- Settings & System (permission-based) -->
+                {% if user|has_any_permission:'system_configuration,manage_departments,view_audit_logs' %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar" href="#" onclick="toggleSettingsMenu(event); return false;">
                         <i class="fas fa-cog sidebar-icon"></i>

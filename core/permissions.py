@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 # Define application-specific permissions
 APP_PERMISSIONS = {
     'user_management': {
-        'view_dashboard': 'Can view the main dashboard',
+        'view_dashboard': 'Can view the main dashboard and system overview',
+        'view_user_management': 'Can access user and role management areas',
+        'view_admin_tools': 'Can access admin and security tools',
         'create_user': 'Can create new users',
         'edit_user': 'Can edit existing users',
         'delete_user': 'Can delete users',

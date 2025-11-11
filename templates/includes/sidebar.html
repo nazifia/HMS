@@ -101,7 +101,8 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Doctors -->
+        <!-- Nav Item - Doctors (Admin/Doctor only) -->
+        {% if user|has_any_permission:'view_doctors,manage_doctors' %}
         <li class="nav-item {% if '/doctors/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/doctors/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDoctors" aria-expanded="{% if '/doctors/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDoctors">
                 <i class="fas fa-fw fa-user-md text-white"></i>
@@ -112,16 +113,14 @@
                     <h6 class="collapse-header">Doctor Management:</h6>
                     <a class="collapse-item {% if request.path == '/doctors/' %}active{% endif %}" href="{% url 'doctors:doctor_list' %}">All Doctors</a>
 
-                    <!-- Application admin-only doctor management options -->
-                    {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+                    {% if user|has_any_permission:'manage_doctors' %}
                     <a class="collapse-item {% if request.path == '/doctors/admin/doctors/' %}active{% endif %}" href="{% url 'doctors:manage_doctors' %}">Manage Doctors</a>
                     <a class="collapse-item {% if request.path == '/doctors/admin/doctors/add/' %}active{% endif %}" href="{% url 'doctors:add_doctor' %}">Add New Doctor</a>
                     <a class="collapse-item {% if request.path == '/doctors/admin/specializations/' %}active{% endif %}" href="{% url 'doctors:manage_specializations' %}">Specializations</a>
                     <a class="collapse-item {% if request.path == '/doctors/admin/leave-requests/' %}active{% endif %}" href="{% url 'doctors:manage_leave_requests' %}">Leave Requests</a>
                     {% endif %}
 
-                    <!-- Doctor-specific options -->
-                    {% if user.profile and user.profile.role == 'doctor' %}
+                    {% if user|has_role:'doctor' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Doctor Portal:</h6>
                     <a class="collapse-item {% if request.path == '/consultations/doctor/dashboard/' %}active{% endif %}" href="{% url 'consultations:doctor_dashboard' %}">My Dashboard</a>
@@ -138,6 +137,7 @@
                 </div>
             </div>
         </li>
+        {% endif %}
 
         <!-- Nav Item - Inpatient Management (Available to nurses, doctors, and admins) -->
         {% if user|has_any_permission:'manage_admission,view_inpatient_records' %}
