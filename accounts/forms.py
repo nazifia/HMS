@@ -184,12 +184,12 @@ class UserProfileForm(forms.ModelForm):
     """
     # Fields from CustomUser model
     username = forms.CharField(
-        label="Username (for display)",
-        required=True,  # Server-side validation
-        max_length=150,
+        label="Username (for display - read only)",
+        required=False,  # Not required since it's just for display
+        disabled=True,  # Make read-only - disabled fields aren't submitted
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'novalidate': 'novalidate'  # Disable HTML5 validation for this field
+            'readonly': 'readonly'
         })
     )
     first_name = forms.CharField(
@@ -267,16 +267,23 @@ class UserProfileForm(forms.ModelForm):
 
     class Meta:
         model = User # The primary model this form is based on (for ModelForm features)
-        # List only CustomUser fields that are directly managed by ModelForm behavior here.
-        # Other CustomUser fields (username, first_name, etc.) are defined explicitly above.
-        # Profile fields are also handled explicitly.
-        fields = [] # We are defining all fields explicitly, so Meta.fields can be empty or list a subset.
+        # Exclude username from ModelForm fields since it's displayed as read-only
+        # Phone number is preserved automatically in the save() method
+        fields = ['first_name', 'last_name', 'email']
 
     def __init__(self, *args, **kwargs):
         # The 'instance' passed to this form should be the CustomUser instance.
         self.request_user = kwargs.pop('request_user', None) # Pop request_user before super
         user_instance = kwargs.get('instance')
-        
+
+        # CRITICAL: Store the phone_number and username BEFORE calling super().__init__
+        # because ModelForm with fields=[] might interfere with instance fields
+        self._original_phone_number = None
+        self._original_username = None
+        if user_instance and user_instance.pk:
+            self._original_phone_number = user_instance.phone_number
+            self._original_username = user_instance.username
+
         # We need to prepare initial data for profile fields if a user_instance is provided.
         initial_data = kwargs.get('initial', {})
         profile_instance = None
@@ -341,30 +348,11 @@ class UserProfileForm(forms.ModelForm):
 
 
     def clean_username(self):
+        # Username is disabled and read-only, so just return the original value
         username = self.cleaned_data.get('username')
-        user_instance = self.instance
-
-        # If this is an existing user (editing profile)
-        if user_instance and user_instance.pk:
-            # If submitted username is empty or None, use the original username
-            if not username:
-                username = user_instance.username
-                self.cleaned_data['username'] = username
-            
-            # If submitted username is different from original, check for uniqueness
-            if username != user_instance.username:
-                if CustomUser.objects.filter(username=username).exclude(pk=user_instance.pk).exists():
-                    raise ValidationError("This username is already taken. Please choose a different one.")
-        # For new users (no instance or instance without pk)
-        else:
-            if not username:
-                raise ValidationError("Username cannot be blank.")
-            
-            # Check if username is taken for a new user
-            if CustomUser.objects.filter(username=username).exists():
-                raise ValidationError("This username is already taken. Please choose a different one.")
-                
-        return username
+        if not username and hasattr(self, '_original_username'):
+            username = self._original_username
+        return username if username else ''
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -393,20 +381,42 @@ class UserProfileForm(forms.ModelForm):
 
     def save(self, commit=True):
         user_instance = self.instance # This is the CustomUser instance
-        
+
+        # CRITICAL FIX: Fetch the phone_number fresh from the database
+        # This ensures we always have the correct phone_number regardless of form state
+        if user_instance.pk:
+            # Fetch fresh from DB to get the actual phone_number
+            from accounts.models import CustomUser
+            fresh_user = CustomUser.objects.only('phone_number').get(pk=user_instance.pk)
+            phone_number_from_db = fresh_user.phone_number
+        else:
+            # For new users, try to get from stored value
+            phone_number_from_db = getattr(self, '_original_phone_number', None)
+
         # Update CustomUser fields
         user_instance.username = self.cleaned_data.get('username', user_instance.username)
         user_instance.first_name = self.cleaned_data.get('first_name', user_instance.first_name)
         user_instance.last_name = self.cleaned_data.get('last_name', user_instance.last_name)
         user_instance.email = self.cleaned_data.get('email', user_instance.email)
-        # user_instance.phone_number = self.cleaned_data.get('phone_number', user_instance.phone_number) # If editable
+
+        # CRITICAL: Set the phone_number from database - never allow it to be NULL
+        if phone_number_from_db:
+            user_instance.phone_number = phone_number_from_db
 
         # Admin/Staff fields
         if 'is_active_user' in self.cleaned_data : # Check if field is present (e.g. for staff editing staff)
             user_instance.is_active = self.cleaned_data.get('is_active_user')
-        
+
         if commit:
-            user_instance.save()
+            # Use update_fields to explicitly save only the fields we're updating
+            # This prevents any accidental NULL saves on other fields
+            update_fields = ['username', 'first_name', 'last_name', 'email', 'phone_number', 'is_active']
+            user_instance.save(update_fields=update_fields)
+
+            # CRITICAL: Reload the user from database to get a fresh instance
+            # This ensures the profile has a correct reference to the user
+            from accounts.models import CustomUser
+            user_instance = CustomUser.objects.get(pk=user_instance.pk)
 
         # Update roles if the field is present and cleaned, and user has permission
         if 'roles' in self.cleaned_data and commit and self.request_user and (self.request_user.is_staff or self.request_user.is_superuser):
@@ -414,10 +424,8 @@ class UserProfileForm(forms.ModelForm):
 
 
         # Update CustomUserProfile fields
-        # self.profile_instance should be available from __init__
-        profile = getattr(self, 'profile_instance', None)
-        if not profile and user_instance: # Should not happen if user.profile works
-            profile = user_instance.profile # Ensures profile exists
+        # Use the reloaded user_instance to get the profile
+        profile = user_instance.profile if user_instance and user_instance.pk else getattr(self, 'profile_instance', None)
 
         if profile:
             profile.phone_number = self.cleaned_data.get('contact_phone_number')
@@ -485,55 +493,55 @@ class UserProfileForm(forms.ModelForm):
 #             profile.save()
 #         return profile
 
-    def clean_username(self):
-        """Validate username uniqueness if it's being changed."""
-        username = self.cleaned_data.get('username')
-        if self.instance and hasattr(self.instance, 'user') and self.instance.user:
-            # Check if username is being changed and if the new one is unique
-            if username and self.instance.user.username != username:
-                if CustomUser.objects.filter(username=username).exclude(pk=self.instance.user.pk).exists():
-                    raise ValidationError("This username is already taken.")
-        elif username and CustomUser.objects.filter(username=username).exists():
-            # This case is for new profile creation if that's allowed through this form,
-            # but typically UserProfileForm is for existing users.
-            raise ValidationError("This username is already taken.")
-        return username
-    
-    def clean_profile_phone_number(self):
-        phone = self.cleaned_data.get('profile_phone_number')
-        if phone:
-            if not phone.isdigit():
-                raise ValidationError("Phone number must contain only digits.")
-            # If CustomUserProfile.phone_number must be unique:
-            query = CustomUserProfile.objects.filter(phone_number=phone)
-            if self.instance and self.instance.pk:
-                query = query.exclude(pk=self.instance.pk)
-            if query.exists():
-                raise ValidationError("This contact phone number is already in use on another profile.")
-        return phone
-
-
-    def save(self, commit=True):
-        # Save the related CustomUser.username
-        if self.instance and hasattr(self.instance, 'user') and self.instance.user:
-            user_to_update = self.instance.user
-            new_username = self.cleaned_data.get('username')
-            if new_username and user_to_update.username != new_username:
-                user_to_update.username = new_username
-                if commit:
-                    user_to_update.save(update_fields=['username']) # Save only username
-
-        # Save the CustomUserProfile instance
-        profile = super().save(commit=False) # Get the profile instance
-        
-        # Save CustomUserProfile.phone_number from profile_phone_number field
-        profile.phone_number = self.cleaned_data.get('profile_phone_number')
-
-        if commit:
-            profile.save() # Saves the profile instance (CustomUserProfile)
-            self.save_m2m() # Important if the form had M2M fields for the profile
-
-        return profile
+#     def clean_username(self):
+#         """Validate username uniqueness if it's being changed."""
+#         username = self.cleaned_data.get('username')
+#         if self.instance and hasattr(self.instance, 'user') and self.instance.user:
+#             # Check if username is being changed and if the new one is unique
+#             if username and self.instance.user.username != username:
+#                 if CustomUser.objects.filter(username=username).exclude(pk=self.instance.user.pk).exists():
+#                     raise ValidationError("This username is already taken.")
+#         elif username and CustomUser.objects.filter(username=username).exists():
+#             # This case is for new profile creation if that's allowed through this form,
+#             # but typically UserProfileForm is for existing users.
+#             raise ValidationError("This username is already taken.")
+#         return username
+#
+#     def clean_profile_phone_number(self):
+#         phone = self.cleaned_data.get('profile_phone_number')
+#         if phone:
+#             if not phone.isdigit():
+#                 raise ValidationError("Phone number must contain only digits.")
+#             # If CustomUserProfile.phone_number must be unique:
+#             query = CustomUserProfile.objects.filter(phone_number=phone)
+#             if self.instance and self.instance.pk:
+#                 query = query.exclude(pk=self.instance.pk)
+#             if query.exists():
+#                 raise ValidationError("This contact phone number is already in use on another profile.")
+#         return phone
+#
+#
+#     def save(self, commit=True):
+#         # Save the related CustomUser.username
+#         if self.instance and hasattr(self.instance, 'user') and self.instance.user:
+#             user_to_update = self.instance.user
+#             new_username = self.cleaned_data.get('username')
+#             if new_username and user_to_update.username != new_username:
+#                 user_to_update.username = new_username
+#                 if commit:
+#                     user_to_update.save(update_fields=['username']) # Save only username
+#
+#         # Save the CustomUserProfile instance
+#         profile = super().save(commit=False) # Get the profile instance
+#
+#         # Save CustomUserProfile.phone_number from profile_phone_number field
+#         profile.phone_number = self.cleaned_data.get('profile_phone_number')
+#
+#         if commit:
+#             profile.save() # Saves the profile instance (CustomUserProfile)
+#             self.save_m2m() # Important if the form had M2M fields for the profile
+#
+#         return profile
 
 
 class StaffCreationForm(UserCreationForm): # Base on UserCreationForm for password handling
