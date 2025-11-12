@@ -305,7 +305,8 @@ def permission_required(permission, login_url=None, raise_exception=True):
         def _wrapped_view(request, *args, **kwargs):
             if not user_has_permission(request.user, permission):
                 if raise_exception:
-                    return HttpResponseForbidden("You don't have permission to access this resource.")
+                    # Render a friendly permission denied page instead of plain 403 text
+                    return render(request, 'errors/permission_denied.html', status=403)
                 else:
                     messages.error(request, "You don't have permission to access this resource.")
                     return redirect(login_url or 'accounts:login')

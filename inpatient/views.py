@@ -17,6 +17,7 @@ from django.db import models
 from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord, BedTransfer, WardTransfer
 from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm, ClinicalRecordForm, PatientTransferForm
 from patients.models import Patient, PatientWallet, WalletTransaction, ClinicalNote
+from accounts.permissions import permission_required
 
 @login_required
 def bed_dashboard(request):
@@ -824,6 +825,7 @@ def add_clinical_record(request, admission_id):
     return render(request, 'inpatient/clinical_record_form.html', context)
 
 @login_required
+@permission_required('inpatient.view')
 def bed_occupancy_report(request):
     """Enhanced view for generating comprehensive bed occupancy report with statistics"""
     from django.db.models import Count, Q, Avg

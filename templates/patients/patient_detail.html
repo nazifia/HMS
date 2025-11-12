@@ -352,24 +352,32 @@
                         </div>
                         <!-- Additional Medical Services -->
                         <div class="col-md-6 mb-3">
+                            {% if user|has_permission:'medical.create' %}
                             <a href="{% url 'dental:create_dental_record' %}?patient={{ patient.id }}" class="btn btn-info btn-block">
-                                <i class="fas fa-teeth"></i> Dental Record
+                                <i class="fas a-teeth"></i> Dental Record
                             </a>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
+                            {% if user|has_permission:'medical.create' %}
                             <a href="{% url 'ent:create_ent_record' %}?patient={{ patient.id }}" class="btn btn-secondary btn-block">
                                 <i class="fas fa-ear-listen"></i> ENT Record
                             </a>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
+                            {% if user|has_permission:'medical.create' %}
                             <a href="{% url 'patients:create_physiotherapy_request' patient.id %}" class="btn btn-warning btn-block">
                                 <i class="fas fa-walking"></i> Physiotherapy
                             </a>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
+                            {% if user|has_permission:'medical.create' %}
                             <a href="#" class="btn btn-success btn-block" data-bs-toggle="modal" data-bs-target="#vaccinationModal">
                                 <i class="fas fa-syringe"></i> Vaccination
                             </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -631,9 +639,11 @@
             <h6 class="m-0 font-weight-bold text-primary">
                 <i class="fas fa-walking"></i> Physiotherapy Requests
             </h6>
+            {% if user|has_permission:'medical.create' %}
             <a href="{% url 'patients:create_physiotherapy_request' patient.id %}" class="btn btn-sm btn-warning">
                 <i class="fas fa-plus"></i> Add Request
             </a>
+            {% endif %}
         </div>
         <div class="card-body">
             {% if physiotherapy_requests %}
@@ -726,9 +736,11 @@
             {% else %}
                 <p class="text-muted text-center mb-0">No physiotherapy requests recorded yet.</p>
                 <div class="text-end mt-3">
+                    {% if user|has_permission:'medical.create' %}
                     <a href="{% url 'patients:create_physiotherapy_request' patient.id %}" class="btn btn-warning">
                         <i class="fas fa-plus"></i> Add Physiotherapy Request
                     </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>

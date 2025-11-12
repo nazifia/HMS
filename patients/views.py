@@ -1316,6 +1316,7 @@ def delete_clinical_note(request, note_id):
 
 
 @login_required
+@permission_required('medical.create')
 def create_physiotherapy_request(request, patient_id):
     """View for creating a physiotherapy request for a patient"""
     patient = get_object_or_404(Patient, id=patient_id)
