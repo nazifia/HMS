@@ -11,6 +11,7 @@ from django.http import JsonResponse
 from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, ClinicalNote, PhysiotherapyRequest
 from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm, ClinicalNoteForm, PhysiotherapyRequestForm
 from .utils import get_safe_vitals_for_patient
+from accounts.permissions import permission_required, user_has_permission
 from appointments.models import Appointment
 from consultations.models import Consultation
 from pharmacy.models import Prescription
@@ -20,6 +21,7 @@ from datetime import datetime, timedelta
 
 
 @login_required
+@permission_required('patients.view')
 def patient_list(request):
     """View for listing all patients with search and pagination"""
     from core.patient_search_forms import EnhancedPatientSearchForm

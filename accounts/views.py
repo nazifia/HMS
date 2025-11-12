@@ -1112,6 +1112,10 @@ from .models import CustomUserProfile, Department, Role, AuditLog
 from .forms import CustomLoginForm, UserProfileForm, StaffCreationForm, DepartmentForm, UserRegistrationForm
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from accounts.permissions import (
+    permission_required, role_required, user_has_permission, user_in_role,
+    check_user_management_access, get_user_roles
+)
 
 # Custom decorators for backward compatibility
 def user_passes_test(test_func):
@@ -1143,14 +1147,19 @@ def is_admin_or_staff(user):
         user.is_superuser or user.is_staff
     )
 
-@login_required # Added @login_required as it's a dashboard
-@user_passes_test(is_admin_or_staff)
+@login_required
+@permission_required('users.view')
 def user_dashboard(request):
+    # Check if user can manage users
+    can_manage_users = check_user_management_access(request.user)
+    can_edit_users = user_has_permission(request.user, 'users.edit')
+    can_delete_users = user_has_permission(request.user, 'users.delete')
+    
     users_query = User.objects.all().prefetch_related('roles', 'profile')
     
     search_query = request.GET.get('search', '')
     role_filter = request.GET.get('role', '')
-    is_active_filter = request.GET.get('is_active', '') # Renamed to avoid clash with user.is_active
+    is_active_filter = request.GET.get('is_active', '')
     
     if search_query:
         users_query = users_query.filter(
@@ -1162,7 +1171,7 @@ def user_dashboard(request):
         )
     
     if role_filter:
-        users_query = users_query.filter(profile__role=role_filter)
+        users_query = users_query.filter(roles__name=role_filter)
     
     if is_active_filter == 'true':
         users_query = users_query.filter(is_active=True)
@@ -1170,16 +1179,16 @@ def user_dashboard(request):
         users_query = users_query.filter(is_active=False)
 
     # Bulk actions
-    if request.method == 'POST' and 'bulk_action' in request.POST:
+    if request.method == 'POST' and 'bulk_action' in request.POST and can_edit_users:
         action = request.POST.get('bulk_action')
         selected_ids = request.POST.getlist('selected_users')
         if selected_ids:
             qs = User.objects.filter(id__in=selected_ids)
-            if action == 'activate':
+            if action == 'activate' and user_has_permission(request.user, 'users.edit'):
                 qs.update(is_active=True)
-            elif action == 'deactivate':
+            elif action == 'deactivate' and user_has_permission(request.user, 'users.edit'):
                 qs.update(is_active=False)
-            elif action == 'delete':
+            elif action == 'delete' and user_has_permission(request.user, 'users.delete'):
                 # Prevent deletion of superusers and self in bulk operations
                 deletable_users = qs.exclude(
                     Q(is_superuser=True) & ~Q(id=request.user.id)

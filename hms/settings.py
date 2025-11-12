@@ -184,6 +184,8 @@ TEMPLATES = [
                 'pharmacy.context_processors.pharmacy_context',
                 'patients.context_processors.all_patients',
                 'patients.context_processors.current_patient_context',
+                'core.context_processors.hms_permissions',
+                'core.context_processors.hms_user_roles',
             ],
         },
     },
