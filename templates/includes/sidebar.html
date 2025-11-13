@@ -41,6 +41,24 @@
         </li>
         {% endif %}
 
+        {% if user|has_any_permission:'manage_roles,view_user_management' %}
+        <li class="nav-item {% if 'role_management' in request.path or 'create_role' in request.path or 'permission_management' in request.path or 'role_demo' in request.path %}active{% endif %}">
+            <a class="nav-link {% if not 'role_management' in request.path and not 'create_role' in request.path and not 'permission_management' in request.path and not 'role_demo' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAccessControl" aria-expanded="{% if 'role_management' in request.path or 'create_role' in request.path or 'permission_management' in request.path or 'role_demo' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseAccessControl">
+                <i class="fas fa-fw fa-shield-alt text-white"></i>
+                <span class="text-white">Access Control</span>
+            </a>
+            <div id="collapseAccessControl" class="collapse {% if 'role_management' in request.path or 'create_role' in request.path or 'permission_management' in request.path or 'role_demo' in request.path %}show{% endif %}" aria-labelledby="headingAccessControl" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">RBAC Management:</h6>
+                    <a class="collapse-item {% if 'role_management' in request.path %}active{% endif %}" href="{% url 'accounts:role_management' %}">Manage Roles</a>
+                    <a class="collapse-item {% if 'create_role' in request.path %}active{% endif %}" href="{% url 'accounts:create_role' %}">Create Role</a>
+                    <a class="collapse-item {% if 'permission_management' in request.path %}active{% endif %}" href="{% url 'accounts:permission_management' %}">Permissions</a>
+                    <a class="collapse-item {% if 'role_demo' in request.path %}active{% endif %}" href="{% url 'accounts:role_demo' %}">Role Demo</a>
+                </div>
+            </div>
+        </li>
+        {% endif %}
+
         <!-- Divider -->
         <hr class="sidebar-divider">
 
@@ -86,7 +104,7 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Patient Management:</h6>
                     <a class="collapse-item {% if request.path == '/patients/list/' %}active{% endif %}" href="{% url 'patients:list' %}">All Patients</a>
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                    {% if user|has_permission:'create_patient' %}
                     <a class="collapse-item {% if request.path == '/patients/register/' %}active{% endif %}" href="{% url 'patients:register' %}">Register Patient</a>
                     <a class="collapse-item {% if request.path == '/nhia/register-independent/' %}active{% endif %}" href="{% url 'nhia:register_independent_nhia_patient' %}">Register NHIA Patient</a>
                     <a class="collapse-item {% if request.path == '/nhia/register-patient/' %}active{% endif %}" href="{% url 'nhia:register_patient_for_nhia' %}">Add Patient to NHIA</a>
@@ -174,7 +192,7 @@
                     <a class="collapse-item {% if request.path == '/appointments/list/' %}active{% endif %}" href="{% url 'appointments:list' %}">All Appointments</a>
 
                     <!-- Only receptionists, health record officers, and admins can create appointments -->
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                    {% if user|has_permission:'create_appointment' %}
                     <a class="collapse-item {% if request.path == '/appointments/create/' %}active{% endif %}" href="{% url 'appointments:create' %}">Schedule Appointment</a>
                     {% endif %}
 
@@ -206,7 +224,7 @@
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Patient Management:</h6>
 
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist' %}
+                    {% if user|has_any_permission:'create_consultation,view_consultations' %}
                     <a class="collapse-item {% if request.path == '/consultations/waiting-list/' %}active{% endif %}" href="{% url 'consultations:waiting_list' %}">Waiting List</a>
                     <a class="collapse-item {% if request.path == '/consultations/waiting-list/add/' %}active{% endif %}" href="{% url 'consultations:add_to_waiting_list' %}">Add to Waiting List</a>
                     {% endif %}
@@ -335,7 +353,7 @@
                     <a class="collapse-item {% if request.path == '/laboratory/results/' %}active{% endif %}" href="{% url 'laboratory:results' %}">Results</a>
 
                     <!-- Lab technician specific options -->
-                    {% if user.is_superuser or user.profile and user.profile.role == 'lab_technician' %}
+                    {% if user|has_permission:'enter_results' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Lab Technician:</h6>
                     <a class="collapse-item {% if '/laboratory/requests/' in request.path and '/results/create/' in request.path %}active{% endif %}" href="{% url 'laboratory:test_requests' %}">Enter Results</a>
@@ -503,7 +521,7 @@
         </div>
 
         <!-- Nav Item - Desk Office (Available to admins only) -->
-        {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+        {% if user|has_any_permission:'view_user_management,manage_roles,view_admin_tools' %}
         <li class="nav-item {% if '/desk-office/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/desk-office/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDeskOffice" aria-expanded="{% if '/desk-office/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDeskOffice">
                 <i class="fas fa-fw fa-desktop text-white"></i>
@@ -766,7 +784,7 @@
         {% endif %} -->
 
         <!-- Nav Item - Departments (Available to application admins only) -->
-        {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
+        {% if user|has_permission:'manage_departments' %}
         <li class="nav-item {% if '/accounts/departments/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'accounts:department_list' %}">
                 <i class="fas fa-building text-white"></i>
