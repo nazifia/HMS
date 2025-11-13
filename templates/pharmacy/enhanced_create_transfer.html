@@ -76,7 +76,7 @@
                     <div class="alert alert-danger">
                         <h5>Please correct the following errors:</h5>
                         {% for field, errors in form.errors.items %}
-                            <strong>{{ form[field].label }}:</strong>
+                            <strong>{{ field|capfirst }}:</strong>
                             {% for error in errors %}
                                 <p>{{ error }}</p>
                             {% endfor %}
