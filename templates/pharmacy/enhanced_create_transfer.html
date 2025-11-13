@@ -76,7 +76,7 @@
                     <div class="alert alert-danger">
                         <h5>Please correct the following errors:</h5>
                         {% for field, errors in form.errors.items %}
-                            <strong>{{ field.label }}:</strong>
+                            <strong>{{ form[field].label }}:</strong>
                             {% for error in errors %}
                                 <p>{{ error }}</p>
                             {% endfor %}
@@ -228,7 +228,7 @@
                             <div class="card-body">
                                 <div id="formset-container">
                                     {{ formset.management_form }}
-                                    
+
                                     {% for item_form in formset %}
                                     <div class="row align-items-center mb-3 item-form-row">
                                         <div class="col-md-4">
@@ -258,6 +258,36 @@
                                         </div>
                                     </div>
                                     {% endfor %}
+                                    
+                                    <template id="empty-form-template">
+                                        <div class="row align-items-center mb-3 item-form-row">
+                                            <div class="col-md-4">
+                                                {{ formset.empty_form.medication|as_crispy_field }}
+                                            </div>
+                                            <div class="col-md-2">
+                                                {{ formset.empty_form.quantity|as_crispy_field }}
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Available Stock</label>
+                                                <input type="text" class="form-control available-stock-display" readonly>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Status</label>
+                                                <div class="stock-status">
+                                                    <span class="badge bg-secondary">Not checked</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">&nbsp;</label><br>
+                                                {% if formset.empty_form.DELETE %}
+                                                    {{ formset.empty_form.DELETE }}
+                                                {% endif %}
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-item">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -412,10 +442,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Add more items functionality
+        const totalFormsInput = document.querySelector('input[name="items-TOTAL_FORMS"]');
+        const emptyTemplate = document.getElementById('empty-form-template');
+
+        function addNewItemRow() {
+            if (!totalFormsInput || !emptyTemplate) return;
+            const index = parseInt(totalFormsInput.value, 10);
+            const html = emptyTemplate.innerHTML.replace(/__prefix__/g, index);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html.trim();
+            const newRow = tempDiv.firstElementChild;
+
+            // Clear any prefilled values
+            const medSelect = newRow.querySelector('[id$="-medication"]');
+            const qtyInput = newRow.querySelector('[id$="-quantity"]');
+            const delCheckbox = newRow.querySelector('[id$="-DELETE"]');
+            if (medSelect) medSelect.value = '';
+            if (qtyInput) qtyInput.value = '';
+            if (delCheckbox) delCheckbox.checked = false;
+
+            formsetContainer.appendChild(newRow);
+            totalFormsInput.value = index + 1;
+
+            // Attach listeners
+            if (medSelect) medSelect.addEventListener('change', () => checkItemInventory(newRow));
+            if (qtyInput) qtyInput.addEventListener('input', () => checkItemInventory(newRow));
+            const removeBtn = newRow.querySelector('.remove-item');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    newRow.style.display = 'none';
+                    const deleteCheckbox = newRow.querySelector('[id$="-DELETE"]');
+                    if (deleteCheckbox) deleteCheckbox.checked = true;
+                });
+            }
+        }
+
         document.getElementById('addMoreItems')?.addEventListener('click', function() {
-            // This would require implementing dynamic formset management
-            // For now, it's a placeholder
-            alert('Dynamic formset management would be implemented here.');
+            addNewItemRow();
         });
         
         // Remove item functionality
@@ -427,6 +490,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (deleteCheckbox) deleteCheckbox.checked = true;
             });
         });
+
+        // Re-check inventory when source dispensary changes
+        const bulkFromDispensary = document.getElementById('id_from_dispensary');
+        if (bulkFromDispensary) {
+            bulkFromDispensary.addEventListener('change', function() {
+                document.querySelectorAll('.item-form-row').forEach(row => checkItemInventory(row));
+            });
+        }
     }
     
     // Form submission validation
