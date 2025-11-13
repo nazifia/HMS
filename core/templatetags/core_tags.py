@@ -327,3 +327,17 @@ def get_action_type_display(action_type):
         'refund': 'Refund',
     }
     return action_names.get(action_type, action_type.replace('_', ' ').title())
+
+@register.simple_tag
+def total_permissions(grouped_permissions):
+    try:
+        return sum(len(perms) for perms in grouped_permissions.values())
+    except Exception:
+        return 0
+
+@register.simple_tag
+def count_add_permissions(grouped_permissions):
+    try:
+        return sum(1 for perms in grouped_permissions.values() for p in perms if 'add' in getattr(p, 'codename', ''))
+    except Exception:
+        return 0

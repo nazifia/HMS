@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load core_tags %}
 {% block title %}Permission Management - Hospital Management System{% endblock %}
 
 {% block extra_css %}
@@ -62,6 +63,73 @@
         {% endfor %}
     {% endif %}
 
+    <div class="row mt-2 mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle me-2"></i>Permission System Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Permission Types:</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-success me-2">Create</span> Add new records</li>
+                                <li><span class="badge bg-primary me-2">Update</span> Modify existing records</li>
+                                <li><span class="badge bg-danger me-2">Delete</span> Remove records</li>
+                                <li><span class="badge bg-info me-2">View</span> Read/view records</li>
+                                <li><span class="badge bg-secondary me-2">Custom</span> Special permissions</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>How to Use:</h6>
+                            <ol>
+                                <li>Permissions are automatically created for each model</li>
+                                <li>Assign permissions to roles in <a href="{% url 'accounts:role_management' %}">Role Management</a></li>
+                                <li>Assign roles to users to grant permissions</li>
+                                <li>Use decorators in views to check permissions</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-plus me-2"></i>Create New Role
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-user-shield me-2"></i>Manage Roles
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-users me-2"></i>Manage Users
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-history me-2"></i>View Audit Logs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filter Form -->
     <div class="card mb-4">
         <div class="card-header">
@@ -99,11 +167,7 @@
         <div class="col-md-3">
             <div class="card text-center bg-success text-white">
                 <div class="card-body">
-                    <h4>
-                        {% for app_permissions in grouped_permissions.values %}
-                            {{ app_permissions|length }}{% if not forloop.last %} + {% endif %}
-                        {% endfor %}
-                    </h4>
+                    <h4>{% total_permissions grouped_permissions %}</h4>
                     <p class="mb-0">Total Permissions</p>
                 </div>
             </div>
@@ -119,13 +183,7 @@
         <div class="col-md-3">
             <div class="card text-center bg-warning text-white">
                 <div class="card-body">
-                    <h4>
-                        {% for app_permissions in grouped_permissions.values %}
-                            {% for permission in app_permissions %}
-                                {% if 'add' in permission.codename %}1{% endif %}
-                            {% endfor %}
-                        {% endfor %}
-                    </h4>
+                    <h4>{% count_add_permissions grouped_permissions %}</h4>
                     <p class="mb-0">Create Permissions</p>
                 </div>
             </div>
@@ -142,7 +200,7 @@
                         <h6 class="mb-0">
                             <i class="fas fa-cube me-2"></i>{{ app_model|title }}
                         </h6>
-                        <span class="badge bg-light text-dark">{{ permissions|length }} permissions</span>
+                        <span class="badge bg-light text-dark permission-count-badge" data-total="{{ permissions|length }}">{{ permissions|length }} permissions</span>
                     </div>
                 </div>
                 <div class="permission-list">
@@ -185,109 +243,47 @@
         {% endfor %}
     </div>
 
-    <!-- Permission Usage Information -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-info-circle me-2"></i>Permission System Information</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Permission Types:</h6>
-                            <ul class="list-unstyled">
-                                <li><span class="badge bg-success me-2">Create</span> Add new records</li>
-                                <li><span class="badge bg-primary me-2">Update</span> Modify existing records</li>
-                                <li><span class="badge bg-danger me-2">Delete</span> Remove records</li>
-                                <li><span class="badge bg-info me-2">View</span> Read/view records</li>
-                                <li><span class="badge bg-secondary me-2">Custom</span> Special permissions</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>How to Use:</h6>
-                            <ol>
-                                <li>Permissions are automatically created for each model</li>
-                                <li>Assign permissions to roles in <a href="{% url 'accounts:role_management' %}">Role Management</a></li>
-                                <li>Assign roles to users to grant permissions</li>
-                                <li>Use decorators in views to check permissions</li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary w-100 mb-2">
-                                <i class="fas fa-plus me-2"></i>Create New Role
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-success w-100 mb-2">
-                                <i class="fas fa-user-shield me-2"></i>Manage Roles
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-outline-info w-100 mb-2">
-                                <i class="fas fa-users me-2"></i>Manage Users
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-outline-warning w-100 mb-2">
-                                <i class="fas fa-history me-2"></i>View Audit Logs
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Add search functionality
     const searchInput = document.querySelector('input[name="search"]');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const permissionItems = document.querySelectorAll('.permission-item');
-            
-            permissionItems.forEach(function(item) {
+    if (!searchInput) return;
+
+    function applySearch(term) {
+        const searchTerm = term.toLowerCase();
+        document.querySelectorAll('.permission-group').forEach(function(group) {
+            let visibleCount = 0;
+            group.querySelectorAll('.permission-item').forEach(function(item) {
                 const text = item.textContent.toLowerCase();
-                const group = item.closest('.permission-group');
-                
-                if (text.includes(searchTerm)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
+                const show = searchTerm ? text.includes(searchTerm) : true;
+                item.style.display = show ? 'block' : 'none';
+                if (show) visibleCount++;
             });
-            
-            // Hide empty groups
-            document.querySelectorAll('.permission-group').forEach(function(group) {
-                const visibleItems = group.querySelectorAll('.permission-item[style="display: block"], .permission-item:not([style*="display: none"])');
-                if (visibleItems.length === 0 && searchTerm) {
-                    group.style.display = 'none';
+
+            const badge = group.querySelector('.permission-count-badge');
+            if (badge) {
+                if (searchTerm) {
+                    badge.textContent = `${visibleCount} permissions`;
                 } else {
-                    group.style.display = 'block';
+                    const total = badge.getAttribute('data-total') || visibleCount;
+                    badge.textContent = `${total} permissions`;
                 }
-            });
+            }
+
+            if (searchTerm && visibleCount === 0) {
+                group.style.display = 'none';
+            } else {
+                group.style.display = '';
+            }
         });
     }
+
+    searchInput.addEventListener('input', function() {
+        applySearch(this.value || '');
+    });
 });
 </script>
 {% endblock %}
