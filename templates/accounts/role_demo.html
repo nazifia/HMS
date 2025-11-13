@@ -51,6 +51,37 @@
                 </div>
             </div>
 
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:create_role' %}" class="btn btn-primary w-100 mb-2">
+                                <i class="fas fa-plus me-2"></i>Create New Role
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-success w-100 mb-2">
+                                <i class="fas fa-user-plus me-2"></i>Assign Roles to Users
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:permission_management' %}" class="btn btn-info w-100 mb-2">
+                                <i class="fas fa-key me-2"></i>Manage Permissions
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-warning w-100 mb-2">
+                                <i class="fas fa-history me-2"></i>View Audit Logs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Statistics Row -->
             <div class="row mb-4">
                 <div class="col-md-3">
@@ -196,36 +227,7 @@
                 {% endfor %}
             </div>
 
-            <!-- Quick Actions -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:create_role' %}" class="btn btn-primary w-100 mb-2">
-                                <i class="fas fa-plus me-2"></i>Create New Role
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-success w-100 mb-2">
-                                <i class="fas fa-user-plus me-2"></i>Assign Roles to Users
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:permission_management' %}" class="btn btn-info w-100 mb-2">
-                                <i class="fas fa-key me-2"></i>Manage Permissions
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-warning w-100 mb-2">
-                                <i class="fas fa-history me-2"></i>View Audit Logs
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
         </div>
     </div>
 </div>
