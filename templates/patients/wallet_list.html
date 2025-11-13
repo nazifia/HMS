@@ -126,7 +126,7 @@
                                     <a href="{% url 'patients:wallet_dashboard' wallet.patient.id %}" class="btn btn-sm btn-primary">
                                         <i class="fas fa-eye"></i> View
                                     </a>
-                                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
+                                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'accountant' or user|has_role:'receptionist' %}
                                         <a href="{% url 'patients:add_funds_to_wallet' wallet.patient.id %}" class="btn btn-sm btn-success">
                                             <i class="fas fa-plus"></i> Add Funds
                                         </a>

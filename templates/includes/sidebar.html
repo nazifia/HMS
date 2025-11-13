@@ -267,7 +267,7 @@
                     <a class="collapse-item {% if '/pharmacy/transfers/' in request.path %}active{% endif %}" href="{% url 'pharmacy:enhanced_transfer_dashboard' %}">Enhanced Transfers</a>
 
                     <!-- Inventory management for pharmacists and admins -->
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
+                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' %}
                     <a class="collapse-item {% if request.path == '/pharmacy/inventory/' %}active{% endif %}" href="{% url 'pharmacy:inventory' %}">Inventory</a>
                     <a class="collapse-item {% if '/pharmacy/alerts/' in request.path %}active{% endif %}" href="{% url 'pharmacy:alerts' %}">Stock Alerts</a>
                     
@@ -384,7 +384,7 @@
         {% endif %}
 
         <!-- Dental Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse' %}
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
         <li class="nav-item {% if '/dental/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'dental:dashboard' %}">
                 <i class="fas fa-fw fa-tooth text-white"></i>

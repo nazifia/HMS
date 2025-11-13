@@ -20,8 +20,11 @@ def has_role(user, role_name):
     if user.is_superuser:
         return True
     
-    # Check if user has the role by checking the roles ManyToMany field
-    return user.roles.filter(name=role_name).exists()
+    # Check ManyToMany roles and legacy profile role
+    if user.roles.filter(name=role_name).exists():
+        return True
+    profile_role = getattr(getattr(user, 'profile', None), 'role', None)
+    return profile_role == role_name
 
 @register.filter
 def has_permission(user, permission_name):
@@ -63,6 +66,9 @@ def get_user_roles(user):
         return "Superuser"
     
     roles = [role.name for role in user.roles.all()] if hasattr(user, 'roles') else []
+    profile_role = getattr(getattr(user, 'profile', None), 'role', None)
+    if profile_role and profile_role not in roles:
+        roles.append(profile_role)
     return ", ".join(roles) if roles else "No roles assigned"
 
 @register.filter

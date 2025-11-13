@@ -38,6 +38,9 @@ def is_admin(user):
     # Check if user has admin role in the many-to-many relationship
     if hasattr(user, 'roles') and user.roles.filter(name='admin').exists():
         return True
+    profile_role = getattr(getattr(user, 'profile', None), 'role', None)
+    if profile_role == 'admin':
+        return True
     
     return False
 

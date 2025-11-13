@@ -28,8 +28,11 @@ def role_required(allowed_roles):
             if request.user.is_superuser:
                 return view_func(request, *args, **kwargs)
 
-            # Get user's roles (many-to-many relationship)
+            # Get user's roles from many-to-many and legacy profile field
             user_roles = list(request.user.roles.values_list('name', flat=True))
+            profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
+            if profile_role and profile_role not in user_roles:
+                user_roles.append(profile_role)
 
             # Check if user has any of the required roles
             if not any(role in allowed_roles for role in user_roles):
@@ -152,8 +155,11 @@ def api_role_required(allowed_roles):
             if not request.user.is_authenticated:
                 return HttpResponseForbidden("Authentication required")
 
-            # Get user's roles (many-to-many relationship)
+            # Get user's roles from many-to-many and legacy profile field
             user_roles = list(request.user.roles.values_list('name', flat=True))
+            profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
+            if profile_role and profile_role not in user_roles:
+                user_roles.append(profile_role)
 
             # Check if user has any of the required roles
             if not any(role in allowed_roles for role in user_roles):

@@ -125,6 +125,9 @@ class RoleBasedAccessMiddleware:
             if url_pattern in request.path:
                 # Get user's roles (many-to-many relationship)
                 user_roles = list(request.user.roles.values_list('name', flat=True))
+                profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
+                if profile_role and profile_role not in user_roles:
+                    user_roles.append(profile_role)
 
                 # Allow superusers to access everything (application level)
                 if request.user.is_superuser:

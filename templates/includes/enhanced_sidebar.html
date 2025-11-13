@@ -225,7 +225,7 @@
                 </li>
 
                 <!-- Pharmacy -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist,doctor' %}
+                {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' or user|has_role:'doctor' %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/pharmacy/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#pharmacyMenu">
                         <i class="fas fa-pills sidebar-icon"></i>
@@ -234,7 +234,7 @@
                     </a>
                     <div class="collapse {% if '/pharmacy/' in request.path %}show{% endif %}" id="pharmacyMenu">
                         <ul class="nav nav-pills flex-column ms-3">
-                            {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
+                            {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' %}
                             <li class="nav-item">
                                 <a href="{% url 'pharmacy:inventory' %}" class="nav-link nav-link-submenu {% if request.path == '/pharmacy/inventory/' %}active{% endif %}">
                                     <i class="fas fa-box sidebar-icon-sub"></i>
@@ -254,7 +254,7 @@
                                     <span class="sidebar-text">Dispensed Items</span>
                                 </a>
                             </li>
-                            {% if user.is_superuser or user.profile and user.profile.role in 'admin,pharmacist' %}
+                            {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' %}
                             <li class="nav-item">
                                 <span class="sidebar-subtitle">Medical Packs</span>
                             </li>

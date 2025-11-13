@@ -202,15 +202,18 @@ def get_user_roles(user):
         return list(ROLE_PERMISSIONS.keys())
     
     roles = []
-    for role_relation in user.roles.all():
+    # Many-to-many roles
+    for role_relation in getattr(user, 'roles', []).all():
         roles.append(role_relation.name)
-        # Add inherited roles from parent
         parent = role_relation.parent
         while parent:
             roles.append(parent.name)
             parent = parent.parent
-    
-    return list(set(roles))  # Remove duplicates
+    # Legacy profile role
+    profile_role = getattr(getattr(user, 'profile', None), 'role', None)
+    if profile_role and profile_role not in roles:
+        roles.append(profile_role)
+    return list(set(roles))
 
 
 def user_has_permission(user, permission):

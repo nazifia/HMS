@@ -3831,7 +3831,10 @@ def process_outstanding_wallet_payment(request, prescription_id):
 
     # Check if user has permission to process wallet payments
     # Only billing staff and pharmacists should be able to process wallet payments
-    user_roles = request.user.roles.values_list('name', flat=True)
+    user_roles = list(request.user.roles.values_list('name', flat=True))
+    profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
+    if profile_role and profile_role not in user_roles:
+        user_roles.append(profile_role)
     if not any(role in ['billing_staff', 'pharmacist', 'admin'] for role in user_roles):
         messages.error(request, 'You do not have permission to process wallet payments.')
         return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
