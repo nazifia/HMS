@@ -50,18 +50,28 @@
             <!-- Quick Access Links - Hidden on small screens, shown as icons on medium, full on large -->
             <!-- Custom: Staff Management -->
             {% if user.is_authenticated %}
+                <!-- Bed Dashboard - Available to nurses, doctors, and admins -->
+                {% if user|has_any_permission:'manage_admission,view_inpatient_records' %}
                 <li class="nav-item d-none d-xl-block">
                     <a class="nav-link" href="{% url 'inpatient:bed_dashboard' %}">
                         <i class="fas fa-bed fa-sm fa-fw mr-2 text-gray-400"></i>
                         <span class="d-none d-xxl-inline">Bed Dashboard</span>
                     </a>
                 </li>
+                {% endif %}
+
+                <!-- Dispensing Report - Available to pharmacists and admins -->
+                {% if user|has_any_permission:'manage_inventory,dispense_medication' %}
                 <li class="nav-item d-none d-xl-block">
                     <a class="nav-link" href="{% url 'pharmacy:dispensing_report' %}">
                         <i class="fas fa-pills fa-sm fa-fw mr-2 text-gray-400"></i>
                         <span class="d-none d-xxl-inline">Dispensing Report</span>
                     </a>
                 </li>
+                {% endif %}
+
+                <!-- Revenue Statistics - Available to accountants and admins -->
+                {% if user.is_superuser or user|has_role:'admin' or user|has_role:'accountant' %}
                 <li class="nav-item d-none d-xl-block">
                     {% load url_helpers %}
                     {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
@@ -70,12 +80,19 @@
                         <span class="d-none d-xxl-inline">Revenue Statistics</span>
                     </a>
                 </li>
+                {% endif %}
+
+                <!-- User Management - Available to admins only -->
+                {% if user.is_superuser or user|has_role:'admin' %}
                 <li class="nav-item d-none d-lg-block">
                     <a class="nav-link" href="{% url 'accounts:user_dashboard' %}">
                         <i class="fas fa-user-shield fa-sm fa-fw mr-2 text-gray-400"></i>
                         <span class="d-none d-xxl-inline">User Management</span>
                     </a>
                 </li>
+                {% endif %}
+
+                <!-- Notifications - Available to all authenticated users -->
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'core:notifications_list' %}">
                         <i class="fas fa-bell fa-sm fa-fw mr-2 text-gray-400"></i>
