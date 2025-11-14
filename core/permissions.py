@@ -101,10 +101,11 @@ APP_PERMISSIONS = {
     }
 }
 
-# Mapping between role-based permissions and core permissions for sidebar access
-# This mapping is role-specific to ensure proper access control
+# Mapping between role-based permissions and HMS custom permissions
+# This comprehensive mapping ensures proper sidebar access and feature-level control
+# Format: {role_name: {role_permission: custom_permission}}
 ROLE_TO_CORE_PERMISSION_MAPPING = {
-    # Admin role - full access
+    # Admin role - full access to all custom permissions
     'admin': {
         # Dashboard access
         'patients.view': 'view_dashboard',
@@ -225,7 +226,7 @@ ROLE_TO_CORE_PERMISSION_MAPPING = {
     
     # Nurse role - patient care
     'nurse': {
-        'patients.view': 'view_dashboard',
+        'patients.view': 'view_patients',
         'patients.edit': 'edit_patient',
         'medical.view': 'access_sensitive_data',
         'medical.create': 'access_sensitive_data',
@@ -233,11 +234,11 @@ ROLE_TO_CORE_PERMISSION_MAPPING = {
         'vitals.view': 'manage_vitals',
         'vitals.create': 'manage_vitals',
         'vitals.edit': 'manage_vitals',
-        'consultations.view': 'view_patients',
+        'consultations.view': 'access_sensitive_data',
         'referrals.view': 'view_patients',
         'referrals.create': 'create_appointment',
         'prescriptions.view': 'view_prescriptions',
-        'appointments.view': 'create_appointment',
+        'appointments.view': 'view_appointments',
         'inpatient.view': 'view_inpatient_records',
         'inpatient.create': 'manage_admission',
         'inpatient.edit': 'manage_vitals',
@@ -365,36 +366,36 @@ class RolePermissionChecker:
         has_perm = permission_name in user_permissions
         self._permissions_cache[permission_name] = has_perm
         
-        # If not found in Django permissions, check role-based permissions
+        # If not found in Django permissions, check role-based permissions via mapping
         if not has_perm:
             user_roles = [role.name for role in self.user.roles.all()]
             for role_name in user_roles:
                 if role_name in ROLE_PERMISSIONS:
                     role_permissions = ROLE_PERMISSIONS[role_name]['permissions']
-                    # Check if any role permission maps to the requested core permission
+
+                    # Check if any role permission maps to the requested HMS custom permission
                     for role_perm in role_permissions:
-                        # Convert role permission (e.g., 'patients.view') to Django codename (e.g., 'patients_view')
-                        django_codename = role_perm.replace('.', '_')
-                        
-                        # Check if user has this Django permission directly
-                        if self.user.user_permissions.filter(codename=django_codename).exists():
-                            self._permissions_cache[permission_name] = True
-                            return True
-                        
-                        # Check if user's roles have this permission
-                        for user_role in self.user.roles.all():
-                            if user_role.permissions.filter(codename=django_codename).exists():
-                                self._permissions_cache[permission_name] = True
-                                return True
-                        
                         # Check role-specific mapping for this role
-                        if (role_name in ROLE_TO_CORE_PERMISSION_MAPPING and 
+                        if (role_name in ROLE_TO_CORE_PERMISSION_MAPPING and
                             role_perm in ROLE_TO_CORE_PERMISSION_MAPPING[role_name]):
                             mapped_permission = ROLE_TO_CORE_PERMISSION_MAPPING[role_name][role_perm]
+
+                            # Only return True if this role_perm maps to the requested permission
+                            # AND the user actually has this role permission in the database
                             if mapped_permission == permission_name:
-                                self._permissions_cache[permission_name] = True
-                                return True
-        
+                                django_codename = role_perm.replace('.', '_')
+
+                                # Check if user's role has this Django permission
+                                for user_role in self.user.roles.all():
+                                    if user_role.permissions.filter(codename=django_codename).exists():
+                                        self._permissions_cache[permission_name] = True
+                                        return True
+
+                                # Check if user has this permission directly
+                                if self.user.user_permissions.filter(codename=django_codename).exists():
+                                    self._permissions_cache[permission_name] = True
+                                    return True
+
         return has_perm
     
     def has_any_permission(self, *permission_names) -> bool:

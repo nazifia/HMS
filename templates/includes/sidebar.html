@@ -72,8 +72,8 @@
             Patient Care
         </div>
 
-        <!-- Nav Item - Consultations (Available to doctors, nurses, and admins) -->
-        {% if user|has_any_permission:'view_consultations,create_consultation,view_patients' %}
+        <!-- Nav Item - Consultations (HMS Custom Permission: access_sensitive_data OR create_consultation) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' or user|has_role:'receptionist' %}
         <li class="nav-item {% if '/consultations/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultations" aria-expanded="{% if '/consultations/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultations">
                 <i class="fas fa-fw fa-comments text-white"></i>
@@ -93,8 +93,8 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Patients (Available to doctors, nurses, receptionists, health record officers, and admins) -->
-        {% if user|has_any_permission:'view_patients,create_patient' %}
+        <!-- Nav Item - Patients (HMS Custom Permission: view_patients OR create_patient) -->
+        {% if user|has_permission:'view_patients' or user|has_permission:'create_patient' %}
         <li class="nav-item {% if '/patients/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/patients/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePatients" aria-expanded="{% if '/patients/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapsePatients">
                 <i class="fas fa-fw fa-user-injured text-white"></i>
@@ -159,8 +159,8 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Inpatient Management (Available to nurses, doctors, and admins) -->
-        {% if user|has_any_permission:'manage_admission,view_inpatient_records' %}
+        <!-- Nav Item - Inpatient Management (HMS Custom Permission: manage_admission OR view_inpatient_records) -->
+        {% if user|has_permission:'manage_admission' or user|has_permission:'view_inpatient_records' %}
         <li class="nav-item {% if '/inpatient/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/inpatient/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseInpatient" aria-expanded="{% if '/inpatient/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseInpatient">
                 <i class="fas fa-fw fa-hospital-alt text-white"></i>
@@ -181,8 +181,8 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Appointments (Available to doctors, receptionists, health record officers, and admins) -->
-        {% if user|has_any_permission:'view_appointments,create_appointment' %}
+        <!-- Nav Item - Appointments (HMS Custom Permission: view_appointments OR create_appointment) -->
+        {% if user|has_permission:'view_appointments' or user|has_permission:'create_appointment' %}
         <li class="nav-item {% if '/appointments/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/appointments/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAppointments" aria-expanded="{% if '/appointments/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseAppointments">
                 <i class="fas fa-fw fa-calendar-check text-white"></i>
@@ -207,8 +207,8 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Consulting Rooms and Waiting List (Available to receptionists, doctors, and admins) -->
-        {% if user|has_any_permission:'view_consulting_rooms,view_waiting_list' %}
+        <!-- Nav Item - Consulting Rooms and Waiting List (HMS Custom Permission: access_sensitive_data) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'receptionist' %}
         <li class="nav-item {% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/consulting-rooms/' in request.path and not '/consultations/waiting-list/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultingRooms" aria-expanded="{% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultingRooms">
                 <i class="fas fa-fw fa-door-open text-white"></i>

@@ -50,8 +50,8 @@
             <!-- Quick Access Links - Hidden on small screens, shown as icons on medium, full on large -->
             <!-- Custom: Staff Management -->
             {% if user.is_authenticated %}
-                <!-- Bed Dashboard - Available to nurses, doctors, and admins -->
-                {% if user|has_any_permission:'manage_admission,view_inpatient_records' %}
+                <!-- Bed Dashboard - HMS Custom Permission: manage_admission OR view_inpatient_records -->
+                {% if user|has_permission:'manage_admission' or user|has_permission:'view_inpatient_records' %}
                 <li class="nav-item d-none d-xl-block">
                     <a class="nav-link" href="{% url 'inpatient:bed_dashboard' %}">
                         <i class="fas fa-bed fa-sm fa-fw mr-2 text-gray-400"></i>
@@ -60,8 +60,8 @@
                 </li>
                 {% endif %}
 
-                <!-- Dispensing Report - Available to pharmacists and admins -->
-                {% if user|has_any_permission:'manage_inventory,dispense_medication' %}
+                <!-- Dispensing Report - HMS Custom Permission: manage_inventory OR dispense_medication -->
+                {% if user|has_permission:'manage_inventory' or user|has_permission:'dispense_medication' %}
                 <li class="nav-item d-none d-xl-block">
                     <a class="nav-link" href="{% url 'pharmacy:dispensing_report' %}">
                         <i class="fas fa-pills fa-sm fa-fw mr-2 text-gray-400"></i>
@@ -70,8 +70,8 @@
                 </li>
                 {% endif %}
 
-                <!-- Revenue Statistics - Available to accountants and admins -->
-                {% if user.is_superuser or user|has_role:'admin' or user|has_role:'accountant' %}
+                <!-- Revenue Statistics - HMS Custom Permission: view_financial_reports -->
+                {% if user|has_permission:'view_financial_reports' %}
                 <li class="nav-item d-none d-xl-block">
                     {% load url_helpers %}
                     {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
@@ -82,8 +82,8 @@
                 </li>
                 {% endif %}
 
-                <!-- User Management - Available to admins only -->
-                {% if user.is_superuser or user|has_role:'admin' %}
+                <!-- User Management - HMS Custom Permission: view_user_management -->
+                {% if user|has_permission:'view_user_management' %}
                 <li class="nav-item d-none d-lg-block">
                     <a class="nav-link" href="{% url 'accounts:user_dashboard' %}">
                         <i class="fas fa-user-shield fa-sm fa-fw mr-2 text-gray-400"></i>
