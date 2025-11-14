@@ -510,34 +510,20 @@ class RolePermissionChecker:
                     self._permissions_cache[permission_name] = True
                     return True
 
-        # STEP 4: Fallback to role-based permission mapping (for backward compatibility)
+        # STEP 4: Fallback to role-based permission mapping (authoritative ROLE_PERMISSIONS → HMS mapping)
         user_roles = [role.name for role in self.user.roles.all()]
         for role_name in user_roles:
             if role_name in ROLE_PERMISSIONS:
                 role_permissions = ROLE_PERMISSIONS[role_name]['permissions']
 
-                # Check if any role permission maps to the requested HMS custom permission
+                # If the role declares a permission that maps to the requested HMS custom permission,
+                # consider it granted. This avoids requiring a corresponding Django Permission record.
                 for role_perm in role_permissions:
-                    # Check role-specific mapping for this role
                     if (role_name in ROLE_TO_CORE_PERMISSION_MAPPING and
-                        role_perm in ROLE_TO_CORE_PERMISSION_MAPPING[role_name]):
-                        mapped_permission = ROLE_TO_CORE_PERMISSION_MAPPING[role_name][role_perm]
-
-                        # Only return True if this role_perm maps to the requested permission
-                        # AND the user actually has this role permission in the database
-                        if mapped_permission == permission_name:
-                            django_codename = role_perm.replace('.', '_')
-
-                            # Check if user's role has this Django permission
-                            for user_role in self.user.roles.all():
-                                if user_role.permissions.filter(codename=django_codename).exists():
-                                    self._permissions_cache[permission_name] = True
-                                    return True
-
-                            # Check if user has this permission directly
-                            if self.user.user_permissions.filter(codename=django_codename).exists():
-                                self._permissions_cache[permission_name] = True
-                                return True
+                        role_perm in ROLE_TO_CORE_PERMISSION_MAPPING[role_name] and
+                        ROLE_TO_CORE_PERMISSION_MAPPING[role_name][role_perm] == permission_name):
+                        self._permissions_cache[permission_name] = True
+                        return True
 
         # Permission not found
         self._permissions_cache[permission_name] = False

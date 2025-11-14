@@ -158,7 +158,7 @@
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Test Request Details</h4>
                 <div>
-                    {% if test_request.status == 'payment_confirmed' or test_request.status == 'sample_collected' or test_request.status == 'processing' %}
+                    {% if (test_request.status == 'payment_confirmed' or test_request.status == 'sample_collected' or test_request.status == 'processing') and user|has_permission:'enter_lab_results' %}
                         <a href="{% url 'laboratory:create_test_result' test_request.id %}" class="btn btn-success me-2">
                             <i class="fas fa-vial"></i> Add Test Result
                         </a>
@@ -171,7 +171,7 @@
                     {% endif %}
 
                     <!-- Manual result entry option for authorized users -->
-                    {% if user.is_staff or user.is_superuser %}
+                    {% if user|has_permission:'enter_lab_results' %}
                         <a href="{% url 'laboratory:manual_test_result_entry' test_request.id %}" class="btn btn-outline-success me-2">
                             <i class="fas fa-flask"></i> Manual Result Entry
                         </a>
@@ -247,10 +247,14 @@
                                 {% include 'includes/authorization_status.html' with object=test_request %}
                             </div>
                         </div>
+                        {% if test_request.invoice %}
                         <div class="row mb-3">
-                            <div class="col-md-4 text-muted">Invoice (debug):</div>
-                            <div class="col-md-8">{{ test_request.invoice }}</div>
+                            <div class="col-md-4 text-muted">Invoice:</div>
+                            <div class="col-md-8">
+                                <a href="{% url 'billing:detail' test_request.invoice.id %}">#{{ test_request.invoice.id }} ({{ test_request.invoice.status|capfirst }})</a>
+                            </div>
                         </div>
+                        {% endif %}
                     </div>
                     
                     <!-- Patient & Doctor Information -->
@@ -278,7 +282,7 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Doctor:</div>
-                            <div class="col-md-8">Dr. {{ test_request.doctor.get_full_name }}</div>
+                            <div class="col-md-8">{% if test_request.doctor %}Dr. {{ test_request.doctor.get_full_name|default:test_request.doctor.username|default:"N/A" }}{% else %}<span class="text-muted">N/A</span>{% endif %}</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Department:</div>
@@ -328,7 +332,7 @@
                             <div>
                                 {% if test_request.status != 'cancelled' %}
                                     <div class="btn-group" role="group">
-                                        {% if user.is_staff or user.is_superuser %}
+                                        {% if user|has_permission:'enter_lab_results' %}
                                             <button type="button" class="btn btn-sm btn-success" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
                                                 <i class="fas fa-plus"></i> Add Test Result
                                             </button>
@@ -413,7 +417,7 @@
                                 <p class="text-muted mb-3">Test results will appear here once they are entered by laboratory staff.</p>
                                 {% if test_request.status != 'cancelled' %}
                                     <div class="btn-group" role="group">
-                                        {% if user.is_staff or user.is_superuser %}
+                                        {% if user|has_permission:'enter_lab_results' %}
                                             <button type="button" class="btn btn-primary" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
                                                 <i class="fas fa-plus"></i> Add First Test Result
                                             </button>
@@ -513,7 +517,7 @@
                                 <div class="row">
                                     <div class="col-md-3">
                                         {% if test_request.status != 'cancelled' %}
-                                            {% if user.is_staff or user.is_superuser %}
+                                            {% if user|has_permission:'enter_lab_results' %}
                                                 <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
                                                     <i class="fas fa-vial"></i><br>
                                                     <small>Add Test Result</small>
