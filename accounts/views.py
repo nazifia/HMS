@@ -1,7 +1,7 @@
 import logging
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
@@ -22,6 +22,12 @@ from django.db import models
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+
+# Import permission decorators
+from accounts.permissions import (
+    permission_required, role_required, user_has_permission, user_in_role,
+    check_user_management_access, get_user_roles
+)
 
 # Custom decorators for backward compatibility
 def user_passes_test(test_func):
@@ -555,7 +561,7 @@ def register(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.create')
 def create_role(request):
     if request.method == 'POST':
         form = RoleForm(request.POST)
@@ -572,7 +578,7 @@ def create_role(request):
     return render(request, 'accounts/role_form.html', context)
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.edit')
 def edit_role(request, role_id):
     role = get_object_or_404(Role, id=role_id)
     if request.method == 'POST':
@@ -662,7 +668,7 @@ def bulk_user_actions(request):
     return redirect('accounts:user_dashboard')
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('users.edit')
 def user_privileges(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -681,7 +687,7 @@ def user_privileges(request, user_id):
     return render(request, 'accounts/user_privileges.html', context)
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.edit')
 def delete_role(request, role_id):
     role = get_object_or_404(Role, id=role_id)
     if request.method == 'POST':
@@ -696,7 +702,7 @@ def delete_role(request, role_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.view')
 def role_management(request):
     roles = Role.objects.all().prefetch_related('permissions')
     form = RoleForm()
@@ -715,7 +721,8 @@ def role_management(request):
     return render(request, 'accounts/role_management.html', context)
 
 
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@login_required
+@permission_required('users.view')
 def user_dashboard(request):
     """Admin user management dashboard: filter, search, bulk actions, CSV export."""
     users = User.objects.all().select_related('profile')
@@ -1102,7 +1109,7 @@ def delete_user(request, user_id):
 # accounts/views.py
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Q, Count
@@ -1112,10 +1119,6 @@ from .models import CustomUserProfile, Department, Role, AuditLog
 from .forms import CustomLoginForm, UserProfileForm, StaffCreationForm, DepartmentForm, UserRegistrationForm
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from accounts.permissions import (
-    permission_required, role_required, user_has_permission, user_in_role,
-    check_user_management_access, get_user_roles
-)
 
 # Custom decorators for backward compatibility
 def user_passes_test(test_func):
@@ -1349,7 +1352,7 @@ def role_management(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.create')
 def create_role(request):
     """View for creating a new role"""
     if request.method == 'POST':
@@ -1383,7 +1386,7 @@ def create_role(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.edit')
 def edit_role(request, role_id):
     """View for editing an existing role"""
     role = get_object_or_404(Role, id=role_id)
@@ -1423,7 +1426,7 @@ def edit_role(request, role_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.edit')
 def delete_role(request, role_id):
     """View for deleting a role"""
     role = get_object_or_404(Role, id=role_id)
@@ -1561,7 +1564,7 @@ def bulk_user_actions(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@permission_required('roles.view')
 def permission_management(request):
     """View for managing permissions"""
     from django.contrib.auth.models import Permission

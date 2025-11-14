@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load permission_tags %}
 {% block title %}Role Management - Hospital Management System{% endblock %}
 
 {% block extra_css %}
@@ -29,9 +30,11 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-user-shield me-2"></i>Role Management</h2>
+        {% if user|can_create:"role" %}
         <a href="{% url 'accounts:create_role' %}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Create New Role
         </a>
+        {% endif %}
     </div>
 
     {% if messages %}
@@ -49,6 +52,7 @@
             <div class="card role-card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">{{ role.name }}</h5>
+                    {% if user|can_edit:"role" %}
                     <div class="role-actions">
                         <a href="{% url 'accounts:edit_role' role.id %}" class="btn btn-sm btn-outline-primary" title="Edit Role">
                             <i class="fas fa-edit"></i>
@@ -57,6 +61,7 @@
                             <i class="fas fa-trash"></i>
                         </a>
                     </div>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     {% if role.description %}
@@ -179,31 +184,52 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
+                        {% if user|can_create:"role" %}
                         <div class="col-md-3">
                             <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary w-100 mb-2">
                                 <i class="fas fa-plus me-2"></i>Create Role
                             </a>
                         </div>
+                        {% endif %}
+                        {% if user|can_view:"role" %}
                         <div class="col-md-3">
                             <a href="{% url 'accounts:permission_management' %}" class="btn btn-outline-info w-100 mb-2">
                                 <i class="fas fa-key me-2"></i>Manage Permissions
                             </a>
                         </div>
+                        {% endif %}
+                        {% if user|can_view:"user" %}
                         <div class="col-md-3">
                             <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-outline-success w-100 mb-2">
                                 <i class="fas fa-users me-2"></i>Manage Users
                             </a>
                         </div>
+                        {% endif %}
+                        {% if user|can_view:"user" %}
                         <div class="col-md-3">
                             <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-outline-warning w-100 mb-2">
                                 <i class="fas fa-history me-2"></i>Audit Logs
                             </a>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Access Information -->
+    {% if not user|can_view:"role" %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle me-2"></i>Role Management Access</h5>
+                <p>You don't have permission to view role management. Contact your system administrator if you need access to manage roles and permissions.</p>
+                <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">Go to Dashboard</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

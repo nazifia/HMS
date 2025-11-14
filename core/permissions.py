@@ -11,6 +11,7 @@ from django.shortcuts import redirect
 from django.contrib import messages
 from django.http import HttpRequest
 from accounts.models import CustomUser, Role
+from accounts.permissions import ROLE_PERMISSIONS
 import logging
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,227 @@ APP_PERMISSIONS = {
     }
 }
 
+# Mapping between role-based permissions and core permissions for sidebar access
+# This mapping is role-specific to ensure proper access control
+ROLE_TO_CORE_PERMISSION_MAPPING = {
+    # Admin role - full access
+    'admin': {
+        # Dashboard access
+        'patients.view': 'view_dashboard',
+        
+        # Patient management
+        'patients.create': 'create_patient',
+        'patients.edit': 'edit_patient',
+        'patients.delete': 'delete_patient',
+        'patients.toggle_status': 'manage_patient_admission',
+        'patients.wallet_manage': 'manage_wallet',
+        'patients.nhia_manage': 'manage_wallet',
+        
+        # Medical records
+        'medical.view': 'access_sensitive_data',
+        'medical.create': 'access_sensitive_data',
+        'medical.edit': 'access_sensitive_data',
+        'medical.delete': 'access_sensitive_data',
+        
+        # Vitals
+        'vitals.view': 'manage_vitals',
+        'vitals.create': 'manage_vitals',
+        'vitals.edit': 'manage_vitals',
+        'vitals.delete': 'manage_vitals',
+        
+        # Consultations
+        'consultations.create': 'create_appointment',
+        'consultations.edit': 'create_appointment',
+        
+        # Referrals
+        'referrals.create': 'create_appointment',
+        'referrals.edit': 'create_appointment',
+        
+        # Pharmacy
+        'pharmacy.view': 'view_prescriptions',
+        'pharmacy.create': 'create_prescription',
+        'pharmacy.edit': 'edit_prescription',
+        'pharmacy.dispense': 'dispense_medication',
+        
+        # Laboratory
+        'lab.create': 'create_test_request',
+        'lab.edit': 'enter_results',
+        'lab.results': 'enter_results',
+        
+        # Billing
+        'billing.create': 'create_invoice',
+        'billing.edit': 'edit_invoice',
+        'billing.process_payment': 'process_payments',
+        
+        # Appointments
+        'appointments.create': 'create_appointment',
+        'appointments.edit': 'create_appointment',
+        
+        # Inpatient
+        'inpatient.create': 'manage_admission',
+        'inpatient.edit': 'manage_vitals',
+        'inpatient.discharge': 'manage_discharge',
+        
+        # User management
+        'users.view': 'view_user_management',
+        'users.create': 'create_user',
+        'users.edit': 'edit_user',
+        'users.delete': 'delete_user',
+        'roles.view': 'view_user_management',
+        'roles.create': 'manage_roles',
+        'roles.edit': 'manage_roles',
+        
+        # Reports
+        'reports.view': 'view_reports',
+        'reports.generate': 'generate_reports',
+        
+        # Department management
+        'departments.view': 'manage_departments',
+        'departments.create': 'manage_departments',
+        'departments.edit': 'manage_departments',
+        
+        # System administration
+        'system_configuration': 'system_configuration',
+        'backup_data': 'backup_data',
+        'system_maintenance': 'system_maintenance',
+        'view_audit_logs': 'view_audit_logs',
+        
+        # Radiology
+        'radiology.create': 'create_radiology_request',
+        'radiology.edit': 'enter_radiology_results',
+    },
+    
+    # Doctor role - medical operations
+    'doctor': {
+        'patients.view': 'view_dashboard',
+        'patients.create': 'create_patient',
+        'patients.edit': 'edit_patient',
+        'medical.view': 'access_sensitive_data',
+        'medical.create': 'access_sensitive_data',
+        'medical.edit': 'access_sensitive_data',
+        'vitals.view': 'manage_vitals',
+        'vitals.create': 'manage_vitals',
+        'vitals.edit': 'manage_vitals',
+        'consultations.view': 'view_patients',
+        'consultations.create': 'create_appointment',
+        'consultations.edit': 'create_appointment',
+        'referrals.view': 'view_patients',
+        'referrals.create': 'create_appointment',
+        'referrals.edit': 'create_appointment',
+        'prescriptions.view': 'view_prescriptions',
+        'prescriptions.create': 'create_prescription',
+        'prescriptions.edit': 'edit_prescription',
+        'lab.view': 'view_tests',
+        'lab.create': 'create_test_request',
+        'lab.edit': 'enter_results',
+        'lab.results': 'enter_results',
+        'appointments.view': 'create_appointment',
+        'appointments.create': 'create_appointment',
+        'inpatient.view': 'view_inpatient_records',
+        'inpatient.create': 'manage_admission',
+        'inpatient.edit': 'manage_vitals',
+        'reports.view': 'view_reports',
+    },
+    
+    # Nurse role - patient care
+    'nurse': {
+        'patients.view': 'view_dashboard',
+        'patients.edit': 'edit_patient',
+        'medical.view': 'access_sensitive_data',
+        'medical.create': 'access_sensitive_data',
+        'medical.edit': 'access_sensitive_data',
+        'vitals.view': 'manage_vitals',
+        'vitals.create': 'manage_vitals',
+        'vitals.edit': 'manage_vitals',
+        'consultations.view': 'view_patients',
+        'referrals.view': 'view_patients',
+        'referrals.create': 'create_appointment',
+        'prescriptions.view': 'view_prescriptions',
+        'appointments.view': 'create_appointment',
+        'inpatient.view': 'view_inpatient_records',
+        'inpatient.create': 'manage_admission',
+        'inpatient.edit': 'manage_vitals',
+        'reports.view': 'view_reports',
+    },
+    
+    # Receptionist role - front desk
+    'receptionist': {
+        'patients.view': 'view_dashboard',
+        'patients.create': 'create_patient',
+        'patients.edit': 'edit_patient',
+        'medical.view': 'access_sensitive_data',
+        'consultations.view': 'view_patients',
+        'consultations.create': 'create_appointment',
+        'appointments.view': 'create_appointment',
+        'appointments.create': 'create_appointment',
+        'appointments.edit': 'create_appointment',
+        'wallet.view': 'manage_wallet',
+        'wallet.create': 'manage_wallet',
+        'reports.view': 'view_reports',
+    },
+    
+    # Pharmacist role - medication management
+    'pharmacist': {
+        'patients.view': 'view_dashboard',
+        'pharmacy.view': 'view_prescriptions',
+        'pharmacy.create': 'create_prescription',
+        'pharmacy.edit': 'edit_prescription',
+        'pharmacy.dispense': 'dispense_medication',
+        'prescriptions.view': 'view_prescriptions',
+        'prescriptions.edit': 'edit_prescription',
+        'reports.view': 'view_reports',
+    },
+    
+    # Lab Technician role - laboratory
+    'lab_technician': {
+        'patients.view': 'view_dashboard',
+        'lab.view': 'view_tests',
+        'lab.create': 'create_test_request',
+        'lab.edit': 'enter_results',
+        'lab.results': 'enter_results',
+        'prescriptions.view': 'view_prescriptions',
+        'reports.view': 'view_laboratory_reports',
+    },
+    
+    # Accountant role - financial management
+    'accountant': {
+        'patients.view': 'view_dashboard',
+        'billing.view': 'view_invoices',
+        'billing.create': 'create_invoice',
+        'billing.edit': 'edit_invoice',
+        'billing.process_payment': 'process_payments',
+        'wallet.view': 'view_financial_reports',
+        'wallet.edit': 'manage_wallet',
+        'wallet.transactions': 'manage_wallet',
+        'reports.view': 'view_reports',
+    },
+    
+    # Health Record Officer role - records management
+    'health_record_officer': {
+        'patients.view': 'view_dashboard',
+        'patients.create': 'create_patient',
+        'patients.edit': 'edit_patient',
+        'patients.delete': 'delete_patient',
+        'medical.view': 'access_sensitive_data',
+        'medical.create': 'access_sensitive_data',
+        'medical.edit': 'access_sensitive_data',
+        'medical.delete': 'manage_patient_discharge',
+        'vitals.view': 'manage_vitals',
+        'vitals.create': 'manage_vitals',
+        'vitals.edit': 'manage_vitals',
+        'reports.view': 'view_reports',
+    },
+    
+    # Radiology Staff role - imaging services
+    'radiology_staff': {
+        'patients.view': 'view_dashboard',
+        'radiology.view': 'view_radiology',
+        'radiology.create': 'create_radiology_request',
+        'radiology.edit': 'enter_radiology_results',
+        'reports.view': 'view_reports',
+    },
+}
+
 class RolePermissionChecker:
     """
     Utility class for role-based permission checking
@@ -142,6 +364,36 @@ class RolePermissionChecker:
         # Check if permission exists
         has_perm = permission_name in user_permissions
         self._permissions_cache[permission_name] = has_perm
+        
+        # If not found in Django permissions, check role-based permissions
+        if not has_perm:
+            user_roles = [role.name for role in self.user.roles.all()]
+            for role_name in user_roles:
+                if role_name in ROLE_PERMISSIONS:
+                    role_permissions = ROLE_PERMISSIONS[role_name]['permissions']
+                    # Check if any role permission maps to the requested core permission
+                    for role_perm in role_permissions:
+                        # Convert role permission (e.g., 'patients.view') to Django codename (e.g., 'patients_view')
+                        django_codename = role_perm.replace('.', '_')
+                        
+                        # Check if user has this Django permission directly
+                        if self.user.user_permissions.filter(codename=django_codename).exists():
+                            self._permissions_cache[permission_name] = True
+                            return True
+                        
+                        # Check if user's roles have this permission
+                        for user_role in self.user.roles.all():
+                            if user_role.permissions.filter(codename=django_codename).exists():
+                                self._permissions_cache[permission_name] = True
+                                return True
+                        
+                        # Check role-specific mapping for this role
+                        if (role_name in ROLE_TO_CORE_PERMISSION_MAPPING and 
+                            role_perm in ROLE_TO_CORE_PERMISSION_MAPPING[role_name]):
+                            mapped_permission = ROLE_TO_CORE_PERMISSION_MAPPING[role_name][role_perm]
+                            if mapped_permission == permission_name:
+                                self._permissions_cache[permission_name] = True
+                                return True
         
         return has_perm
     
