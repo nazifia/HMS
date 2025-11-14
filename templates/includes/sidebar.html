@@ -31,8 +31,8 @@
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
 
-        <!-- Nav Item - Dashboard: visible when user has dashboard access permission -->
-        {% if user|has_permission:'view_dashboard' %}
+        <!-- Nav Item - Dashboard: visible to all authenticated users -->
+        {% if user.is_authenticated %}
         <li class="nav-item {% if request.path == '/dashboard/' %}active{% endif %}">
             <a class="nav-link" href="{% url 'dashboard:dashboard' %}">
                 <i class="fas fa-fw fa-tachometer-alt text-white"></i>
@@ -247,8 +247,8 @@
             Medical Services
         </div>
 
-        <!-- Nav Item - Pharmacy (Available to pharmacists, doctors, and admins) -->
-        {% if user|has_any_permission:'manage_inventory,dispense_medication,view_prescriptions' %}
+        <!-- Nav Item - Pharmacy (Available to pharmacists and admins only - not doctors/nurses) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' %}
         <li class="nav-item {% if '/pharmacy/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/pharmacy/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePharmacy" aria-expanded="{% if '/pharmacy/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapsePharmacy">
                 <i class="fas fa-fw fa-pills text-white"></i>
@@ -329,8 +329,8 @@
             </a>
         </li> -->
 
-        <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins) -->
-        {% if user|has_any_permission:'create_test_request,view_tests,enter_results' %}
+        <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins only) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'lab_technician' or user|has_role:'doctor' %}
         <li class="nav-item {% if '/laboratory/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/laboratory/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="{% if '/laboratory/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseLaboratory">
                 <i class="fas fa-fw fa-flask text-white"></i>
