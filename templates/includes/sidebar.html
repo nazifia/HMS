@@ -330,7 +330,7 @@
         </li> -->
 
         <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins only) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'lab_technician' or user|has_role:'doctor' %}
+        {% if user|has_any_permission:'view_laboratory,view_tests,create_test_request' or user|has_role:'admin' or user.is_superuser %}
         <li class="nav-item {% if '/laboratory/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/laboratory/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="{% if '/laboratory/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseLaboratory">
                 <i class="fas fa-fw fa-flask text-white"></i>
@@ -355,7 +355,7 @@
                     <a class="collapse-item {% if request.path == '/laboratory/results/' %}active{% endif %}" href="{% url 'laboratory:results' %}">Results</a>
 
                     <!-- Lab technician specific options -->
-                    {% if user|has_permission:'enter_results' %}
+                    {% if user|has_permission:'enter_lab_results' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Lab Technician:</h6>
                     <a class="collapse-item {% if '/laboratory/requests/' in request.path and '/results/create/' in request.path %}active{% endif %}" href="{% url 'laboratory:test_requests' %}">Enter Results</a>
