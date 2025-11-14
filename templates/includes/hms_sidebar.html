@@ -1,0 +1,117 @@
+{% load hms_permissions %}
+
+<!-- Mobile Overlay -->
+<div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+<!-- Sidebar -->
+<div class="d-flex flex-column bg-dark sidebar vh-100" id="sidebar-container" style="width:300px !important;min-height:100vh;overflow-y:auto;scroll-behavior:auto;">
+    <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;scroll-behavior:auto;">
+
+        <!-- Mobile Header with Hamburger Menu -->
+        <div class="d-md-none mobile-sidebar-header bg-dark d-flex align-items-center justify-content-between p-3 border-bottom border-secondary">
+            <div class="sidebar-brand d-flex align-items-center" href="{% url 'home' %}">
+                <div class="sidebar-brand-icon">
+                    <i class="fas fa-hospital text-white"></i>
+                </div>
+                <div class="sidebar-brand-text mx-2 text-white">HMS</div>
+            </div>
+            <button class="btn btn-link text-white p-0" id="mobileSidebarClose">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+
+        <!-- Desktop Sidebar - Brand -->
+        <a class="sidebar-brand d-none d-md-flex align-items-center justify-content-center mt-3 mb-4" href="{% url 'home' %}">
+            <div class="sidebar-brand-icon">
+                <i class="fas fa-hospital text-white"></i>
+            </div>
+            <div class="sidebar-brand-text mx-3 text-white">HMS</div>
+        </a>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider my-0">
+
+        <!-- Dynamic Sidebar Menu Items -->
+        {% get_sidebar_items request.user as sidebar_items %}
+        
+        {% for item in sidebar_items %}
+            {% if not item.parent %}
+                {% include "includes/sidebar_menu_item.html" with menu_item=item user=request.user %}
+            {% endif %}
+        {% empty %}
+            <!-- Fallback to basic dashboard access if no menu items -->
+            {% if request.user.is_authenticated %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'dashboard:dashboard' %}">
+                    <i class="fas fa-fw fa-tachometer-alt text-white"></i>
+                    <span class="text-white">Dashboard</span>
+                </a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            System Features
+        </div>
+
+        <!-- Feature-based menu items -->
+        {% if user|has_hms_permission:'manage_roles' %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:permission_management' %}">
+                <i class="fas fa-fw fa-cogs text-white"></i>
+                <span class="text-white">HMS Permission Manager</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- Admin Tools -->
+        {% if user|has_hms_permission:'system_configuration' %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'core:admin_dashboard' %}">
+                <i class="fas fa-fw fa-tools text-white"></i>
+                <span class="text-white">Admin Tools</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+    </ul>
+</div>
+
+<!-- Sidebar JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mobile sidebar toggle
+    const mobileSidebarClose = document.getElementById('mobileSidebarClose');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    
+    if (mobileSidebarClose) {
+        mobileSidebarClose.addEventListener('click', function() {
+            document.body.classList.remove('sidebar-toggled');
+        });
+    }
+    
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', function() {
+            document.body.classList.remove('sidebar-toggled');
+        });
+    }
+    
+    // Auto-expand parent menu items if current page is in submenu
+    const currentPath = window.location.pathname;
+    const activeParents = document.querySelectorAll('.nav-item .collapse.show');
+    
+    activeParents.forEach(function(parent) {
+        const parentLink = parent.previousElementSibling;
+        if (parentLink && parentLink.classList.contains('collapsed')) {
+            parentLink.classList.remove('collapsed');
+        }
+    });
+});
+</script>

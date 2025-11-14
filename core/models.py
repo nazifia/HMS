@@ -99,3 +99,210 @@ class SOAPNote(models.Model):
         db_table = 'core_soapnote'
         verbose_name = 'Core SOAP Note'
         verbose_name_plural = 'Core SOAP Notes'
+
+
+class HMSPermission(models.Model):
+    """
+    Custom HMS Permission Model for granular sidebar and feature access control
+    """
+    PERMISSION_CATEGORIES = [
+        ('dashboard', 'Dashboard'),
+        ('patient_management', 'Patient Management'),
+        ('medical_records', 'Medical Records'),
+        ('consultations', 'Consultations'),
+        ('pharmacy', 'Pharmacy'),
+        ('laboratory', 'Laboratory'),
+        ('radiology', 'Radiology'),
+        ('appointments', 'Appointments'),
+        ('inpatient', 'Inpatient'),
+        ('billing', 'Billing'),
+        ('reports', 'Reports'),
+        ('administration', 'Administration'),
+        ('sidebar', 'Sidebar Access'),
+        ('features', 'Feature Access'),
+    ]
+    
+    name = models.CharField(max_length=100, unique=True, help_text="Permission name (e.g., 'view_dashboard')")
+    display_name = models.CharField(max_length=200, help_text="Human-readable permission name")
+    description = models.TextField(blank=True, help_text="Detailed description of what this permission allows")
+    category = models.CharField(max_length=50, choices=PERMISSION_CATEGORIES, help_text="Category for organization")
+    codename = models.CharField(max_length=100, unique=True, help_text="System identifier (e.g., 'view_dashboard')")
+    is_active = models.BooleanField(default=True, help_text="Whether this permission is currently active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'HMS Permission'
+        verbose_name_plural = 'HMS Permissions'
+        ordering = ['category', 'display_name']
+        db_table = 'core_hmspermission'
+        
+    def __str__(self):
+        return f"{self.display_name} ({self.codename})"
+    
+    def natural_key(self):
+        return (self.codename,)
+
+
+class RolePermissionAssignment(models.Model):
+    """
+    Assignment of HMS Permissions to Roles
+    """
+    role = models.ForeignKey('accounts.Role', on_delete=models.CASCADE, related_name='hms_permissions')
+    permission = models.ForeignKey(HMSPermission, on_delete=models.CASCADE, related_name='assigned_roles')
+    granted_at = models.DateTimeField(auto_now_add=True)
+    granted_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    class Meta:
+        verbose_name = 'Role Permission Assignment'
+        verbose_name_plural = 'Role Permission Assignments'
+        unique_together = [('role', 'permission')]
+        db_table = 'core_rolepermissionassignment'
+        
+    def __str__(self):
+        return f"{self.role.name} - {self.permission.display_name}"
+
+
+class UserPermissionAssignment(models.Model):
+    """
+    Direct assignment of HMS Permissions to Users (bypassing roles)
+    """
+    user = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='hms_permissions')
+    permission = models.ForeignKey(HMSPermission, on_delete=models.CASCADE, related_name='assigned_users')
+    granted_at = models.DateTimeField(auto_now_add=True)
+    granted_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='granted_permissions')
+    reason = models.TextField(blank=True, help_text="Reason for direct permission assignment")
+    
+    class Meta:
+        verbose_name = 'User Permission Assignment'
+        verbose_name_plural = 'User Permission Assignments'
+        unique_together = [('user', 'permission')]
+        db_table = 'core_userpermissionassignment'
+        
+    def __str__(self):
+        return f"{self.user.username} - {self.permission.display_name}"
+
+
+class SidebarMenuItem(models.Model):
+    """
+    Configuration for sidebar menu items with permission-based access
+    """
+    MENU_CATEGORIES = [
+        ('main', 'Main Navigation'),
+        ('patient_care', 'Patient Care'),
+        ('medical_services', 'Medical Services'),
+        ('administration', 'Administration'),
+    ]
+    
+    title = models.CharField(max_length=100, help_text="Display title in sidebar")
+    url_name = models.CharField(max_length=100, blank=True, help_text="Django URL name (e.g., 'dashboard:dashboard')")
+    url_path = models.CharField(max_length=200, blank=True, help_text="Static URL path if no URL name")
+    icon = models.CharField(max_length=50, default='fas fa-circle', help_text="Font Awesome icon class")
+    category = models.CharField(max_length=20, choices=MENU_CATEGORIES, default='main')
+    permission_required = models.ForeignKey(HMSPermission, on_delete=models.SET_NULL, null=True, blank=True, help_text="Permission required to view this menu item")
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', help_text="Parent menu item for dropdowns")
+    order = models.PositiveIntegerField(default=0, help_text="Order in menu")
+    is_active = models.BooleanField(default=True, help_text="Whether this menu item is active")
+    required_roles = models.ManyToManyField('accounts.Role', blank=True, help_text="Specific roles that can access this item")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Sidebar Menu Item'
+        verbose_name_plural = 'Sidebar Menu Items'
+        ordering = ['category', 'order', 'title']
+        db_table = 'core_sidebarmenuitem'
+        
+    def __str__(self):
+        return self.title
+    
+    def get_url(self):
+        """Get the URL for this menu item"""
+        if self.url_name:
+            try:
+                from django.urls import reverse
+                return reverse(self.url_name)
+            except:
+                return self.url_path or '#'
+        return self.url_path or '#'
+    
+    def has_permission(self, user):
+        """Check if user has permission to view this menu item"""
+        if user.is_superuser:
+            return True
+            
+        # Check direct permission requirement
+        if self.permission_required:
+            # Check if user has the required permission
+            user_permissions = set(user.hms_permissions.values_list('permission__codename', flat=True))
+            role_permissions = set()
+            
+            # Get permissions from user's roles
+            for role in user.roles.all():
+                role_permissions.update(role.hms_permissions.values_list('permission__codename', flat=True))
+            
+            all_permissions = user_permissions.union(role_permissions)
+            if self.permission_required.codename not in all_permissions:
+                return False
+        
+        # Check role requirements
+        if self.required_roles.exists():
+            user_role_names = set(user.roles.all().values_list('name', flat=True))
+            required_role_names = set(self.required_roles.values_list('name', flat=True))
+            if not user_role_names.intersection(required_role_names):
+                return False
+        
+        return True
+
+
+class FeatureFlag(models.Model):
+    """
+    Feature flags for enabling/disabling features based on permissions
+    """
+    FEATURE_TYPES = [
+        ('module', 'Module'),
+        ('view', 'View'),
+        ('button', 'Button/Action'),
+        ('field', 'Form Field'),
+        ('report', 'Report'),
+    ]
+    
+    name = models.CharField(max_length=100, unique=True, help_text="Feature flag name (e.g., 'enhanced_pharmacy_workflow')")
+    display_name = models.CharField(max_length=200, help_text="Human-readable feature name")
+    description = models.TextField(blank=True, help_text="Description of the feature")
+    feature_type = models.CharField(max_length=20, choices=FEATURE_TYPES, help_text="Type of feature")
+    permission_required = models.ForeignKey(HMSPermission, on_delete=models.SET_NULL, null=True, blank=True, help_text="Permission required to access this feature")
+    is_enabled = models.BooleanField(default=True, help_text="Whether this feature is currently enabled")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Feature Flag'
+        verbose_name_plural = 'Feature Flags'
+        ordering = ['feature_type', 'display_name']
+        db_table = 'core_featureflag'
+        
+    def __str__(self):
+        return f"{self.display_name} ({'Enabled' if self.is_enabled else 'Disabled'})"
+    
+    def is_accessible(self, user):
+        """Check if user can access this feature"""
+        if not self.is_enabled:
+            return False
+            
+        if user.is_superuser:
+            return True
+            
+        if self.permission_required:
+            # Check if user has the required permission
+            user_permissions = set(user.hms_permissions.values_list('permission__codename', flat=True))
+            role_permissions = set()
+            
+            # Get permissions from user's roles
+            for role in user.roles.all():
+                role_permissions.update(role.hms_permissions.values_list('permission__codename', flat=True))
+            
+            all_permissions = user_permissions.union(role_permissions)
+            return self.permission_required.codename in all_permissions
+        
+        return True

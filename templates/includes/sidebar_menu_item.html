@@ -1,0 +1,41 @@
+{% load hms_permissions %}
+
+{% if menu_item.has_permission %}
+<li class="nav-item {% if menu_item.children.filter|length > 0 %}{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}active{% endif %}{% else %}{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}active{% endif %}{% endif %}">
+    {% if menu_item.children.filter|length > 0 %}
+        <!-- Parent menu item with dropdown -->
+        <a class="nav-link {% if menu_item.url_name not in request.path and menu_item.url_path not in request.path %}collapsed{% endif %}" 
+           href="#" 
+           data-bs-toggle="collapse" 
+           data-bs-target="#collapse{{ menu_item.id }}" 
+           aria-expanded="{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}true{% else %}false{% endif %}" 
+           aria-controls="collapse{{ menu_item.id }}">
+            <i class="{{ menu_item.icon }} text-white"></i>
+            <span class="text-white">{{ menu_item.title }}</span>
+        </a>
+        <div id="collapse{{ menu_item.id }}" 
+             class="collapse {% if menu_item.url_name in request.path or menu_item.url_path in request.path %}show{% endif %}" 
+             aria-labelledby="heading{{ menu_item.id }}" 
+             data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">{{ menu_item.title }}:</h6>
+                {% for child in menu_item.children.filter %}
+                    {% if child.has_permission %}
+                    <a class="collapse-item {% if child.url_name in request.path or child.url_path in request.path %}active{% endif %}" 
+                       href="{{ child.get_url }}">
+                        {% if child.icon != 'fas fa-circle' %}<i class="{{ child.icon }} me-2"></i>{% endif %}
+                        {{ child.title }}
+                    </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <!-- Single menu item -->
+        <a class="nav-link" href="{{ menu_item.get_url }}">
+            <i class="{{ menu_item.icon }} text-white"></i>
+            <span class="text-white">{{ menu_item.title }}</span>
+        </a>
+    {% endif %}
+</li>
+{% endif %}

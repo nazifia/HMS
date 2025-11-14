@@ -101,6 +101,98 @@ APP_PERMISSIONS = {
     }
 }
 
+# HMS Custom Permission mappings for backward compatibility
+HMS_CUSTOM_PERMISSIONS = {
+    # Dashboard
+    'view_dashboard': 'View Dashboard',
+    
+    # Patient Management
+    'create_patient': 'Create Patient',
+    'edit_patient': 'Edit Patient', 
+    'delete_patient': 'Delete Patient',
+    'view_patients': 'View Patients',
+    'access_sensitive_data': 'Access Sensitive Data',
+    'manage_patient_admission': 'Manage Patient Admission',
+    'manage_patient_discharge': 'Manage Patient Discharge',
+    
+    # Medical Records
+    'view_medical_records': 'View Medical Records',
+    'create_medical_record': 'Create Medical Record',
+    'edit_medical_record': 'Edit Medical Record',
+    'manage_vitals': 'Manage Vitals',
+    
+    # Consultations
+    'view_consultations': 'View Consultations',
+    'create_consultation': 'Create Consultation',
+    'edit_consultation': 'Edit Consultation',
+    'view_referrals': 'View Referrals',
+    'create_referral': 'Create Referral',
+    'edit_referral': 'Edit Referral',
+    
+    # Pharmacy
+    'view_pharmacy': 'View Pharmacy',
+    'manage_pharmacy_inventory': 'Manage Pharmacy Inventory',
+    'dispense_medication': 'Dispense Medication',
+    'view_prescriptions': 'View Prescriptions',
+    'create_prescription': 'Create Prescription',
+    'edit_prescription': 'Edit Prescription',
+    'manage_dispensary': 'Manage Dispensary',
+    'transfer_medication': 'Transfer Medication',
+    
+    # Laboratory
+    'view_laboratory': 'View Laboratory',
+    'create_lab_test': 'Create Lab Test',
+    'enter_lab_results': 'Enter Lab Results',
+    'edit_lab_results': 'Edit Lab Results',
+    'view_laboratory_reports': 'View Laboratory Reports',
+    
+    # Radiology
+    'view_radiology': 'View Radiology',
+    'create_radiology_request': 'Create Radiology Request',
+    'enter_radiology_results': 'Enter Radiology Results',
+    'edit_radiology_results': 'Edit Radiology Results',
+    
+    # Appointments
+    'view_appointments': 'View Appointments',
+    'create_appointment': 'Create Appointment',
+    'edit_appointment': 'Edit Appointment',
+    'cancel_appointment': 'Cancel Appointment',
+    
+    # Inpatient
+    'view_inpatient_records': 'View Inpatient Records',
+    'manage_admission': 'Manage Admission',
+    'manage_discharge': 'Manage Discharge',
+    
+    # Billing
+    'view_invoices': 'View Invoices',
+    'create_invoice': 'Create Invoice',
+    'edit_invoice': 'Edit Invoice',
+    'process_payments': 'Process Payments',
+    'manage_wallet': 'Manage Wallet',
+    'view_financial_reports': 'View Financial Reports',
+    
+    # User Management
+    'view_user_management': 'View User Management',
+    'create_user': 'Create User',
+    'edit_user': 'Edit User',
+    'delete_user': 'Delete User',
+    'manage_roles': 'Manage Roles',
+    'reset_password': 'Reset Password',
+    
+    # Reports
+    'view_reports': 'View Reports',
+    'generate_reports': 'Generate Reports',
+    'export_data': 'Export Data',
+    'view_analytics': 'View Analytics',
+    
+    # Administration
+    'system_configuration': 'System Configuration',
+    'manage_departments': 'Manage Departments',
+    'view_audit_logs': 'View Audit Logs',
+    'backup_data': 'Backup Data',
+    'system_maintenance': 'System Maintenance',
+}
+
 # Mapping between role-based permissions and HMS custom permissions
 # This comprehensive mapping ensures proper sidebar access and feature-level control
 # Format: {role_name: {role_permission: custom_permission}}
@@ -334,69 +426,122 @@ class RolePermissionChecker:
     
     def has_permission(self, permission_name: str) -> bool:
         """
-        Check if user has a specific permission
-        
+        Check if user has a specific HMS custom permission or Django permission
+
         Args:
-            permission_name: Name of the permission to check (e.g., 'create_patient')
-            
+            permission_name: Name of the permission to check (e.g., 'create_patient', 'view_patients')
+
         Returns:
             bool: True if user has the permission
         """
         # Superusers have all permissions
         if self.user.is_superuser:
             return True
-        
+
         # Check cache first
         if permission_name in self._permissions_cache:
             return self._permissions_cache[permission_name]
-        
-        # Include direct Django auth user_permissions codenames
+
+        # STEP 1: Check HMS Custom Permission Model (New System)
+        try:
+            # Check direct user HMS permissions
+            user_hms_permissions = set(
+                self.user.hms_permissions.values_list('permission__codename', flat=True)
+            )
+            
+            if permission_name in user_hms_permissions:
+                self._permissions_cache[permission_name] = True
+                return True
+
+            # Check role-based HMS permissions
+            role_hms_permissions = set()
+            for role in self.user.roles.all():
+                role_hms_permissions.update(
+                    role.hms_permissions.values_list('permission__codename', flat=True)
+                )
+            
+            if permission_name in role_hms_permissions:
+                self._permissions_cache[permission_name] = True
+                return True
+
+        except Exception:
+            # HMS custom permissions not available, continue to fallback
+            pass
+
+        # STEP 2: Check if permission is an HMS Custom Permission (in hms.custompermission content type)
+        from django.contrib.contenttypes.models import ContentType
+
+        try:
+            hms_content_type = ContentType.objects.get(app_label='hms', model='custompermission')
+
+            # Check if user has this HMS custom permission directly
+            if self.user.user_permissions.filter(
+                codename=permission_name,
+                content_type=hms_content_type
+            ).exists():
+                self._permissions_cache[permission_name] = True
+                return True
+
+            # Check if user's roles have this HMS custom permission
+            for role in self.user.roles.all():
+                if role.permissions.filter(
+                    codename=permission_name,
+                    content_type=hms_content_type
+                ).exists():
+                    self._permissions_cache[permission_name] = True
+                    return True
+        except ContentType.DoesNotExist:
+            # HMS custom permissions not set up yet, fall back to mapping
+            pass
+
+        # STEP 3: Check standard Django permissions (any content type)
         if self.user.user_permissions.filter(codename=permission_name).exists():
             self._permissions_cache[permission_name] = True
             return True
 
         # Get all permissions from user's roles
-        user_permissions = set()
         for role in self.user.roles.all():
             # Get permissions from role and its parent roles
             role_permissions = role.get_all_permissions()
-            user_permissions.update(role_permissions)
-        
-        # Check if permission exists
-        has_perm = permission_name in user_permissions
-        self._permissions_cache[permission_name] = has_perm
-        
-        # If not found in Django permissions, check role-based permissions via mapping
-        if not has_perm:
-            user_roles = [role.name for role in self.user.roles.all()]
-            for role_name in user_roles:
-                if role_name in ROLE_PERMISSIONS:
-                    role_permissions = ROLE_PERMISSIONS[role_name]['permissions']
 
-                    # Check if any role permission maps to the requested HMS custom permission
-                    for role_perm in role_permissions:
-                        # Check role-specific mapping for this role
-                        if (role_name in ROLE_TO_CORE_PERMISSION_MAPPING and
-                            role_perm in ROLE_TO_CORE_PERMISSION_MAPPING[role_name]):
-                            mapped_permission = ROLE_TO_CORE_PERMISSION_MAPPING[role_name][role_perm]
+            # Check by codename
+            for perm in role_permissions:
+                if perm.codename == permission_name:
+                    self._permissions_cache[permission_name] = True
+                    return True
 
-                            # Only return True if this role_perm maps to the requested permission
-                            # AND the user actually has this role permission in the database
-                            if mapped_permission == permission_name:
-                                django_codename = role_perm.replace('.', '_')
+        # STEP 4: Fallback to role-based permission mapping (for backward compatibility)
+        user_roles = [role.name for role in self.user.roles.all()]
+        for role_name in user_roles:
+            if role_name in ROLE_PERMISSIONS:
+                role_permissions = ROLE_PERMISSIONS[role_name]['permissions']
 
-                                # Check if user's role has this Django permission
-                                for user_role in self.user.roles.all():
-                                    if user_role.permissions.filter(codename=django_codename).exists():
-                                        self._permissions_cache[permission_name] = True
-                                        return True
+                # Check if any role permission maps to the requested HMS custom permission
+                for role_perm in role_permissions:
+                    # Check role-specific mapping for this role
+                    if (role_name in ROLE_TO_CORE_PERMISSION_MAPPING and
+                        role_perm in ROLE_TO_CORE_PERMISSION_MAPPING[role_name]):
+                        mapped_permission = ROLE_TO_CORE_PERMISSION_MAPPING[role_name][role_perm]
 
-                                # Check if user has this permission directly
-                                if self.user.user_permissions.filter(codename=django_codename).exists():
+                        # Only return True if this role_perm maps to the requested permission
+                        # AND the user actually has this role permission in the database
+                        if mapped_permission == permission_name:
+                            django_codename = role_perm.replace('.', '_')
+
+                            # Check if user's role has this Django permission
+                            for user_role in self.user.roles.all():
+                                if user_role.permissions.filter(codename=django_codename).exists():
                                     self._permissions_cache[permission_name] = True
                                     return True
 
-        return has_perm
+                            # Check if user has this permission directly
+                            if self.user.user_permissions.filter(codename=django_codename).exists():
+                                self._permissions_cache[permission_name] = True
+                                return True
+
+        # Permission not found
+        self._permissions_cache[permission_name] = False
+        return False
     
     def has_any_permission(self, *permission_names) -> bool:
         """
