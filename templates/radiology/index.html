@@ -52,7 +52,7 @@
                                             <a href="{{ patient.results_url }}" class="btn btn-outline-primary" title="View Results">
                                                 <i class="fas fa-file-medical-alt"></i> Results
                                             </a>
-                                            <a href="{% url 'radiology:order' patient.id %}" class="btn btn-outline-success" title="New Order">
+                                            <a href="{% if user|has_permission:'create_radiology_request' %}{% url 'radiology:order' patient.id %}{% else %}#{% endif %}" class="btn btn-outline-success{% if not user|has_permission:'create_radiology_request' %} disabled{% endif %}" title="New Order">
                                                 <i class="fas fa-plus"></i> Order
                                             </a>
                                         </div>
@@ -139,7 +139,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                 Urgent Orders</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ urgent_orders }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ urgent_orders|length }}</div>
                             <div class="text-xs text-muted">Requires immediate attention</div>
                         </div>
                         <div class="col-auto">
@@ -158,7 +158,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Avg Reporting Time</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_reporting_time }} hrs</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_reporting_hours|default:'0' }} hrs</div>
                             <div class="text-xs text-muted">Last 30 days</div>
                         </div>
                         <div class="col-auto">
@@ -310,19 +310,33 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-    $(document).ready(function() {
-        $('#dataTable').DataTable();
+    // Initialize DataTables only if plugin is available
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
+            $('#dataTable').DataTable();
+        }
     });
 
+    // Safely read chart data
+    const dailyLabels = {{ daily_trend.labels|default:"[]"|safe }};
+    const dailyData = {{ daily_trend.data|default:"[]"|safe }};
+    const statusLabels = {{ status_distribution.labels|default:"[]"|safe }};
+    const statusData = {{ status_distribution.data|default:"[]"|safe }};
+    const statusColors = {{ status_distribution.colors|default:"['#4e73df','#1cc88a','#36b9cc','#f6c23e','#e74a3b']"|safe }};
+    const modalityLabels = {{ modality_labels|default:"[]"|safe }};
+    const modalityCounts = {{ modality_counts|default:"[]"|safe }};
+
     // Daily Trend Chart (Line Chart)
-    const dailyTrendCtx = document.getElementById('dailyTrendChart').getContext('2d');
-    new Chart(dailyTrendCtx, {
+    const dailyTrendCanvas = document.getElementById('dailyTrendChart');
+    if (dailyTrendCanvas && typeof Chart !== 'undefined') {
+        const dailyTrendCtx = dailyTrendCanvas.getContext('2d');
+        new Chart(dailyTrendCtx, {
         type: 'line',
         data: {
-            labels: {{ daily_trend.labels|safe }},
+            labels: dailyLabels,
             datasets: [{
                 label: 'Imaging Orders',
-                data: {{ daily_trend.data|safe }},
+                data: dailyData,
                 borderColor: '#4e73df',
                 backgroundColor: 'rgba(78, 115, 223, 0.05)',
                 borderWidth: 2,
@@ -359,17 +373,20 @@
                 }
             }
         }
-    });
+        });
+    }
 
     // Status Distribution Chart (Doughnut Chart)
-    const statusCtx = document.getElementById('statusChart').getContext('2d');
-    new Chart(statusCtx, {
+    const statusCanvas = document.getElementById('statusChart');
+    if (statusCanvas && typeof Chart !== 'undefined') {
+        const statusCtx = statusCanvas.getContext('2d');
+        new Chart(statusCtx, {
         type: 'doughnut',
         data: {
-            labels: {{ status_distribution.labels|safe }},
+            labels: statusLabels,
             datasets: [{
-                data: {{ status_distribution.data|safe }},
-                backgroundColor: {{ status_distribution.colors|safe }},
+                data: statusData,
+                backgroundColor: statusColors,
                 borderWidth: 2,
                 borderColor: '#fff'
             }]
@@ -394,17 +411,20 @@
                 }
             }
         }
-    });
+        });
+    }
 
     // Modality Distribution Chart (Bar Chart)
-    const modalityCtx = document.getElementById('modalityChart').getContext('2d');
-    new Chart(modalityCtx, {
+    const modalityCanvas = document.getElementById('modalityChart');
+    if (modalityCanvas && typeof Chart !== 'undefined') {
+        const modalityCtx = modalityCanvas.getContext('2d');
+        new Chart(modalityCtx, {
         type: 'bar',
         data: {
-            labels: {{ modality_labels|safe }},
+            labels: modalityLabels,
             datasets: [{
                 label: 'Number of Orders',
-                data: {{ modality_counts|safe }},
+                data: modalityCounts,
                 backgroundColor: 'rgba(78, 115, 223, 0.8)',
                 borderColor: '#4e73df',
                 borderWidth: 1
@@ -434,7 +454,8 @@
                 }
             }
         }
-    });
+        });
+    }
 </script>
 {% endblock %}
 
