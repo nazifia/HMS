@@ -74,6 +74,16 @@
         justify-content: center;
         z-index: 10;
     }
+    .chart-error {
+        color: #dc3545;
+        text-align: center;
+        padding: 2rem;
+    }
+    .no-data-placeholder {
+        text-align: center;
+        color: #6c757d;
+        padding: 3rem;
+    }
 </style>
 {% endblock %}
 
@@ -165,7 +175,7 @@
                             Total Revenue
                         </div>
                         <div class="revenue-amount">
-                            ₦{{ breakdown_data.total_revenue|floatformat:2|intcomma }}
+                            ₦{{ breakdown_data.total_revenue|default:0|floatformat:2|intcomma }}
                         </div>
                     </div>
                     <div class="col-auto">
@@ -185,12 +195,21 @@
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                             Clinical Services
                         </div>
+                        {% if breakdown_data.summary_by_category and breakdown_data.summary_by_category.clinical_services %}
                         <div class="revenue-amount text-success">
-                            ₦{{ breakdown_data.summary_by_category.clinical_services.revenue|floatformat:2|intcomma }}
+                            ₦{{ breakdown_data.summary_by_category.clinical_services.revenue|default:0|floatformat:2|intcomma }}
                         </div>
                         <div class="text-xs">
-                            {{ breakdown_data.summary_by_category.clinical_services.percentage }}% of total
+                            {{ breakdown_data.summary_by_category.clinical_services.percentage|default:0 }}% of total
                         </div>
+                        {% else %}
+                        <div class="revenue-amount text-success">
+                            ₦0.00
+                        </div>
+                        <div class="text-xs">
+                            0% of total
+                        </div>
+                        {% endif %}
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
@@ -209,12 +228,21 @@
                         <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                             Support Services
                         </div>
+                        {% if breakdown_data.summary_by_category and breakdown_data.summary_by_category.support_services %}
                         <div class="revenue-amount text-info">
-                            ₦{{ breakdown_data.summary_by_category.support_services.revenue|floatformat:2|intcomma }}
+                            ₦{{ breakdown_data.summary_by_category.support_services.revenue|default:0|floatformat:2|intcomma }}
                         </div>
                         <div class="text-xs">
-                            {{ breakdown_data.summary_by_category.support_services.percentage }}% of total
+                            {{ breakdown_data.summary_by_category.support_services.percentage|default:0 }}% of total
                         </div>
+                        {% else %}
+                        <div class="revenue-amount text-info">
+                            ₦0.00
+                        </div>
+                        <div class="text-xs">
+                            0% of total
+                        </div>
+                        {% endif %}
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-hospital fa-2x text-gray-300"></i>
@@ -233,9 +261,15 @@
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                             Growth Rate
                         </div>
+                        {% if comparison_data and comparison_data.growth_rate is not None %}
                         <div class="revenue-amount {% if comparison_data.growth_rate >= 0 %}growth-positive{% else %}growth-negative{% endif %}">
-                            {% if comparison_data.growth_rate >= 0 %}+{% endif %}{{ comparison_data.growth_rate }}%
+                            {% if comparison_data.growth_rate >= 0 %}+{% endif %}{{ comparison_data.growth_rate|floatformat:2 }}%
                         </div>
+                        {% else %}
+                        <div class="revenue-amount growth-positive">
+                            0.00%
+                        </div>
+                        {% endif %}
                         <div class="text-xs">vs previous period</div>
                     </div>
                     <div class="col-auto">
@@ -538,8 +572,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js from CDN - Using UNPKG (more reliable) -->
-<script src="https://unpkg.com/chart.js@2.9.4/dist/Chart.min.js"></script>
+<!-- Chart.js from CDN - Using more reliable CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <!-- DataTables from CDN (optional, can be removed if not needed) -->
 <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
@@ -550,45 +584,43 @@ console.log('=== REVENUE DASHBOARD DEBUG ===');
 console.log('Error status:', {{ error|default:False|yesno:"true,false" }});
 {% if not error %}
 console.log('Breakdown data exists:', {{ breakdown_data|yesno:"true,false" }});
+{% if breakdown_data.summary_by_category %}
 console.log('Summary by category:', {
     clinical: {{ breakdown_data.summary_by_category.clinical_services.revenue|default:0 }},
     support: {{ breakdown_data.summary_by_category.support_services.revenue|default:0 }},
     administrative: {{ breakdown_data.summary_by_category.administrative_services.revenue|default:0 }},
     specialty: {{ breakdown_data.summary_by_category.specialty_departments.revenue|default:0 }}
 });
+{% endif %}
 console.log('Has trends:', {{ breakdown_data.trends|yesno:"true,false" }});
 {% endif %}
 console.log('===============================');
 </script>
 
 <script>
-// Wait for Chart.js to load
-function waitForChartJS(callback, maxAttempts = 50) {
-    let attempts = 0;
-    const checkInterval = setInterval(function() {
-        attempts++;
+// Enhanced Chart.js loading with fallback
+function loadChartJS() {
+    return new Promise((resolve, reject) => {
         if (typeof Chart !== 'undefined') {
-            console.log('Chart.js loaded successfully! Version:', Chart.version);
-            clearInterval(checkInterval);
-            callback();
-        } else if (attempts >= maxAttempts) {
-            console.error('Chart.js failed to load after', attempts, 'attempts');
-            clearInterval(checkInterval);
-            // Show error message to user
-            $('.chart-container').html('<div class="alert alert-warning text-center">Chart library failed to load. Please refresh the page or check your internet connection.</div>');
+            console.log('Chart.js already loaded!');
+            resolve(Chart);
+            return;
         }
-    }, 100);
-}
-
-// Initialize charts and functionality
-$(document).ready(function() {
-    console.log('Document ready, waiting for Chart.js...');
-    waitForChartJS(function() {
-        console.log('Initializing charts now...');
-        initializeCharts();
-        setupEventHandlers();
+        
+        // Try to load Chart.js
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js';
+        script.onload = () => {
+            console.log('Chart.js loaded successfully!');
+            resolve(Chart);
+        };
+        script.onerror = () => {
+            console.error('Failed to load Chart.js from CDN');
+            reject(new Error('Chart.js failed to load'));
+        };
+        document.head.appendChild(script);
     });
-});
+}
 
 // Date filter change handler (toggle month/custom range inputs)
 $('#date_filter').on('change', function() {
@@ -632,8 +664,26 @@ $('#month_picker').on('change', function() {
 });
 
 // Initialize on page load based on current selection
-console.log('Initializing date filter with value:', $('#date_filter').val());
-$('#date_filter').trigger('change');
+$(document).ready(function() {
+    console.log('Initializing date filter with value:', $('#date_filter').val());
+    $('#date_filter').trigger('change');
+    
+    // Initialize charts after Chart.js loads
+    loadChartJS().then(() => {
+        console.log('Chart.js loaded, initializing charts...');
+        initializeCharts();
+    }).catch((error) => {
+        console.error('Chart.js loading failed:', error);
+        showChartError();
+    });
+});
+
+function showChartError() {
+    const chartContainers = document.querySelectorAll('.chart-container');
+    chartContainers.forEach(container => {
+        container.innerHTML = '<div class="chart-error"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Charts could not be loaded. Please refresh the page or check your internet connection.</div>';
+    });
+}
 
 function initializeCharts() {
     {% if not error %}
@@ -641,7 +691,7 @@ function initializeCharts() {
         // Revenue Distribution Chart (only if data is available)
         const distributionEl = document.getElementById('revenueDistributionChart');
         if (distributionEl) {
-            const distributionCtx = distributionEl.getContext('2d');
+            {% if breakdown_data.summary_by_category %}
             const distData = [
                 {{ breakdown_data.summary_by_category.clinical_services.revenue|default:0 }},
                 {{ breakdown_data.summary_by_category.support_services.revenue|default:0 }},
@@ -655,6 +705,7 @@ function initializeCharts() {
             console.log('Distribution data check:', { distData, hasDistData });
             
             if (hasDistData) {
+                const distributionCtx = distributionEl.getContext('2d');
                 window.distributionChart = new Chart(distributionCtx, {
                     type: 'doughnut',
                     data: {
@@ -711,18 +762,17 @@ function initializeCharts() {
                 console.log('Distribution chart created successfully');
             } else {
                 console.log('No distribution data available, showing empty state');
-                
-                // Create a placeholder message
-                const emptyHTML = '<div class="text-center text-muted p-5"><i class="fas fa-chart-pie fa-3x mb-3"></i><h5>No revenue data for selected period</h5><p class="mb-0">Try selecting a different date range or check back later.</p><button class="btn btn-outline-primary btn-sm mt-3" onclick="createDemoChart(\'distribution\')"><i class="fas fa-eye"></i> Show Sample Chart</button></div>';
-                distributionEl.parentElement.innerHTML = emptyHTML;
+                showNoDataMessage(distributionEl, 'distribution');
             }
+            {% else %}
+            showNoDataMessage(distributionEl, 'distribution');
+            {% endif %}
         }
 
         // Revenue Trends Chart (if trend data exists)
-        {% if breakdown_data.trends %}
         const trendsEl = document.getElementById('revenueTrendsChart');
-        if (trendsEl) {
-            const trendsCtx = trendsEl.getContext('2d');
+        if (trendsEl && {% if breakdown_data.trends %}true{% else %}false{% endif %}) {
+            {% if breakdown_data.trends %}
             const trendLabels = [
                 {% for month, data in breakdown_data.trends.items %}
                     '{{ month }}',
@@ -741,6 +791,7 @@ function initializeCharts() {
             console.log('Trends data check:', { trendData, hasTrendData });
             
             if (hasTrendData) {
+                const trendsCtx = trendsEl.getContext('2d');
                 window.trendsChart = new Chart(trendsCtx, {
                     type: 'line',
                     data: {
@@ -757,14 +808,14 @@ function initializeCharts() {
                     options: {
                         maintainAspectRatio: false,
                         scales: {
-                            yAxes: [{
+                            y: {
+                                beginAtZero: true,
                                 ticks: {
-                                    beginAtZero: true,
                                     callback: function(value) {
                                         return '₦' + new Intl.NumberFormat().format(value);
                                     }
                                 }
-                            }]
+                            }
                         },
                         tooltips: {
                             callbacks: {
@@ -778,26 +829,29 @@ function initializeCharts() {
                 console.log('Trends chart created successfully');
             } else {
                 console.log('No trend data available, showing empty state');
-                
-                // Create a placeholder message with demo option
-                const emptyHTML = '<div class="text-center text-muted p-5"><i class="fas fa-chart-line fa-3x mb-3"></i><h5>No trend data for selected period</h5><p class="mb-0">Try selecting a different date range or view a sample trend chart.</p><button class="btn btn-outline-primary btn-sm mt-3" onclick="createDemoChart(\'trends\')"><i class="fas fa-eye"></i> Show Sample Trend</button></div>';
-                trendsEl.parentElement.innerHTML = emptyHTML;
+                showNoDataMessage(trendsEl, 'trends');
             }
+            {% else %}
+            showNoDataMessage(trendsEl, 'trends');
+            {% endif %}
+        } else if (trendsEl) {
+            showNoDataMessage(trendsEl, 'trends');
         }
-        {% else %}
-        const trendsEl = document.getElementById('revenueTrendsChart');
-        if (trendsEl) {
-            trendsEl.parentElement.innerHTML = '<p class="text-center text-muted p-5">No trend data available</p>';
-        }
-        {% endif %}
 
     } catch (error) {
         console.error('Error initializing charts:', error);
+        showChartError();
     }
     {% endif %}
 }
 
-// Global function to create demo charts when no data is available
+function showNoDataMessage(canvasElement, chartType) {
+    const message = chartType === 'distribution' 
+        ? '<div class="no-data-placeholder"><i class="fas fa-chart-pie fa-3x mb-3 text-muted"></i><h5>No revenue data for selected period</h5><p class="mb-3">Try selecting a different date range or check back later.</p><button class="btn btn-outline-primary btn-sm" onclick="createDemoChart(\'' + chartType + '\')"><i class="fas fa-eye"></i> Show Sample Chart</button></div>'
+        : '<div class="no-data-placeholder"><i class="fas fa-chart-line fa-3x mb-3 text-muted"></i><h5>No trend data for selected period</h5><p class="mb-3">Try selecting a different date range or view a sample trend chart.</p><button class="btn btn-outline-primary btn-sm" onclick="createDemoChart(\'' + chartType + '\')"><i class="fas fa-eye"></i> Show Sample Trend</button></div>';
+    canvasElement.parentElement.innerHTML = message;
+}
+
 function createDemoChart(chartType) {
     console.log('Creating demo chart for type:', chartType);
     
@@ -886,6 +940,7 @@ function createDemoChart(chartType) {
     }
 }
 
+// Global function to create demo charts when no data is available
 function setupEventHandlers() {
     // Auto-submit form on filter change
     $('#department_filter, #payment_method_filter').change(function() {
@@ -903,6 +958,22 @@ function exportData(format) {
 function changeChartType(type) {
     // Implement chart type change functionality
     console.log('Changing chart type to:', type);
+    if (type === 'pie') {
+        if (window.distributionChart) {
+            window.distributionChart.config.type = 'pie';
+            window.distributionChart.update();
+        }
+    } else if (type === 'doughnut') {
+        if (window.distributionChart) {
+            window.distributionChart.config.type = 'doughnut';
+            window.distributionChart.update();
+        }
+    } else if (type === 'bar') {
+        if (window.distributionChart) {
+            window.distributionChart.config.type = 'bar';
+            window.distributionChart.update();
+        }
+    }
 }
 
 function showLoading() {
