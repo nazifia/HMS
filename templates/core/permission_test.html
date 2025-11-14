@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+{% load hms_permissions %}
+
+{% block title %}Permission System Test{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">HMS Permission System Test</h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'core:permission_management_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-shield-alt"></i> Permission Manager
+            </a>
+            <a href="{% url 'dashboard:dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- User Information -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Current User</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Username:</strong> {{ user.username }}<br>
+                            <strong>Email:</strong> {{ user.email|default:"Not provided" }}<br>
+                            <strong>Superuser:</strong> 
+                            {% if user.is_superuser %}
+                            <span class="badge bg-success">Yes</span>
+                            {% else %}
+                            <span class="badge bg-danger">No</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Roles:</strong><br>
+                            {% for role in user|get_user_roles %}
+                            <span class="badge bg-primary me-1">{{ role|title }}</span>
+                            {% empty %}
+                            <em>No roles assigned</em>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Permission Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="permission-status {% if user|has_hms_permission:'view_dashboard' %}has-permission{% else %}no-permission{% endif %}">
+                                <i class="fas fa-tachometer-alt fa-2x mb-2"></i>
+                                <div>Dashboard</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="permission-status {% if user|has_hms_permission:'create_patient' %}has-permission{% else %}no-permission{% endif %}">
+                                <i class="fas fa-user-injured fa-2x mb-2"></i>
+                                <div>Patients</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="permission-status {% if user|has_hms_permission:'manage_pharmacy_inventory' %}has-permission{% else %}no-permission{% endif %}">
+                                <i class="fas fa-pills fa-2x mb-2"></i>
+                                <div>Pharmacy</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="permission-status {% if user|has_hms_permission:'manage_roles' %}has-permission{% else %}no-permission{% endif %}">
+                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <div>Admin</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Sections -->
+    <div class="row">
+        <!-- Basic Permission Tests -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Basic Permission Tests</h6>
+                </div>
+                <div class="card-body">
+                    <div class="test-section">
+                        <h7>View Dashboard Permission</h7>
+                        {% if user|has_hms_permission:'view_dashboard' %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 
+                            <strong>ACCESS GRANTED</strong> - User can view dashboard
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>ACCESS DENIED</strong> - User cannot view dashboard
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="test-section">
+                        <h7>Create Patient Permission</h7>
+                        {% if user|has_hms_permission:'create_patient' %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 
+                            <strong>ACCESS GRANTED</strong> - User can create patients
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>ACCESS DENIED</strong> - User cannot create patients
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="test-section">
+                        <h7>Manage Roles Permission</h7>
+                        {% if user|has_hms_permission:'manage_roles' %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 
+                            <strong>ACCESS GRANTED</strong> - User can manage roles
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>ACCESS DENIED</strong> - User cannot manage roles
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Feature Flag Tests -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Feature Flag Tests</h6>
+                </div>
+                <div class="card-body">
+                    <div class="test-section">
+                        <h7>Enhanced Pharmacy Workflow</h7>
+                        {% if 'enhanced_pharmacy_workflow'|is_feature_enabled:user %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 
+                            <strong>FEATURE ENABLED</strong> - Enhanced pharmacy features available
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-ban"></i>
+                            <strong>FEATURE DISABLED</strong> - Using basic pharmacy features
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="test-section">
+                        <h7>Advanced Reporting Module</h7>
+                        {% if 'advanced_reporting_module'|is_feature_enabled:user %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 
+                            <strong>FEATURE ENABLED</strong> - Advanced analytics available
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-ban"></i>
+                            <strong>FEATURE DISABLED</strong> - Using standard reporting
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="test-section">
+                        <h7>Audit Trail Access</h7>
+                        {% if 'audit_trail_access'|is_feature_enabled:user %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 
+                            <strong>FEATURE ENABLED</strong> - Audit logs accessible
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-ban"></i>
+                            <strong>FEATURE DISABLED</strong> - Audit logs restricted
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Tests -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Interactive Tests</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="fas fa-user-injured"></i> Patient Management
+                                </div>
+                                <div class="card-body">
+                                    {% if user|has_any_hms_permission:'view_patients,create_patient' %}
+                                    <div class="alert alert-success text-center">
+                                        <i class="fas fa-check-circle"></i> 
+                                        Access Granted
+                                    </div>
+                                    <div class="text-center">
+                                        <button class="btn btn-primary btn-sm" onclick="testPatientAccess()" {% if not user|has_hms_permission:'create_patient' %}disabled{% endif %}>
+                                            <i class="fas fa-plus"></i> Register Patient
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="testViewPatients()" {% if not user|has_hms_permission:'view_patients' %}disabled{% endif %}>
+                                            <i class="fas fa-list"></i> View Patients
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-warning text-center">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Access Restricted
+                                    </div>
+                                    <div class="text-center">
+                                        <button class="btn btn-primary btn-sm disabled">
+                                            <i class="fas fa-plus"></i> Register Patient
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm disabled mt-2">
+                                            <i class="fas fa-list"></i> View Patients
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-pills"></i> Pharmacy
+                                </div>
+                                <div class="card-body">
+                                    {% if user|has_hms_permission:'manage_pharmacy_inventory' %}
+                                    <div class="alert alert-success text-center">
+                                        <i class="fas fa-check-circle"></i>
+                                        Pharmacy Access
+                                    </div>
+                                    <div class="text-center">
+                                        <button class="btn btn-success btn-sm" onclick="testPharmacyAccess()">
+                                            <i class="fas fa-capsules"></i> Manage Inventory
+                                        </button>
+                                        {% if 'enhanced_pharmacy_workflow'|is_feature_enabled:user %}
+                                        <button class="btn btn-outline-success btn-sm mt-2" onclick="testEnhancedPharmacy()">
+                                            <i class="fas fa-truck"></i> Enhanced Workflow
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-warning text-center">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Pharmacy Restricted
+                                    </div>
+                                    <div class="text-center">
+                                        <button class="btn btn-success btn-sm disabled">
+                                            <i class="fas fa-capsules"></i> Manage Inventory
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-info text-white">
+                                    <i class="fas fa-chart-bar"></i> Reports
+                                </div>
+                                <div class="card-body">
+                                    {% if user|has_any_hms_permission:'view_reports,generate_reports' %}
+                                    <div class="alert alert-success text-center">
+                                        <i class="fas fa-check-circle"></i>
+                                        Reports Available
+                                    </div>
+                                    <div class="text-center">
+                                        <button class="btn btn-info btn-sm" onclick="testViewReports()" {% if not user|has_hms_permission:'view_reports' %}disabled{% endif %}>
+                                            <i class="fas fa-chart-line"></i> View Reports
+                                        </button>
+                                        <button class="btn btn-outline-info btn-sm mt-2" onclick="testGenerateReport()" {% if not user|has_hms_permission:'generate_reports' %}disabled{% endif %}>
+                                            <i class="fas fa-file-export"></i> Generate Report
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-warning text-center">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Reports Restricted
+                                    </div>
+                                    <div class="text-center">
+                                        <button class="btn btn-info btn-sm disabled">
+                                            <i class="fas fa-chart-line"></i> View Reports
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.permission-status {
+    padding: 15px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.has-permission {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.no-permission {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    opacity: 0.5;
+}
+
+.test-section {
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.test-section h7 {
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function testPatientAccess() {
+    alert('Testing patient creation access...\nPermission: create_patient\nResult: ' + 
+          ({% if user|has_hms_permission:'create_patient' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+}
+
+function testViewPatients() {
+    alert('Testing patient viewing access...\nPermission: view_patients\nResult: ' + 
+          ({% if user|has_hms_permission:'view_patients' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+}
+
+function testPharmacyAccess() {
+    alert('Testing pharmacy access...\nPermission: manage_pharmacy_inventory\nResult: ' + 
+          ({% if user|has_hms_permission:'manage_pharmacy_inventory' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+}
+
+function testEnhancedPharmacy() {
+    alert('Testing enhanced pharmacy workflow...\nFeature: enhanced_pharmacy_workflow\nResult: ' + 
+          ({% if 'enhanced_pharmacy_workflow'|is_feature_enabled:user %}'ENABLED'{% else %}'DISABLED'{% endif %}));
+}
+
+function testViewReports() {
+    alert('Testing report viewing access...\nPermission: view_reports\nResult: ' + 
+          ({% if user|has_hms_permission:'view_reports' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+}
+
+function testGenerateReport() {
+    alert('Testing report generation access...\nPermission: generate_reports\nResult: ' + 
+          ({% if user|has_hms_permission:'generate_reports' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+}
+
+$(document).ready(function() {
+    console.log('Permission system test loaded');
+    
+    // Add hover effects to permission status indicators
+    $('.permission-status').hover(
+        function() {
+            $(this).css('transform', 'scale(1.05)');
+        },
+        function() {
+            $(this).css('transform', 'scale(1)');
+        }
+    );
+});
+</script>
+{% endblock %}

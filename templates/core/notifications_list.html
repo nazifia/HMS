@@ -1,41 +1,235 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Notifications{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">Notifications</h4>
-                <span class="badge bg-light text-dark">{{ notifications.count }} unread</span>
-            </div>
-            <div class="card-body">
-                {% if notifications %}
-                <div class="list-group">
-                    {% for notification in notifications %}
-                    <div class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">{{ notification.message }}</h5>
-                            <small>{{ notification.created_at|timesince }} ago</small>
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Notifications</h1>
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" id="notificationActions" data-bs-toggle="dropdown">
+                <i class="fas fa-cog"></i> Actions
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">
+                    <i class="fas fa-bell-slash"></i> Mark All Read
+                </a></li>
+                <li><a class="dropdown-item" href="#">
+                    <i class="fas fa-trash"></i> Clear All
+                </a></li>
+                <li><a class="dropdown-item" href="#">
+                    <i class="fas fa-cog"></i> Settings
+                </a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Notification Categories -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Notifications
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ notifications.count }}</div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="{% url 'core:mark_notification_read' notification.id %}" class="btn btn-sm btn-outline-primary">
-                                Mark as Read
-                            </a>
+                        <div class="col-auto">
+                            <i class="fas fa-bell fa-2x text-gray-350"></i>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
-                    <h5>No unread notifications</h5>
-                    <p class="text-muted">You're all caught up!</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Unread
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ notifications.filter|length }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bell-slash fa-2x text-gray-350"></i>
+                        </div>
+                    </div>
                 </div>
-                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Read
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ notifications.filter|length }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-350"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Today
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ notifications.filter|length }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-day fa-2x text-gray-350"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">All</a></li>
+                            <li><a class="dropdown-item" href="#">Unread</a></li>
+                            <li><a class="dropdown-item" href="#">Read</a></li>
+                            <li class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">By Type</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if notifications %}
+                    <div class="list-group list-group-flush">
+                        {% for notification in notifications %}
+                        <div class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-primary{% endif %}">
+                            <div class="d-flex w-100 justify-content-between align-items-start">
+                                <div class="me-3 flex-grow-1">
+                                    <h6 class="mb-1">
+                                        {{ notification.title }}
+                                        {% if not notification.is_read %}
+                                        <span class="badge bg-primary ms-2">New</span>
+                                        {% endif %}
+                                    </h6>
+                                    <p class="mb-1 text-muted small">{{ notification.message|truncatechars:150 }}</p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ notification.created_at|timesince }} ago
+                                    </small>
+                                    {% if notification.notification_type %}
+                                    <span class="badge bg-secondary ms-2">{{ notification.get_notification_type_display }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="notificationActions{{ notification.id }}" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        {% if not notification.is_read %}
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'core:mark_notification_read' notification.id %}">
+                                                <i class="fas fa-check"></i> Mark as Read
+                                            </a>
+                                        </li>
+                                        {% endif %}
+                                        <li>
+                                            <a class="dropdown-item" href="#">
+                                                <i class="fas fa-bell-slash"></i> Mute Type
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" href="#">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Load More -->
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-primary">
+                            <i class="fas fa-chevron-down"></i> Load More
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-bell-slash fa-3x text-gray-300 mb-3"></i>
+                        <h5 class="text-muted">No notifications</h5>
+                        <p class="text-muted">You're all caught up! No new notifications.</p>
+                        <a href="{% url 'dashboard:dashboard' %}" class="btn btn-primary">
+                            <i class="fas fa-home"></i> Back to Dashboard
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .list-group-item-primary {
+        background-color: #d1ecf1 !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Notification-specific JavaScript
+    $('.dropdown-item[href*="mark_notification_read"]').on('click', function(e) {
+        e.preventDefault();
+        const url = $(this).attr('href');
+        $.ajax({
+            url: url,
+            method: 'POST',
+            success: function(response) {
+                // Update the notification item
+                const listItem = $(e.target).closest('.list-group-item');
+                listItem.removeClass('list-group-item-primary');
+                listItem.find('.badge').remove();
+                // Show success message
+                alert('Notification marked as read');
+            },
+            error: function() {
+                alert('Error marking notification as read');
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

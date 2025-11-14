@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% load hms_permissions %}
+
+{% block title %}Permission Usage Examples{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">HMS Permission Usage Examples</h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'core:permission_management_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-shield-alt"></i> Permission Manager
+            </a>
+            <a href="{% url 'dashboard:dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Permission Status -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Your Permissions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>User:</strong> {{ user.username }}<br>
+                        <strong>Roles:</strong> 
+                        {% for role in user|get_user_roles %}
+                        <span class="badge bg-primary me-1">{{ role|title }}</span>
+                        {% empty %}
+                        <em>No roles assigned</em>
+                        {% endfor %}
+                    </div>
+                    
+                    <div>
+                        <strong>Permission Status:</strong>
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="viewDashboard" 
+                                           {% if user|has_hms_permission:'view_dashboard' %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="viewDashboard">
+                                        View Dashboard
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="createPatient" 
+                                           {% if user|has_hms_permission:'create_patient' %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="createPatient">
+                                        Create Patient
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="managePharmacy" 
+                                           {% if user|has_hms_permission:'manage_pharmacy_inventory' %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="managePharmacy">
+                                        Manage Pharmacy
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="viewReports" 
+                                           {% if user|has_hms_permission:'view_reports' %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="viewReports">
+                                        View Reports
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="manageRoles" 
+                                           {% if user|has_hms_permission:'manage_roles' %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="manageRoles">
+                                        Manage Roles
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="systemConfig" 
+                                           {% if user|has_hms_permission:'system_configuration' %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="systemConfig">
+                                        System Configuration
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Feature Access</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Available Features:</strong>
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="enhancedPharmacy" 
+                                           {% if 'enhanced_pharmacy_workflow'|is_feature_enabled:user %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="enhancedPharmacy">
+                                        Enhanced Pharmacy
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="advancedReporting" 
+                                           {% if 'advanced_reporting_module'|is_feature_enabled:user %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="advancedReporting">
+                                        Advanced Reporting
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="nhiaIntegration" 
+                                           {% if 'nhia_integration_features'|is_feature_enabled:user %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="nhiaIntegration">
+                                        NHIA Integration
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="auditTrail" 
+                                           {% if 'audit_trail_access'|is_feature_enabled:user %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="auditTrail">
+                                        Audit Trail
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Usage Examples -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Template Usage Examples</h6>
+                </div>
+                <div class="card-body">
+                    <h6>Basic Permission Checks</h6>
+                    <pre class="bg-light p-3 small"><code>{% templatetag openblock %} load hms_permissions {% templatetag closeblock %}
+
+{# Check single permission #}
+{% templatetag openblock %} if user|has_hms_permission:'create_patient' {% templatetag closeblock %}
+    <button>Create Patient</button>
+{% templatetag openblock %} endif {% templatetag closeblock %}
+
+{# Check multiple permissions (any) #}
+{% templatetag openblock %} if user|has_any_hms_permission:'view_patients,create_patient' {% templatetag closeblock %}
+    <div>Patient Management</div>
+{% templatetag openblock %} endif {% templatetag closeblock %}
+
+{# Check multiple permissions (all) #}
+{% templatetag openblock %} if user|has_all_hms_permission:'view_reports,export_data' {% templatetag closeblock %}
+    <button>Export Report</button>
+{% templataget openblock %} endif {% templatetag closeblock %}</code></pre>
+                    
+                    <h6 class="mt-4">Feature Flag Checks</h6>
+                    <pre class="bg-light p-3 small"><code>{# Check feature availability #}
+{% templatetag openblock %} if 'enhanced_pharmacy_workflow'|is_feature_enabled:user {% templatetag closeblock %}
+    <div>Advanced Pharmacy Features</div>
+{% templatetag openblock %} endif {% templatetag closeblock %}</code></pre>
+                    
+                    <h6 class="mt-4">Dynamic Sidebar</h6>
+                    <pre class="bg-light p-3 small"><code>{# Render permission-aware sidebar #}
+{% templatetag openblock %} render_sidebar {% templatetag closeblock %}
+
+{# Or get sidebar items manually #}
+{% templatetag openblock %} get_sidebar_items user as sidebar_items {% templatetag closeblock %}
+{% templatetag openblock %} for item in sidebar_items {% templatetag closeblock %}
+    {# Custom rendering logic #}
+{% templatetag openblock %} endfor {% templatetag closeblock %}</code></pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">View Usage Examples</h6>
+                </div>
+                <div class="card-body">
+                    <h6>Python View Decorators</h6>
+                    <pre class="bg-light p-3 small"><code>from core.permissions import RolePermissionChecker
+
+def my_view(request):
+    checker = RolePermissionChecker(request.user)
+    
+    # Check single permission
+    if checker.has_permission('create_patient'):
+        # Allow access
+        pass
+    
+    # Check multiple permissions
+    if checker.has_any_permission('view_patients', 'create_patient'):
+        # Allow access
+        pass
+    
+    # Get all user permissions
+    all_permissions = checker.get_user_permissions()</code></pre>
+                    
+                    <h6 class="mt-4">Permission Decorators</h6>
+                    <pre class="bg-light p-3 small"><code>from core.permissions import permission_required
+
+@permission_required(['create_patient', 'edit_patient'])
+def patient_create_view(request):
+    # User must have both permissions
+    pass
+
+@any_permission_required(['view_reports', 'generate_reports'])
+def reports_view(request):
+    # User needs any of the permissions
+    pass</code></pre>
+                    
+                    <h6 class="mt-4">AJAX Permission Checks</h6>
+                    <pre class="bg-light p-3 small"><code>// Check permission via AJAX
+$.ajax({
+    url: '/core/ajax/check-permission/',
+    method: 'GET',
+    data: { permission: 'create_patient' },
+    success: function(response) {
+        if (response.has_permission) {
+            // Enable functionality
+        }
+    }
+});</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Practical Examples -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Practical Examples</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="fas fa-user-injured"></i> Patient Management
+                                </div>
+                                <div class="card-body">
+                                    {% if user|has_any_hms_permission:'view_patients,create_patient' %}
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle"></i> 
+                                        You have patient management permissions
+                                    </div>
+                                    {% if user|has_hms_permission:'create_patient' %}
+                                    <button class="btn btn-primary btn-sm mb-2">
+                                        <i class="fas fa-plus"></i> Register Patient
+                                    </button>
+                                    {% endif %}
+                                    {% if user|has_hms_permission:'view_patients' %}
+                                    <button class="btn btn-outline-primary btn-sm mb-2">
+                                        <i class="fas fa-list"></i> View Patients
+                                    </button>
+                                    {% endif %}
+                                    {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        No patient management permissions
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-pills"></i> Pharmacy
+                                </div>
+                                <div class="card-body">
+                                    {% if user|has_hms_permission:'manage_pharmacy_inventory' %}
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        Pharmacy access enabled
+                                    </div>
+                                    <button class="btn btn-success btn-sm mb-2">
+                                        <i class="fas fa-capsules"></i> Manage Inventory
+                                    </button>
+                                    {% if 'enhanced_pharmacy_workflow'|is_feature_enabled:user %}
+                                    <button class="btn btn-outline-success btn-sm mb-2">
+                                        <i class="fas fa-truck"></i> Enhanced Workflow
+                                    </button>
+                                    {% endif %}
+                                    {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Pharmacy access restricted
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-info text-white">
+                                    <i class="fas fa-chart-bar"></i> Reports
+                                </div>
+                                <div class="card-body">
+                                    {% if user|has_any_hms_permission:'view_reports,generate_reports' %}
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        Reporting access available
+                                    </div>
+                                    {% if user|has_hms_permission:'view_reports' %}
+                                    <button class="btn btn-info btn-sm mb-2">
+                                        <i class="fas fa-chart-line"></i> View Reports
+                                    </button>
+                                    {% endif %}
+                                    {% if user|has_hms_permission:'generate_reports' %}
+                                    <button class="btn btn-outline-info btn-sm mb-2">
+                                        <i class="fas fa-file-export"></i> Generate Report
+                                    </button>
+                                    {% endif %}
+                                    {% if 'advanced_reporting_module'|is_feature_enabled:user %}
+                                    <button class="btn btn-secondary btn-sm mb-2">
+                                        <i class="fas fa-chart-pie"></i> Advanced Analytics
+                                    </button>
+                                    {% endif %}
+                                    {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Reports access restricted
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Add some interactive examples
+    $('.btn').on('click', function(e) {
+        e.preventDefault();
+        const buttonText = $(this).text().trim();
+        alert('Button clicked: ' + buttonText + '\n\nThis would perform the actual action if this was a real implementation.');
+    });
+});
+</script>
+{% endblock %}

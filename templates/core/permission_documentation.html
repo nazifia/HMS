@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+
+{% block title %}HMS Custom Permissions Documentation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">HMS Custom Permissions Documentation</h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'core:permission_management_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-shield-alt"></i> Permission Manager
+            </a>
+            <a href="{% url 'core:permission_examples' %}" class="btn btn-info">
+                <i class="fas fa-code"></i> Examples
+            </a>
+        </div>
+    </div>
+
+    <!-- Overview -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Overview</h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        The HMS Custom Permissions system provides granular access control for the Hospital Management System.
+                        It extends Django's built-in permission system with role-based permissions, sidebar access control,
+                        and feature flag management while maintaining full backward compatibility.
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-shield-alt"></i> Security</h5>
+                                    <p>Granular permission control with role-based access and permission inheritance</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-bars"></i> Dynamic Sidebar</h5>
+                                    <p>Automatic sidebar menu filtering based on user permissions</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-info text-white">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-toggle-on"></i> Feature Flags</h5>
+                                    <p>Conditional feature access control and gradual rollouts</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permission Categories -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Permission Categories</h6>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="permissionCategories">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardCat">
+                                    <i class="fas fa-tachometer-alt me-2"></i> Dashboard & System
+                                </button>
+                            </h2>
+                            <div id="dashboardCat" class="accordion-collapse collapse show" data-bs-parent="#permissionCategories">
+                                <div class="accordion-body">
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item">view_dashboard - Access main dashboard</li>
+                                        <li class="list-group-item">system_configuration - Configure system settings</li>
+                                        <li class="list-group-item">view_audit_logs - View system audit logs</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#patientCat">
+                                    <i class="fas fa-user-injured me-2"></i> Patient Management
+                                </button>
+                            </h2>
+                            <div id="patientCat" class="accordion-collapse collapse" data-bs-parent="#permissionCategories">
+                                <div class="accordion-body">
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item">create_patient - Register new patients</li>
+                                        <li class="list-group-item">edit_patient - Edit patient information</li>
+                                        <li class="list-group-item">delete_patient - Delete patient records</li>
+                                        <li class="list-group-item">view_patients - View patient list</li>
+                                        <li class="list-group-item">access_sensitive_data - Access medical history</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#medicalCat">
+                                    <i class="fas fa-stethoscope me-2"></i> Medical Records
+                                </button>
+                            </h2>
+                            <div id="medicalCat" class="accordion-collapse collapse" data-bs-parent="#permissionCategories">
+                                <div class="accordion-body">
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item">manage_vitals - Record vital signs</li>
+                                        <li class="list-group-item">manage_patient_admission - Handle admissions</li>
+                                        <li class="list-group-item">manage_patient_discharge - Handle discharges</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pharmacyCat">
+                                    <i class="fas fa-pills me-2"></i> Pharmacy
+                                </button>
+                            </h2>
+                            <div id="pharmacyCat" class="accordion-collapse collapse" data-bs-parent="#permissionCategories">
+                                <div class="accordion-body">
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item">view_pharmacy - Access pharmacy operations</li>
+                                        <li class="list-group-item">manage_pharmacy_inventory - Manage inventory</li>
+                                        <li class="list-group-item">dispense_medication - Dispense medications</li>
+                                        <li class="list-group-item">manage_dispensary - Manage dispensaries</li>
+                                        <li class="list-group-item">transfer_medication - Transfer between stores</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#billingCat">
+                                    <i class="fas fa-file-invoice-dollar me-2"></i> Billing & Finance
+                                </button>
+                            </h2>
+                            <div id="billingCat" class="accordion-collapse collapse" data-bs-parent="#permissionCategories">
+                                <div class="accordion-body">
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item">view_invoices - View billing invoices</li>
+                                        <li class="list-group-item">create_invoice - Create new invoices</li>
+                                        <li class="list-group-item">process_payments - Handle payments</li>
+                                        <li class="list-group-item">manage_wallet - Patient wallet operations</li>
+                                        <li class="list-group-item">view_financial_reports - Financial analytics</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Feature Flags</h6>
+                </div>
+                <div class="card-body">
+                    <p>Feature flags allow conditional access to advanced features:</p>
+                    
+                    <div class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div>
+                                    <h6 class="mb-1">Enhanced Pharmacy Workflow</h6>
+                                    <p class="mb-1 small text-muted">Advanced pharmacy cart and dispensing features</p>
+                                </div>
+                                <span class="badge bg-primary">manage_pharmacy_inventory</span>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div>
+                                    <h6 class="mb-1">Advanced Reporting Module</h6>
+                                    <p class="mb-1 small text-muted">Enhanced analytics and custom reporting</p>
+                                </div>
+                                <span class="badge bg-info">view_analytics</span>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div>
+                                    <h6 class="mb-1">NHIA Integration Features</h6>
+                                    <p class="mb-1 small text-muted">Enhanced NHIA authorization workflows</p>
+                                </div>
+                                <span class="badge bg-success">access_sensitive_data</span>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div>
+                                    <h6 class="mb-1">Bulk Operations</h6>
+                                    <p class="mb-1 small text-muted">Mass patient and data operations</p>
+                                </div>
+                                <span class="badge bg-danger">manage_roles</span>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div>
+                                    <h6 class="mb-1">Audit Trail Access</h6>
+                                    <p class="mb-1 small text-muted">System audit log access</p>
+                                </div>
+                                <span class="badge bg-secondary">view_audit_logs</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Permission Hierarchy</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker">
+                                <i class="fas fa-crown text-warning"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Superuser Override</h6>
+                                <p class="text-muted small">Superusers automatically have all permissions</p>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-marker">
+                                <i class="fas fa-user-tag text-primary"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>HMS Custom Permissions (User)</h6>
+                                <p class="text-muted small">Direct user-to-permission assignments</p>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-marker">
+                                <i class="fas fa-users text-success"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>HMS Custom Permissions (Role)</h6>
+                                <p class="text-muted small">Role-based permission inheritance</p>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-marker">
+                                <i class="fas fa-shield-alt text-info"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Django Permissions</h6>
+                                <p class="text-muted small">Standard Django permission system</p>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-marker">
+                                <i class="fas fa-history text-muted"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Legacy Role Mapping</h6>
+                                <p class="text-muted small">Backward compatibility fallback</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Implementation Guide -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-secondary">Implementation Guide</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>For Template Developers</h6>
+                            <div class="alert alert-info">
+                                <h7><i class="fas fa-lightbulb"></i> Quick Start</h7>
+                                <pre class="small mt-2"><code>{% templatetag openblock %} load hms_permissions {% templatetag closeblock %}
+{% templatetag openblock %} if user|has_hms_permission:'create_patient' {% templatetag closeblock %}
+    <button>Create Patient</button>
+{% templatetag openblock %} endif {% templatetag closeblock %}</code></pre>
+                            </div>
+                            
+                            <h7>Available Template Tags</h7>
+                            <ul class="list-group mt-2">
+                                <li class="list-group-item"><code>has_hms_permission</code> - Single permission check</li>
+                                <li class="list-group-item"><code>has_any_hms_permission</code> - Any of multiple permissions</li>
+                                <li class="list-group-item"><code>has_all_hms_permission</code> - All specified permissions</li>
+                                <li class="list-group-item"><code>is_feature_enabled</code> - Feature flag check</li>
+                                <li class="list-group-item"><code>render_sidebar</code> - Dynamic sidebar rendering</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>For View Developers</h6>
+                            <div class="alert alert-success">
+                                <h7><i class="fas fa-lightbulb"></i> Quick Start</h7>
+                                <pre class="small mt-2"><code>from core.permissions import RolePermissionChecker
+
+def my_view(request):
+    checker = RolePermissionChecker(request.user)
+    if checker.has_permission('create_patient'):
+        # Allow access
+        pass</code></pre>
+                            </div>
+                            
+                            <h7>Available Classes & Decorators</h7>
+                            <ul class="list-group mt-2">
+                                <li class="list-group-item"><code>RolePermissionChecker</code> - Permission checking class</li>
+                                <li class="list-group-item"><code>permission_required</code> - View decorator</li>
+                                <li class="list-group-item"><code>any_permission_required</code> - Multiple permissions decorator</li>
+                                <li class="list-group-item"><code>has_permission()</code> - Check single permission</li>
+                                <li class="list-group-item"><code>has_any_permission()</code> - Check any of multiple</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.timeline-content {
+    margin-left: 50px;
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item:last-child .timeline::after {
+    height: 50%;
+}
+</style>
+{% endblock %}

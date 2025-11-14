@@ -1,0 +1,282 @@
+{% extends 'enhanced_base.html' %}
+{% load core_tags hms_permissions %}
+
+{% block title %}Admin Dashboard - Settings Fixed{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-shield-alt me-2 text-primary"></i>Admin Dashboard
+                </h1>
+                <p class="text-muted mb-0">System administration and security monitoring</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                </button>
+                {% if user|has_hms_permission:'view_audit_logs' %}
+                <a href="{% url 'core:audit_report' %}" class="btn btn-primary">
+                    <i class="fas fa-file-alt me-2"></i>Audit Report
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        {% if user|has_hms_permission:'view_user_management' %}
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-primary bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Total Users</h6>
+                            <h3 class="mb-0">{{ total_users }}</h3>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-primary" style="width: {% if total_users > 0 %}{% widthratio active_users total_users 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                    <small class="text-muted">{{ active_users }} active users</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if user|has_hms_permission:'view_audit_logs' %}
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-warning bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Security Events</h6>
+                            <h3 class="mb-0">{{ security_events_24h }}</h3>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-warning" style="width: {% if max_security_events > 0 %}{% widthratio security_events_24h max_security_events 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                    <small class="text-muted">Last 24 hours</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if user|has_hms_permission:'system_configuration' %}
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-info bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">System Settings</h6>
+                            <h3 class="mb-0">{{ system_settings_count }}</h3>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-info" style="width: {% if system_settings_count > 0 %}{% widthratio configured_settings system_settings_count 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                    <small class="text-muted">{{ configured_settings }} configured</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if user|has_hms_permission:'backup_data' %}
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-success bg-gradient text-white rounded-3 p-3 me-3">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Database Backups</h6>
+                            <h3 class="mb-0">{{ recent_backups }}</h3>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-success" style="width: {% if max_backups > 0 %}{% widthratio recent_backups max_backups 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                    <small class="text-muted">Last 30 days</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="row">
+        <!-- User Management Section -->
+        {% if user|has_hms_permission:'view_user_management' %}
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users me-2 text-primary"></i>User Management
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- User management content -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Recent User Activity</h6>
+                            <!-- User activity content -->
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Role Distribution</h6>
+                            <!-- Role distribution content -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Security Overview -->
+        {% if user|has_hms_permission:'view_audit_logs' %}
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-shield-alt me-2 text-warning"></i>Security Overview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Security content -->
+                    <div class="security-metrics">
+                        <!-- Security metrics -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- System Configuration -->
+        {% if user|has_hms_permission:'system_configuration' %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cog me-2 text-info"></i>System Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- System configuration content -->
+                    <div class="config-status">
+                        <!-- Configuration status -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Database Management -->
+        {% if user|has_hms_permission:'backup_data' %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-database me-2 text-success"></i>Database Management
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Database management content -->
+                    <div class="backup-status">
+                        <!-- Backup status -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Permission-based Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tools me-2 text-secondary"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if user|has_hms_permission:'manage_roles' %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-primary btn-block">
+                                <i class="fas fa-user-tag me-2"></i>Manage Roles
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user|has_hms_permission:'create_user' %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'accounts:create_staff' %}" class="btn btn-outline-success btn-block">
+                                <i class="fas fa-user-plus me-2"></i>Add User
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user|has_hms_permission:'view_audit_logs' %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'core:activity_log' %}" class="btn btn-outline-warning btn-block">
+                                <i class="fas fa-list-alt me-2"></i>Activity Log
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user|has_hms_permission:'system_configuration' %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'core:admin_dashboard' %}" class="btn btn-outline-info btn-block">
+                                <i class="fas fa-cogs me-2"></i>System Settings
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshDashboard() {
+    // Refresh dashboard data
+    location.reload();
+}
+
+// Permission-based UI enhancements
+$(document).ready(function() {
+    // Add permission-aware tooltips
+    $('[data-permission-required]').each(function() {
+        const permission = $(this).data('permission-required');
+        if (!checkUserPermission(permission)) {
+            $(this).prop('disabled', true).addClass('disabled');
+            $(this).attr('title', 'Permission required: ' + permission);
+        }
+    });
+});
+
+function checkUserPermission(permission) {
+    // This would be implemented with AJAX call to check permissions
+    return true; // Placeholder
+}
+</script>
+{% endblock %}

@@ -4,11 +4,11 @@
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
 <!-- Sidebar -->
-<div class="d-flex flex-column bg-dark sidebar vh-100" id="sidebar-container" style="width:300px !important;min-height:100vh;overflow-y:auto;scroll-behavior:auto;">
-    <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;scroll-behavior:auto;">
+<div class="d-flex flex-column bg-gray-900 sidebar vh-100" id="sidebar-container" style="width:250px;min-height:100vh;overflow-y:auto;scroll-behavior:auto;">
+    <ul class="navbar-nav sidebar accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;scroll-behavior:auto;">
 
         <!-- Mobile Header with Hamburger Menu -->
-        <div class="d-md-none mobile-sidebar-header bg-dark d-flex align-items-center justify-content-between p-3 border-bottom border-secondary">
+        <div class="d-md-none mobile-sidebar-header bg-gray-800 d-flex align-items-center justify-content-between p-3 border-bottom border-gray-700">
             <div class="sidebar-brand d-flex align-items-center" href="{% url 'home' %}">
                 <div class="sidebar-brand-icon">
                     <i class="fas fa-hospital text-white"></i>
@@ -32,29 +32,29 @@
         <hr class="sidebar-divider my-0">
 
         <!-- Dynamic Sidebar Menu Items -->
-        {% get_sidebar_items request.user as sidebar_items %}
+        {% if user.is_authenticated %}
+        {% get_sidebar_items user as sidebar_items %}
         
         {% for item in sidebar_items %}
             {% if not item.parent %}
-                {% include "includes/sidebar_menu_item.html" with menu_item=item user=request.user %}
+                {% include "includes/sidebar_menu_item.html" with menu_item=item user=user %}
             {% endif %}
         {% empty %}
             <!-- Fallback to basic dashboard access if no menu items -->
-            {% if request.user.is_authenticated %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'dashboard:dashboard' %}">
-                    <i class="fas fa-fw fa-tachometer-alt text-white"></i>
-                    <span class="text-white">Dashboard</span>
+                    <i class="fas fa-fw fa-tachometer-alt text-gray-300"></i>
+                    <span class="text-gray-300">Dashboard</span>
                 </a>
             </li>
-            {% endif %}
         {% endfor %}
+        {% endif %}
 
         <!-- Divider -->
         <hr class="sidebar-divider">
 
         <!-- Heading -->
-        <div class="sidebar-heading">
+        <div class="sidebar-heading text-gray-400">
             System Features
         </div>
 
@@ -62,8 +62,17 @@
         {% if user|has_hms_permission:'manage_roles' %}
         <li class="nav-item">
             <a class="nav-link" href="{% url 'accounts:permission_management' %}">
-                <i class="fas fa-fw fa-cogs text-white"></i>
-                <span class="text-white">HMS Permission Manager</span>
+                <i class="fas fa-fw fa-cogs text-gray-300"></i>
+                <span class="text-gray-300">Legacy Permission Manager</span>
+            </a>
+        </li>
+        {% endif %}
+
+        {% if user|has_hms_permission:'manage_roles' %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'core:permission_management_dashboard' %}">
+                <i class="fas fa-fw fa-shield-alt text-gray-300"></i>
+                <span class="text-gray-300">HMS Permission Manager</span>
             </a>
         </li>
         {% endif %}
@@ -72,14 +81,27 @@
         {% if user|has_hms_permission:'system_configuration' %}
         <li class="nav-item">
             <a class="nav-link" href="{% url 'core:admin_dashboard' %}">
-                <i class="fas fa-fw fa-tools text-white"></i>
-                <span class="text-white">Admin Tools</span>
+                <i class="fas fa-fw fa-tools text-gray-300"></i>
+                <span class="text-gray-300">Admin Tools</span>
             </a>
         </li>
         {% endif %}
 
         <!-- Divider -->
         <hr class="sidebar-divider">
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-card d-none d-md-block">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-shield-alt fa-2x text-gray-300"></i>
+                </div>
+                <div class="text-xs text-gray-400">
+                    Enhanced Security<br>
+                    <small>Powered by HMS Permissions</small>
+                </div>
+            </div>
+        </div>
 
     </ul>
 </div>
@@ -113,5 +135,121 @@ document.addEventListener('DOMContentLoaded', function() {
             parentLink.classList.remove('collapsed');
         }
     });
+
+    // Add active class to current page
+    const currentLocation = window.location.pathname;
+    const navLinks = document.querySelectorAll('.nav-item .nav-link');
+    
+    navLinks.forEach(function(link) {
+        if (link.getAttribute('href') === currentLocation) {
+            const parentItem = link.closest('.nav-item');
+            parentItem.classList.add('active');
+            
+            // Expand parent if this is a child item
+            const parentCollapse = parentItem.querySelector('.collapse');
+            if (parentCollapse) {
+                const parentToggle = parentItem.querySelector('[data-bs-toggle="collapse"]');
+                if (parentToggle) {
+                    parentToggle.classList.remove('collapsed');
+                    parentCollapse.classList.add('show');
+                }
+            }
+        }
+    });
 });
+
+// Permission-aware menu item highlighting
+function highlightCurrentMenuItem() {
+    const currentPath = window.location.pathname;
+    const menuItems = document.querySelectorAll('[data-menu-url]');
+    
+    menuItems.forEach(function(item) {
+        const itemUrl = item.getAttribute('data-menu-url');
+        if (itemUrl && currentPath.includes(itemUrl)) {
+            item.classList.add('active');
+        }
+    });
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', highlightCurrentMenuItem);
 </script>
+
+<style>
+/* Enhanced sidebar styles */
+.sidebar {
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+}
+
+.sidebar-toggled .sidebar-overlay {
+    display: block;
+}
+
+.nav-item.active {
+    background-color: rgba(78, 115, 223, 0.1);
+    border-left: 4px solid #4e73df;
+}
+
+.nav-link {
+    transition: all 0.3s ease-in-out;
+    padding: 0.75rem 1rem;
+    color: #858796 !important;
+}
+
+.nav-link:hover {
+    color: #f8f9fc !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-heading {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    padding: 0.75rem 1rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.sidebar-divider {
+    margin: 1rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        z-index: 1050;
+    }
+    
+    .sidebar-toggled .sidebar {
+        transform: translateX(0);
+    }
+    
+    .mobile-sidebar-header {
+        border-bottom: 1px solid #4e73df;
+    }
+}
+
+/* Permission denied styling */
+.permission-denied {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.permission-denied:hover {
+    background-color: transparent !important;
+}
+</style>

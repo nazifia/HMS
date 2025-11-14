@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load hms_permissions %}
+
+{% block title %}Feature Flag Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Feature Flag Management</h1>
+        <a href="{% url 'core:permission_management_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Feature Flags -->
+    <div class="row">
+        {% for feature in feature_flags %}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ feature.display_name }}</h6>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" 
+                               {% if feature.is_enabled %}checked{% endif %} disabled>
+                        <label class="form-check-label">
+                            {% if feature.is_enabled %}
+                            <span class="badge bg-success">Enabled</span>
+                            {% else %}
+                            <span class="badge bg-danger">Disabled</span>
+                            {% endif %}
+                        </label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Feature Details</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td class="border-0"><strong>Name:</strong></td>
+                                    <td class="border-0"><code>{{ feature.name }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td class="border-0"><strong>Type:</strong></td>
+                                    <td class="border-0">
+                                        <span class="badge bg-secondary">{{ feature.get_feature_type_display }}</span>
+                                    </td>
+                                </tr>
+                                {% if feature.permission_required %}
+                                <tr>
+                                    <td class="border-0"><strong>Required Permission:</strong></td>
+                                    <td class="border-0">
+                                        <span class="badge bg-primary">{{ feature.permission_required.codename }}</span>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td class="border-0"><strong>Created:</strong></td>
+                                    <td class="border-0">{{ feature.created_at|date:"M d, Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="border-0"><strong>Last Updated:</strong></td>
+                                    <td class="border-0">{{ feature.updated_at|date:"M d, Y" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Description</h6>
+                            <p class="text-muted small">
+                                {% if feature.description %}
+                                {{ feature.description }}
+                                {% else %}
+                                <em>No description provided</em>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="editFeature('{{ feature.name }}')">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-outline-{{ feature.is_enabled|yesno:'danger,success' }} btn-sm" 
+                                    onclick="toggleFeature('{{ feature.name }}', {{ feature.is_enabled|yesno:'true,false' }})">
+                                <i class="fas fa-{{ feature.is_enabled|yesno:'toggle-off,toggle-on' }}"></i>
+                                {{ feature.is_enabled|yesno:'Disable,Enable' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-toggle-off fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-muted">No feature flags found</h5>
+                    <p class="text-muted">Feature flags allow you to enable/disable features based on permissions</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Feature Flag Information -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">About Feature Flags</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>What are Feature Flags?</h6>
+                            <p class="text-muted small">
+                                Feature flags allow you to enable or disable features in your application
+                                based on permissions and system configuration. This provides granular control
+                                over what users can access without changing code.
+                            </p>
+                            <h6>Use Cases</h6>
+                            <ul class="text-muted small">
+                                <li>Gradual feature rollouts</li>
+                                <li>A/B testing</li>
+                                <li>Permission-based feature access</li>
+                                <li>Maintenance mode for specific features</li>
+                                <li>Development feature toggles</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Usage in Templates</h6>
+                            <pre class="bg-light p-3 small"><code>{% templatetag openblock %} load hms_permissions {% templatetag closeblock %}
+{% templatetag openblock %} if 'feature_name'|is_feature_enabled:user {% templatetag closeblock %}
+    <!-- Feature content -->
+{% templatetag openblock %} endif {% templatetag closeblock %}</code></pre>
+                            <h6>Types of Features</h6>
+                            <ul class="text-muted small">
+                                <li><strong>Module:</strong> Entire modules or sections</li>
+                                <li><strong>View:</strong> Specific views or pages</li>
+                                <li><strong>Button:</strong> Action buttons or links</li>
+                                <li><strong>Field:</strong> Form fields or inputs</li>
+                                <li><strong>Report:</strong> Reporting features</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editFeature(featureName) {
+    alert('Edit feature: ' + featureName + '\nThis would open an edit form.');
+}
+
+function toggleFeature(featureName, currentState) {
+    const action = currentState ? 'disable' : 'enable';
+    if (confirm('Are you sure you want to ' + action + ' this feature?')) {
+        alert(action.charAt(0).toUpperCase() + action.slice(1) + ' feature: ' + featureName);
+    }
+}
+</script>
+{% endblock %}

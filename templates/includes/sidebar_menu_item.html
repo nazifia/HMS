@@ -1,7 +1,9 @@
 {% load hms_permissions %}
 
 {% if menu_item.has_permission %}
-<li class="nav-item {% if menu_item.children.filter|length > 0 %}{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}active{% endif %}{% else %}{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}active{% endif %}{% endif %}">
+<li class="nav-item {% if menu_item.children.filter|length > 0 %}{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}active{% endif %}{% else %}{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}active{% endif %}{% endif %}" 
+    {% if menu_item.url_name or menu_item.url_path %}data-menu-url="{% if menu_item.url_name %}{{ menu_item.url_name }}{% else %}{{ menu_item.url_path }}{% endif %}"{% endif %}>
+    
     {% if menu_item.children.filter|length > 0 %}
         <!-- Parent menu item with dropdown -->
         <a class="nav-link {% if menu_item.url_name not in request.path and menu_item.url_path not in request.path %}collapsed{% endif %}" 
@@ -10,21 +12,29 @@
            data-bs-target="#collapse{{ menu_item.id }}" 
            aria-expanded="{% if menu_item.url_name in request.path or menu_item.url_path in request.path %}true{% else %}false{% endif %}" 
            aria-controls="collapse{{ menu_item.id }}">
-            <i class="{{ menu_item.icon }} text-white"></i>
-            <span class="text-white">{{ menu_item.title }}</span>
+            <i class="{{ menu_item.icon }} text-gray-300"></i>
+            <span class="text-gray-300">{{ menu_item.title }}</span>
+            <i class="fas fa-chevron-right ms-auto"></i>
         </a>
+        
         <div id="collapse{{ menu_item.id }}" 
              class="collapse {% if menu_item.url_name in request.path or menu_item.url_path in request.path %}show{% endif %}" 
              aria-labelledby="heading{{ menu_item.id }}" 
              data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <h6 class="collapse-header">{{ menu_item.title }}:</h6>
+            <div class="bg-gray-800 py-2 collapse-inner rounded">
+                <h6 class="collapse-header text-gray-400">{{ menu_item.title }}:</h6>
                 {% for child in menu_item.children.filter %}
                     {% if child.has_permission %}
-                    <a class="collapse-item {% if child.url_name in request.path or child.url_path in request.path %}active{% endif %}" 
-                       href="{{ child.get_url }}">
-                        {% if child.icon != 'fas fa-circle' %}<i class="{{ child.icon }} me-2"></i>{% endif %}
+                    <a class="collapse-item text-gray-300 py-2 px-3 d-block 
+                           {% if child.url_name in request.path or child.url_path in request.path %}bg-primary text-white active{% endif %}"
+                       href="{% if child.url_name %}{% url child.url_name %}{% else %}{{ child.url_path }}{% endif %}">
+                        {% if child.icon and child.icon != 'fas fa-circle' %}
+                        <i class="{{ child.icon }} me-2"></i>
+                        {% endif %}
                         {{ child.title }}
+                        {% if not child.is_active %}
+                        <span class="badge bg-warning ms-2">Inactive</span>
+                        {% endif %}
                     </a>
                     {% endif %}
                 {% endfor %}
@@ -32,9 +42,14 @@
         </div>
     {% else %}
         <!-- Single menu item -->
-        <a class="nav-link" href="{{ menu_item.get_url }}">
-            <i class="{{ menu_item.icon }} text-white"></i>
-            <span class="text-white">{{ menu_item.title }}</span>
+        <a class="nav-link text-gray-300 py-2 px-3 d-block 
+               {% if menu_item.url_name in request.path or menu_item.url_path in request.path %}bg-primary text-white active{% endif %}"
+           href="{% if menu_item.url_name %}{% url menu_item.url_name %}{% else %}{{ menu_item.url_path }}{% endif %}">
+            <i class="{{ menu_item.icon }} me-2"></i>
+            <span>{{ menu_item.title }}</span>
+            {% if not menu_item.is_active %}
+            <span class="badge bg-warning ms-2">Inactive</span>
+            {% endif %}
         </a>
     {% endif %}
 </li>
