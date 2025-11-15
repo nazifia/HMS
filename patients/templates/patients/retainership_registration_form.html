@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Patient: <strong>{{ patient.get_full_name }} (ID: {{ patient.patient_id }})</strong></p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <p>Are you sure you want to register this patient for retainership?</p>
+                        <p class="text-info">A unique retainership registration number will be automatically generated for this patient.</p>
+                        <button type="submit" class="btn btn-primary mt-3">Register for Retainership</button>
+                        <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary mt-3 ms-2">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -60,6 +60,7 @@
                     <h6 class="collapse-header">Patient Management:</h6>
                     <a class="collapse-item" href="{% url 'patients:patient_list' %}">Patient List</a>
                     <a class="collapse-item" href="{% url 'patients:register' %}">Register New Patient</a>
+                    <a class="collapse-item" href="{% url 'patients:search' %}">Search Patients</a>
                 </div>
             </div>
         </li>
@@ -88,9 +89,16 @@
             <div id="collapsePharmacy" class="collapse" aria-labelledby="headingPharmacy" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Pharmacy Management:</h6>
+                    <a class="collapse-item" href="{% url 'pharmacy:dashboard' %}">Dashboard</a>
                     <a class="collapse-item" href="{% url 'pharmacy:prescription_list' %}">Prescriptions</a>
                     <a class="collapse-item" href="{% url 'pharmacy:inventory_list' %}">Inventory</a>
                     <a class="collapse-item" href="{% url 'pharmacy:dispensary_list' %}">Dispensaries</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:cart_list' %}">Cart</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:inter_dispensary_transfer_list' %}">Transfers</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:dispensed_items_tracker' %}">Dispensed Items</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:expiring_medications_report' %}">Expiring Medications</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:low_stock_medications_report' %}">Low Stock</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:enhanced_transfer_dashboard' %}">Enhanced Transfers</a>
                 </div>
             </div>
         </li>
@@ -157,7 +165,14 @@
                     <h6 class="collapse-header">NHIA Management:</h6>
                     <a class="collapse-item" href="{% url 'nhia:dashboard' %}">Dashboard</a>
                     <a class="collapse-item" href="{% url 'nhia:authorization_code_list' %}">Authorization Codes</a>
+                    <a class="collapse-item" href="{% url 'nhia:generate_authorization_code' %}">Generate Authorization</a>
                     <a class="collapse-item" href="{% url 'nhia:nhia_patient_list' %}">NHIA Patients</a>
+                    <a class="collapse-item" href="{% url 'nhia:register_patient_for_nhia' %}">Register Patient</a>
+                    <a class="collapse-item" href="{% url 'nhia:register_independent_nhia_patient' %}">Register Independent Patient</a>
+                    <hr class="my-2">
+                    <h6 class="collapse-header">Universal Authorization:</h6>
+                    <a class="collapse-item" href="{% url 'core:universal_authorization_dashboard' %}">Authorization Dashboard</a>
+                    <a class="collapse-item" href="{% url 'core:bulk_generate_authorization' %}">Bulk Generate</a>
                 </div>
             </div>
         </li>
@@ -173,6 +188,7 @@
                     <h6 class="collapse-header">Retainership:</h6>
                     <a class="collapse-item" href="{% url 'retainership:retainership_patient_list' %}">Retainership Patients</a>
                     <a class="collapse-item" href="{% url 'retainership:select_patient_for_retainership' %}">Register Patient</a>
+                    <a class="collapse-item" href="{% url 'retainership:register_independent_retainership_patient' %}">Register Independent Patient</a>
                 </div>
             </div>
         </li>
@@ -190,6 +206,13 @@
                     <a class="collapse-item" href="{% url 'desk_office:pending_consultations' %}">Pending Consultations</a>
                     <a class="collapse-item" href="{% url 'desk_office:pending_referrals' %}">Pending Referrals</a>
                     <a class="collapse-item" href="{% url 'desk_office:authorization_code_list' %}">Authorization Codes</a>
+                    <a class="collapse-item" href="{% url 'desk_office:generate_authorization_code' %}">Generate Code</a>
+                    <a class="collapse-item" href="{% url 'desk_office:verify_authorization_code' %}">Verify Code</a>
+                    <a class="collapse-item" href="{% url 'desk_office:search_nhia_patients_ajax' %}">Search NHIA Patients</a>
+                    <hr class="my-2">
+                    <h6 class="collapse-header">Bulk Operations:</h6>
+                    <a class="collapse-item" href="{% url 'desk_office:bulk_authorize_consultations' %}">Bulk Authorize Consultations</a>
+                    <a class="collapse-item" href="{% url 'desk_office:bulk_authorize_referrals' %}">Bulk Authorize Referrals</a>
                 </div>
             </div>
         </li>

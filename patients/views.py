@@ -163,6 +163,11 @@ def patient_detail(request, patient_id):
     
     # Get physiotherapy requests
     physiotherapy_requests = PhysiotherapyRequest.objects.filter(patient=patient).order_by('-request_date')
+    
+    # Get NHIA and Retainership information
+    nhia_info = getattr(patient, 'nhia_info', None)
+    retainership_info = getattr(patient, 'retainership_info', None)
+    
     context = {
         'patient': patient,
         'age': age,
@@ -172,6 +177,8 @@ def patient_detail(request, patient_id):
         'medical_histories': medical_histories,
         'clinical_notes': clinical_notes,
         'physiotherapy_requests': physiotherapy_requests,
+        'nhia_info': nhia_info,
+        'retainership_info': retainership_info,
         'page_title': f'Patient Details - {patient.get_full_name()}',
         'active_nav': 'patients',
     }
@@ -217,25 +224,37 @@ def toggle_patient_status(request, patient_id):
 
 
 @login_required
+@permission_required('patients.view')
 def search_patients(request):
-    """View for searching patients via AJAX"""
-    query = request.GET.get('q', '')
-    patients = Patient.objects.filter(
-        Q(first_name__icontains=query) |
-        Q(last_name__icontains=query) |
-        Q(patient_id__icontains=query)
-    ).filter(is_active=True)[:10]
+    """View for searching patients"""
+    # Handle AJAX search requests
+    if 'q' in request.GET or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        query = request.GET.get('q', '')
+        patients = Patient.objects.filter(
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(patient_id__icontains=query) |
+            Q(phone_number__icontains=query)
+        ).filter(is_active=True)[:10]
+        
+        patient_data = []
+        for patient in patients:
+            patient_data.append({
+                'id': patient.id,
+                'name': patient.get_full_name(),
+                'patient_id': patient.patient_id,
+                'phone_number': patient.phone_number or 'N/A',
+            })
+        
+        return JsonResponse({'patients': patient_data})
     
-    patient_data = []
-    for patient in patients:
-        patient_data.append({
-            'id': patient.id,
-            'name': patient.get_full_name(),
-            'patient_id': patient.patient_id,
-            'phone_number': patient.phone_number,
-        })
+    # Handle regular page requests
+    context = {
+        'page_title': 'Search Patients',
+        'active_nav': 'patients',
+    }
     
-    return JsonResponse({'patients': patient_data})
+    return render(request, 'patients/search.html', context)
 
 
 @login_required
@@ -1131,17 +1150,145 @@ def apply_wallet_net_impact(request, patient_id):
 @login_required
 def register_nhia_patient(request, patient_id):
     """View for registering NHIA patient"""
+    from nhia.models import NHIAPatient
+    from nhia.views import generate_nhia_reg_number
+    
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for registering NHIA patient
-    pass
+    
+    # Check if patient is already registered for NHIA
+    if hasattr(patient, 'nhia_info'):
+        messages.warning(request, f'{patient.get_full_name()} is already registered for NHIA.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    if request.method == 'POST':
+        # Update patient type to NHIA
+        patient.patient_type = 'nhia'
+        patient.save()
+        
+        # Create NHIA patient record
+        nhia_patient = NHIAPatient.objects.create(
+            patient=patient,
+            nhia_reg_number=generate_nhia_reg_number(),
+            is_active=True
+        )
+        
+        messages.success(request, f'{patient.get_full_name()} has been successfully registered for NHIA with registration number {nhia_patient.nhia_reg_number}.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    # For GET request, show confirmation form
+    context = {
+        'patient': patient,
+        'title': f'Register {patient.get_full_name()} for NHIA'
+    }
+    return render(request, 'patients/nhia_registration_form.html', context)
 
 
 @login_required
 def edit_nhia_patient(request, patient_id):
     """View for editing NHIA patient"""
+    from nhia.models import NHIAPatient
+    
     patient = get_object_or_404(Patient, id=patient_id)
-    # Implementation for editing NHIA patient
-    pass
+    
+    # Check if patient has NHIA record
+    if not hasattr(patient, 'nhia_info'):
+        messages.error(request, f'{patient.get_full_name()} is not registered for NHIA.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    nhia_patient = patient.nhia_info
+    
+    if request.method == 'POST':
+        # Update NHIA status
+        is_active = request.POST.get('is_active', 'off') == 'on'
+        nhia_patient.is_active = is_active
+        nhia_patient.save()
+        
+        status = "activated" if is_active else "deactivated"
+        messages.success(request, f'{patient.get_full_name()} NHIA registration has been {status}.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    # For GET request, show edit form
+    context = {
+        'patient': patient,
+        'nhia_patient': nhia_patient,
+        'title': f'Edit NHIA Registration for {patient.get_full_name()}'
+    }
+    return render(request, 'patients/edit_nhia_patient.html', context)
+
+
+@login_required
+def register_retainership_patient(request, patient_id):
+    """View for registering retainership patient"""
+    from retainership.models import RetainershipPatient
+    
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Check if patient is already registered for retainership
+    if hasattr(patient, 'retainership_info'):
+        messages.warning(request, f'{patient.get_full_name()} is already registered for retainership.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    if request.method == 'POST':
+        # Update patient type to retainership
+        patient.patient_type = 'retainership'
+        patient.save()
+        
+        # Generate a retainership registration number (3 billion to 4 billion range)
+        import random
+        while True:
+            retainership_reg_number = random.randint(3000000000, 3999999999)
+            if not RetainershipPatient.objects.filter(retainership_reg_number=retainership_reg_number).exists():
+                break
+        
+        # Create retainership patient record
+        retainership_patient = RetainershipPatient.objects.create(
+            patient=patient,
+            retainership_reg_number=retainership_reg_number,
+            is_active=True
+        )
+        
+        messages.success(request, f'{patient.get_full_name()} has been successfully registered for retainership with registration number {retainership_patient.retainership_reg_number}.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    # For GET request, show confirmation form
+    context = {
+        'patient': patient,
+        'title': f'Register {patient.get_full_name()} for Retainership'
+    }
+    return render(request, 'patients/retainership_registration_form.html', context)
+
+
+@login_required
+def edit_retainership_patient(request, patient_id):
+    """View for editing retainership patient"""
+    from retainership.models import RetainershipPatient
+    
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Check if patient has retainership record
+    if not hasattr(patient, 'retainership_info'):
+        messages.error(request, f'{patient.get_full_name()} is not registered for retainership.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    retainership_patient = patient.retainership_info
+    
+    if request.method == 'POST':
+        # Update retainership status
+        is_active = request.POST.get('is_active', 'off') == 'on'
+        retainership_patient.is_active = is_active
+        retainership_patient.save()
+        
+        status = "activated" if is_active else "deactivated"
+        messages.success(request, f'{patient.get_full_name()} retainership registration has been {status}.')
+        return redirect('patients:detail', patient_id=patient.id)
+    
+    # For GET request, show edit form
+    context = {
+        'patient': patient,
+        'retainership_patient': retainership_patient,
+        'title': f'Edit Retainership Registration for {patient.get_full_name()}'
+    }
+    return render(request, 'patients/edit_retainership_patient.html', context)
 
 
 @login_required

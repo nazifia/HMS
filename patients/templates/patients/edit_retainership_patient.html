@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Patient:</strong> {{ patient.get_full_name }}</p>
+                            <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+                            <p class="mb-1"><strong>Phone:</strong> {{ patient.phone_number }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Retainership Registration:</strong> {{ retainership_patient.retainership_reg_number }}</p>
+                            <p class="mb-1"><strong>Registered Date:</strong> {{ retainership_patient.date_registered|date:"M d, Y" }}</p>
+                            <p class="mb-1">
+                                <strong>Status:</strong> 
+                                {% if retainership_patient.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if retainership_patient.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">
+                                Retainership Registration Active
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Update Retainership Status</button>
+                        <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

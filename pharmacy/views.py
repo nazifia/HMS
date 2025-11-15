@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from django.contrib import messages
-from django.db.models import Q, Sum, F, Count
+from django.db.models import Q, Sum, F, Count, Avg, StdDev, Variance, Min, Max, Case, When, Value
 from django.db import models, transaction, IntegrityError
 from django.core.paginator import Paginator
 from django.http import JsonResponse
@@ -753,29 +753,183 @@ def revenue_analysis(request):
 
 @login_required
 def expense_analysis(request):
-    """View for expense analysis"""
-    # Implementation for expense analysis
-    # Get expense data
-    purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')[:50]
-
-    # Calculate expense statistics
-    total_expenses = Purchase.objects.aggregate(
-        total=Sum('total_amount')
-    )['total'] or 0
-
+    """View for expense analysis with date, month, and year filtering"""
+    from datetime import datetime, date
+    from django.db.models import Avg, StdDev, Variance
+    
+    # Get filter parameters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    month = request.GET.get('month')
+    year = request.GET.get('year')
+    
+    # Base queryset
+    purchases_qs = Purchase.objects.select_related('supplier')
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            purchases_qs = purchases_qs.filter(purchase_date__gte=start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            purchases_qs = purchases_qs.filter(purchase_date__lte=end_date_obj)
+        except ValueError:
+            pass
+    
+    if month:
+        try:
+            month_int = int(month)
+            if 1 <= month_int <= 12:
+                purchases_qs = purchases_qs.filter(purchase_date__month=month_int)
+        except ValueError:
+            pass
+    
+    if year:
+        try:
+            year_int = int(year)
+            purchases_qs = purchases_qs.filter(purchase_date__year=year_int)
+        except ValueError:
+            pass
+    
+    # Get expense data with filtering
+    purchases = purchases_qs.order_by('-purchase_date')[:50]
+    
+    # Calculate expense statistics with filtering
+    expense_stats = purchases_qs.aggregate(
+        total=Sum('total_amount'),
+        avg_order=Avg('total_amount'),
+        count=Count('id')
+    )
+    
+    total_expenses = expense_stats['total'] or 0
+    avg_order_value = expense_stats['avg_order'] or 0
+    total_orders = expense_stats['count'] or 0
+    
+    # Calculate expense ratios
+    current_date = timezone.now().date()
+    months_with_data = purchases_qs.dates('purchase_date', 'month', order='DESC')
+    avg_monthly_expense = total_expenses / len(months_with_data) if months_with_data else 0
+    
+    # Get revenue data for ratio calculation (simplified - in real implementation, this would come from billing module)
+    total_revenue = total_expenses * Decimal('1.5')  # Simplified ratio using Decimal
+    procurement_to_revenue = (total_expenses / total_revenue * Decimal('100')) if total_revenue > 0 else Decimal('0')
+    
+    expense_ratios = {
+        'avg_monthly_expense': avg_monthly_expense,
+        'procurement_to_revenue': procurement_to_revenue,
+    }
+    
+    # Get procurement expenses by payment status
+    payment_analysis = purchases_qs.values('payment_status').annotate(
+        total_amount=Sum('total_amount'),
+        count=Count('id')
+    ).order_by('-total_amount')
+    
+    procurement_expenses = {
+        'pending_payments': purchases_qs.filter(payment_status='pending').aggregate(
+            total=Sum('total_amount')
+        )['total'] or 0,
+    }
+    
     # Get category-wise expense data
-    category_expenses = PurchaseItem.objects.values(
+    category_expenses = PurchaseItem.objects.filter(
+        purchase__in=purchases_qs
+    ).values(
         'medication__category__name'
     ).annotate(
-        total_value=Sum(F('quantity') * F('unit_price'))
-    ).order_by('-total_value')[:10]
-
+        total_cost=Sum(F('quantity') * F('unit_price')),
+        total_quantity=Sum('quantity')
+    ).order_by('-total_cost')[:10]
+    
+    # Get supplier expenses
+    supplier_expenses = purchases_qs.values(
+        'supplier__name'
+    ).annotate(
+        total_spent=Sum('total_amount'),
+        order_count=Count('id'),
+        avg_order_value=Avg('total_amount')
+    ).annotate(
+        payment_efficiency=Case(
+            When(payment_status='paid', then=Value(100)),
+            When(payment_status='partial', then=Value(50)),
+            default=Value(0),
+            output_field=models.IntegerField()
+        )
+    ).order_by('-total_spent')
+    
+    # Get monthly expenses for chart
+    from django.db.models.functions import TruncMonth
+    monthly_expenses = purchases_qs.annotate(
+        month=TruncMonth('purchase_date')
+    ).values('month').annotate(
+        total_expenses=Sum('total_amount'),
+        order_count=Count('id')
+    ).order_by('month')[:12]
+    
+    # Get optimization opportunities
+    optimization_opportunities = PurchaseItem.objects.filter(
+        purchase__in=purchases_qs
+    ).values(
+        'medication__name'
+    ).annotate(
+        avg_price=Avg('unit_price'),
+        min_price=Min('unit_price'),
+        max_price=Max('unit_price'),
+        supplier_count=Count('purchase__supplier', distinct=True)
+    ).annotate(
+        price_range=F('max_price') - F('min_price')
+    ).filter(
+        price_range__gt=0
+    ).order_by('-price_range')
+    
+    # Get medication efficiency analysis
+    medication_efficiency = PurchaseItem.objects.filter(
+        purchase__in=purchases_qs
+    ).values(
+        'medication__name'
+    ).annotate(
+        total_cost=Sum(F('quantity') * F('unit_price')),
+        total_quantity=Sum('quantity'),
+        avg_unit_cost=Avg('unit_price')
+    ).annotate(
+        cost_variance=StdDev('unit_price')
+    ).annotate(
+        potential_savings=F('cost_variance') * F('total_quantity')
+    ).order_by('-cost_variance')
+    
+    # Prepare filter values for form
+    current_year = current_date.year
+    years = list(range(current_year - 5, current_year + 1))
+    months = [(1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'),
+              (5, 'May'), (6, 'June'), (7, 'July'), (8, 'August'),
+              (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')]
+    
     context = {
+        'title': 'Expense Analysis',
         'purchases': purchases,
         'total_expenses': total_expenses,
         'category_expenses': category_expenses,
+        'expense_ratios': expense_ratios,
+        'procurement_expenses': procurement_expenses,
+        'supplier_expenses': supplier_expenses,
+        'monthly_expenses': monthly_expenses,
+        'payment_analysis': payment_analysis,
+        'optimization_opportunities': optimization_opportunities,
+        'medication_efficiency': medication_efficiency,
         'page_title': 'Expense Analysis',
         'active_nav': 'pharmacy',
+        # Filter values for form
+        'years': years,
+        'months': months,
+        'selected_start_date': start_date,
+        'selected_end_date': end_date,
+        'selected_month': int(month) if month else '',
+        'selected_year': int(year) if year else '',
     }
 
     return render(request, 'pharmacy/expense_analysis.html', context)

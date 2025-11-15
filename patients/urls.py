@@ -54,5 +54,7 @@ urlpatterns = [
     path('<int:patient_id>/wallet/apply-net-impact/', views.apply_wallet_net_impact, name='apply_wallet_net_impact'),
     path('<int:patient_id>/nhia/register/', views.register_nhia_patient, name='register_nhia_patient'),
     path('<int:patient_id>/nhia/edit/', views.edit_nhia_patient, name='edit_nhia_patient'),
+    path('<int:patient_id>/retainership/register/', views.register_retainership_patient, name='register_retainership_patient'),
+    path('<int:patient_id>/retainership/edit/', views.edit_retainership_patient, name='edit_retainership_patient'),
     path('clear-context/', views.clear_patient_context, name='clear_patient_context'),
 ]

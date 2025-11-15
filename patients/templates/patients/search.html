@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Search Patients - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.search-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.35rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+.search-input {
+    font-size: 1.1rem;
+    padding: 1rem;
+}
+
+.search-results {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.patient-card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.35rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.patient-card:hover {
+    background-color: #f8f9fc;
+    border-color: #4e73df;
+    cursor: pointer;
+}
+
+.patient-card .patient-info {
+    padding: 1rem;
+}
+
+.search-loading {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+}
+
+.no-results {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+    color: #858796;
+}
+
+.result-count {
+    font-size: 0.9rem;
+    color: #858796;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Search Patients</h1>
+        <a href="{% url 'patients:register' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus fa-sm"></i> Register New Patient
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="search-container">
+                <!-- Search Input -->
+                <div class="mb-4">
+                    <label for="searchInput" class="form-label">Search for patients by name, ID, or phone number:</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control search-input" 
+                               id="searchInput" 
+                               placeholder="Enter patient name, ID, or phone number..."
+                               autocomplete="off">
+                    </div>
+                    <div class="form-text">Start typing to search. Minimum 2 characters required.</div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div class="search-loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Searching patients...</p>
+                </div>
+
+                <!-- No Results Message -->
+                <div class="no-results">
+                    <i class="fas fa-search fa-3x mb-3 text-muted"></i>
+                    <h5>No patients found</h5>
+                    <p class="text-muted">Try adjusting your search terms.</p>
+                </div>
+
+                <!-- Search Results -->
+                <div id="searchResults" class="search-results">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-search fa-3x mb-3"></i>
+                        <h5>Enter search terms above</h5>
+                        <p>Search results will appear here</p>
+                    </div>
+                </div>
+
+                <!-- Result Count -->
+                <div id="resultCount" class="result-count d-none"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let searchTimeout;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const searchLoading = document.querySelector('.search-loading');
+    const noResults = document.querySelector('.no-results');
+    const resultCount = document.getElementById('resultCount');
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // Clear previous timeout
+        clearTimeout(searchTimeout);
+        
+        if (query.length < 2) {
+            // Reset to initial state
+            searchResults.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-search fa-3x mb-3"></i>
+                    <h5>Enter search terms above</h5>
+                    <p>Search results will appear here</p>
+                </div>
+            `;
+            searchLoading.style.display = 'none';
+            noResults.style.display = 'none';
+            resultCount.classList.add('d-none');
+            return;
+        }
+        
+        // Show loading
+        searchLoading.style.display = 'block';
+        noResults.style.display = 'none';
+        resultCount.classList.add('d-none');
+        
+        // Debounce search
+        searchTimeout = setTimeout(function() {
+            performSearch(query);
+        }, 500);
+    });
+});
+
+function performSearch(query) {
+    fetch(`/patients/search/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            const searchResults = document.getElementById('searchResults');
+            const searchLoading = document.querySelector('.search-loading');
+            const noResults = document.querySelector('.no-results');
+            const resultCount = document.getElementById('resultCount');
+            
+            searchLoading.style.display = 'none';
+            
+            if (data.patients && data.patients.length > 0) {
+                let html = '';
+                data.patients.forEach(patient => {
+                    html += `
+                        <div class="patient-card" onclick="window.location.href='/patients/${patient.id}/'">
+                            <div class="patient-info">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4">
+                                        <h6 class="mb-1">
+                                            <i class="fas fa-user text-primary"></i>
+                                            ${patient.name}
+                                        </h6>
+                                        <small class="text-muted">ID: ${patient.patient_id}</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <i class="fas fa-phone text-info"></i>
+                                        <span>${patient.phone_number || 'N/A'}</span>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <button class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                searchResults.innerHTML = html;
+                noResults.style.display = 'none';
+                
+                // Show result count
+                resultCount.textContent = `Found ${data.patients.length} patient${data.patients.length === 1 ? '' : 's'}`;
+                resultCount.classList.remove('d-none');
+            } else {
+                // No results
+                searchResults.innerHTML = '';
+                noResults.style.display = 'block';
+                resultCount.classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            const searchLoading = document.querySelector('.search-loading');
+            const searchResults = document.getElementById('searchResults');
+            
+            searchLoading.style.display = 'none';
+            searchResults.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    An error occurred while searching. Please try again.
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}

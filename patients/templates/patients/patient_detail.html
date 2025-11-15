@@ -113,6 +113,24 @@
                 {% endif %}
                 <hr>
 
+                <!-- Retainership Information -->
+                <h5>Retainership Information</h5>
+                {% if retainership_info %}
+                    <p><strong>Retainership Registration Number:</strong> {{ retainership_info.retainership_reg_number }}</p>
+                    <p><strong>Retainership Status:</strong> {% if retainership_info.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</p>
+                    <a href="{% url 'patients:edit_retainership_patient' patient.id %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-edit"></i> Edit Retainership Record
+                    </a>
+                {% else %}
+                    <p>No retainership record found for this patient.</p>
+                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                        <a href="{% url 'patients:register_retainership_patient' patient.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus"></i> Register Retainership Record
+                        </a>
+                    {% endif %}
+                {% endif %}
+                <hr>
+
                 <!-- Recent Admissions -->
                 <h5>Recent Admissions</h5>
                 {% if recent_admissions %}

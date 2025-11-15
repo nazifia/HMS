@@ -30,6 +30,21 @@
     .optimization-card {
         border-left: 4px solid #ffc107;
     }
+    .filter-card {
+        border-left: 4px solid #007bff;
+    }
+    .date-filter-form .form-row {
+        align-items: end;
+    }
+    .date-filter-form .form-inline {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+    .date-filter-form .form-inline .form-group {
+        margin-right: 15px;
+        margin-bottom: 0;
+    }
 </style>
 {% endblock %}
 
@@ -45,6 +60,61 @@
             <button class="btn btn-danger" onclick="exportReport()">
                 <i class="fas fa-download"></i> Export Expense Report
             </button>
+        </div>
+    </div>
+
+    <!-- Date Filter Form -->
+    <div class="card filter-card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-filter"></i> Filter Expenses
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="date-filter-form">
+                <div class="form-inline">
+                    <div class="form-group">
+                        <label for="start_date" class="mr-2">Start Date:</label>
+                        <input type="date" id="start_date" name="start_date" class="form-control" 
+                               value="{{ selected_start_date|default:'' }}" style="width: 150px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="end_date" class="mr-2">End Date:</label>
+                        <input type="date" id="end_date" name="end_date" class="form-control" 
+                               value="{{ selected_end_date|default:'' }}" style="width: 150px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="month" class="mr-2">Month:</label>
+                        <select id="month" name="month" class="form-control" style="width: 130px;">
+                            <option value="">All Months</option>
+                            {% for month_num, month_name in months %}
+                                <option value="{{ month_num }}" {% if selected_month == month_num %}selected{% endif %}>
+                                    {{ month_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="year" class="mr-2">Year:</label>
+                        <select id="year" name="year" class="form-control" style="width: 100px;">
+                            <option value="">All Years</option>
+                            {% for yr in years %}
+                                <option value="{{ yr }}" {% if selected_year == yr %}selected{% endif %}>
+                                    {{ yr }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary btn-sm mr-2">
+                            <i class="fas fa-search"></i> Apply
+                        </button>
+                        <a href="{% url 'pharmacy:expense_analysis' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -341,7 +411,11 @@
 const monthlyExpenseData = {
     labels: [
         {% for item in monthly_expenses %}
-            '{{ item.month|date:"M Y" }}'{% if not forloop.last %},{% endif %}
+            {% if item.month %}
+                '{{ item.month|date:"M Y" }}'
+            {% else %}
+                'Unknown'
+            {% endif %}{% if not forloop.last %},{% endif %}
         {% endfor %}
     ],
     datasets: [{
