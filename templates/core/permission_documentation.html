@@ -303,14 +303,14 @@
                             <div class="alert alert-info">
                                 <h7><i class="fas fa-lightbulb"></i> Quick Start</h7>
                                 <pre class="small mt-2"><code>{% templatetag openblock %} load hms_permissions {% templatetag closeblock %}
-{% templatetag openblock %} if user|has_hms_permission:'create_patient' {% templatetag closeblock %}
+{% templatetag openblock %} if user|has_permission:'create_patient' {% templatetag closeblock %}
     <button>Create Patient</button>
 {% templatetag openblock %} endif {% templatetag closeblock %}</code></pre>
                             </div>
                             
                             <h7>Available Template Tags</h7>
                             <ul class="list-group mt-2">
-                                <li class="list-group-item"><code>has_hms_permission</code> - Single permission check</li>
+                                <li class="list-group-item"><code>has_permission</code> - Single permission check</li>
                                 <li class="list-group-item"><code>has_any_hms_permission</code> - Any of multiple permissions</li>
                                 <li class="list-group-item"><code>has_all_hms_permission</code> - All specified permissions</li>
                                 <li class="list-group-item"><code>is_feature_enabled</code> - Feature flag check</li>

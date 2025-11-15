@@ -42,21 +42,21 @@
                             <div class="col-md-6">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="" id="viewDashboard" 
-                                           {% if user|has_hms_permission:'view_dashboard' %}checked{% endif %} disabled>
+                                           {% if user|has_permission:'view_dashboard' %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="viewDashboard">
                                         View Dashboard
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="" id="createPatient" 
-                                           {% if user|has_hms_permission:'create_patient' %}checked{% endif %} disabled>
+                                           {% if user|has_permission:'create_patient' %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="createPatient">
                                         Create Patient
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="" id="managePharmacy" 
-                                           {% if user|has_hms_permission:'manage_pharmacy_inventory' %}checked{% endif %} disabled>
+                                           {% if user|has_permission:'manage_pharmacy_inventory' %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="managePharmacy">
                                         Manage Pharmacy
                                     </label>
@@ -65,21 +65,21 @@
                             <div class="col-md-6">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="" id="viewReports" 
-                                           {% if user|has_hms_permission:'view_reports' %}checked{% endif %} disabled>
+                                           {% if user|has_permission:'view_reports' %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="viewReports">
                                         View Reports
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="" id="manageRoles" 
-                                           {% if user|has_hms_permission:'manage_roles' %}checked{% endif %} disabled>
+                                           {% if user|has_permission:'manage_roles' %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="manageRoles">
                                         Manage Roles
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="" id="systemConfig" 
-                                           {% if user|has_hms_permission:'system_configuration' %}checked{% endif %} disabled>
+                                           {% if user|has_permission:'system_configuration' %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="systemConfig">
                                         System Configuration
                                     </label>
@@ -151,7 +151,7 @@
                     <pre class="bg-light p-3 small"><code>{% templatetag openblock %} load hms_permissions {% templatetag closeblock %}
 
 {# Check single permission #}
-{% templatetag openblock %} if user|has_hms_permission:'create_patient' {% templatetag closeblock %}
+{% templatetag openblock %} if user|has_permission:'create_patient' {% templatetag closeblock %}
     <button>Create Patient</button>
 {% templatetag openblock %} endif {% templatetag closeblock %}
 
@@ -259,12 +259,12 @@ $.ajax({
                                         <i class="fas fa-check-circle"></i> 
                                         You have patient management permissions
                                     </div>
-                                    {% if user|has_hms_permission:'create_patient' %}
+                                    {% if user|has_permission:'create_patient' %}
                                     <button class="btn btn-primary btn-sm mb-2">
                                         <i class="fas fa-plus"></i> Register Patient
                                     </button>
                                     {% endif %}
-                                    {% if user|has_hms_permission:'view_patients' %}
+                                    {% if user|has_permission:'view_patients' %}
                                     <button class="btn btn-outline-primary btn-sm mb-2">
                                         <i class="fas fa-list"></i> View Patients
                                     </button>
@@ -285,7 +285,7 @@ $.ajax({
                                     <i class="fas fa-pills"></i> Pharmacy
                                 </div>
                                 <div class="card-body">
-                                    {% if user|has_hms_permission:'manage_pharmacy_inventory' %}
+                                    {% if user|has_permission:'manage_pharmacy_inventory' %}
                                     <div class="alert alert-success">
                                         <i class="fas fa-check-circle"></i>
                                         Pharmacy access enabled
@@ -319,12 +319,12 @@ $.ajax({
                                         <i class="fas fa-check-circle"></i>
                                         Reporting access available
                                     </div>
-                                    {% if user|has_hms_permission:'view_reports' %}
+                                    {% if user|has_permission:'view_reports' %}
                                     <button class="btn btn-info btn-sm mb-2">
                                         <i class="fas fa-chart-line"></i> View Reports
                                     </button>
                                     {% endif %}
-                                    {% if user|has_hms_permission:'generate_reports' %}
+                                    {% if user|has_permission:'generate_reports' %}
                                     <button class="btn btn-outline-info btn-sm mb-2">
                                         <i class="fas fa-file-export"></i> Generate Report
                                     </button>

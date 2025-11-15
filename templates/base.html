@@ -184,6 +184,99 @@
         .topbar .nav-link:hover {
             color: #00bfff !important;
         }
+
+        /* Enhanced User Profile Elements */
+        .img-profile {
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .img-profile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+        }
+
+        .avatar-placeholder {
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .avatar-placeholder:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+        }
+
+        .user-dropdown-toggle {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .user-dropdown-toggle:hover {
+            background: rgba(0, 184, 255, 0.1);
+            border-radius: 8px;
+            transform: translateY(-1px);
+        }
+
+        .session-status-container {
+            transition: all 0.3s ease;
+            position: relative;
+            border-radius: 20px;
+        }
+
+        .session-status-container:hover {
+            background: rgba(40, 167, 69, 0.1);
+            transform: scale(1.05);
+        }
+
+        .patient-context-container {
+            transition: all 0.3s ease;
+            position: relative;
+            border-radius: 20px;
+        }
+
+        .patient-context-container:hover {
+            background: rgba(23, 162, 184, 0.1);
+            transform: scale(1.05);
+        }
+
+        .dropdown-menu {
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-menu.show {
+            animation: slideDown 0.3s ease;
+        }
+
+        /* Enhanced User Name Visibility */
+        .user-dropdown-toggle .font-weight-bold {
+            color: #23272b !important;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        /* Better Chevron Styling */
+        .user-dropdown-toggle .fa-chevron-down {
+            transition: transform 0.2s ease;
+        }
+
+        .user-dropdown-toggle[aria-expanded="true"] .fa-chevron-down {
+            transform: rotate(180deg);
+        }
         /* Footer custom style */
         footer, .footer {
             flex-shrink: 0;
@@ -292,70 +385,118 @@
                     
                     <a class="navbar-brand" href="{% url 'dashboard:dashboard' %}">HMS</a>
                     <!-- Topbar Navbar -->
-                    <ul class="navbar-nav ms-auto">
+                    <ul class="navbar-nav ms-auto align-items-center">
                         {% if user.is_authenticated %}
                             <!-- Session Status Indicator -->
-                            <li class="nav-item">
-                                <span class="nav-link" id="sessionStatus">
-                                    <i class="fas fa-circle text-success me-1" id="sessionIndicator"></i>
-                                    <span class="d-none d-sm-inline" id="sessionText">Active</span>
-                                </span>
+                            <li class="nav-item me-3">
+                                <div class="nav-link session-status-container px-3 py-2" id="sessionStatus" title="Session Status">
+                                    <i class="fas fa-circle text-success me-2" id="sessionIndicator"></i>
+                                    <span class="badge bg-success rounded-pill px-2 py-1" id="sessionText">Active</span>
+                                </div>
                             </li>
 
                             <!-- Current Patient Context -->
                             {% if has_current_patient %}
-                            <li class="nav-item">
-                                <div class="nav-link" id="currentPatientContext">
-                                    <i class="fas fa-user-injured text-info me-1"></i>
-                                    <span class="d-none d-sm-inline">
-                                        {{ current_patient.full_name }}
-                                        {% if current_patient.patient_id %}({{ current_patient.patient_id }}){% endif %}
-                                    </span>
-                                    <div class="btn-group btn-group-xs ms-2" role="group">
-                                        <a href="/patients/{{ current_patient.id }}/" class="btn btn-outline-primary btn-xs" title="View Patient">
+                            <li class="nav-item me-3">
+                                <div class="nav-link patient-context-container px-3 py-2" id="currentPatientContext" title="Current Patient">
+                                    <i class="fas fa-user-injured text-info me-2"></i>
+                                    <div class="d-flex flex-column">
+                                        <span class="font-weight-bold text-info">{{ current_patient.full_name }}</span>
+                                        {% if current_patient.patient_id %}
+                                        <small class="text-muted">ID: {{ current_patient.patient_id }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="btn-group btn-group-sm ms-3" role="group">
+                                        <a href="/patients/{{ current_patient.id }}/" class="btn btn-outline-primary btn-sm" title="View Patient">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <button type="button" class="btn btn-outline-danger btn-xs" title="Clear Patient Context" onclick="clearPatientContext()">
+                                        <button type="button" class="btn btn-outline-danger btn-sm" title="Clear Patient Context" onclick="clearPatientContext()">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                 </div>
                             </li>
                             {% endif %}
-                            <li class="nav-item dropdown no-arrow">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                            
+                            <!-- Enhanced User Dropdown -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link user-dropdown-toggle px-3 py-2 d-flex align-items-center justify-content-between" href="#" id="userDropdown" role="button"
                                     data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <span class="me-2 d-none d-lg-inline text-gray-600 small">{{ user.get_full_name }}</span>
-                                    {% if user.profile.profile_picture %}
-                                        <img class="img-profile rounded-circle"
-                                            src="{{ user.profile.profile_picture.url }}" alt="Profile Picture" style="width: 30px; height: 30px;">
-                                    {% else %}
-                                        <i class="fas fa-user-circle fa-2x text-gray-300"></i>
-                                    {% endif %}
+                                    <div class="d-flex align-items-center">
+                                        {% if user.profile.profile_picture %}
+                                            <img class="img-profile rounded-circle me-2"
+                                                src="{{ user.profile.profile_picture.url }}" alt="Profile Picture" 
+                                                style="width: 35px; height: 35px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        {% else %}
+                                            <div class="avatar-placeholder bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                style="width: 35px; height: 35px; border: 2px solid #fff;">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div class="d-flex flex-column">
+                                            <span class="font-weight-bold text-dark me-2">{{ user.get_full_name }}</span>
+                                            {% if user.profile and user.profile.role %}
+                                            <small class="text-muted">{{ user.profile.role|title }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-down text-gray-400 ms-2"></i>
                                 </a>
-                                <!-- Dropdown - User Information -->
-                                <div class="dropdown-menu dropdown-menu-end shadow animated--grow-in"
-                                    aria-labelledby="userDropdown">
+                                <!-- Enhanced Dropdown Menu -->
+                                <div class="dropdown-menu dropdown-menu-end shadow-lg animated--grow-in"
+                                    aria-labelledby="userDropdown" style="min-width: 220px;">
+                                    <!-- User Info Header -->
+                                    <div class="dropdown-header bg-light py-2">
+                                        <div class="d-flex align-items-center">
+                                            {% if user.profile.profile_picture %}
+                                                <img class="img-profile rounded-circle me-3"
+                                                    src="{{ user.profile.profile_picture.url }}" alt="Profile Picture" 
+                                                    style="width: 45px; height: 45px;">
+                                            {% else %}
+                                                <div class="avatar-placeholder bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center" 
+                                                    style="width: 45px; height: 45px;">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div class="d-flex flex-column">
+                                                <strong class="text-dark">{{ user.get_full_name }}</strong>
+                                                {% if user.profile and user.profile.role %}
+                                                <span class="badge bg-info text-white">{{ user.profile.role|title }}</span>
+                                                {% endif %}
+                                                {% if user.profile and user.profile.department %}
+                                                <small class="text-muted">{{ user.profile.department }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
                                     <a class="dropdown-item" href="{% url 'accounts:profile' %}">
-                                        <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
-                                        Profile
+                                        <i class="fas fa-user fa-sm fa-fw me-2 text-primary"></i>
+                                        <span>My Profile</span>
                                     </a>
                                     <a class="dropdown-item" href="{% url 'accounts:edit_profile' %}">
-                                        <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>
-                                        Settings
+                                        <i class="fas fa-cog fa-sm fa-fw me-2 text-secondary"></i>
+                                        <span>Settings</span>
                                     </a>
+                                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant' %}
+                                    <a class="dropdown-item" href="{% url 'core:admin_dashboard' %}">
+                                        <i class="fas fa-shield-alt fa-sm fa-fw me-2 text-warning"></i>
+                                        <span>Admin Dashboard</span>
+                                    </a>
+                                    {% endif %}
                                     <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
-                                        <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>
-                                        Logout
+                                    <a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                                        <i class="fas fa-sign-out-alt fa-sm fa-fw me-2"></i>
+                                        <span>Logout</span>
                                     </a>
                                 </div>
                             </li>
                         {% else %}
+                            <!-- Enhanced Login Button -->
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'accounts:login' %}">
-                                    <span class="me-2 d-none d-lg-inline text-gray-600 small">Login</span>
-                                    <i class="fas fa-sign-in-alt"></i>
+                                <a class="nav-link btn btn-primary px-4" href="{% url 'accounts:login' %}">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    <span class="font-weight-bold">Login</span>
                                 </a>
                             </li>
                         {% endif %}

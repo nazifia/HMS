@@ -34,11 +34,7 @@
     .growth-negative {
         color: #e74a3b;
     }
-    .chart-container {
-        position: relative;
-        height: 400px;
-        margin: 1rem 0;
-    }
+
     .filter-panel {
         background: #f8f9fc;
         padding: 1.5rem;
@@ -281,90 +277,63 @@
     </div>
 </div>
 
-<!-- Main Content Row -->
+<!-- Top Departments Row -->
 <div class="row">
-    <!-- Revenue Breakdown Chart -->
-    <div class="col-xl-8 col-lg-7">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Revenue Distribution</h6>
-                <div class="dropdown no-arrow">
-                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
-                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                        aria-labelledby="dropdownMenuLink">
-                        <div class="dropdown-header">Chart Options:</div>
-                        <a class="dropdown-item" href="#" onclick="changeChartType('pie')">Pie Chart</a>
-                        <a class="dropdown-item" href="#" onclick="changeChartType('doughnut')">Doughnut Chart</a>
-                        <a class="dropdown-item" href="#" onclick="changeChartType('bar')">Bar Chart</a>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="revenueDistributionChart"></canvas>
-                    <div id="chart-loading" class="loading-overlay" style="display: none;">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Top Departments -->
-    <div class="col-xl-4 col-lg-5">
+    <div class="col-12">
         <div class="card shadow mb-4">
             <div class="card-header py-3">
                 <h6 class="m-0 font-weight-bold text-primary">Top Revenue Departments</h6>
             </div>
-            <div class="card-body department-breakdown">
-                {# Clinical services (core departments) #}
-                {% for dept_name, dept_data in breakdown_data.clinical_services.items %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="font-weight-bold">{{ dept_name|title }}</span>
-                        <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
-                    </div>
-                    <div class="progress progress-sm">
-                        <div class="progress-bar bg-primary" role="progressbar" 
-                             style="width: {% widthratio dept_data.revenue breakdown_data.total_revenue 100 %}%" 
-                             aria-valuenow="{{ dept_data.revenue }}" 
-                             aria-valuemin="0" 
-                             aria-valuemax="{{ breakdown_data.total_revenue }}">
+            <div class="card-body">
+                <div class="row">
+                    {# Clinical services (core departments) #}
+                    {% for dept_name, dept_data in breakdown_data.clinical_services.items %}
+                    <div class="col-md-6 mb-3">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="font-weight-bold">{{ dept_name|title }}</span>
+                                <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
+                            </div>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: {% widthratio dept_data.revenue breakdown_data.total_revenue 100 %}%" 
+                                     aria-valuenow="{{ dept_data.revenue }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ breakdown_data.total_revenue }}">
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                {{ dept_data.transactions }} transactions • 
+                                Avg: ₦{{ dept_data.avg_transaction|floatformat:2|intcomma }}
+                            </small>
                         </div>
                     </div>
-                    <small class="text-muted">
-                        {{ dept_data.transactions }} transactions • 
-                        Avg: ₦{{ dept_data.avg_transaction|floatformat:2|intcomma }}
-                    </small>
-                </div>
-                {% endfor %}
+                    {% endfor %}
 
-                {# Specialty departments as part of clinical services breakdown #}
-                {% for dept_name, dept_data in breakdown_data.specialty_departments.items %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="font-weight-bold">{{ dept_name|title }}</span>
-                        <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
-                    </div>
-                    <div class="progress progress-sm">
-                        <div class="progress-bar bg-secondary" role="progressbar" 
-                             style="width: {% widthratio dept_data.revenue breakdown_data.total_revenue 100 %}%" 
-                             aria-valuenow="{{ dept_data.revenue }}" 
-                             aria-valuemin="0" 
-                             aria-valuemax="{{ breakdown_data.total_revenue }}">
+                    {# Specialty departments as part of clinical services breakdown #}
+                    {% for dept_name, dept_data in breakdown_data.specialty_departments.items %}
+                    <div class="col-md-6 mb-3">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="font-weight-bold">{{ dept_name|title }}</span>
+                                <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
+                            </div>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-secondary" role="progressbar" 
+                                     style="width: {% widthratio dept_data.revenue breakdown_data.total_revenue 100 %}%" 
+                                     aria-valuenow="{{ dept_data.revenue }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ breakdown_data.total_revenue }}">
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                {{ dept_data.transactions|default:0 }} txns • 
+                                Avg: ₦{{ dept_data.avg_transaction|default:0|floatformat:2|intcomma }}
+                            </small>
                         </div>
                     </div>
-                    <small class="text-muted">
-                        {{ dept_data.transactions|default:0 }} txns • 
-                        Avg: ₦{{ dept_data.avg_transaction|default:0|floatformat:2|intcomma }}
-                    </small>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
         </div>
     </div>
@@ -539,21 +508,7 @@
     </div>
 </div>
 
-<!-- Revenue Trends Chart -->
-<div class="row">
-    <div class="col-12">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Revenue Trends</h6>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="revenueTrendsChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 {% else %}
 <!-- Error State -->
@@ -572,56 +527,13 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js from CDN - Using more reliable CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <!-- DataTables from CDN (optional, can be removed if not needed) -->
 <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
 
-<!-- Debug: Data structure -->
-<script>
-console.log('=== REVENUE DASHBOARD DEBUG ===');
-console.log('Error status:', {{ error|default:False|yesno:"true,false" }});
-{% if not error %}
-console.log('Breakdown data exists:', {{ breakdown_data|yesno:"true,false" }});
-{% if breakdown_data.summary_by_category %}
-console.log('Summary by category:', {
-    clinical: {{ breakdown_data.summary_by_category.clinical_services.revenue|default:0 }},
-    support: {{ breakdown_data.summary_by_category.support_services.revenue|default:0 }},
-    administrative: {{ breakdown_data.summary_by_category.administrative_services.revenue|default:0 }},
-    specialty: {{ breakdown_data.summary_by_category.specialty_departments.revenue|default:0 }}
-});
-{% endif %}
-console.log('Has trends:', {{ breakdown_data.trends|yesno:"true,false" }});
-{% endif %}
-console.log('===============================');
-</script>
+
 
 <script>
-// Enhanced Chart.js loading with fallback
-function loadChartJS() {
-    return new Promise((resolve, reject) => {
-        if (typeof Chart !== 'undefined') {
-            console.log('Chart.js already loaded!');
-            resolve(Chart);
-            return;
-        }
-        
-        // Try to load Chart.js
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js';
-        script.onload = () => {
-            console.log('Chart.js loaded successfully!');
-            resolve(Chart);
-        };
-        script.onerror = () => {
-            console.error('Failed to load Chart.js from CDN');
-            reject(new Error('Chart.js failed to load'));
-        };
-        document.head.appendChild(script);
-    });
-}
-
 // Date filter change handler (toggle month/custom range inputs)
 $('#date_filter').on('change', function() {
     const value = $(this).val();
@@ -667,278 +579,14 @@ $('#month_picker').on('change', function() {
 $(document).ready(function() {
     console.log('Initializing date filter with value:', $('#date_filter').val());
     $('#date_filter').trigger('change');
-    
-    // Initialize charts after Chart.js loads
-    loadChartJS().then(() => {
-        console.log('Chart.js loaded, initializing charts...');
-        initializeCharts();
-    }).catch((error) => {
-        console.error('Chart.js loading failed:', error);
-        showChartError();
-    });
 });
 
-function showChartError() {
-    const chartContainers = document.querySelectorAll('.chart-container');
-    chartContainers.forEach(container => {
-        container.innerHTML = '<div class="chart-error"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Charts could not be loaded. Please refresh the page or check your internet connection.</div>';
-    });
-}
-
 function initializeCharts() {
-    {% if not error %}
-    try {
-        // Revenue Distribution Chart (only if data is available)
-        const distributionEl = document.getElementById('revenueDistributionChart');
-        if (distributionEl) {
-            {% if breakdown_data.summary_by_category %}
-            const distData = [
-                {{ breakdown_data.summary_by_category.clinical_services.revenue|default:0 }},
-                {{ breakdown_data.summary_by_category.support_services.revenue|default:0 }},
-                {{ breakdown_data.summary_by_category.administrative_services.revenue|default:0 }},
-                {{ breakdown_data.summary_by_category.specialty_departments.revenue|default:0 }}
-            ];
-
-            console.log('Distribution Data:', distData);
-
-            const hasDistData = distData.some(v => v && v > 0);
-            console.log('Distribution data check:', { distData, hasDistData });
-            
-            if (hasDistData) {
-                const distributionCtx = distributionEl.getContext('2d');
-                window.distributionChart = new Chart(distributionCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: [
-                            'Clinical Services',
-                            'Support Services',
-                            'Administrative Services',
-                            'Specialty Departments'
-                        ],
-                        datasets: [{
-                            data: distData,
-                            backgroundColor: [
-                                '#4e73df',
-                                '#1cc88a',
-                                '#36b9cc',
-                                '#f6c23e'
-                            ],
-                            hoverBackgroundColor: [
-                                '#2e59d9',
-                                '#17a673',
-                                '#2c9faf',
-                                '#dda20a'
-                            ],
-                            hoverBorderColor: "rgba(234, 236, 244, 1)",
-                        }]
-                    },
-                    options: {
-                        maintainAspectRatio: false,
-                        tooltips: {
-                            backgroundColor: "rgb(255,255,255)",
-                            bodyFontColor: "#858796",
-                            borderColor: '#dddfeb',
-                            borderWidth: 1,
-                            xPadding: 15,
-                            yPadding: 15,
-                            displayColors: false,
-                            caretPadding: 10,
-                            callbacks: {
-                                label: function(tooltipItem, data) {
-                                    const dataset = data.datasets[tooltipItem.datasetIndex];
-                                    const value = dataset.data[tooltipItem.index];
-                                    return data.labels[tooltipItem.index] + ': ₦' +
-                                           new Intl.NumberFormat().format(value);
-                                }
-                            }
-                        },
-                        legend: {
-                            display: true,
-                            position: 'bottom'
-                        },
-                        cutoutPercentage: 80,
-                    }
-                });
-                console.log('Distribution chart created successfully');
-            } else {
-                console.log('No distribution data available, showing empty state');
-                showNoDataMessage(distributionEl, 'distribution');
-            }
-            {% else %}
-            showNoDataMessage(distributionEl, 'distribution');
-            {% endif %}
-        }
-
-        // Revenue Trends Chart (if trend data exists)
-        const trendsEl = document.getElementById('revenueTrendsChart');
-        if (trendsEl && {% if breakdown_data.trends %}true{% else %}false{% endif %}) {
-            {% if breakdown_data.trends %}
-            const trendLabels = [
-                {% for month, data in breakdown_data.trends.items %}
-                    '{{ month }}',
-                {% endfor %}
-            ];
-            const trendData = [
-                {% for month, data in breakdown_data.trends.items %}
-                    {{ data.grand_total|default:0 }},
-                {% endfor %}
-            ];
-
-            console.log('Trend Labels:', trendLabels);
-            console.log('Trend Data:', trendData);
-
-            const hasTrendData = trendData.some(v => v && v > 0);
-            console.log('Trends data check:', { trendData, hasTrendData });
-            
-            if (hasTrendData) {
-                const trendsCtx = trendsEl.getContext('2d');
-                window.trendsChart = new Chart(trendsCtx, {
-                    type: 'line',
-                    data: {
-                        labels: trendLabels,
-                        datasets: [{
-                            label: 'Total Revenue',
-                            data: trendData,
-                            borderColor: '#4e73df',
-                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return '₦' + new Intl.NumberFormat().format(value);
-                                    }
-                                }
-                            }
-                        },
-                        tooltips: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    return 'Revenue: ₦' + new Intl.NumberFormat().format(tooltipItem.yLabel);
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log('Trends chart created successfully');
-            } else {
-                console.log('No trend data available, showing empty state');
-                showNoDataMessage(trendsEl, 'trends');
-            }
-            {% else %}
-            showNoDataMessage(trendsEl, 'trends');
-            {% endif %}
-        } else if (trendsEl) {
-            showNoDataMessage(trendsEl, 'trends');
-        }
-
-    } catch (error) {
-        console.error('Error initializing charts:', error);
-        showChartError();
-    }
-    {% endif %}
+    // Charts have been removed from the dashboard
+    console.log('Charts have been removed from the revenue dashboard');
 }
 
-function showNoDataMessage(canvasElement, chartType) {
-    const message = chartType === 'distribution' 
-        ? '<div class="no-data-placeholder"><i class="fas fa-chart-pie fa-3x mb-3 text-muted"></i><h5>No revenue data for selected period</h5><p class="mb-3">Try selecting a different date range or check back later.</p><button class="btn btn-outline-primary btn-sm" onclick="createDemoChart(\'' + chartType + '\')"><i class="fas fa-eye"></i> Show Sample Chart</button></div>'
-        : '<div class="no-data-placeholder"><i class="fas fa-chart-line fa-3x mb-3 text-muted"></i><h5>No trend data for selected period</h5><p class="mb-3">Try selecting a different date range or view a sample trend chart.</p><button class="btn btn-outline-primary btn-sm" onclick="createDemoChart(\'' + chartType + '\')"><i class="fas fa-eye"></i> Show Sample Trend</button></div>';
-    canvasElement.parentElement.innerHTML = message;
-}
 
-function createDemoChart(chartType) {
-    console.log('Creating demo chart for type:', chartType);
-    
-    // Get chart contexts
-    const distributionEl = document.getElementById('revenueDistributionChart');
-    const trendsEl = document.getElementById('revenueTrendsChart');
-    const distributionCtx = distributionEl ? distributionEl.getContext('2d') : null;
-    const trendsCtx = trendsEl ? trendsEl.getContext('2d') : null;
-    
-    if (chartType === 'distribution' && distributionCtx) {
-        // Create demo distribution chart
-        const demoData = [25, 35, 20, 20]; // Sample percentages
-        window.distributionChart = new Chart(distributionCtx, {
-            type: 'doughnut',
-            data: {
-                labels: [
-                    'Clinical Services',
-                    'Support Services',
-                    'Administrative Services',
-                    'Specialty Departments'
-                ],
-                datasets: [{
-                    data: demoData,
-                    backgroundColor: [
-                        '#4e73df',
-                        '#1cc88a',
-                        '#36b9cc',
-                        '#f6c23e'
-                    ],
-                    hoverBackgroundColor: [
-                        '#2e59d9',
-                        '#17a673',
-                        '#2c9faf',
-                        '#dda20a'
-                    ]
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom'
-                    }
-                },
-                cutoutPercentage: 80
-            }
-        });
-        console.log('Demo distribution chart created successfully');
-        
-    } else if (chartType === 'trends' && trendsCtx) {
-        // Create demo trends chart
-        const demoMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        const demoRevenue = [120000, 145000, 98000, 167000, 189000, 156000];
-        
-        window.trendsChart = new Chart(trendsCtx, {
-            type: 'line',
-            data: {
-                labels: demoMonths,
-                datasets: [{
-                    label: 'Total Revenue (Sample)',
-                    data: demoRevenue,
-                    borderColor: '#4e73df',
-                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '₦' + new Intl.NumberFormat().format(value);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        console.log('Demo trends chart created successfully');
-    } else {
-        console.log('Could not create demo chart - required elements not found');
-    }
-}
 
 // Global function to create demo charts when no data is available
 function setupEventHandlers() {
@@ -955,26 +603,7 @@ function exportData(format) {
     window.location.href = '{% url "core:export_revenue_breakdown" %}?' + params.toString();
 }
 
-function changeChartType(type) {
-    // Implement chart type change functionality
-    console.log('Changing chart type to:', type);
-    if (type === 'pie') {
-        if (window.distributionChart) {
-            window.distributionChart.config.type = 'pie';
-            window.distributionChart.update();
-        }
-    } else if (type === 'doughnut') {
-        if (window.distributionChart) {
-            window.distributionChart.config.type = 'doughnut';
-            window.distributionChart.update();
-        }
-    } else if (type === 'bar') {
-        if (window.distributionChart) {
-            window.distributionChart.config.type = 'bar';
-            window.distributionChart.update();
-        }
-    }
-}
+
 
 function showLoading() {
     $('.loading-overlay').show();

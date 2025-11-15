@@ -18,7 +18,7 @@
                 <button class="btn btn-outline-primary" onclick="refreshDashboard()">
                     <i class="fas fa-sync-alt me-2"></i>Refresh
                 </button>
-                {% if user|has_hms_permission:'view_audit_logs' %}
+                {% if user|has_permission:'view_audit_logs' %}
                 <a href="{% url 'core:audit_report' %}" class="btn btn-primary">
                     <i class="fas fa-file-alt me-2"></i>Audit Report
                 </a>
@@ -29,7 +29,7 @@
 
     <!-- Summary Cards -->
     <div class="row mb-4">
-        {% if user|has_hms_permission:'view_user_management' %}
+        {% if user|has_permission:'view_user_management' %}
         <div class="col-lg-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -51,7 +51,7 @@
         </div>
         {% endif %}
         
-        {% if user|has_hms_permission:'view_audit_logs' %}
+        {% if user|has_permission:'view_audit_logs' %}
         <div class="col-lg-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -73,7 +73,7 @@
         </div>
         {% endif %}
         
-        {% if user|has_hms_permission:'system_configuration' %}
+        {% if user|has_permission:'system_configuration' %}
         <div class="col-lg-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -95,7 +95,7 @@
         </div>
         {% endif %}
         
-        {% if user|has_hms_permission:'backup_data' %}
+        {% if user|has_permission:'backup_data' %}
         <div class="col-lg-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -121,7 +121,7 @@
     <!-- Main Content Area -->
     <div class="row">
         <!-- User Management Section -->
-        {% if user|has_hms_permission:'view_user_management' %}
+        {% if user|has_permission:'view_user_management' %}
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0">
@@ -147,7 +147,7 @@
         {% endif %}
 
         <!-- Security Overview -->
-        {% if user|has_hms_permission:'view_audit_logs' %}
+        {% if user|has_permission:'view_audit_logs' %}
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0">
@@ -166,7 +166,7 @@
         {% endif %}
 
         <!-- System Configuration -->
-        {% if user|has_hms_permission:'system_configuration' %}
+        {% if user|has_permission:'system_configuration' %}
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0">
@@ -185,7 +185,7 @@
         {% endif %}
 
         <!-- Database Management -->
-        {% if user|has_hms_permission:'backup_data' %}
+        {% if user|has_permission:'backup_data' %}
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0">
@@ -215,7 +215,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        {% if user|has_hms_permission:'manage_roles' %}
+                        {% if user|has_permission:'manage_roles' %}
                         <div class="col-md-3 mb-3">
                             <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-primary btn-block">
                                 <i class="fas fa-user-tag me-2"></i>Manage Roles
@@ -223,7 +223,7 @@
                         </div>
                         {% endif %}
                         
-                        {% if user|has_hms_permission:'create_user' %}
+                        {% if user|has_permission:'create_user' %}
                         <div class="col-md-3 mb-3">
                             <a href="{% url 'accounts:create_staff' %}" class="btn btn-outline-success btn-block">
                                 <i class="fas fa-user-plus me-2"></i>Add User
@@ -231,7 +231,7 @@
                         </div>
                         {% endif %}
                         
-                        {% if user|has_hms_permission:'view_audit_logs' %}
+                        {% if user|has_permission:'view_audit_logs' %}
                         <div class="col-md-3 mb-3">
                             <a href="{% url 'core:activity_log' %}" class="btn btn-outline-warning btn-block">
                                 <i class="fas fa-list-alt me-2"></i>Activity Log
@@ -239,7 +239,7 @@
                         </div>
                         {% endif %}
                         
-                        {% if user|has_hms_permission:'system_configuration' %}
+                        {% if user|has_permission:'system_configuration' %}
                         <div class="col-md-3 mb-3">
                             <a href="{% url 'core:admin_dashboard' %}" class="btn btn-outline-info btn-block">
                                 <i class="fas fa-cogs me-2"></i>System Settings

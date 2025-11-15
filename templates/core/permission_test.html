@@ -58,25 +58,25 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-md-3">
-                            <div class="permission-status {% if user|has_hms_permission:'view_dashboard' %}has-permission{% else %}no-permission{% endif %}">
+                            <div class="permission-status {% if user|has_permission:'view_dashboard' %}has-permission{% else %}no-permission{% endif %}">
                                 <i class="fas fa-tachometer-alt fa-2x mb-2"></i>
                                 <div>Dashboard</div>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="permission-status {% if user|has_hms_permission:'create_patient' %}has-permission{% else %}no-permission{% endif %}">
+                            <div class="permission-status {% if user|has_permission:'create_patient' %}has-permission{% else %}no-permission{% endif %}">
                                 <i class="fas fa-user-injured fa-2x mb-2"></i>
                                 <div>Patients</div>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="permission-status {% if user|has_hms_permission:'manage_pharmacy_inventory' %}has-permission{% else %}no-permission{% endif %}">
+                            <div class="permission-status {% if user|has_permission:'manage_pharmacy_inventory' %}has-permission{% else %}no-permission{% endif %}">
                                 <i class="fas fa-pills fa-2x mb-2"></i>
                                 <div>Pharmacy</div>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="permission-status {% if user|has_hms_permission:'manage_roles' %}has-permission{% else %}no-permission{% endif %}">
+                            <div class="permission-status {% if user|has_permission:'manage_roles' %}has-permission{% else %}no-permission{% endif %}">
                                 <i class="fas fa-users fa-2x mb-2"></i>
                                 <div>Admin</div>
                             </div>
@@ -98,7 +98,7 @@
                 <div class="card-body">
                     <div class="test-section">
                         <h7>View Dashboard Permission</h7>
-                        {% if user|has_hms_permission:'view_dashboard' %}
+                        {% if user|has_permission:'view_dashboard' %}
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> 
                             <strong>ACCESS GRANTED</strong> - User can view dashboard
@@ -113,7 +113,7 @@
                     
                     <div class="test-section">
                         <h7>Create Patient Permission</h7>
-                        {% if user|has_hms_permission:'create_patient' %}
+                        {% if user|has_permission:'create_patient' %}
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> 
                             <strong>ACCESS GRANTED</strong> - User can create patients
@@ -128,7 +128,7 @@
                     
                     <div class="test-section">
                         <h7>Manage Roles Permission</h7>
-                        {% if user|has_hms_permission:'manage_roles' %}
+                        {% if user|has_permission:'manage_roles' %}
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> 
                             <strong>ACCESS GRANTED</strong> - User can manage roles
@@ -221,10 +221,10 @@
                                         Access Granted
                                     </div>
                                     <div class="text-center">
-                                        <button class="btn btn-primary btn-sm" onclick="testPatientAccess()" {% if not user|has_hms_permission:'create_patient' %}disabled{% endif %}>
+                                        <button class="btn btn-primary btn-sm" onclick="testPatientAccess()" {% if not user|has_permission:'create_patient' %}disabled{% endif %}>
                                             <i class="fas fa-plus"></i> Register Patient
                                         </button>
-                                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="testViewPatients()" {% if not user|has_hms_permission:'view_patients' %}disabled{% endif %}>
+                                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="testViewPatients()" {% if not user|has_permission:'view_patients' %}disabled{% endif %}>
                                             <i class="fas fa-list"></i> View Patients
                                         </button>
                                     </div>
@@ -252,7 +252,7 @@
                                     <i class="fas fa-pills"></i> Pharmacy
                                 </div>
                                 <div class="card-body">
-                                    {% if user|has_hms_permission:'manage_pharmacy_inventory' %}
+                                    {% if user|has_permission:'manage_pharmacy_inventory' %}
                                     <div class="alert alert-success text-center">
                                         <i class="fas fa-check-circle"></i>
                                         Pharmacy Access
@@ -294,10 +294,10 @@
                                         Reports Available
                                     </div>
                                     <div class="text-center">
-                                        <button class="btn btn-info btn-sm" onclick="testViewReports()" {% if not user|has_hms_permission:'view_reports' %}disabled{% endif %}>
+                                        <button class="btn btn-info btn-sm" onclick="testViewReports()" {% if not user|has_permission:'view_reports' %}disabled{% endif %}>
                                             <i class="fas fa-chart-line"></i> View Reports
                                         </button>
-                                        <button class="btn btn-outline-info btn-sm mt-2" onclick="testGenerateReport()" {% if not user|has_hms_permission:'generate_reports' %}disabled{% endif %}>
+                                        <button class="btn btn-outline-info btn-sm mt-2" onclick="testGenerateReport()" {% if not user|has_permission:'generate_reports' %}disabled{% endif %}>
                                             <i class="fas fa-file-export"></i> Generate Report
                                         </button>
                                     </div>
@@ -363,17 +363,17 @@
 <script>
 function testPatientAccess() {
     alert('Testing patient creation access...\nPermission: create_patient\nResult: ' + 
-          ({% if user|has_hms_permission:'create_patient' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+          ({% if user|has_permission:'create_patient' %}'GRANTED'{% else %}'DENIED'{% endif %}));
 }
 
 function testViewPatients() {
     alert('Testing patient viewing access...\nPermission: view_patients\nResult: ' + 
-          ({% if user|has_hms_permission:'view_patients' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+          ({% if user|has_permission:'view_patients' %}'GRANTED'{% else %}'DENIED'{% endif %}));
 }
 
 function testPharmacyAccess() {
     alert('Testing pharmacy access...\nPermission: manage_pharmacy_inventory\nResult: ' + 
-          ({% if user|has_hms_permission:'manage_pharmacy_inventory' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+          ({% if user|has_permission:'manage_pharmacy_inventory' %}'GRANTED'{% else %}'DENIED'{% endif %}));
 }
 
 function testEnhancedPharmacy() {
@@ -383,12 +383,12 @@ function testEnhancedPharmacy() {
 
 function testViewReports() {
     alert('Testing report viewing access...\nPermission: view_reports\nResult: ' + 
-          ({% if user|has_hms_permission:'view_reports' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+          ({% if user|has_permission:'view_reports' %}'GRANTED'{% else %}'DENIED'{% endif %}));
 }
 
 function testGenerateReport() {
     alert('Testing report generation access...\nPermission: generate_reports\nResult: ' + 
-          ({% if user|has_hms_permission:'generate_reports' %}'GRANTED'{% else %}'DENIED'{% endif %}));
+          ({% if user|has_permission:'generate_reports' %}'GRANTED'{% else %}'DENIED'{% endif %}));
 }
 
 $(document).ready(function() {

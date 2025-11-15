@@ -4,11 +4,11 @@
 <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
 <!-- Sidebar -->
-<div class="d-flex flex-column bg-gray-900 sidebar vh-100" id="sidebar-container" style="width:250px;min-height:100vh;overflow-y:auto;scroll-behavior:auto;">
-    <ul class="navbar-nav sidebar accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;scroll-behavior:auto;">
+<div class="d-flex flex-column bg-dark sidebar sidebar-dark vh-100" id="sidebar-container" style="width:300px;min-height:100vh;overflow-y:auto;scroll-behavior:auto;">
+    <ul class="navbar-nav sidebar-dark accordion flex-grow-1" id="accordionSidebar" style="overflow:visible;scroll-behavior:auto;">
 
         <!-- Mobile Header with Hamburger Menu -->
-        <div class="d-md-none mobile-sidebar-header bg-gray-800 d-flex align-items-center justify-content-between p-3 border-bottom border-gray-700">
+        <div class="d-md-none mobile-sidebar-header bg-dark d-flex align-items-center justify-content-between p-3 border-bottom border-secondary">
             <div class="sidebar-brand d-flex align-items-center" href="{% url 'home' %}">
                 <div class="sidebar-brand-icon">
                     <i class="fas fa-hospital text-white"></i>
@@ -31,58 +31,270 @@
         <!-- Divider -->
         <hr class="sidebar-divider my-0">
 
-        <!-- Dynamic Sidebar Menu Items -->
+        <!-- Static Sidebar Menu Items -->
         {% if user.is_authenticated %}
-        {% get_sidebar_items user as sidebar_items %}
-        
-        {% for item in sidebar_items %}
-            {% if not item.parent %}
-                {% include "includes/sidebar_menu_item.html" with menu_item=item user=user %}
-            {% endif %}
-        {% empty %}
-            <!-- Fallback to basic dashboard access if no menu items -->
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'dashboard:dashboard' %}">
-                    <i class="fas fa-fw fa-tachometer-alt text-gray-300"></i>
-                    <span class="text-gray-300">Dashboard</span>
-                </a>
-            </li>
-        {% endfor %}
+        <!-- Dashboard -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'dashboard:dashboard' %}">
+                <i class="fas fa-fw fa-tachometer-alt text-white"></i>
+                <span class="text-white">Dashboard</span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Main Navigation
+        </div>
+
+        <!-- Patients -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePatients" aria-expanded="true" aria-controls="collapsePatients">
+                <i class="fas fa-fw fa-procedures text-white"></i>
+                <span class="text-white">Patients</span>
+            </a>
+            <div id="collapsePatients" class="collapse" aria-labelledby="headingPatients" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Patient Management:</h6>
+                    <a class="collapse-item" href="{% url 'patients:patient_list' %}">Patient List</a>
+                    <a class="collapse-item" href="{% url 'patients:register' %}">Register New Patient</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Appointments -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAppointments" aria-expanded="true" aria-controls="collapseAppointments">
+                <i class="fas fa-fw fa-calendar-alt text-white"></i>
+                <span class="text-white">Appointments</span>
+            </a>
+            <div id="collapseAppointments" class="collapse" aria-labelledby="headingAppointments" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Appointment Management:</h6>
+                    <a class="collapse-item" href="{% url 'appointments:list' %}">Appointment List</a>
+                    <a class="collapse-item" href="{% url 'appointments:calendar' %}">Calendar</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Pharmacy -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePharmacy" aria-expanded="true" aria-controls="collapsePharmacy">
+                <i class="fas fa-fw fa-pills text-white"></i>
+                <span class="text-white">Pharmacy</span>
+            </a>
+            <div id="collapsePharmacy" class="collapse" aria-labelledby="headingPharmacy" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Pharmacy Management:</h6>
+                    <a class="collapse-item" href="{% url 'pharmacy:prescription_list' %}">Prescriptions</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:inventory_list' %}">Inventory</a>
+                    <a class="collapse-item" href="{% url 'pharmacy:dispensary_list' %}">Dispensaries</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Laboratory -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="true" aria-controls="collapseLaboratory">
+                <i class="fas fa-fw fa-microscope text-white"></i>
+                <span class="text-white">Laboratory</span>
+            </a>
+            <div id="collapseLaboratory" class="collapse" aria-labelledby="headingLaboratory" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Laboratory:</h6>
+                    <a class="collapse-item" href="{% url 'laboratory:results' %}">Results</a>
+                    <a class="collapse-item" href="{% url 'laboratory:test_requests' %}">Requests</a>
+                    <a class="collapse-item" href="{% url 'laboratory:tests' %}">Tests</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Radiology -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseRadiology" aria-expanded="true" aria-controls="collapseRadiology">
+                <i class="fas fa-fw fa-radiation text-white"></i>
+                <span class="text-white">Radiology</span>
+            </a>
+            <div id="collapseRadiology" class="collapse" aria-labelledby="headingRadiology" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Radiology Management:</h6>
+                    <a class="collapse-item" href="{% url 'radiology:index' %}">Dashboard</a>
+                    <a class="collapse-item" href="{% url 'radiology:order_general' %}">Place Order</a>
+                    <a class="collapse-item" href="{% url 'radiology:result_search' %}">Result Search</a>
+                    <a class="collapse-item" href="{% url 'radiology:sales_report' %}">Sales Report</a>
+                    <a class="collapse-item" href="{% url 'radiology:radiology_statistics_report' %}">Statistics</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Billing -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseBilling" aria-expanded="true" aria-controls="collapseBilling">
+                <i class="fas fa-fw fa-file-invoice-dollar text-white"></i>
+                <span class="text-white">Billing</span>
+            </a>
+            <div id="collapseBilling" class="collapse" aria-labelledby="headingBilling" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Billing Management:</h6>
+                    <a class="collapse-item" href="{% url 'billing:list' %}">Invoices</a>
+                    <a class="collapse-item" href="{% url 'patients:wallet_list' %}">Wallets</a>
+                    <a class="collapse-item" href="{% url 'billing:services' %}">Services</a>
+                    <a class="collapse-item" href="{% url 'billing:reports' %}">Reports</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- NHIA -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseNHIA" aria-expanded="true" aria-controls="collapseNHIA">
+                <i class="fas fa-fw fa-shield-alt text-white"></i>
+                <span class="text-white">NHIA</span>
+            </a>
+            <div id="collapseNHIA" class="collapse" aria-labelledby="headingNHIA" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">NHIA Management:</h6>
+                    <a class="collapse-item" href="{% url 'nhia:dashboard' %}">Dashboard</a>
+                    <a class="collapse-item" href="{% url 'nhia:authorization_code_list' %}">Authorization Codes</a>
+                    <a class="collapse-item" href="{% url 'nhia:nhia_patient_list' %}">NHIA Patients</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Retainership -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseRetainership" aria-expanded="true" aria-controls="collapseRetainership">
+                <i class="fas fa-fw fa-handshake text-white"></i>
+                <span class="text-white">Retainership</span>
+            </a>
+            <div id="collapseRetainership" class="collapse" aria-labelledby="headingRetainership" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Retainership:</h6>
+                    <a class="collapse-item" href="{% url 'retainership:retainership_patient_list' %}">Retainership Patients</a>
+                    <a class="collapse-item" href="{% url 'retainership:select_patient_for_retainership' %}">Register Patient</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Desk Office -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDeskOffice" aria-expanded="true" aria-controls="collapseDeskOffice">
+                <i class="fas fa-fw fa-briefcase text-white"></i>
+                <span class="text-white">Desk Office</span>
+            </a>
+            <div id="collapseDeskOffice" class="collapse" aria-labelledby="headingDeskOffice" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Desk Office:</h6>
+                    <a class="collapse-item" href="{% url 'desk_office:authorization_dashboard' %}">Authorization Dashboard</a>
+                    <a class="collapse-item" href="{% url 'desk_office:pending_consultations' %}">Pending Consultations</a>
+                    <a class="collapse-item" href="{% url 'desk_office:pending_referrals' %}">Pending Referrals</a>
+                    <a class="collapse-item" href="{% url 'desk_office:authorization_code_list' %}">Authorization Codes</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Consultations -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultations" aria-expanded="true" aria-controls="collapseConsultations">
+                <i class="fas fa-fw fa-stethoscope text-white"></i>
+                <span class="text-white">Consultations</span>
+            </a>
+            <div id="collapseConsultations" class="collapse" aria-labelledby="headingConsultations" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Consultation Management:</h6>
+                    <a class="collapse-item" href="{% url 'consultations:unified_dashboard' %}">Unified Dashboard</a>
+                    <a class="collapse-item" href="{% url 'consultations:doctor_dashboard' %}">Doctor Dashboard</a>
+                    <a class="collapse-item" href="{% url 'consultations:consultation_list' %}">Consultations</a>
+                    <a class="collapse-item" href="{% url 'consultations:referral_tracking' %}">Referrals</a>
+                    <a class="collapse-item" href="{% url 'consultations:waiting_list' %}">Waiting List</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Medical Specialties -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseMedicalSpecialties" aria-expanded="true" aria-controls="collapseMedicalSpecialties">
+                <i class="fas fa-fw fa-hospital text-white"></i>
+                <span class="text-white">Medical Specialties</span>
+            </a>
+            <div id="collapseMedicalSpecialties" class="collapse" aria-labelledby="headingMedicalSpecialties" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Specialty Departments:</h6>
+                    <a class="collapse-item" href="{% url 'dental:dashboard' %}">Dental</a>
+                    <a class="collapse-item" href="{% url 'ophthalmic:dashboard' %}">Ophthalmic</a>
+                    <a class="collapse-item" href="{% url 'ent:dashboard' %}">ENT</a>
+                    <a class="collapse-item" href="{% url 'oncology:dashboard' %}">Oncology</a>
+                    <a class="collapse-item" href="{% url 'scbu:dashboard' %}">SCBU</a>
+                    <a class="collapse-item" href="{% url 'anc:dashboard' %}">ANC</a>
+                    <a class="collapse-item" href="{% url 'labor:dashboard' %}">Labor</a>
+                    <a class="collapse-item" href="{% url 'icu:dashboard' %}">ICU</a>
+                    <a class="collapse-item" href="{% url 'family_planning:dashboard' %}">Family Planning</a>
+                    <a class="collapse-item" href="{% url 'gynae_emergency:dashboard' %}">Gynae Emergency</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Reports -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'core:revenue_point_dashboard' %}">
+                <i class="fas fa-fw fa-chart-bar text-white"></i>
+                <span class="text-white">Reports</span>
+            </a>
+        </li>
+
+        {% if user|has_permission:'view_user_management' %}
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            Administration
+        </div>
+
+        <!-- User Management -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'core:admin_dashboard' %}">
+                <i class="fas fa-fw fa-users text-white"></i>
+                <span class="text-white">User Management</span>
+            </a>
+        </li>
+        {% endif %}
+
+        {% else %}
+        <!-- Fallback to basic dashboard access if not authenticated -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:login' %}">
+                <i class="fas fa-fw fa-sign-in-alt text-white"></i>
+                <span class="text-white">Login</span>
+            </a>
+        </li>
         {% endif %}
 
         <!-- Divider -->
         <hr class="sidebar-divider">
 
         <!-- Heading -->
-        <div class="sidebar-heading text-gray-400">
+        <div class="sidebar-heading">
             System Features
         </div>
 
         <!-- Feature-based menu items -->
-        {% if user|has_hms_permission:'manage_roles' %}
+        {% if user|has_permission:'manage_roles' %}
         <li class="nav-item">
             <a class="nav-link" href="{% url 'accounts:permission_management' %}">
-                <i class="fas fa-fw fa-cogs text-gray-300"></i>
-                <span class="text-gray-300">Legacy Permission Manager</span>
-            </a>
-        </li>
-        {% endif %}
-
-        {% if user|has_hms_permission:'manage_roles' %}
-        <li class="nav-item">
-            <a class="nav-link" href="{% url 'core:permission_management_dashboard' %}">
-                <i class="fas fa-fw fa-shield-alt text-gray-300"></i>
-                <span class="text-gray-300">HMS Permission Manager</span>
+                <i class="fas fa-fw fa-cogs text-white"></i>
+                <span class="text-white">Permission Manager</span>
             </a>
         </li>
         {% endif %}
 
         <!-- Admin Tools -->
-        {% if user|has_hms_permission:'system_configuration' %}
+        {% if user|has_permission:'system_configuration' %}
         <li class="nav-item">
             <a class="nav-link" href="{% url 'core:admin_dashboard' %}">
-                <i class="fas fa-fw fa-tools text-gray-300"></i>
-                <span class="text-gray-300">Admin Tools</span>
+                <i class="fas fa-fw fa-tools text-white"></i>
+                <span class="text-white">Admin Tools</span>
             </a>
         </li>
         {% endif %}
@@ -94,11 +306,10 @@
         <div class="sidebar-card d-none d-md-block">
             <div class="card-body text-center">
                 <div class="mb-3">
-                    <i class="fas fa-shield-alt fa-2x text-gray-300"></i>
+                    <i class="fas fa-shield-alt fa-2x text-white"></i>
                 </div>
-                <div class="text-xs text-gray-400">
-                    Enhanced Security<br>
-                    <small>Powered by HMS Permissions</small>
+                <div class="text-xs text-muted">
+                    HMS Security
                 </div>
             </div>
         </div>
@@ -108,23 +319,127 @@
 
 <!-- Sidebar JavaScript -->
 <script>
+// Enhanced responsive sidebar behavior
 document.addEventListener('DOMContentLoaded', function() {
-    // Mobile sidebar toggle
+    const sidebar = document.getElementById('sidebar-container') || document.querySelector('.sidebar');
+    const sidebarToggleTop = document.getElementById('sidebarToggleTop');
+    const sidebarOverlay = document.getElementById('sidebar-overlay') || document.querySelector('.sidebar-overlay');
     const mobileSidebarClose = document.getElementById('mobileSidebarClose');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-    
-    if (mobileSidebarClose) {
-        mobileSidebarClose.addEventListener('click', function() {
-            document.body.classList.remove('sidebar-toggled');
+
+    // Function to check screen size
+    function isMobile() {
+        return window.innerWidth < 768;
+    }
+
+    function isTablet() {
+        return window.innerWidth >= 768 && window.innerWidth < 992;
+    }
+
+    // Mobile sidebar toggle
+    if (sidebarToggleTop && sidebar) {
+        sidebarToggleTop.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (isMobile() || isTablet()) {
+                sidebar.classList.toggle('sidebar-open');
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.toggle('active');
+                }
+                document.body.classList.toggle('sidebar-open');
+            }
         });
     }
-    
-    if (sidebarOverlay) {
+
+    // Close mobile sidebar
+    if (mobileSidebarClose && sidebar) {
+        mobileSidebarClose.addEventListener('click', function(e) {
+            e.preventDefault();
+            sidebar.classList.remove('sidebar-open');
+            if (sidebarOverlay) {
+                sidebarOverlay.classList.remove('active');
+            }
+            document.body.classList.remove('sidebar-open');
+        });
+    }
+
+    // Close sidebar when clicking overlay
+    if (sidebarOverlay && sidebar) {
         sidebarOverlay.addEventListener('click', function() {
-            document.body.classList.remove('sidebar-toggled');
+            sidebar.classList.remove('sidebar-open');
+            this.classList.remove('active');
+            document.body.classList.remove('sidebar-open');
         });
     }
-    
+
+    // Auto-close sidebar on mobile when clicking menu links (non-dropdown links only)
+    if (isMobile()) {
+        // Only close sidebar for links that don't have dropdowns
+        const menuLinks = document.querySelectorAll('.sidebar .nav-link:not([data-bs-toggle])');
+        menuLinks.forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                // Check if this is an actual link (has href that's not #)
+                const href = this.getAttribute('href');
+                if (href && href !== '#') {
+                    sidebar.classList.remove('sidebar-open');
+                    if (sidebarOverlay) {
+                        sidebarOverlay.classList.remove('active');
+                    }
+                    document.body.classList.remove('sidebar-open');
+                }
+            });
+        });
+
+        // Close sidebar when clicking collapse items
+        const collapseItems = document.querySelectorAll('.sidebar .collapse-item');
+        collapseItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                sidebar.classList.remove('sidebar-open');
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.remove('active');
+                }
+                document.body.classList.remove('sidebar-open');
+            });
+        });
+    }
+
+    // Ensure Bootstrap collapse works on mobile
+    const collapseToggles = document.querySelectorAll('[data-bs-toggle="collapse"]');
+    collapseToggles.forEach(function(toggle) {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('data-bs-target');
+            const targetElement = document.querySelector(targetId);
+
+            if (targetElement) {
+                // Toggle the collapse
+                if (targetElement.classList.contains('show')) {
+                    targetElement.classList.remove('show');
+                    this.classList.add('collapsed');
+                    this.setAttribute('aria-expanded', 'false');
+                } else {
+                    // Close other open collapses in the same accordion
+                    const accordion = targetElement.closest('.accordion');
+                    if (accordion) {
+                        const openCollapses = accordion.querySelectorAll('.collapse.show');
+                        openCollapses.forEach(function(collapse) {
+                            if (collapse !== targetElement) {
+                                collapse.classList.remove('show');
+                                const otherToggle = document.querySelector('[data-bs-target="#' + collapse.id + '"]');
+                                if (otherToggle) {
+                                    otherToggle.classList.add('collapsed');
+                                    otherToggle.setAttribute('aria-expanded', 'false');
+                                }
+                            }
+                        });
+                    }
+
+                    targetElement.classList.add('show');
+                    this.classList.remove('collapsed');
+                    this.setAttribute('aria-expanded', 'true');
+                }
+            }
+        });
+    });
+
     // Auto-expand parent menu items if current page is in submenu
     const currentPath = window.location.pathname;
     const activeParents = document.querySelectorAll('.nav-item .collapse.show');
@@ -181,6 +496,11 @@ document.addEventListener('DOMContentLoaded', highlightCurrentMenuItem);
     transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
 }
 
+#sidebar-container {
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+}
+
 .sidebar-overlay {
     position: fixed;
     top: 0;
@@ -188,8 +508,34 @@ document.addEventListener('DOMContentLoaded', highlightCurrentMenuItem);
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    z-index: 1040;
     display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Hamburger button styling */
+#sidebarToggleTop {
+    font-size: 1.2rem;
+    color: #5a5c69;
+    transition: all 0.2s ease-in-out;
+    z-index: 1030;
+    position: relative;
+}
+
+#sidebarToggleTop:hover {
+    color: #4e73df;
+    transform: scale(1.1);
+}
+
+#sidebarToggleTop:focus {
+    outline: none;
+    box-shadow: none;
 }
 
 .sidebar-toggled .sidebar-overlay {
@@ -197,19 +543,79 @@ document.addEventListener('DOMContentLoaded', highlightCurrentMenuItem);
 }
 
 .nav-item.active {
-    background-color: rgba(78, 115, 223, 0.1);
+    background-color: rgba(78, 115, 223, 0.2);
     border-left: 4px solid #4e73df;
 }
 
 .nav-link {
     transition: all 0.3s ease-in-out;
     padding: 0.75rem 1rem;
-    color: #858796 !important;
+    color: #ffffff !important;
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.nav-link span {
+    color: #ffffff !important;
 }
 
 .nav-link:hover {
-    color: #f8f9fc !important;
-    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff !important;
+    background-color: rgba(78, 115, 223, 0.15);
+}
+
+.nav-link:hover span {
+    color: #ffffff !important;
+}
+
+.nav-link i {
+    color: #9ca3af !important;
+}
+
+.nav-link:hover i {
+    color: #4e73df !important;
+}
+
+.nav-link.collapsed::after {
+    content: "\f107";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    right: 1rem;
+    transition: transform 0.3s ease-in-out;
+}
+
+.nav-link:not(.collapsed)::after {
+    content: "\f106";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    right: 1rem;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Hide arrow for links without dropdown */
+.nav-link:not([data-bs-toggle])::after {
+    display: none;
+}
+
+.collapse-item {
+    padding: 0.5rem 1rem;
+    color: #ffffff !important;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    text-decoration: none;
+    display: block;
+}
+
+.collapse-item:hover {
+    color: #4e73df !important;
+    background-color: rgba(78, 115, 223, 0.1);
+    padding-left: 1.25rem;
 }
 
 .sidebar-heading {
@@ -218,28 +624,140 @@ document.addEventListener('DOMContentLoaded', highlightCurrentMenuItem);
     padding: 0.75rem 1rem;
     font-weight: 800;
     letter-spacing: 0.05em;
+    color: #858796 !important;
 }
 
 .sidebar-divider {
     margin: 1rem 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-/* Mobile responsive adjustments */
-@media (max-width: 768px) {
-    .sidebar {
-        transform: translateX(-100%);
+/* Mobile sidebar styles (< 768px) */
+@media (max-width: 767.98px) {
+    .sidebar, #sidebar-container {
         position: fixed;
-        z-index: 1050;
+        top: 0;
+        left: -300px;
+        z-index: 1050 !important;
+        transition: left 0.3s ease;
+        height: 100vh;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+        width: 300px !important;
+        min-width: 300px !important;
+        max-width: 300px !important;
     }
-    
-    .sidebar-toggled .sidebar {
-        transform: translateX(0);
+
+    .sidebar.sidebar-open, #sidebar-container.sidebar-open {
+        left: 0 !important;
     }
-    
+
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1040;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+
     .mobile-sidebar-header {
-        border-bottom: 1px solid #4e73df;
+        position: sticky;
+        top: 0;
+        z-index: 1060;
     }
+
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    /* Ensure mobile sidebar doesn't interfere with content */
+    .sidebar.sidebar-open ~ #content-wrapper,
+    #sidebar-container.sidebar-open ~ #content-wrapper {
+        margin-left: 0 !important;
+    }
+
+    /* Ensure all links are clickable */
+    .nav-link,
+    .collapse-item,
+    .sidebar-brand {
+        pointer-events: auto;
+        touch-action: manipulation;
+    }
+
+    /* Increase tap target size for mobile */
+    .nav-link {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .collapse-item {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+}
+
+/* Tablet responsive adjustments */
+@media (min-width: 769px) and (max-width: 991px) {
+    #sidebar-container {
+        width: 200px !important;
+    }
+
+    .sidebar-brand-text {
+        font-size: 0.9rem;
+    }
+
+    .nav-link span {
+        font-size: 0.85rem;
+    }
+}
+
+/* Collapse menu styling - White background like original */
+.collapse-inner {
+    background: #fff !important;
+    border-radius: 0.35rem;
+    margin: 0 0.5rem;
+    padding: 0.5rem 0 !important;
+}
+
+.collapse-header {
+    color: #858796 !important;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.5rem 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.collapse {
+    background: transparent !important;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Ensure collapse menus are visible and clickable */
+.collapse.show {
+    z-index: 2;
+    position: relative;
+}
+
+.collapse-item {
+    color: #3a3b45 !important;
+}
+
+.collapse-item:hover,
+.collapse-item.active {
+    background: #4e73df !important;
+    color: #fff !important;
 }
 
 /* Permission denied styling */
@@ -251,5 +769,49 @@ document.addEventListener('DOMContentLoaded', highlightCurrentMenuItem);
 
 .permission-denied:hover {
     background-color: transparent !important;
+}
+
+/* Dropdown arrow indicators */
+.nav-link[data-bs-toggle="collapse"] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-link[data-bs-toggle="collapse"] i.fas:first-child {
+    margin-right: 0.5rem;
+}
+
+/* Better spacing for nav items with dropdowns */
+.nav-link[data-bs-toggle="collapse"] span {
+    flex: 1;
+}
+
+/* Sidebar brand styling */
+.sidebar-brand {
+    padding: 1rem;
+    text-decoration: none;
+}
+
+.sidebar-brand-icon {
+    font-size: 1.5rem;
+    color: #4e73df;
+}
+
+.sidebar-brand-text {
+    color: #ffffff !important;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* Sidebar card styling */
+.sidebar-card {
+    padding: 1rem;
+}
+
+.sidebar-card .card-body {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.35rem;
+    padding: 1rem;
 }
 </style>

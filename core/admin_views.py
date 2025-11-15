@@ -19,7 +19,7 @@ from django.http import JsonResponse, HttpResponseForbidden
 from django.urls import reverse_lazy, reverse
 import json
 
-from core.permissions import RolePermissionChecker, permission_required, get_client_ip
+from core.permissions import permission_required, get_client_ip
 from core.decorators import admin_required, role_required
 from core.activity_log import ActivityLog
 
@@ -208,12 +208,16 @@ def user_permissions_detail(request, user_id):
     
     user = get_object_or_404(User.objects.select_related('profile'), id=user_id)
     
-    # Get permission checker
-    checker = RolePermissionChecker(user)
-    
-    # Get all permissions by category
+    # Get user permissions using simplified logic
     from core.permissions import APP_PERMISSIONS
-    user_permissions = checker.get_permissions_by_category('all') if hasattr(checker, 'get_permissions_by_category') else set()
+    user_permissions = set()
+    
+    # Add Django permissions
+    user_permissions.update(user.user_permissions.values_list('codename', flat=True))
+    
+    # Add role permissions
+    for role in user.roles.all():
+        user_permissions.update(role.permissions.values_list('codename', flat=True))
     
     context = {
         'target_user': user,
@@ -429,9 +433,17 @@ def api_user_permissions(request):
     
     try:
         user = User.objects.get(id=user_id)
-        checker = RolePermissionChecker(user)
         
-        permissions = checker.get_user_permissions()
+        # Get user permissions using simplified logic
+        permissions = set()
+        
+        # Add Django permissions
+        permissions.update(user.user_permissions.values_list('codename', flat=True))
+        
+        # Add role permissions
+        for role in user.roles.all():
+            permissions.update(role.permissions.values_list('codename', flat=True))
+        
         categories = {}
         
         for permission in permissions:

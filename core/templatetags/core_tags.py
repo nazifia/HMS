@@ -6,7 +6,7 @@ from django import template
 from django.contrib.auth import get_user_model
 from django.utils.safestring import mark_safe
 
-from core.permissions import RolePermissionChecker
+from core.permissions import check_user_permission
 
 register = template.Library()
 User = get_user_model()
@@ -35,8 +35,7 @@ def has_permission(user, permission_name):
     if user.is_superuser:
         return True
     
-    checker = RolePermissionChecker(user)
-    return checker.has_permission(permission_name)
+    return check_user_permission(user, permission_name)
 
 @register.filter
 def has_any_permission(user, permission_names):
@@ -53,8 +52,7 @@ def has_any_permission(user, permission_names):
     else:
         permission_list = permission_names
     
-    checker = RolePermissionChecker(user)
-    return checker.has_any_permission(*permission_list)
+    return any(check_user_permission(user, perm) for perm in permission_list)
 
 @register.filter
 def get_user_roles(user):
@@ -99,12 +97,10 @@ def user_can_access(context, permission_list):
     if user.is_superuser:
         return True
     
-    checker = RolePermissionChecker(user)
-    
     if isinstance(permission_list, str):
         permission_list = [permission_list]
     
-    return any(checker.has_permission(perm) for perm in permission_list)
+    return any(check_user_permission(user, perm) for perm in permission_list)
 
 @register.simple_tag(takes_context=True)
 def get_permission_indicator(context, permission_name):

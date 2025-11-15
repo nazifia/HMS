@@ -1,168 +1,70 @@
 from django import template
 from django.contrib.auth.models import User
-from core.models import SidebarMenuItem, FeatureFlag
-from core.permissions import RolePermissionChecker
 
 register = template.Library()
 
 @register.filter
-def has_hms_permission(user, permission_name):
+def has_permission(user, permission_name):
     """
-    Template filter to check HMS custom permissions
-    Usage: {% if user|has_hms_permission:'view_dashboard' %}
+    Template filter to check basic permissions using Django's built-in system
+    Usage: {% if user|has_permission:'view_dashboard' %}
     """
     if not user.is_authenticated:
         return False
     
-    checker = RolePermissionChecker(user)
-    return checker.has_permission(permission_name)
+    # Superusers have all permissions
+    if user.is_superuser:
+        return True
+    
+    # Check direct user permissions
+    if user.user_permissions.filter(codename=permission_name).exists():
+        return True
+    
+    # Check permissions from user's roles
+    for role in user.roles.all():
+        if role.permissions.filter(codename=permission_name).exists():
+            return True
+    
+    return False
 
 @register.filter
-def has_any_hms_permission(user, permission_list):
+def has_any_permission(user, permission_list):
     """
     Template filter to check if user has any of the specified permissions
-    Usage: {% if user|has_any_hms_permission:'view_patients,create_patient' %}
+    Usage: {% if user|has_any_permission:'view_patients,create_patient' %}
     """
     if not user.is_authenticated:
         return False
     
-    checker = RolePermissionChecker(user)
     permissions = [p.strip() for p in permission_list.split(',')]
-    return checker.has_any_permission(*permissions)
+    
+    for permission in permissions:
+        if has_permission(user, permission):
+            return True
+    
+    return False
 
 @register.filter
-def has_all_hms_permission(user, permission_list):
+def has_all_permissions(user, permission_list):
     """
     Template filter to check if user has all of the specified permissions
-    Usage: {% if user|has_all_hms_permission:'view_patients,edit_patients' %}
+    Usage: {% if user|has_all_permissions:'view_patients,edit_patients' %}
     """
     if not user.is_authenticated:
         return False
     
-    checker = RolePermissionChecker(user)
     permissions = [p.strip() for p in permission_list.split(',')]
-    return checker.has_all_permissions(*permissions)
-
-@register.inclusion_tag('includes/sidebar_menu.html', takes_context=True)
-def render_sidebar(context):
-    """
-    Render sidebar menu items with permission checking
-    """
-    request = context.get('request')
-    user = request.user if request else None
     
-    if not user or not user.is_authenticated:
-        return {'menu_items': []}
+    for permission in permissions:
+        if not has_permission(user, permission):
+            return False
     
-    # Get all active sidebar menu items
-    menu_items = SidebarMenuItem.objects.filter(
-        is_active=True
-    ).select_related(
-        'permission_required',
-        'parent'
-    ).prefetch_related(
-        'children',
-        'required_roles'
-    ).order_by('category', 'order', 'title')
-    
-    # Filter items based on user permissions
-    accessible_items = []
-    for item in menu_items:
-        if item.has_permission(user):
-            accessible_items.append(item)
-    
-    return {
-        'menu_items': accessible_items,
-        'user': user,
-    }
-
-@register.simple_tag
-def get_sidebar_items(user):
-    """
-    Get sidebar menu items for a specific user
-    """
-    if not user.is_authenticated:
-        return []
-    
-    menu_items = SidebarMenuItem.objects.filter(
-        is_active=True
-    ).select_related(
-        'permission_required',
-        'parent'
-    ).prefetch_related(
-        'children',
-        'required_roles'
-    ).order_by('category', 'order', 'title')
-    
-    accessible_items = []
-    for item in menu_items:
-        if item.has_permission(user):
-            accessible_items.append(item)
-    
-    return accessible_items
-
-@register.simple_tag
-def is_feature_enabled(feature_name, user):
-    """
-    Check if a feature flag is enabled and user has access
-    Usage: {% if 'enhanced_pharmacy_workflow'|is_feature_enabled:user %}
-    """
-    if not user.is_authenticated:
-        return False
-    
-    try:
-        feature = FeatureFlag.objects.get(name=feature_name)
-        return feature.is_accessible(user)
-    except FeatureFlag.DoesNotExist:
-        return False
-
-@register.inclusion_tag('includes/menu_item.html')
-def render_menu_item(item, user):
-    """
-    Render a single menu item with permission checking
-    """
-    return {
-        'item': item,
-        'user': user,
-        'can_access': item.has_permission(user) if hasattr(item, 'has_permission') else True,
-    }
-
-@register.filter
-def get_user_permissions(user):
-    """
-    Get all permissions for a user (HMS custom permissions + Django permissions)
-    """
-    if not user.is_authenticated:
-        return []
-    
-    permissions = []
-    
-    # Add HMS custom permissions
-    user_hms_permissions = set(
-        user.hms_permissions.values_list('permission__codename', flat=True)
-    )
-    permissions.extend(user_hms_permissions)
-    
-    # Add role-based HMS permissions
-    for role in user.roles.all():
-        role_permissions = role.hms_permissions.values_list('permission__codename', flat=True)
-        permissions.extend(role_permissions)
-    
-    # Add Django permissions
-    django_permissions = user.user_permissions.values_list('codename', flat=True)
-    permissions.extend(django_permissions)
-    
-    # Add role Django permissions
-    for role in user.roles.all():
-        role_permissions = role.permissions.values_list('codename', flat=True)
-        permissions.extend(role_permissions)
-    
-    return list(set(permissions))  # Remove duplicates
+    return True
 
 @register.filter
 def get_user_roles(user):
     """
-    Get all roles for a user including inherited roles
+    Get all roles for a user
     """
     if not user.is_authenticated:
         return []
@@ -202,26 +104,40 @@ def can_access_module(user, module_name):
     if module_name not in module_permissions:
         return False
     
-    checker = RolePermissionChecker(user)
     permissions = module_permissions[module_name]
     
-    return checker.has_any_permission(*permissions)
+    return any(has_permission(user, perm) for perm in permissions)
+
+# Legacy aliases for backward compatibility
+@register.filter
+def has_hms_permission(user, permission_name):
+    """
+    Legacy alias for has_permission - maintained for backward compatibility
+    Usage: {% if user|has_hms_permission:'view_dashboard' %}
+    """
+    return has_permission(user, permission_name)
 
 @register.filter
-def get_sidebar_categories(user):
+def has_any_hms_permission(user, permission_list):
     """
-    Get distinct sidebar categories that user has access to
+    Legacy alias for has_any_permission - maintained for backward compatibility
+    Usage: {% if user|has_any_hms_permission:'view_patients,create_patient' %}
     """
-    if not user.is_authenticated:
-        return []
-    
-    menu_items = SidebarMenuItem.objects.filter(
-        is_active=True
-    )
-    
-    accessible_categories = set()
-    for item in menu_items:
-        if item.has_permission(user):
-            accessible_categories.add(item.category)
-    
-    return list(accessible_categories)
+    return has_any_permission(user, permission_list)
+
+@register.filter
+def has_all_hms_permission(user, permission_list):
+    """
+    Legacy alias for has_all_permissions - maintained for backward compatibility
+    Usage: {% if user|has_all_hms_permission:'view_patients,edit_patients' %}
+    """
+    return has_all_permissions(user, permission_list)
+
+@register.filter
+def is_feature_enabled(feature_name, user):
+    """
+    Legacy feature flag check - always returns True for backward compatibility
+    Usage: {% if 'enhanced_pharmacy_workflow'|is_feature_enabled:user %}
+    """
+    # Since we removed feature flags, always return True
+    return True

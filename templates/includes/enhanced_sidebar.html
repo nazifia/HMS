@@ -66,7 +66,7 @@
                         <li><a class="dropdown-item" href="{% url 'core:activity_log' %}">
                             <i class="fas fa-history me-2"></i>Activity Log
                         </a></li>
-                        <li><a class="dropdown-item" href="{% url 'core:permission_management' %}">
+                        <li><a class="dropdown-item" href="{% url 'accounts:permission_management' %}">
                             <i class="fas fa-shield-alt me-2"></i>Permissions
                         </a></li>
                         <li><a class="dropdown-item" href="{% url 'core:security_overview' %}">
@@ -140,7 +140,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="{% url 'core:permission_management' %}" class="nav-link nav-link-submenu {% if '/core/admin/permissions/' in request.path %}active{% endif %}">
+                                <a href="{% url 'accounts:permission_management' %}" class="nav-link nav-link-submenu {% if '/accounts/permissions/' in request.path %}active{% endif %}">
                                     <i class="fas fa-shield-alt sidebar-icon-sub"></i>
                                     <span class="sidebar-text">Permissions</span>
                                 </a>
@@ -351,6 +351,79 @@
                 </li>
                 {% endif %}
 
+                <!-- Medical Specialties -->
+                <li class="nav-item">
+                    <a class="nav-link nav-link-sidebar {% if '/dental/' in request.path or '/ophthalmic/' in request.path or '/ent/' in request.path or '/oncology/' in request.path or '/scbu/' in request.path or '/anc/' in request.path or '/labor/' in request.path or '/icu/' in request.path or '/family-planning/' in request.path or '/gynae-emergency/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#medicalSpecialtiesMenu">
+                        <i class="fas fa-hospital sidebar-icon"></i>
+                        <span class="sidebar-text">Medical Specialties</span>
+                        <i class="fas fa-chevron-down ms-auto sidebar-arrow"></i>
+                    </a>
+                    <div class="collapse {% if '/dental/' in request.path or '/ophthalmic/' in request.path or '/ent/' in request.path or '/oncology/' in request.path or '/scbu/' in request.path or '/anc/' in request.path or '/labor/' in request.path or '/icu/' in request.path or '/family-planning/' in request.path or '/gynae-emergency/' in request.path %}show{% endif %}" id="medicalSpecialtiesMenu">
+                        <ul class="nav nav-pills flex-column ms-3">
+                            <li class="nav-item">
+                                <a href="{% url 'dental:dashboard' %}" class="nav-link nav-link-submenu {% if '/dental/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-tooth sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Dental</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'ophthalmic:dashboard' %}" class="nav-link nav-link-submenu {% if '/ophthalmic/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-eye sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Ophthalmic</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'ent:dashboard' %}" class="nav-link nav-link-submenu {% if '/ent/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-head-side-medical sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">ENT</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'oncology:dashboard' %}" class="nav-link nav-link-submenu {% if '/oncology/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-ribbon sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Oncology</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'scbu:dashboard' %}" class="nav-link nav-link-submenu {% if '/scbu/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-baby sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">SCBU</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'anc:dashboard' %}" class="nav-link nav-link-submenu {% if '/anc/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-baby-carriage sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">ANC</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'labor:dashboard' %}" class="nav-link nav-link-submenu {% if '/labor/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-female sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Labor</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'icu:dashboard' %}" class="nav-link nav-link-submenu {% if '/icu/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-procedures sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">ICU</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'family_planning:dashboard' %}" class="nav-link nav-link-submenu {% if '/family-planning/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-heart sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Family Planning</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'gynae_emergency:dashboard' %}" class="nav-link nav-link-submenu {% if '/gynae-emergency/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-hospital-user sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Gynae Emergency</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
                 <!-- Administration -->
                 <li class="nav-item">
                     <span class="sidebar-section-title">Administration</span>
@@ -380,6 +453,105 @@
                                 </a>
                             </li>
                             {% endif %}
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+
+                <!-- NHIA -->
+                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,accountant,receptionist' %}
+                <li class="nav-item">
+                    <a class="nav-link nav-link-sidebar {% if '/nhia/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#nhiaMenu">
+                        <i class="fas fa-shield-alt sidebar-icon"></i>
+                        <span class="sidebar-text">NHIA</span>
+                        <i class="fas fa-chevron-down ms-auto sidebar-arrow"></i>
+                    </a>
+                    <div class="collapse {% if '/nhia/' in request.path %}show{% endif %}" id="nhiaMenu">
+                        <ul class="nav nav-pills flex-column ms-3">
+                            <li class="nav-item">
+                                <a href="{% url 'nhia:dashboard' %}" class="nav-link nav-link-submenu {% if request.path == '/nhia/dashboard/' %}active{% endif %}">
+                                    <i class="fas fa-tachometer-alt sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'nhia:authorization_code_list' %}" class="nav-link nav-link-submenu {% if '/nhia/authorization-codes/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-check-circle sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Authorization Codes</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'nhia:nhia_patient_list' %}" class="nav-link nav-link-submenu {% if '/nhia/patients/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-users sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">NHIA Patients</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+
+                <!-- Retainership -->
+                {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
+                <li class="nav-item">
+                    <a class="nav-link nav-link-sidebar {% if '/retainership/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#retainershipMenu">
+                        <i class="fas fa-handshake sidebar-icon"></i>
+                        <span class="sidebar-text">Retainership</span>
+                        <i class="fas fa-chevron-down ms-auto sidebar-arrow"></i>
+                    </a>
+                    <div class="collapse {% if '/retainership/' in request.path %}show{% endif %}" id="retainershipMenu">
+                        <ul class="nav nav-pills flex-column ms-3">
+                            <li class="nav-item">
+                                <a href="{% url 'retainership:retainership_patient_list' %}" class="nav-link nav-link-submenu {% if '/retainership/patients/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-users sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Retainership Patients</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'retainership:select_patient_for_retainership' %}" class="nav-link nav-link-submenu {% if '/retainership/select-patient/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-user-plus sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Register Patient</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+
+                <!-- Desk Office -->
+                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,accountant,receptionist' %}
+                <li class="nav-item">
+                    <a class="nav-link nav-link-sidebar {% if '/desk-office/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#deskOfficeMenu">
+                        <i class="fas fa-briefcase sidebar-icon"></i>
+                        <span class="sidebar-text">Desk Office</span>
+                        <i class="fas fa-chevron-down ms-auto sidebar-arrow"></i>
+                    </a>
+                    <div class="collapse {% if '/desk-office/' in request.path %}show{% endif %}" id="deskOfficeMenu">
+                        <ul class="nav nav-pills flex-column ms-3">
+                            <li class="nav-item">
+                                <a href="{% url 'desk_office:authorization_dashboard' %}" class="nav-link nav-link-submenu {% if '/desk-office/authorization-dashboard/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-tachometer-alt sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Authorization Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'desk_office:pending_consultations' %}" class="nav-link nav-link-submenu {% if '/desk-office/pending-consultations/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-clock sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Pending Consultations</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'desk_office:pending_referrals' %}" class="nav-link nav-link-submenu {% if '/desk-office/pending-referrals/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-exchange-alt sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Pending Referrals</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'desk_office:authorization_code_list' %}" class="nav-link nav-link-submenu {% if '/desk-office/authorization-codes/' in request.path %}active{% endif %}">
+                                    <i class="fas fa-check-double sidebar-icon-sub"></i>
+                                    <span class="sidebar-text">Authorization Codes</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </li>
