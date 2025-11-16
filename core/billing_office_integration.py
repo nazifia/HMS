@@ -18,6 +18,7 @@ from billing.models import Invoice, Payment
 from patients.models import PatientWallet, WalletTransaction
 from core.audit_utils import log_audit_action
 from core.models import InternalNotification
+from django import forms
 
 
 class BillingOfficePaymentProcessor:

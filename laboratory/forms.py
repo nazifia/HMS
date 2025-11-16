@@ -255,6 +255,26 @@ class TestResultForm(forms.ModelForm):
         required=False,
         empty_label="Select Staff"
     )
+    result_value = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter result value'}),
+        label='Result Value'
+    )
+    reference_range = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter reference range'}),
+        label='Reference Range'
+    )
+    unit = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter unit'}),
+        label='Unit'
+    )
+    interpretation = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter interpretation'}),
+        label='Interpretation'
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -274,7 +294,8 @@ class TestResultForm(forms.ModelForm):
         fields = [
             'test', 'result_date', 'sample_collection_date',
             'sample_collected_by', 'result_file', 'notes',
-            'performed_by', 'verified_by'
+            'performed_by', 'verified_by', 'result_value',
+            'reference_range', 'unit', 'interpretation'
         ]
         widgets = {
             'test': forms.Select(attrs={'class': 'form-select'}),

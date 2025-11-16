@@ -239,6 +239,7 @@ def print_invoice(request, invoice_id):
 
 @login_required
 def record_payment(request, invoice_id):
+    context = {}
     """Enhanced view for recording payments with billing office integration"""
     from patients.models import PatientWallet
     

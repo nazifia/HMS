@@ -376,26 +376,37 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
+                                    {% if user.is_superuser or user.profile.role in 'admin,receptionist,health_record_officer' %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'patients:register' %}" class="btn btn-primary btn-block">
                                             <i class="fas fa-user-plus me-2"></i>Register Patient
                                         </a>
                                     </div>
+                                    {% endif %}
+                                    
+                                    {% if user.is_superuser or user.profile.role in 'admin,receptionist,doctor' %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'appointments:create' %}" class="btn btn-info btn-block">
                                             <i class="fas fa-calendar-plus me-2"></i>Book Appointment
                                         </a>
                                     </div>
+                                    {% endif %}
+                                    
+                                    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'inpatient:create_admission' %}" class="btn btn-warning btn-block">
                                             <i class="fas fa-bed me-2"></i>Admit Patient
                                         </a>
                                     </div>
+                                    {% endif %}
+                                    
+                                    {% if user.is_superuser or user.profile.role in 'admin,accountant' %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'billing:create' %}" class="btn btn-success btn-block">
                                             <i class="fas fa-file-invoice me-2"></i>Create Invoice
                                         </a>
                                     </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>

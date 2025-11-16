@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load form_tags %}
 {% load billing_tags %} {# Assuming you might create billing_tags later for invoice status #}
+{% load hms_permissions %}
 
 {% block title %}Test Request Details - Hospital Management System{% endblock %}
 
@@ -110,6 +111,135 @@
         border-bottom: 2px solid #e3e6f0;
         margin-bottom: 20px;
     }
+
+    /* Test Result Modal z-index improvements */
+    #testResultModal {
+        z-index: 1060 !important;
+    }
+
+    .modal-backdrop {
+        z-index: 1055 !important;
+    }
+
+    .modal-backdrop.show {
+        opacity: 0.1 !important;
+        z-index: 1055 !important;
+        background-color: #000 !important;
+    }
+
+    #testResultModal .modal-dialog {
+        z-index: 1061 !important;
+        position: relative;
+    }
+
+    /* Ensure modal content is above backdrop */
+    #testResultModal .modal-content {
+        position: relative;
+        z-index: 1062 !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5) !important;
+        background-color: #fff !important;
+    }
+
+    /* Hide/lower z-index of page elements when modal is open */
+    .modal-open #accordionSidebar,
+    .modal-open .sidebar,
+    .modal-open .topbar,
+    .modal-open .navbar,
+    .modal-open nav:not(#testResultModal nav),
+    .modal-open header {
+        z-index: 1 !important;
+        position: relative;
+    }
+
+    /* Prevent ALL background content from interfering */
+    .modal-open #wrapper,
+    .modal-open #content-wrapper,
+    .modal-open .page-content,
+    .modal-open .container-fluid:not(#testResultModal .container-fluid),
+    .modal-open .card:not(#testResultModal .card),
+    .modal-open .card-body:not(#testResultModal .card-body),
+    .modal-open form:not(#testResultModal form),
+    .modal-open .form-control:not(#testResultModal .form-control),
+    .modal-open .form-select:not(#testResultModal .form-select),
+    .modal-open input:not(#testResultModal input),
+    .modal-open select:not(#testResultModal select),
+    .modal-open textarea:not(#testResultModal textarea),
+    .modal-open button:not(#testResultModal button),
+    .modal-open .btn:not(#testResultModal .btn),
+    .modal-open table:not(#testResultModal table) {
+        pointer-events: none !important;
+    }
+
+    /* Ensure ONLY modal elements are interactive */
+    #testResultModal,
+    #testResultModal *,
+    #testResultModal .form-control,
+    #testResultModal .form-select,
+    #testResultModal button,
+    #testResultModal input,
+    #testResultModal textarea,
+    #testResultModal select,
+    #testResultModal .nav-link,
+    #testResultModal .btn,
+    #testResultModal .btn-close,
+    #testResultModal a {
+        pointer-events: auto !important;
+        position: relative;
+    }
+    
+    /* Higher stacking context for modal */
+    body:not(.modal-open) .content-wrapper,
+    body:not(.modal-open) #content-wrapper,
+    body:not(.modal-open) .page-content,
+    body:not(.modal-open) .container-fluid,
+    body:not(.modal-open) .row,
+    body:not(.modal-open) .card,
+    body:not(.modal-open) .card-body,
+    body:not(.modal-open) .form,
+    body:not(.modal-open) .form-control,
+    body:not(.modal-open) .form-select,
+    body:not(.modal-open) input,
+    body:not(.modal-open) select,
+    body:not(.modal-open) button,
+    body:not(.modal-open) .btn {
+        z-index: auto !important;
+        position: relative;
+    }
+    
+    /* Create new stacking context */
+    .modal-content-wrapper {
+        position: relative;
+        z-index: 9990;
+    }
+    
+    /* Ensure modal container stays on top */
+    #testResultModal .modal-dialog {
+        transform: translateZ(0);
+        z-index: 10001 !important;
+    }
+
+    /* Select2 dropdown positioning for modal */
+    .select2-container--open {
+        z-index: 1065 !important;
+    }
+
+    .select2-dropdown {
+        z-index: 1065 !important;
+    }
+
+    .select2-container {
+        z-index: 1063 !important;
+    }
+
+    /* Ensure modal appears above all other elements */
+    .modal-open {
+        overflow: hidden;
+    }
+
+    .modal-open .modal {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
 </style>
 {% endblock %}
 
@@ -158,11 +288,11 @@
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Test Request Details</h4>
                 <div>
-                    {% if (test_request.status == 'payment_confirmed' or test_request.status == 'sample_collected' or test_request.status == 'processing') and user|has_permission:'enter_lab_results' %}
+                    {% if test_request.status == 'payment_confirmed' or test_request.status == 'sample_collected' or test_request.status == 'processing' %}{% if user|has_permission:'enter_lab_results' %}
                         <a href="{% url 'laboratory:create_test_result' test_request.id %}" class="btn btn-success me-2">
                             <i class="fas fa-vial"></i> Add Test Result
                         </a>
-                    {% endif %}
+                    {% endif %}{% endif %}
 
                     {% if test_request.status == 'awaiting_payment' and test_request.invoice %}
                         <a href="{% url 'billing:detail' test_request.invoice.id %}" class="btn btn-warning me-2">
@@ -333,16 +463,16 @@
                                 {% if test_request.status != 'cancelled' %}
                                     <div class="btn-group" role="group">
                                         {% if user|has_permission:'enter_lab_results' %}
-                                            <button type="button" class="btn btn-sm btn-success" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                            <a href="{% url 'laboratory:manual_test_result_entry' test_request.id %}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-plus"></i> Add Test Result
-                                            </button>
+                                            </a>
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-sm btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <span class="visually-hidden">Toggle Dropdown</span>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
-                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', {{ test_request.id }})">
+                                                        <i class="fas fa-edit"></i> Entry
                                                     </a></li>
                                                     <li><a class="dropdown-item" href="{% url 'laboratory:manual_test_result_entry' test_request.id %}">
                                                         <i class="fas fa-external-link-alt"></i> Full Page Entry
@@ -350,16 +480,16 @@
                                                 </ul>
                                             </div>
                                         {% else %}
-                                            <button type="button" class="btn btn-sm btn-success" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                            <a href="{% url 'laboratory:create_test_result' test_request.id %}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-plus"></i> Add Test Result
-                                            </button>
+                                            </a>
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-sm btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <span class="visually-hidden">Toggle Dropdown</span>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
-                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', {{ test_request.id }})">
+                                                        <i class="fas fa-edit"></i> Entry
                                                     </a></li>
                                                     <li><a class="dropdown-item" href="{% url 'laboratory:create_test_result' test_request.id %}">
                                                         <i class="fas fa-external-link-alt"></i> Full Page Entry
@@ -418,16 +548,16 @@
                                 {% if test_request.status != 'cancelled' %}
                                     <div class="btn-group" role="group">
                                         {% if user|has_permission:'enter_lab_results' %}
-                                            <button type="button" class="btn btn-primary" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                            <a href="{% url 'laboratory:manual_test_result_entry' test_request.id %}" class="btn btn-primary">
                                                 <i class="fas fa-plus"></i> Add First Test Result
-                                            </button>
+                                            </a>
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <span class="visually-hidden">Toggle Dropdown</span>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
-                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', {{ test_request.id }})">
+                                                        <i class="fas fa-edit"></i> Entry
                                                     </a></li>
                                                     <li><a class="dropdown-item" href="{% url 'laboratory:manual_test_result_entry' test_request.id %}">
                                                         <i class="fas fa-external-link-alt"></i> Full Page Entry
@@ -435,16 +565,16 @@
                                                 </ul>
                                             </div>
                                         {% else %}
-                                            <button type="button" class="btn btn-primary" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                            <a href="{% url 'laboratory:create_test_result' test_request.id %}" class="btn btn-primary">
                                                 <i class="fas fa-plus"></i> Add First Test Result
-                                            </button>
+                                            </a>
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <span class="visually-hidden">Toggle Dropdown</span>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
-                                                        <i class="fas fa-window-restore"></i> Quick Entry (Modal)
+                                                    <li><a class="dropdown-item" href="#" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', {{ test_request.id }})">
+                                                        <i class="fas fa-edit"></i> Entry
                                                     </a></li>
                                                     <li><a class="dropdown-item" href="{% url 'laboratory:create_test_result' test_request.id %}">
                                                         <i class="fas fa-external-link-alt"></i> Full Page Entry
@@ -518,15 +648,15 @@
                                     <div class="col-md-3">
                                         {% if test_request.status != 'cancelled' %}
                                             {% if user|has_permission:'enter_lab_results' %}
-                                                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="openTestResultModal('{% url 'laboratory:manual_test_result_entry' test_request.id %}', true)">
+                                                <a href="{% url 'laboratory:manual_test_result_entry' test_request.id %}" class="btn btn-outline-primary w-100 mb-2">
                                                     <i class="fas fa-vial"></i><br>
                                                     <small>Add Test Result</small>
-                                                </button>
+                                                </a>
                                             {% else %}
-                                                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="openTestResultModal('{% url 'laboratory:create_test_result' test_request.id %}', false)">
+                                                <a href="{% url 'laboratory:create_test_result' test_request.id %}" class="btn btn-outline-primary w-100 mb-2">
                                                     <i class="fas fa-vial"></i><br>
                                                     <small>Add Test Result</small>
-                                                </button>
+                                                </a>
                                             {% endif %}
                                         {% endif %}
                                     </div>
@@ -603,148 +733,244 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Function to open test result modal
-    window.openTestResultModal = function(url, isManualEntry = false) {
-        const modal = new bootstrap.Modal(document.getElementById('testResultModal'));
+    // Robust Add Test Result Modal System
+    window.openTestResultModal = function(url, testRequestId) {
+        const modal = new bootstrap.Modal(document.getElementById('testResultModal'), {backdrop: 'static'});
         const modalBody = document.getElementById('testResultModalBody');
         const modalTitle = document.getElementById('testResultModalLabel');
 
-        // Update modal title based on entry type
-        if (isManualEntry) {
-            modalTitle.innerHTML = '<i class="fas fa-flask"></i> Manual Test Result Entry';
-        } else {
-            modalTitle.innerHTML = '<i class="fas fa-vial"></i> Add Test Result';
-        }
-
-        // Show loading spinner
+        modalTitle.innerHTML = '<i class="fas fa-vial me-2"></i> Add Test Result - Request #' + testRequestId;
+        
+        // Show loading
         modalBody.innerHTML = `
-            <div class="text-center">
-                <div class="spinner-border" role="status">
+            <div class="text-center p-5">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p class="mt-2">Loading form...</p>
+                <p class="mt-3 mb-0 text-muted">Loading test result form...</p>
             </div>
         `;
-
+        
         modal.show();
 
-        // Load form content via AJAX
-        fetch(url)
-            .then(response => response.text())
-            .then(html => {
-                // Extract form content from the response
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const formContent = doc.querySelector('.card-body form');
-                const alertContent = doc.querySelector('.alert');
+        // Load form via AJAX with proper error handling
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            // Parse HTML and extract form
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Try multiple selectors for form content
+            let formContent = doc.querySelector('#testResultForm, form, .card-body form');
+            
+            if (!formContent) {
+                // Fallback: look for any form
+                formContent = doc.querySelector('form');
+            }
+            
+            if (!formContent) {
+                throw new Error('Form not found in response');
+            }
 
-                if (formContent) {
-                    let modalContent = '';
+            // Extract main content area
+            const contentArea = formContent.closest('.card-body, .container, main') || formContent;
+            modalBody.innerHTML = contentArea.innerHTML;
 
-                    // Add alert if present
-                    if (alertContent) {
-                        modalContent += alertContent.outerHTML;
-                    }
-
-                    // Add form
-                    modalContent += formContent.outerHTML;
-
-                    modalBody.innerHTML = modalContent;
-
-                    // Initialize select2 for the modal form
-                    $(modalBody).find('.select2').select2({
-                        theme: 'bootstrap-5',
-                        width: '100%',
-                        dropdownParent: $('#testResultModal')
-                    });
-
-                    // Handle form submission
-                    const form = modalBody.querySelector('form');
-                    if (form) {
-                        form.addEventListener('submit', function(e) {
-                            e.preventDefault();
-                            submitTestResultForm(form, url);
-                        });
-                    }
-                } else {
-                    modalBody.innerHTML = '<div class="alert alert-danger">Error loading form. Please try again.</div>';
-                }
-            })
-            .catch(error => {
-                console.error('Error loading form:', error);
-                modalBody.innerHTML = '<div class="alert alert-danger">Error loading form. Please try again.</div>';
-            });
+            // Initialize form event handlers
+            initializeModalForm(modalBody, url);
+            
+        })
+        .catch(error => {
+            console.error('Modal load error:', error);
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Failed to load form: ${error.message}
+                    <br><small>Please <a href="${url}" target="_blank">open in new tab</a> or refresh page.</small>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="${url}" class="btn btn-primary" target="_blank">
+                        <i class="fas fa-external-link-alt me-2"></i>Open Full Page
+                    </a>
+                </div>
+            `;
+        });
     };
 
-    // Function to submit test result form via AJAX
-    function submitTestResultForm(form, url) {
+    function initializeModalForm(modalBody, url) {
+        const form = modalBody.querySelector('form');
+        console.log('Initializing modal form:', form, 'URL:', url);
+
+        if (!form) {
+            console.error('Form not found in modal body!');
+            return;
+        }
+
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            console.log('Form submit event triggered');
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Event prevented');
+            console.log('Form id:', form.id);
+            console.log('Form action:', form.action);
+            console.log('Calling submitModalForm with URL:', url);
+            
+            // Force call submitModalForm
+            if (typeof submitModalForm === 'function') {
+                submitModalForm(form, url);
+            } else {
+                console.error('submitModalForm is not defined!');
+            }
+        });
+
+        // Initialize select2 if available
+        if (typeof $.fn.select2 !== 'undefined') {
+            $(modalBody).find('select.select2').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#testResultModal')
+            });
+        }
+
+        // Focus first input
+        const firstInput = modalBody.querySelector('input, select, textarea');
+        if (firstInput) firstInput.focus();
+    }
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    window.submitModalForm = function(form, url) {
+        console.log('submitModalForm called with URL:', url);
+        console.log('Form element:', form);
+        console.log('Form action:', form.action);
+        console.log('Form method:', form.method);
+        
         const formData = new FormData(form);
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
+        const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+        const originalText = submitBtn ? submitBtn.innerHTML : '';
 
-        // Show loading state
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        submitBtn.disabled = true;
+        console.log('Submit button found:', submitBtn);
+        console.log('Form data entries:', Array.from(formData.entries()));
+        console.log('Form data as object:', Object.fromEntries(formData.entries()));
 
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+        }
+
+        // Get CSRF token
+        const csrftoken = getCookie('csrftoken');
+        console.log('CSRF token:', csrftoken);
+
+        console.log('Sending fetch request to:', url);
         fetch(url, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Close modal and reload page
-                bootstrap.Modal.getInstance(document.getElementById('testResultModal')).hide();
-
-                // Show success message
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-success alert-dismissible fade show';
-                alertDiv.innerHTML = `
-                    <i class="fas fa-check-circle"></i> ${data.message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
-
-                // Reload page to show updated results
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                // Show form with errors
-                const modalBody = document.getElementById('testResultModalBody');
-                modalBody.innerHTML = data.form_html;
-
-                // Reinitialize select2
-                $(modalBody).find('.select2').select2({
-                    theme: 'bootstrap-5',
-                    width: '100%',
-                    dropdownParent: $('#testResultModal')
-                });
-
-                // Reattach form submission handler
-                const newForm = modalBody.querySelector('form');
-                if (newForm) {
-                    newForm.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        submitTestResultForm(newForm, url);
-                    });
+        .then(response => {
+            if (response.redirected) {
+                // Handle redirect (success)
+                window.location.href = response.url;
+                return;
+            }
+            return response.text().then(text => {
+                if (response.ok) {
+                    // Try to parse as JSON first
+                    try {
+                        return JSON.parse(text);
+                    } catch {
+                        // Fallback to HTML
+                        return {html: text, success: false};
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
                 }
+            });
+        })
+        .then(data => {
+            if (data.success || data.redirect_url) {
+                // Success - reload page
+                const modal = bootstrap.Modal.getInstance(document.getElementById('testResultModal'));
+                modal.hide();
+                
+                // Show success message
+                showSuccessMessage(data.message || 'Test result saved successfully!');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                // Show form errors
+                document.getElementById('testResultModalBody').innerHTML = data.html || data;
+                initializeModalForm(document.getElementById('testResultModalBody'), url);
             }
         })
         .catch(error => {
-            console.error('Error submitting form:', error);
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-
-            // Show error message
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'alert alert-danger';
-            errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error submitting form. Please try again.';
-            form.insertBefore(errorDiv, form.firstChild);
+            console.error('Form submission error:', error);
+            showErrorMessage('Error saving test result. Please try again.');
+        })
+        .finally(() => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         });
+    };
+
+    function showSuccessMessage(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alert.innerHTML = `
+            <div class="d-flex">
+                <i class="fas fa-check-circle me-2 mt-1"></i>
+                <div>${message}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        document.body.appendChild(alert);
+        setTimeout(() => alert.remove(), 5000);
+    }
+
+    function showErrorMessage(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+        alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alert.innerHTML = `
+            <div class="d-flex">
+                <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+                <div>${message}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        document.body.appendChild(alert);
+        setTimeout(() => alert.remove(), 5000);
     }
 });
 </script>

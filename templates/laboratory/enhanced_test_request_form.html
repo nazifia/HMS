@@ -159,7 +159,8 @@
                 <div class="card-body">
                     <!-- Search Box -->
                     <div class="mb-3">
-                        <input type="text" id="test-search" class="form-control" placeholder="Search tests...">
+                        <input type="text" id="test-search" class="form-control" placeholder="Search tests..." autofocus>
+                        <small class="text-muted">Type to search for tests by name, description, sample type, or category</small>
                     </div>
                     
                     <!-- Category Filter -->
@@ -179,7 +180,7 @@
                             <small class="text-muted">No tests selected</small>
                         </div>
                         <div class="mt-2">
-                            <strong>Total Cost: ₦<span id="total-cost">0.00</span></strong>
+                            <strong>Total Cost: Naira <span id="total-cost">0.00</span></strong>
                         </div>
                     </div>
                 </div>
@@ -202,13 +203,13 @@
                     <div class="row">
                         {% for test in category.tests.all %}
                         <div class="col-md-6 col-lg-4 mb-2">
-                            <div class="card test-card" data-test-id="{{ test.id }}" data-category="{{ category.id }}" data-test-name="{{ test.name|lower }}" data-price="{{ test.price }}">
+                            <div class="card test-card" data-test-id="{{ test.id }}" data-category="{{ category.id }}" data-test-name="{{ test.name|lower }}" data-price="{{ test.price }}" data-description="{{ test.description|default:''|lower }}">
                                 <div class="card-body p-2">
                                     <div class="form-check">
                                         <input class="form-check-input test-checkbox" type="checkbox" value="{{ test.id }}" id="test_{{ test.id }}">
                                         <label class="form-check-label" for="test_{{ test.id }}">
                                             <strong>{{ test.name }}</strong>
-                                            <small class="d-block text-muted">₦{{ test.price }}</small>
+                                            <small class="d-block text-muted">Naira {{ test.price }}</small>
                                             {% if test.sample_type %}
                                             <small class="d-block text-info">{{ test.sample_type }}</small>
                                             {% endif %}
@@ -224,6 +225,11 @@
             </div>
         </div>
     </div>
+
+    <!-- All Tests Data for JavaScript -->
+    <script type="application/json" id="all-tests-data">
+    {{ all_tests_json|safe }}
+    </script>
 </div>
 
 <script>
@@ -236,6 +242,34 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedCount = document.getElementById('selected-count');
     const totalCost = document.getElementById('total-cost');
     const submitBtn = document.getElementById('submit-btn');
+    
+    // Load all tests data from JSON
+    let allTestsData = [];
+    try {
+        const allTestsElement = document.getElementById('all-tests-data');
+        if (allTestsElement && allTestsElement.textContent.trim()) {
+            allTestsData = JSON.parse(allTestsElement.textContent);
+            console.log('Loaded tests data:', allTestsData.length, 'tests');
+        }
+    } catch (error) {
+        console.error('Error loading tests data:', error);
+        // Fallback to empty array if JSON fails
+        allTestsData = [];
+    }
+    
+    // Create a lookup map for quick test data access
+    const testLookup = new Map();
+    allTestsData.forEach(test => {
+        testLookup.set(test.id.toString(), test);
+    });
+    
+    // Debug: Check if test cards exist on page load
+    const testCards = document.querySelectorAll('.test-card');
+    console.log('Found test cards:', testCards.length);
+    
+    // Debug: Check if search input exists
+    const searchInput = document.getElementById('test-search');
+    console.log('Search input element:', searchInput);
     
     function updateSelectedTests() {
         const testsArray = Array.from(selectedTests);
@@ -252,11 +286,11 @@ document.addEventListener('DOMContentLoaded', function() {
             let html = '';
             let total = 0;
             testsArray.forEach(testId => {
-                const testCard = document.querySelector(`[data-test-id="${testId}"]`);
-                const testName = testCard.querySelector('label strong').textContent;
-                const price = parseFloat(testCard.dataset.price);
-                total += price;
-                html += `<span class="badge bg-primary me-1 mb-1">${testName} <button type="button" class="btn-close btn-close-white btn-sm ms-1" onclick="removeTest('${testId}')"></button></span>`;
+                const testData = testLookup.get(testId);
+                if (testData) {
+                    total += testData.price;
+                    html += `<span class="badge bg-primary me-1 mb-1">${testData.name} <button type="button" class="btn-close btn-close-white btn-sm ms-1" onclick="removeTest('${testId}')"></button></span>`;
+                }
             });
             selectedTestsList.innerHTML = html;
             totalCost.textContent = total.toFixed(2);
@@ -266,7 +300,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     window.removeTest = function(testId) {
         selectedTests.delete(testId);
-        document.getElementById(`test_${testId}`).checked = false;
+        const checkbox = document.getElementById(`test_${testId}`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
         updateSelectedTests();
     };
     
@@ -283,19 +320,62 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Search functionality
-    testSearch.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
+    // Enhanced search functionality
+    function performSearch() {
+        const searchTerm = testSearch.value.toLowerCase().trim();
         const testCards = document.querySelectorAll('.test-card');
         
-        testCards.forEach(card => {
-            const testName = card.dataset.testName;
-            if (testName.includes(searchTerm)) {
+        console.log('Searching for:', searchTerm);
+        console.log('Total cards found:', testCards.length);
+        
+        if (searchTerm === '') {
+            // Show all tests if search is empty
+            testCards.forEach(card => {
                 card.style.display = 'block';
+            });
+            console.log('Empty search, showing all cards');
+            return;
+        }
+        
+        let visibleCount = 0;
+        testCards.forEach(card => {
+            const testId = card.dataset.testId;
+            const testData = testLookup.get(testId);
+            
+            if (testData) {
+                // Search across multiple fields: name, description, sample_type, category
+                const matchesSearch = 
+                    testData.name_lower.includes(searchTerm) ||
+                    testData.description_lower.includes(searchTerm) ||
+                    testData.sample_type_lower.includes(searchTerm) ||
+                    testData.category.toLowerCase().includes(searchTerm);
+                
+                card.style.display = matchesSearch ? 'block' : 'none';
+                if (matchesSearch) {
+                    visibleCount++;
+                    console.log('Match found:', testData.name);
+                }
             } else {
-                card.style.display = 'none';
+                // Fallback: use data attributes from card if testLookup fails
+                const testName = (card.dataset.testName || '').toLowerCase();
+                const testDescription = (card.dataset.description || '').toLowerCase();
+                const matchesFallback = testName.includes(searchTerm) || testDescription.includes(searchTerm);
+                
+                card.style.display = matchesFallback ? 'block' : 'none';
+                if (matchesFallback) {
+                    visibleCount++;
+                    console.log('Fallback match found:', card.dataset.testName);
+                }
             }
         });
+        console.log('Visible cards after search:', visibleCount);
+    }
+    
+    // Search with debouncing for better performance
+    let searchTimeout;
+    testSearch.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 300);
     });
     
     // Category filter
@@ -310,6 +390,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 category.style.display = 'none';
             }
         });
+        
+        // Re-apply search after category filter
+        performSearch();
+    });
+    
+    // Auto-focus search field on page load
+    testSearch.focus();
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+F or Cmd+F to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            testSearch.focus();
+            testSearch.select();
+        }
+        // Escape to clear search
+        if (e.key === 'Escape') {
+            testSearch.value = '';
+            performSearch();
+        }
     });
 });
 </script>

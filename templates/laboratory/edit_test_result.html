@@ -245,101 +245,396 @@
 <div class="modal fade" id="addParameterModal" tabindex="-1" aria-labelledby="addParameterModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addParameterModalLabel">Add New Parameter</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addParameterModalLabel">
+                    <i class="fas fa-plus-circle"></i> Add New Parameter
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="addParameterForm">
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     {% csrf_token %}
 
                     <!-- Parameter Selection Tabs -->
-                    <ul class="nav nav-tabs mb-3" id="parameterTabs" role="tablist">
+                    <ul class="nav nav-tabs mb-4" id="parameterTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="predefined-tab" data-bs-toggle="tab" data-bs-target="#predefined" type="button" role="tab">
-                                <i class="fas fa-list"></i> Select Existing Parameter
+                            <button class="nav-link active" id="predefined-tab" data-bs-toggle="tab" data-bs-target="#predefined" type="button" role="tab" aria-controls="predefined" aria-selected="true">
+                                <i class="fas fa-list me-1"></i> Select Existing Parameter
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom" type="button" role="tab">
-                                <i class="fas fa-plus"></i> Add Custom Parameter
+                            <button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom" type="button" role="tab" aria-controls="custom" aria-selected="false">
+                                <i class="fas fa-plus me-1"></i> Add Custom Parameter
                             </button>
                         </li>
                     </ul>
 
                     <div class="tab-content" id="parameterTabContent">
                         <!-- Predefined Parameters Tab -->
-                        <div class="tab-pane fade show active" id="predefined" role="tabpanel">
-                            <div class="mb-3">
-                                <label for="predefined_parameter" class="form-label">Select Parameter <span class="text-danger">*</span></label>
-                                <select class="form-select" id="predefined_parameter" name="predefined_parameter">
+                        <div class="tab-pane fade show active" id="predefined" role="tabpanel" aria-labelledby="predefined-tab">
+                            <div class="mb-4">
+                                <label for="predefined_parameter" class="form-label fw-bold">
+                                    Select Parameter <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select form-select-lg" id="predefined_parameter" name="predefined_parameter">
                                     <option value="">Loading parameters...</option>
                                 </select>
-                                <div class="form-text">Choose from predefined parameters for this test</div>
+                                <div class="form-text mt-2">
+                                    <i class="fas fa-info-circle me-1"></i> Choose from predefined parameters for this test
+                                </div>
                             </div>
 
                             <!-- Parameter Info Display -->
-                            <div id="parameter_info" class="alert alert-info d-none">
+                            <div id="parameter_info" class="alert alert-info d-none mb-4">
+                                <h6 class="alert-heading mb-2">
+                                    <i class="fas fa-info-circle"></i> Parameter Information
+                                </h6>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <strong>Unit:</strong> <span id="info_unit">-</span>
+                                        <strong>Unit:</strong> <span id="info_unit" class="text-muted">-</span>
                                     </div>
                                     <div class="col-md-6">
-                                        <strong>Normal Range:</strong> <span id="info_range">-</span>
+                                        <strong>Normal Range:</strong> <span id="info_range" class="text-muted">-</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Custom Parameter Tab -->
-                        <div class="tab-pane fade" id="custom" role="tabpanel">
+                        <div class="tab-pane fade" id="custom" role="tabpanel" aria-labelledby="custom-tab">
                             <div class="mb-3">
-                                <label for="custom_parameter_name" class="form-label">Parameter Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="custom_parameter_name" name="custom_parameter_name" placeholder="Enter parameter name">
+                                <label for="custom_parameter_name" class="form-label fw-bold">
+                                    Parameter Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="custom_parameter_name" name="custom_parameter_name" placeholder="Enter parameter name (e.g., Hemoglobin, WBC Count)">
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="custom_parameter_unit" class="form-label">Unit</label>
-                                    <input type="text" class="form-control" id="custom_parameter_unit" name="custom_parameter_unit" placeholder="e.g., mg/dL, mmol/L">
+                                    <input type="text" class="form-control" id="custom_parameter_unit" name="custom_parameter_unit" placeholder="e.g., mg/dL, mmol/L, g/dL">
+                                    <div class="form-text mt-1">
+                                        <small>Measurement unit (optional)</small>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="custom_parameter_range" class="form-label">Normal Range</label>
-                                    <input type="text" class="form-control" id="custom_parameter_range" name="custom_parameter_range" placeholder="e.g., 70-100">
+                                    <input type="text" class="form-control" id="custom_parameter_range" name="custom_parameter_range" placeholder="e.g., 70-100, <5.0">
+                                    <div class="form-text mt-1">
+                                        <small>Reference range (optional)</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Common Fields -->
-                    <hr>
-                    <div class="mb-3">
-                        <label for="parameter_value" class="form-label">Result Value <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="parameter_value" name="parameter_value" required placeholder="Enter the test result value">
+                    <hr class="my-4">
+                    <h6 class="mb-3">
+                        <i class="fas fa-clipboard-check"></i> Result Details
+                    </h6>
+
+                    <div class="mb-4">
+                        <label for="parameter_value" class="form-label fw-bold">
+                            Result Value <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="parameter_value" name="parameter_value" required placeholder="e.g., 120, Positive, Negative">
+                        <small class="form-text text-muted d-block mt-2">
+                            Enter the measured value for this parameter
+                        </small>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="is_normal" class="form-label">Status</label>
+                    <div class="mb-4">
+                        <label for="is_normal" class="form-label fw-bold">Status</label>
                         <select class="form-select" id="is_normal" name="is_normal">
-                            <option value="true">Normal</option>
+                            <option value="true" selected>Normal</option>
                             <option value="false">Abnormal</option>
                         </select>
+                        <small class="form-text text-muted d-block mt-2">
+                            Whether result is within normal limits
+                        </small>
                     </div>
 
                     <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Additional notes or observations"></textarea>
+                        <label for="notes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Add clinical observations or interpretations"></textarea>
+                        <small class="form-text text-muted d-block mt-2">
+                            Additional observations or comments
+                        </small>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancel
+                    </button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add Parameter
+                        <i class="fas fa-plus me-1"></i> Add Parameter
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Modal z-index improvements */
+    #addParameterModal {
+        z-index: 1060 !important;
+    }
+
+    .modal-backdrop {
+        z-index: 1055 !important;
+    }
+
+    .modal-backdrop.show {
+        opacity: 0.1 !important;
+        z-index: 1055 !important;
+        background-color: #000 !important;
+    }
+
+    #addParameterModal .modal-dialog {
+        z-index: 1061 !important;
+        position: relative;
+    }
+
+    /* Ensure modal content is above backdrop */
+    #addParameterModal .modal-content {
+        position: relative;
+        z-index: 1062 !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5) !important;
+        background-color: #fff !important;
+    }
+
+    /* Hide/lower z-index of page elements when modal is open */
+    .modal-open #accordionSidebar,
+    .modal-open .sidebar,
+    .modal-open .topbar,
+    .modal-open .navbar,
+    .modal-open nav:not(#addParameterModal nav),
+    .modal-open header {
+        z-index: 1 !important;
+        position: relative;
+    }
+
+    /* Prevent ALL background content from interfering */
+    .modal-open #wrapper,
+    .modal-open #content-wrapper,
+    .modal-open .page-content,
+    .modal-open .container-fluid:not(#addParameterModal .container-fluid),
+    .modal-open .card:not(#addParameterModal .card),
+    .modal-open .card-body:not(#addParameterModal .card-body),
+    .modal-open form:not(#addParameterForm),
+    .modal-open .form-control:not(#addParameterModal .form-control),
+    .modal-open .form-select:not(#addParameterModal .form-select),
+    .modal-open input:not(#addParameterModal input),
+    .modal-open select:not(#addParameterModal select),
+    .modal-open textarea:not(#addParameterModal textarea),
+    .modal-open button:not(#addParameterModal button),
+    .modal-open .btn:not(#addParameterModal .btn),
+    .modal-open table:not(#addParameterModal table) {
+        pointer-events: none !important;
+    }
+
+    /* Ensure ONLY modal elements are interactive */
+    #addParameterModal,
+    #addParameterModal *,
+    #addParameterModal .form-control,
+    #addParameterModal .form-select,
+    #addParameterModal button,
+    #addParameterModal input,
+    #addParameterModal textarea,
+    #addParameterModal select,
+    #addParameterModal .nav-link,
+    #addParameterModal .btn,
+    #addParameterModal .btn-close,
+    #addParameterModal a {
+        pointer-events: auto !important;
+        position: relative;
+    }
+
+    /* Select2 dropdown positioning - ensure main form Select2 is below modal */
+    .select2-container {
+        z-index: auto !important;
+    }
+
+    .select2-container--open {
+        z-index: auto !important;
+    }
+
+    .select2-dropdown {
+        z-index: auto !important;
+    }
+
+    /* When modal is open, force all Select2 elements outside modal to be below */
+    .modal-open .select2-container:not(#addParameterModal .select2-container) {
+        z-index: 1 !important;
+    }
+
+    .modal-open .select2-container--open:not(#addParameterModal .select2-container--open) {
+        z-index: 1 !important;
+    }
+
+    .modal-open .select2-dropdown {
+        z-index: 1 !important;
+    }
+
+    /* Select2 inside modal should be above modal content */
+    #addParameterModal .select2-container {
+        z-index: 1065 !important;
+    }
+
+    #addParameterModal .select2-container--open {
+        z-index: 1065 !important;
+    }
+
+    #addParameterModal .select2-dropdown {
+        z-index: 1065 !important;
+    }
+
+    /* Modal Improvements */
+    #addParameterModal .modal-body {
+        padding: 1.5rem;
+        background-color: #fff !important;
+    }
+
+    #addParameterModal .modal-header,
+    #addParameterModal .modal-footer {
+        background-color: #fff !important;
+    }
+
+    #addParameterModal .form-text,
+    #addParameterModal small.form-text {
+        display: block !important;
+        color: #6c757d !important;
+        font-size: 0.8rem !important;
+        line-height: 1.5 !important;
+        margin-top: 0.5rem !important;
+        clear: both !important;
+        padding: 0 !important;
+        background: transparent !important;
+    }
+
+    /* Ensure proper spacing for form groups */
+    #addParameterModal .mb-3,
+    #addParameterModal .mb-4 {
+        margin-bottom: 1.5rem !important;
+        clear: both;
+    }
+
+    /* Clean placeholder styling */
+    #addParameterModal input::placeholder,
+    #addParameterModal textarea::placeholder {
+        color: #adb5bd;
+        font-style: italic;
+        opacity: 0.7;
+    }
+
+    #addParameterModal .nav-tabs {
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    #addParameterModal .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+        padding: 0.75rem 1.25rem;
+        border: none;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    #addParameterModal .nav-tabs .nav-link:hover {
+        border-bottom-color: #0d6efd;
+        color: #0d6efd;
+    }
+
+    #addParameterModal .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        background-color: transparent;
+        border-bottom-color: #0d6efd;
+        font-weight: 600;
+    }
+
+    #addParameterModal .tab-content {
+        padding-top: 1rem;
+        min-height: 150px;
+    }
+
+    #addParameterModal .form-label.fw-bold {
+        color: #212529;
+        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+    }
+
+    #addParameterModal .form-control,
+    #addParameterModal .form-select {
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    #addParameterModal .form-control:focus,
+    #addParameterModal .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    #addParameterModal .form-control-lg {
+        padding: 0.75rem 1rem;
+        font-size: 1.1rem;
+    }
+
+    #addParameterModal hr {
+        border-top: 2px solid #e9ecef;
+        opacity: 1;
+    }
+
+    #addParameterModal textarea.form-control {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    /* Alert styling in modal */
+    #addParameterModal .alert-info {
+        background-color: #e7f3ff;
+        border-color: #b3d9ff;
+        color: #004085;
+    }
+
+    #addParameterModal .alert-heading {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Table styling improvements */
+    .table-responsive {
+        border-radius: 0.375rem;
+        overflow: hidden;
+    }
+
+    .table-sm th {
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background-color: #f8f9fa;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .table-sm td {
+        vertical-align: middle;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .table-sm input[type="text"],
+    .table-sm textarea,
+    .table-sm select {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.5rem;
+        width: 100%;
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -365,8 +660,9 @@
         // Function to load predefined parameters
         function loadPredefinedParameters() {
             const testId = {{ result.test.id }};
+            const resultId = {{ result.id }};
 
-            fetch(`/laboratory/api/tests/${testId}/parameters/`)
+            fetch(`/laboratory/api/tests/${testId}/parameters/?result_id=${resultId}`)
                 .then(response => response.json())
                 .then(data => {
                     predefinedSelect.innerHTML = '<option value="">Select a parameter...</option>';
@@ -379,7 +675,7 @@
                             predefinedSelect.appendChild(option);
                         });
                     } else {
-                        predefinedSelect.innerHTML = '<option value="">No predefined parameters available</option>';
+                        predefinedSelect.innerHTML = '<option value="">No available parameters (all added or none defined)</option>';
                     }
                 })
                 .catch(error => {

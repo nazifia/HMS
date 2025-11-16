@@ -894,12 +894,29 @@ def create_test_request(request):
 
         # Get all tests for search functionality
         all_tests = Test.objects.filter(is_active=True).select_related('category').order_by('category__name', 'name')
+        
+        # Prepare all tests data for JSON
+        all_tests_data = []
+        for test in all_tests:
+            all_tests_data.append({
+                'id': test.id,
+                'name': test.name,
+                'category': test.category.name if test.category else 'Uncategorized',
+                'category_id': test.category.id if test.category else None,
+                'price': float(test.price),
+                'description': test.description or '',
+                'sample_type': test.sample_type or '',
+                'name_lower': test.name.lower(),
+                'description_lower': (test.description or '').lower(),
+                'sample_type_lower': (test.sample_type or '').lower()
+            })
 
     context = {
         'form': form,
         'patient': patient,
         'test_categories': test_categories,
         'all_tests': all_tests,
+        'all_tests_json': json.dumps(all_tests_data),
         'title': 'Create New Test Request'
     }
     return render(request, 'laboratory/enhanced_test_request_form.html', context)
@@ -912,13 +929,18 @@ def test_request_detail(request, request_id):
     # Access the invoice via the related name from Invoice model if TestRequest.invoice is the OneToOneField
     # Or directly if TestRequest.invoice is the field itself.
     # Based on laboratory.models.TestRequest having `invoice = OneToOneField('billing.Invoice'...)`
-    invoice = test_request.invoice 
+    invoice = test_request.invoice
+
+    # Update test request status based on invoice payment status
+    if invoice and invoice.status == 'paid' and test_request.status == 'awaiting_payment':
+        test_request.status = 'payment_confirmed'
+        test_request.save()
 
     context = {
         'test_request': test_request,
         'tests': tests,
         'results': results,
-        'invoice': invoice, 
+        'invoice': invoice,
         'title': f'Test Request #{test_request.id} - {test_request.patient.get_full_name()}'
     }
     return render(request, 'laboratory/test_request_detail.html', context)
@@ -1071,7 +1093,7 @@ def create_test_result(request, request_id):
                 form_html = render_to_string('laboratory/test_result_form_modal.html', context, request=request)
                 return JsonResponse({
                     'success': False,
-                    'form_html': form_html
+                    'html': form_html
                 })
     else:
         initial_data = {
@@ -1087,6 +1109,10 @@ def create_test_result(request, request_id):
         'test_request': test_request,
         'title': 'Create New Test Result'
     }
+
+    # Return modal template for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'laboratory/test_result_form_modal.html', context)
 
     return render(request, 'laboratory/test_result_form.html', context)
 
@@ -1256,9 +1282,22 @@ def add_result_parameter(request, result_id):
 def get_test_parameters(request, test_id):
     """
     AJAX endpoint to get predefined parameters for a test
+    Optionally filters out parameters already added to a specific result
     """
     test = get_object_or_404(Test, id=test_id)
     parameters = test.parameters.all().order_by('order')
+
+    # If result_id is provided, exclude parameters already added to that result
+    result_id = request.GET.get('result_id')
+    if result_id:
+        try:
+            result = TestResult.objects.get(id=result_id)
+            # Get IDs of parameters already added to this result
+            existing_param_ids = result.parameters.values_list('parameter_id', flat=True)
+            # Exclude those parameters
+            parameters = parameters.exclude(id__in=existing_param_ids)
+        except TestResult.DoesNotExist:
+            pass
 
     parameter_data = []
     for param in parameters:
@@ -1341,7 +1380,19 @@ def manual_test_result_entry(request, request_id):
         else:
             # Handle AJAX form errors
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                # Render form with errors
+                # Re-initialize form with posted data to preserve user selections
+                form = TestResultForm(request.POST, request.FILES)
+                
+                # Ensure performed_by is set if not in POST data
+                if 'performed_by' not in request.POST and request.user:
+                    form.data = form.data.copy()
+                    form.data['performed_by'] = request.user.id
+                
+                # Set available tests for test field
+                tests_with_results = TestResult.objects.filter(test_request=test_request).values_list('test_id', flat=True)
+                available_tests = test_request.tests.exclude(id__in=tests_with_results)
+                form.fields['test'].queryset = available_tests
+                
                 context = {
                     'form': form,
                     'test_request': test_request,
@@ -1351,7 +1402,7 @@ def manual_test_result_entry(request, request_id):
                 form_html = render_to_string('laboratory/test_result_form_modal.html', context, request=request)
                 return JsonResponse({
                     'success': False,
-                    'form_html': form_html
+                    'html': form_html
                 })
     else:
         initial_data = {
@@ -1370,6 +1421,10 @@ def manual_test_result_entry(request, request_id):
         'title': 'Manual Test Result Entry',
         'is_manual_entry': True
     }
+
+    # Return modal template for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'laboratory/test_result_form_modal.html', context)
 
     return render(request, 'laboratory/test_result_form.html', context)
 

@@ -1,0 +1,7 @@
+{% block title %}{{ page_title }} - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% include 'patients/patient_form.html' with title=page_title patient=patient %}
+</div>
+{% endblock %}
