@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Laboratory Sales Report - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    {{ title }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Monthly Revenue</h5>
+                                <h2 class="mb-0">₦{{ monthly_revenue|floatformat:2 }}</h2>
+                                <small>{{ month_start|date:"F Y" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Tests Performed Today</h5>
+                                <h2 class="mb-0">{{ daily_tests|length }}</h2>
+                                <small>{{ today|date:"d M Y" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Tests Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user-md me-2"></i>
+                            Daily Tests by Staff
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if daily_tests %}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Staff Name</th>
+                                            <th>Tests Performed</th>
+                                            <th>Revenue Generated</th>
+                                            <th>Average per Test</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for test in daily_tests %}
+                                            <tr>
+                                                <td>
+                                                    {{ test.performed_by__first_name }} {{ test.performed_by__last_name }}
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ test.total_tests }}</span>
+                                                </td>
+                                                <td>₦{{ test.total_revenue|floatformat:2 }}</td>
+                                                <td>
+                                                    {% if test.total_tests > 0 %}
+                                                        ₦{{ test.total_revenue|div:test.total_tests|floatformat:2 }}
+                                                    {% else %}
+                                                        ₦0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-secondary">
+                                        <tr>
+                                            <th>Total</th>
+                                            <th>{{ daily_tests|aggregate:total_tests|default:0 }}</th>
+                                            <th>₦{{ daily_tests|aggregate:total_revenue|floatformat:2 }}</th>
+                                            <th>-</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No laboratory tests performed today.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a href="{% url 'laboratory:dashboard' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Back to Dashboard
+                                </a>
+                                <a href="{% url 'laboratory:test_requests' %}" class="btn btn-info">
+                                    <i class="fas fa-clipboard-list me-2"></i>
+                                    Test Requests
+                                </a>
+                            </div>
+                            <div>
+                                <button onclick="window.print()" class="btn btn-dark">
+                                    <i class="fas fa-print me-2"></i>
+                                    Print Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add print functionality
+    const printBtn = document.querySelector('button[onclick="window.print()"]');
+    if (printBtn) {
+        printBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.print();
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

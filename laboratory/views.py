@@ -1598,10 +1598,15 @@ def test_api(request):
 
     return JsonResponse(results, safe=False)
 
+# Note: laboratory_sales_report function has been removed and recreated below
+
+
 @login_required
 def laboratory_sales_report(request):
-    """View for daily tests by doctor and total monthly lab revenue."""
+    """View for daily laboratory tests by user and total monthly laboratory revenue."""
     from django.db.models import Sum, Count
+    from django.utils import timezone
+    
     today = timezone.now().date()
     month_start = today.replace(day=1)
     if month_start.month == 12:
@@ -1610,18 +1615,21 @@ def laboratory_sales_report(request):
         next_month = month_start.replace(month=month_start.month + 1, day=1)
     month_end = next_month - timezone.timedelta(days=1)
 
-    # Daily tests by doctor (doctor field)
+    # Daily laboratory tests by user (performed by)
     daily_tests = (
-        TestRequest.objects.filter(request_date=today)
-        .values('doctor__id', 'doctor__first_name', 'doctor__last_name')
-        .annotate(total_tests=Count('id'), total_revenue=Sum('invoice__total_amount'))
+        TestResult.objects.filter(result_date__date=today)
+        .values('performed_by__id', 'performed_by__first_name', 'performed_by__last_name')
+        .annotate(total_tests=Count('id'), total_revenue=Sum('test__price'))
         .order_by('-total_tests')
     )
 
-    # Total monthly revenue
+    # Total monthly revenue from test requests
     monthly_revenue = (
-        TestRequest.objects.filter(request_date__gte=month_start, request_date__lte=month_end)
-        .aggregate(total=Sum('invoice__total_amount'))['total'] or 0
+        TestRequest.objects.filter(
+            request_date__date__gte=month_start, 
+            request_date__date__lte=month_end
+        )
+        .aggregate(total=Sum('total_cost'))['total'] or 0
     )
 
     context = {
@@ -1630,7 +1638,7 @@ def laboratory_sales_report(request):
         'today': today,
         'month_start': month_start,
         'month_end': month_end,
-        'title': 'Laboratory Report Dashboard',
+        'title': 'Laboratory Sales Report',
     }
     return render(request, 'laboratory/sales_report.html', context)
 

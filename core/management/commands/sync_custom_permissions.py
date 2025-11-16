@@ -708,15 +708,7 @@ class Command(BaseCommand):
                 'parent_title': 'Reports',
                 'order': 1,
             },
-            {
-                'title': 'Laboratory Reports',
-                'url_name': 'laboratory:laboratory_sales_report',
-                'icon': 'fas fa-flask',
-                'category': 'administration',
-                'permission_required': 'view_laboratory_reports',
-                'parent_title': 'Reports',
-                'order': 2,
-            },
+            # Laboratory Reports menu item removed
         ]
         
         created_count = 0

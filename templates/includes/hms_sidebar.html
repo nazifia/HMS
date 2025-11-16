@@ -366,16 +366,6 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Laboratory Report Dashboard (Lab Tech, Accountant, Admin) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_laboratory' %}
-        <li class="nav-item {% if '/laboratory/sales-report/' in request.path %}active{% endif %}">
-            <a class="nav-link" href="{% url 'laboratory:laboratory_sales_report' %}">
-                <i class="fas fa-fw fa-chart-bar text-white"></i>
-                <span class="text-white">Lab Report Dashboard</span>
-            </a>
-        </li>
-        {% endif %}
-
         <!-- Nav Item - Radiology (Radiology Staff full access, Doctors request, Admin full) -->
         {% if user.is_superuser or user|can_show_ui:'menu_radiology' %}
         <li class="nav-item {% if '/radiology/' in request.path %}active{% endif %}">
@@ -750,7 +740,6 @@
 
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Department Reports:</h6>
-                    <a class="collapse-item {% if '/laboratory/sales-report/' in request.path %}active{% endif %}" href="{% url 'laboratory:laboratory_sales_report' %}">Lab Report Dashboard</a>
                     <a class="collapse-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}" href="{% url 'radiology:sales_report' %}">Radiology Report Dashboard</a>
                     <a class="collapse-item {% if '/pharmacy/revenue/analysis/' in request.path %}active{% endif %}" href="{% url 'pharmacy:revenue_analysis' %}">Pharmacy Revenue Analysis</a>
                 </div>

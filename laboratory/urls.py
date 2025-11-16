@@ -48,7 +48,6 @@ urlpatterns = [
     path('api/tests/<int:test_id>/parameters/', views.get_test_parameters, name='get_test_parameters'),
 
     # Reports
-    path('sales-report/', views.laboratory_sales_report, name='laboratory_sales_report'),
     path('reports/statistics/', views.lab_statistics_report, name='lab_statistics_report'),
     
     # Payment management
