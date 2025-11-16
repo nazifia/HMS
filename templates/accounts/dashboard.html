@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        <div>
+            <span class="text-muted">Welcome back, {{ user.username }}!</span>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <a href="{% url 'patients:register' %}" class="text-decoration-none">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                    Register Patient
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    Quick Add
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-user-plus fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <a href="{% url 'consultations:patient_list' %}" class="text-decoration-none">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                    New Consultation
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    Start Consult
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <a href="{% url 'pharmacy:prescriptions' %}" class="text-decoration-none">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                    Pharmacy
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    Prescriptions
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-pills fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <a href="{% url 'billing:list' %}" class="text-decoration-none">
+                <div class="card border-left-warning shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                    Billing
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    Invoices
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">System Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="h4 text-primary">{{ total_patients }}</div>
+                            <div class="text-sm text-muted">Total Patients</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="h4 text-success">{{ total_patients_today }}</div>
+                            <div class="text-sm text-muted">Patients Today</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="h4 text-info">{{ active_consultations }}</div>
+                            <div class="text-sm text-muted">Active Consultations</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">Recent Activity</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for activity in recent_activities %}
+                                <tr>
+                                    <td>{{ activity.user.get_full_name }}</td>
+                                    <td>{{ activity.action }}</td>
+                                    <td>{{ activity.timestamp|timesince }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">No recent activities</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh recent activity every 30 seconds
+setInterval(function() {
+    // Implement real-time updates if needed
+}, 30000);
+</script>
+{% endblock %}

@@ -57,10 +57,33 @@ class TestRequestForm(forms.ModelForm):
     )
 
     patient = forms.ModelChoiceField(
-        queryset=Patient.objects.filter(is_active=True),
+        queryset=Patient.objects.all().order_by('last_name', 'first_name'),
         widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"
     )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Custom label_from_instance to show patient ID and type for better identification
+        self.fields['patient'].label_from_instance = self._format_patient_label
+        
+    def _format_patient_label(self, obj):
+        """Format patient label with type information"""
+        if not obj:
+            return str(obj)
+        
+        label = f"{obj.get_full_name()} ({obj.patient_id})"
+        patient_type = obj.get_patient_type_display()
+        
+        # Add type-specific information
+        if hasattr(obj, 'nhia_info') and obj.nhia_info and obj.nhia_info.is_active:
+            label += f" [NHIA: {obj.nhia_info.nhia_reg_number}]"
+        elif hasattr(obj, 'retainership_info') and obj.retainership_info and obj.retainership_info.is_active:
+            label += f" [Retainership: {obj.retainership_info.retainership_reg_number}]"
+        elif patient_type != 'regular':
+            label += f" [{patient_type}]"
+            
+        return label
 
     doctor = forms.ModelChoiceField(
         queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),

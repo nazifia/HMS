@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Permission Groups - HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-layer-group"></i>
+                Permission Groups
+            </h1>
+            <p class="text-muted mb-0">Manage grouped permissions for easier assignment</p>
+        </div>
+        <div>
+            <a href="{% url 'core:permission_group_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Group
+            </a>
+        </div>
+    </div>
+
+    <!-- Groups List -->
+    <div class="row">
+        {% for group in groups %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">{{ group.name }}</h6>
+                        <small class="text-muted">
+                            <span class="badge bg-info">{{ group.module }}</span>
+                        </small>
+                    </div>
+                    <div>
+                        {% if group.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if group.description %}
+                    <p class="text-muted small">{{ group.description|truncatewords:20 }}</p>
+                    {% endif %}
+
+                    <div class="mb-2">
+                        <i class="fas fa-shield-alt text-primary"></i>
+                        <strong>{{ group.permission_count }}</strong> permission{{ group.permission_count|pluralize }}
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="btn-group w-100">
+                        <a href="#" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <a href="#" class="btn btn-sm btn-outline-warning">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-layer-group fa-3x mb-3"></i>
+                <h4>No Permission Groups</h4>
+                <p>Create groups to organize permissions for easier management.</p>
+                <a href="{% url 'core:permission_group_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create First Group
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -163,6 +163,8 @@ MIDDLEWARE = [
     'accounts.middleware.LoginTrackingMiddleware',
     # Other middleware
     'django.contrib.messages.middleware.MessageMiddleware',
+    # Module Access Control Middleware (must be after MessageMiddleware)
+    'pharmacy.middleware.PharmacyAccessMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -372,13 +374,15 @@ HOSPITAL_PHONE = os.environ.get('HOSPITAL_PHONE', '(555) 123-4567')
 HOSPITAL_EMAIL = os.environ.get('HOSPITAL_EMAIL', 'info@citygeneralhospital.com')
 
 # Cache Configuration
+# Using DatabaseCache for shared caching across all processes
+# This fixes the LocMemCache issue where each process has its own cache
 CACHES = {
     'default': {
-        'BACKEND': os.environ.get('CACHE_BACKEND', 'django.core.cache.backends.locmem.LocMemCache'),
-        'LOCATION': os.environ.get('CACHE_LOCATION', 'unique-snowflake'),
+        'BACKEND': os.environ.get('CACHE_BACKEND', 'django.core.cache.backends.db.DatabaseCache'),
+        'LOCATION': os.environ.get('CACHE_LOCATION', 'cache_table'),
         'TIMEOUT': int(os.environ.get('CACHE_TIMEOUT', '300')),  # 5 minutes default
         'OPTIONS': {
-            'MAX_ENTRIES': int(os.environ.get('CACHE_MAX_ENTRIES', '1000')),
+            'MAX_ENTRIES': int(os.environ.get('CACHE_MAX_ENTRIES', '10000')),
         }
     }
 }

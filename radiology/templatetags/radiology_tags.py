@@ -11,6 +11,8 @@ def radiology_status_badge(status):
     """
     status_classes = {
         'pending': 'bg-warning',
+        'awaiting_payment': 'bg-info',
+        'payment_confirmed': 'bg-primary',
         'scheduled': 'bg-info',
         'completed': 'bg-success',
         'cancelled': 'bg-danger',
@@ -18,6 +20,8 @@ def radiology_status_badge(status):
     
     status_labels = {
         'pending': 'Pending',
+        'awaiting_payment': 'Awaiting Payment',
+        'payment_confirmed': 'Payment Confirmed',
         'scheduled': 'Scheduled',
         'completed': 'Completed',
         'cancelled': 'Cancelled',
@@ -35,13 +39,19 @@ def priority_badge(priority):
     Usage: {{ order.priority|priority_badge }}
     """
     priority_classes = {
-        'normal': 'bg-success',
+        'normal': 'bg-secondary',
         'urgent': 'bg-warning',
         'emergency': 'bg-danger',
     }
     
+    priority_labels = {
+        'normal': 'Normal',
+        'urgent': 'Urgent',
+        'emergency': 'Emergency',
+    }
+    
     css_class = priority_classes.get(priority, 'bg-secondary')
-    label = priority.replace('_', ' ').title()
+    label = priority_labels.get(priority, priority.replace('_', ' ').title())
     
     return mark_safe(f'<span class="badge {css_class}">{label}</span>')
 

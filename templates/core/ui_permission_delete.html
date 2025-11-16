@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Delete Permission - HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Confirm Deletion
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning!</strong> This action cannot be undone.
+                    </div>
+
+                    <h6>You are about to delete:</h6>
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5>{{ ui_permission.element_label }}</h5>
+                            <p class="mb-2">
+                                <strong>Element ID:</strong> <code>{{ ui_permission.element_id }}</code>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Type:</strong> <span class="badge bg-secondary">{{ ui_permission.element_type }}</span>
+                            </p>
+                            <p class="mb-0">
+                                <strong>Module:</strong> <span class="badge bg-info">{{ ui_permission.module }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <h6>Impact:</h6>
+                    <ul>
+                        <li>This permission will be permanently removed from the database</li>
+                        <li>Any templates using this permission will no longer have access control</li>
+                        <li>Role assignments for this permission will be removed</li>
+                        {% if ui_permission.required_roles.count > 0 %}
+                        <li><strong>{{ ui_permission.required_roles.count }} role(s)</strong> are currently using this permission</li>
+                        {% endif %}
+                    </ul>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'core:ui_permission_detail' ui_permission.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Yes, Delete Permission
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

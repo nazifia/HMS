@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Order Medical Pack for Surgery - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Order Medical Pack for Surgery</h1>
+        <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Surgery
+        </a>
+    </div>
+
+    <!-- Surgery Information -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">Surgery Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Patient:</strong> {{ surgery.patient.get_full_name }}</p>
+                            <p><strong>Patient ID:</strong> {{ surgery.patient.patient_id }}</p>
+                            <p><strong>Surgery Type:</strong> {{ surgery.surgery_type.name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Scheduled Date:</strong> {{ surgery.scheduled_date|date:"Y-m-d H:i" }}</p>
+                            <p><strong>Theatre:</strong> {{ surgery.theatre.name|default:"Not assigned" }}</p>
+                            <p><strong>Primary Surgeon:</strong> {{ surgery.primary_surgeon.get_full_name|default:"Not assigned" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NHIA Authorization Alert -->
+    {% if surgery.patient.patient_type == 'nhia' %}
+    {% if not surgery.authorization_code %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Authorization Required!</strong> This is an NHIA patient. Please obtain authorization code from the desk office before ordering medical packs.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% elif not surgery.authorization_code.is_valid %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Authorization Invalid!</strong> The existing authorization code has expired or is invalid. Please request a new one.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Pack Information -->
+    {% if pack %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">Selected Pack</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Pack Name:</strong> {{ pack.name }}</p>
+                            <p><strong>Description:</strong> {{ pack.description|default:"No description" }}</p>
+                            <p><strong>Contents:</strong> {{ pack.get_contents_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Price:</strong> ₦{{ pack.price|floatformat:2 }}</p>
+                            <p><strong>Status:</strong> 
+                                {% if pack.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Order Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">Order Medical Pack</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="packOrderForm">
+                        {% csrf_token %}
+                        
+                        <!-- Pack Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.pack.id_for_label }}" class="form-label">{{ form.pack.label }}</label>
+                                {{ form.pack }}
+                                {% if form.pack.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.pack.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.order_date.id_for_label }}" class="form-label">{{ form.order_date.label }}</label>
+                                {{ form.order_date }}
+                                {% if form.order_date.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.order_date.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Order Notes -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="{{ form.order_notes.id_for_label }}" class="form-label">{{ form.order_notes.label }}</label>
+                                {{ form.order_notes }}
+                                {% if form.order_notes.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.order_notes.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text text-muted">
+                                    Include any special requirements or notes for this pack order.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Fields -->
+                        {{ form.surgery }}
+                        {{ form.patient }}
+
+                        <!-- Submit Button -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <button type="submit" class="btn btn-success btn-lg px-4">
+                                        <i class="fas fa-shopping-cart me-2"></i>Order Pack
+                                    </button>
+                                    <a href="{% url 'pharmacy:medical_pack_list' %}?pack_type=surgery" class="btn btn-outline-secondary">
+                                        <i class="fas fa-list me-2"></i>View All Packs
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-populate pack details when selected
+document.addEventListener('DOMContentLoaded', function() {
+    const packSelect = document.getElementById('{{ form.pack.id_for_label }}');
+    const orderDateField = document.getElementById('{{ form.order_date.id_for_label }}');
+    
+    if (packSelect && orderDateField) {
+        packSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                // Parse pack details from data attributes
+                const packData = {
+                    name: selectedOption.text,
+                    price: selectedOption.dataset.price || '0',
+                    contents: selectedOption.dataset.contents || 'Standard'
+                };
+                
+                // You could update a preview section here if needed
+                console.log('Selected pack:', packData);
+            }
+        });
+    }
+    
+    // Set today's date as default if empty
+    if (!orderDateField.value) {
+        const today = new Date().toISOString().split('T')[0];
+        orderDateField.value = today;
+    }
+});
+
+// Form validation
+document.getElementById('packOrderForm').addEventListener('submit', function(e) {
+    const packSelect = document.getElementById('{{ form.pack.id_for_label }}');
+    
+    if (!packSelect.value) {
+        e.preventDefault();
+        alert('Please select a medical pack to order.');
+        packSelect.focus();
+        return false;
+    }
+    
+    return true;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bulk Assign Permissions - HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-users-cog"></i>
+            Bulk Assign UI Permissions
+        </h1>
+        <p class="text-muted">Assign multiple permissions to multiple roles at once</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Action Selection -->
+                        <div class="mb-4">
+                            <h5><i class="fas fa-cog"></i> Action</h5>
+                            <div class="form-group">
+                                {{ form.action.label_tag }}
+                                {{ form.action }}
+                                <small class="form-text text-muted">
+                                    Choose whether to add, remove, or replace permissions for the selected roles.
+                                </small>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Roles Selection -->
+                        <div class="mb-4">
+                            <h5><i class="fas fa-users"></i> Select Roles</h5>
+                            <div class="form-group">
+                                {{ form.roles.label_tag }}
+                                <div class="row">
+                                    {% for checkbox in form.roles %}
+                                    <div class="col-md-4 col-lg-3">
+                                        <div class="form-check">
+                                            {{ checkbox.tag }}
+                                            <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                                {{ checkbox.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <small class="form-text text-muted">
+                                    {{ form.roles.help_text }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Permissions Selection -->
+                        <div class="mb-4">
+                            <h5><i class="fas fa-shield-alt"></i> Select Permissions</h5>
+                            <div class="btn-group mb-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllPerms()">
+                                    Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllPerms()">
+                                    Deselect All
+                                </button>
+                            </div>
+                            <div class="form-group">
+                                {{ form.ui_permissions.label_tag }}
+                                <div class="row" style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 1rem; border-radius: 0.25rem;">
+                                    {% for checkbox in form.ui_permissions %}
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="form-check">
+                                            {{ checkbox.tag }}
+                                            <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                                {{ checkbox.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <small class="form-text text-muted">
+                                    {{ form.ui_permissions.help_text }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'core:ui_permission_dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> Apply Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-info-circle"></i> How it Works</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Add:</strong> Adds selected permissions to selected roles (keeps existing permissions)</li>
+                        <li><strong>Remove:</strong> Removes selected permissions from selected roles</li>
+                        <li><strong>Replace:</strong> Replaces all permissions for selected roles with only the selected permissions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectAllPerms() {
+    document.querySelectorAll('input[name="ui_permissions"]').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllPerms() {
+    document.querySelectorAll('input[name="ui_permissions"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+</script>
+{% endblock %}

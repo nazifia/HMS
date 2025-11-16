@@ -1,0 +1,36 @@
+{% load hms_permissions %}
+
+<!-- Theatre Module Test - Simplified Version -->
+{% if user.is_authenticated %}
+    {% if user.is_superuser %}
+        <li class="nav-item" style="background-color: #ffeb3b; border: 2px solid #ffc107;">
+            <a class="nav-link" href="{% url 'theatre:dashboard' %}">
+                <i class="fas fa-fw fa-hospital-symbol text-white"></i>
+                <span class="text-white">Theatre (Superuser)</span>
+            </a>
+        </li>
+    {% else %}
+        {% if user|can_show_ui:'menu_theatre' %}
+            <li class="nav-item" style="background-color: #d4edda; border: 2px solid #28a745;">
+                <a class="nav-link" href="{% url 'theatre:dashboard' %}">
+                    <i class="fas fa-fw fa-hospital-symbol text-white"></i>
+                    <span class="text-white">Theatre (Permission OK)</span>
+                </a>
+            </li>
+        {% else %}
+            <li class="nav-item" style="background-color: #f8d7da; border: 2px solid #dc3545;">
+                <span class="nav-link">
+                    <i class="fas fa-fw fa-hospital-symbol text-muted"></i>
+                    <span class="text-muted">Theatre (No Permission)</span>
+                </span>
+            </li>
+        {% endif %}
+    {% endif %}
+{% else %}
+    <li class="nav-item">
+        <span class="nav-link text-muted">
+            <i class="fas fa-fw fa-hospital-symbol"></i>
+            <span>Not logged in</span>
+        </span>
+    </li>
+{% endif %}

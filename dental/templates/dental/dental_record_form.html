@@ -11,10 +11,61 @@
                 <h5 class="card-title mb-0">{{ title }}</h5>
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="dental-record-form">
                     {% csrf_token %}
-                    {{ form|crispy }}
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    
+                    <!-- Patient Selection Section -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">
+                                Patient <span class="text-danger">*</span>
+                            </label>
+                            {{ form.patient }}
+                            {% if form.patient.help_text %}
+                                <small class="form-text text-muted">{{ form.patient.help_text }}</small>
+                            {% endif %}
+                            {% if form.patient.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.patient.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">
+                                Quick Search
+                            </label>
+                            {{ form.patient_search }}
+                            {% if form.patient_search.help_text %}
+                                <small class="form-text text-muted">{{ form.patient_search.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Other Form Fields -->
+                    <div class="row">
+                        <div class="col-12">
+                            {{ form|crispy }}
+                        </div>
+                    </div>
+                    
+                    <!-- Hide the patient field in crispy form since we rendered it manually -->
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Remove duplicate patient field from crispy form
+                            var crispyPatientField = document.querySelector('div#div_id_patient');
+                            if (crispyPatientField) {
+                                crispyPatientField.style.display = 'none';
+                            }
+                            
+                            // Remove patient search field from crispy form
+                            var crispySearchField = document.querySelector('div#div_id_patient_search');
+                            if (crispySearchField) {
+                                crispySearchField.style.display = 'none';
+                            }
+                        });
+                    </script>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
                         <a href="{% url 'dental:dental_records' %}" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </div>
@@ -31,26 +82,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2 for patient selection
     $('.select2').select2({
         theme: 'bootstrap-5',
-        width: '100%'
+        width: '100%',
+        placeholder: "Select a patient...",
+        allowClear: true
     });
     
     // Patient search functionality
     $('.patient-search').on('input', function() {
-        var searchTerm = $(this).val();
-        if (searchTerm.length >= 2) {
-            $.ajax({
-                url: '{% url "dental:search_dental_patients" %}',
-                data: { 'term': searchTerm },
-                success: function(data) {
-                    var select = $('.patient-select');
-                    select.empty();
-                    select.append(new Option('', ''));
-                    $.each(data, function(index, patient) {
-                        select.append(new Option(patient.text, patient.id));
-                    });
-                }
-            });
-        }
+        var searchTerm = $(this).val().toLowerCase();
+        var patientSelect = $('.patient-select');
+        var options = patientSelect.find('option');
+        
+        // Filter options based on search term
+        options.each(function() {
+            var optionText = $(this).text().toLowerCase();
+            if (optionText.includes(searchTerm) || searchTerm === '') {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+        
+        // Update Select2 to reflect changes
+        patientSelect.trigger('change.select2');
+    });
+    
+    // Auto-select patient when search field loses focus if exact match found
+    $('.patient-search').on('blur', function() {
+        var searchTerm = $(this).val().toLowerCase();
+        var patientSelect = $('.patient-select');
+        var options = patientSelect.find('option');
+        
+        options.each(function() {
+            var optionText = $(this).text().toLowerCase();
+            if (optionText === searchTerm && $(this).val()) {
+                patientSelect.val($(this).val()).trigger('change');
+                return false;
+            }
+        });
     });
 });
 </script>

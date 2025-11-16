@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load hms_permissions %}
+
+{% block title %}UI Permissions List - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+    .permission-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid #007bff;
+    }
+    .permission-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .element-id-badge {
+        font-family: 'Courier New', monospace;
+        background: #e9ecef;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-list"></i>
+                UI Permissions
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{% url 'core:ui_permission_dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">All Permissions</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <a href="{% url 'core:ui_permission_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Permission
+            </a>
+            <a href="{% url 'core:bulk_assign_permissions' %}" class="btn btn-outline-success">
+                <i class="fas fa-users-cog"></i> Bulk Assign
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" id="filterForm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        {{ filter_form.module.label_tag }}
+                        {{ filter_form.module }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ filter_form.element_type.label_tag }}
+                        {{ filter_form.element_type }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ filter_form.is_active.label_tag }}
+                        {{ filter_form.is_active }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ filter_form.search.label_tag }}
+                        {{ filter_form.search }}
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Apply Filters
+                        </button>
+                        <a href="{% url 'core:ui_permission_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Count -->
+    <div class="alert alert-info mb-3">
+        <i class="fas fa-info-circle"></i>
+        Showing {{ page_obj.start_index }} - {{ page_obj.end_index }} of {{ page_obj.paginator.count }} permissions
+    </div>
+
+    <!-- Permissions List -->
+    <div class="row">
+        {% for perm in page_obj %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card permission-card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">{{ perm.element_label }}</h6>
+                        <div class="element-id-badge">{{ perm.element_id }}</div>
+                    </div>
+                    <div>
+                        {% if perm.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">Type:</small>
+                        <span class="badge bg-secondary ms-1">{{ perm.element_type }}</span>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Module:</small>
+                        <span class="badge bg-info ms-1">{{ perm.module }}</span>
+                    </div>
+
+                    {% if perm.description %}
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Description:</small>
+                        <small>{{ perm.description|truncatewords:15 }}</small>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Required Roles:</small>
+                        {% if perm.required_roles.all %}
+                            {% for role in perm.required_roles.all %}
+                                <span class="badge bg-primary me-1">{{ role.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <small class="text-muted">None</small>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Permissions:</small>
+                        {% if perm.required_permissions.all %}
+                            <small>{{ perm.required_permissions.count }} permission(s)</small>
+                        {% else %}
+                            <small class="text-muted">None</small>
+                        {% endif %}
+                    </div>
+
+                    {% if perm.icon_class %}
+                    <div class="mb-2">
+                        <small class="text-muted">Icon:</small>
+                        <i class="{{ perm.icon_class }} ms-2"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="btn-group w-100">
+                        <a href="{% url 'core:ui_permission_detail' perm.pk %}"
+                           class="btn btn-sm btn-outline-primary"
+                           title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{% url 'core:ui_permission_edit' perm.pk %}"
+                           class="btn btn-sm btn-outline-warning"
+                           title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-info"
+                                onclick="toggleActive({{ perm.pk }}, {{ perm.is_active|lower }})"
+                                title="Toggle Active">
+                            <i class="fas fa-toggle-{% if perm.is_active %}on{% else %}off{% endif %}"></i>
+                        </button>
+                        {% if not perm.is_system %}
+                        <a href="{% url 'core:ui_permission_delete' perm.pk %}"
+                           class="btn btn-sm btn-outline-danger"
+                           title="Delete"
+                           onclick="return confirm('Are you sure you want to delete this permission?');">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-warning text-center">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                <h4>No permissions found</h4>
+                <p class="mb-3">Try adjusting your filters or create a new permission.</p>
+                <a href="{% url 'core:ui_permission_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Permission
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if request.GET.module %}&module={{ request.GET.module }}{% endif %}{% if request.GET.element_type %}&element_type={{ request.GET.element_type }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.module %}&module={{ request.GET.module }}{% endif %}{% if request.GET.element_type %}&element_type={{ request.GET.element_type }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.module %}&module={{ request.GET.module }}{% endif %}{% if request.GET.element_type %}&element_type={{ request.GET.element_type }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.module %}&module={{ request.GET.module }}{% endif %}{% if request.GET.element_type %}&element_type={{ request.GET.element_type }}{% endif %}{% if request.GET.is_active %}&is_active={{ request.GET.is_active }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleActive(permissionId, currentState) {
+    if (confirm('Are you sure you want to ' + (currentState ? 'deactivate' : 'activate') + ' this permission?')) {
+        fetch(`/core/ui-permissions/${permissionId}/toggle-active/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error toggling permission status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error toggling permission status');
+        });
+    }
+}
+
+// Auto-submit form when filters change
+document.querySelectorAll('#filterForm select').forEach(select => {
+    select.addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+});
+</script>
+{% endblock %}

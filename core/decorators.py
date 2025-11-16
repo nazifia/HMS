@@ -2,6 +2,7 @@ from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.http import HttpResponseForbidden
+from django.core.cache import cache
 
 def role_required(allowed_roles):
     """
@@ -213,6 +214,117 @@ def department_access_required(department_name):
                     f"You are assigned to {user_department.name} department."
                 )
                 return redirect('dashboard:dashboard')
+
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+
+
+def ui_permission_required(element_id, redirect_url='dashboard:dashboard'):
+    """
+    Decorator to restrict view access based on UI permissions.
+    Superusers bypass all UI permission checks.
+
+    Args:
+        element_id: The UI permission element_id to check
+        redirect_url: URL to redirect to if permission is denied (default: dashboard)
+
+    Usage:
+        @ui_permission_required('menu_pharmacy')
+        def pharmacy_dashboard(request):
+            ...
+
+        @ui_permission_required('btn_create_invoice')
+        def create_invoice(request):
+            ...
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            # Check if user is authenticated
+            if not request.user.is_authenticated:
+                messages.error(request, "You must be logged in to access this page.")
+                return redirect('accounts:login')
+
+            # Allow superusers to access everything
+            if request.user.is_superuser:
+                return view_func(request, *args, **kwargs)
+
+            # Check cache first for performance
+            cache_key = f"ui_perm_{request.user.id}_{element_id}"
+            has_permission = cache.get(cache_key)
+
+            if has_permission is None:
+                # Import here to avoid circular imports
+                from core.models import UIPermission
+
+                try:
+                    ui_perm = UIPermission.objects.get(element_id=element_id, is_active=True)
+                    has_permission = ui_perm.user_can_access(request.user)
+                    # Cache the result for 5 minutes
+                    cache.set(cache_key, has_permission, 300)
+                except UIPermission.DoesNotExist:
+                    # If permission doesn't exist, allow access (backward compatible)
+                    has_permission = True
+                    cache.set(cache_key, has_permission, 300)
+
+            if not has_permission:
+                messages.error(
+                    request,
+                    "You don't have permission to access this page. "
+                    "Please contact your administrator if you believe this is an error."
+                )
+                return redirect(redirect_url)
+
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+
+
+def api_ui_permission_required(element_id):
+    """
+    Decorator for API views to restrict access based on UI permissions.
+    Returns 403 Forbidden instead of redirecting.
+
+    Args:
+        element_id: The UI permission element_id to check
+
+    Usage:
+        @api_ui_permission_required('menu_pharmacy')
+        def pharmacy_api_view(request):
+            ...
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            # Check if user is authenticated
+            if not request.user.is_authenticated:
+                return HttpResponseForbidden("Authentication required")
+
+            # Allow superusers to access everything
+            if request.user.is_superuser:
+                return view_func(request, *args, **kwargs)
+
+            # Check cache first for performance
+            cache_key = f"ui_perm_{request.user.id}_{element_id}"
+            has_permission = cache.get(cache_key)
+
+            if has_permission is None:
+                # Import here to avoid circular imports
+                from core.models import UIPermission
+
+                try:
+                    ui_perm = UIPermission.objects.get(element_id=element_id, is_active=True)
+                    has_permission = ui_perm.user_can_access(request.user)
+                    # Cache the result for 5 minutes
+                    cache.set(cache_key, has_permission, 300)
+                except UIPermission.DoesNotExist:
+                    # If permission doesn't exist, allow access (backward compatible)
+                    has_permission = True
+                    cache.set(cache_key, has_permission, 300)
+
+            if not has_permission:
+                return HttpResponseForbidden("You don't have permission to access this resource")
 
             return view_func(request, *args, **kwargs)
         return _wrapped_view

@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load hms_permissions %}
+
+{% block title %}{{ ui_permission.element_label }} - HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                {% if ui_permission.icon_class %}
+                    <i class="{{ ui_permission.icon_class }}"></i>
+                {% else %}
+                    <i class="fas fa-shield-alt"></i>
+                {% endif %}
+                {{ ui_permission.element_label }}
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{% url 'core:ui_permission_dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'core:ui_permission_list' %}">Permissions</a></li>
+                    <li class="breadcrumb-item active">{{ ui_permission.element_id }}</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <a href="{% url 'core:ui_permission_edit' ui_permission.pk %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            {% if not ui_permission.is_system %}
+            <a href="{% url 'core:ui_permission_delete' ui_permission.pk %}"
+               class="btn btn-danger"
+               onclick="return confirm('Are you sure?');">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Details -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Permission Details</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th width="30%">Element ID</th>
+                                <td><code>{{ ui_permission.element_id }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Element Label</th>
+                                <td>{{ ui_permission.element_label }}</td>
+                            </tr>
+                            <tr>
+                                <th>Element Type</th>
+                                <td>
+                                    <span class="badge bg-secondary">{{ ui_permission.element_type }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Module</th>
+                                <td>
+                                    <span class="badge bg-info">{{ ui_permission.module }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>
+                                    {% if ui_permission.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                    {% if ui_permission.is_system %}
+                                        <span class="badge bg-warning text-dark ms-2">System</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if ui_permission.description %}
+                            <tr>
+                                <th>Description</th>
+                                <td>{{ ui_permission.description }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if ui_permission.url_pattern %}
+                            <tr>
+                                <th>URL Pattern</th>
+                                <td><code>{{ ui_permission.url_pattern }}</code></td>
+                            </tr>
+                            {% endif %}
+                            {% if ui_permission.icon_class %}
+                            <tr>
+                                <th>Icon Class</th>
+                                <td>
+                                    <code>{{ ui_permission.icon_class }}</code>
+                                    <i class="{{ ui_permission.icon_class }} ms-2 fa-2x"></i>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Display Order</th>
+                                <td>{{ ui_permission.display_order }}</td>
+                            </tr>
+                            <tr>
+                                <th>Created</th>
+                                <td>
+                                    {{ ui_permission.created_at|date:"M d, Y H:i" }}
+                                    {% if ui_permission.created_by %}
+                                        by {{ ui_permission.created_by.get_full_name }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Last Updated</th>
+                                <td>{{ ui_permission.updated_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Access Control -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Access Control</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Required Roles</h6>
+                    {% if ui_permission.required_roles.all %}
+                        <div class="mb-3">
+                            {% for role in ui_permission.required_roles.all %}
+                                <span class="badge bg-primary me-2">{{ role.name }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No specific roles required</p>
+                    {% endif %}
+
+                    <h6 class="mt-4">Required Permissions</h6>
+                    {% if ui_permission.required_permissions.all %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Permission</th>
+                                        <th>Codename</th>
+                                        <th>Content Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for perm in ui_permission.required_permissions.all %}
+                                    <tr>
+                                        <td>{{ perm.name }}</td>
+                                        <td><code>{{ perm.codename }}</code></td>
+                                        <td>{{ perm.content_type }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No specific permissions required</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Usage Example -->
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-code"></i> Usage Example</h5>
+                </div>
+                <div class="card-body">
+                    <h6>In Templates:</h6>
+                    <pre class="bg-light p-3 rounded"><code>{% verbatim %}{% load hms_permissions %}
+
+{% if user|can_show_ui:'{% endverbatim %}{{ ui_permission.element_id }}{% verbatim %}' %}
+    <!-- Your UI element here -->
+    <button class="btn btn-primary">
+        {% endverbatim %}{% if ui_permission.icon_class %}<i class="{{ ui_permission.icon_class }}"></i>{% endif %} {{ ui_permission.element_label }}{% verbatim %}
+    </button>
+{% endif %}{% endverbatim %}</code></pre>
+
+                    <h6 class="mt-3">In Views:</h6>
+                    <pre class="bg-light p-3 rounded"><code>from core.models import UIPermission
+
+ui_perm = UIPermission.objects.get(element_id='{{ ui_permission.element_id }}')
+if ui_perm.user_can_access(request.user):
+    # Allow action
+    pass</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'core:ui_permission_edit' ui_permission.pk %}"
+                       class="btn btn-warning btn-block w-100 mb-2">
+                        <i class="fas fa-edit"></i> Edit Permission
+                    </a>
+                    <button type="button"
+                            class="btn btn-info btn-block w-100 mb-2"
+                            onclick="toggleActive()">
+                        <i class="fas fa-toggle-{% if ui_permission.is_active %}on{% else %}off{% endif %}"></i>
+                        {% if ui_permission.is_active %}Deactivate{% else %}Activate{% endif %}
+                    </button>
+                    {% if not ui_permission.is_system %}
+                    <a href="{% url 'core:ui_permission_delete' ui_permission.pk %}"
+                       class="btn btn-danger btn-block w-100"
+                       onclick="return confirm('Are you sure?');">
+                        <i class="fas fa-trash"></i> Delete Permission
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Roles with Access -->
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Roles with Access</h6>
+                </div>
+                <div class="card-body">
+                    {% if roles_with_access %}
+                        <ul class="list-group list-group-flush">
+                            {% for role in roles_with_access %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ role.name }}
+                                <span class="badge bg-primary rounded-pill">
+                                    {{ role.users.count }} user{{ role.users.count|pluralize }}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No roles assigned</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleActive() {
+    if (confirm('Are you sure you want to toggle this permission?')) {
+        fetch('{% url "core:ui_permission_toggle_active" ui_permission.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

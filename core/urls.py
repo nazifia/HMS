@@ -5,6 +5,7 @@ from . import revenue_views
 from . import reporting_integration
 from . import authorization_views
 from . import admin_views
+from . import ui_permission_views
 
 app_name = 'core'
 
@@ -66,4 +67,23 @@ urlpatterns = [
     path('api/admin/users/<int:user_id>/', admin_views.api_admin_user_detail, name='api_admin_user_detail'),
     path('api/admin/roles/', admin_views.api_admin_roles, name='api_admin_roles'),
     path('api/admin/departments/', admin_views.api_admin_departments, name='api_admin_departments'),
+
+    # UI Permission Management URLs
+    path('ui-permissions/', ui_permission_views.ui_permission_dashboard, name='ui_permission_dashboard'),
+    path('ui-permissions/list/', ui_permission_views.ui_permission_list, name='ui_permission_list'),
+    path('ui-permissions/create/', ui_permission_views.ui_permission_create, name='ui_permission_create'),
+    path('ui-permissions/<int:pk>/', ui_permission_views.ui_permission_detail, name='ui_permission_detail'),
+    path('ui-permissions/<int:pk>/edit/', ui_permission_views.ui_permission_edit, name='ui_permission_edit'),
+    path('ui-permissions/<int:pk>/delete/', ui_permission_views.ui_permission_delete, name='ui_permission_delete'),
+    path('ui-permissions/<int:pk>/toggle-active/', ui_permission_views.ui_permission_toggle_active, name='ui_permission_toggle_active'),
+
+    # Role UI Permissions
+    path('roles/<int:role_id>/ui-permissions/', ui_permission_views.role_ui_permissions, name='role_ui_permissions'),
+
+    # Permission Groups
+    path('permission-groups/', ui_permission_views.permission_group_list, name='permission_group_list'),
+    path('permission-groups/create/', ui_permission_views.permission_group_create, name='permission_group_create'),
+
+    # Bulk Operations
+    path('ui-permissions/bulk-assign/', ui_permission_views.bulk_assign_permissions, name='bulk_assign_permissions'),
 ]

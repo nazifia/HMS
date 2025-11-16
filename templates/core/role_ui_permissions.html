@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage UI Permissions for {{ role.name }} - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .module-section {
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-radius: 0.25rem;
+    }
+    .permission-checkbox {
+        padding: 0.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        margin-bottom: 0.5rem;
+        transition: background-color 0.2s;
+    }
+    .permission-checkbox:hover {
+        background-color: #e9ecef;
+    }
+    .permission-checkbox input[type="checkbox"]:checked + label {
+        font-weight: 600;
+        color: #007bff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-user-shield"></i>
+            Manage UI Permissions for {{ role.name }}
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'accounts:roles' %}">Roles</a></li>
+                <li class="breadcrumb-item">{{ role.name }}</li>
+                <li class="breadcrumb-item active">UI Permissions</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-9">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Select Permissions by Module</h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">
+                            Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
+                            Deselect All
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="permissionsForm">
+                        {% csrf_token %}
+
+                        {% for field in form %}
+                            {% if field.name|slice:":7" == "module_" %}
+                            <div class="module-section">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-cube"></i>
+                                    {{ field.label }}
+                                </h5>
+                                <div class="row">
+                                    {% for choice in field %}
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="permission-checkbox">
+                                            <div class="form-check">
+                                                {{ choice.tag }}
+                                                <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                    {{ choice.choice_label }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'accounts:role_detail' role.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Role
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Permissions
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-3">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Role Information</h6>
+                </div>
+                <div class="card-body">
+                    <h6>{{ role.name }}</h6>
+                    {% if role.description %}
+                    <p class="text-muted small">{{ role.description }}</p>
+                    {% endif %}
+                    <hr>
+                    <p class="mb-1"><strong>Current Permissions:</strong></p>
+                    <p class="h4 mb-3">{{ current_permissions.count }}</p>
+
+                    <div class="alert alert-info small">
+                        <i class="fas fa-info-circle"></i>
+                        Select permissions this role should have access to in the UI.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectAll() {
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAll() {
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+// Count selected permissions
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateCount);
+    });
+    updateCount();
+});
+
+function updateCount() {
+    const checked = document.querySelectorAll('input[type="checkbox"]:checked').length;
+    console.log(`Selected: ${checked} permissions`);
+}
+</script>
+{% endblock %}

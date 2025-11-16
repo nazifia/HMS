@@ -1,5 +1,7 @@
 from django import template
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -11,20 +13,20 @@ def has_permission(user, permission_name):
     """
     if not user.is_authenticated:
         return False
-    
+
     # Superusers have all permissions
     if user.is_superuser:
         return True
-    
+
     # Check direct user permissions
     if user.user_permissions.filter(codename=permission_name).exists():
         return True
-    
+
     # Check permissions from user's roles
     for role in user.roles.all():
         if role.permissions.filter(codename=permission_name).exists():
             return True
-    
+
     return False
 
 @register.filter
@@ -141,3 +143,205 @@ def is_feature_enabled(feature_name, user):
     """
     # Since we removed feature flags, always return True
     return True
+
+
+# ==================== NEW UI PERMISSION SYSTEM ====================
+
+@register.filter
+def can_show_ui(user, element_id):
+    """
+    Check if a UI element should be shown to the user.
+    Usage: {% if user|can_show_ui:'btn_create_patient' %}
+
+    Args:
+        user: The user object
+        element_id: The unique identifier of the UI element
+
+    Returns:
+        bool: True if user can access the UI element
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    # Superusers can see everything
+    if user.is_superuser:
+        return True
+
+    # Try to get from cache first for performance
+    cache_key = f"ui_perm_{user.id}_{element_id}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    # Import here to avoid circular imports
+    from core.models import UIPermission
+
+    try:
+        ui_perm = UIPermission.objects.prefetch_related(
+            'required_permissions', 'required_roles'
+        ).get(element_id=element_id, is_active=True)
+
+        result = ui_perm.user_can_access(user)
+
+        # Cache the result for 5 minutes
+        cache.set(cache_key, result, 300)
+
+        return result
+    except UIPermission.DoesNotExist:
+        # If no UI permission defined, allow access by default (backward compatibility)
+        cache.set(cache_key, True, 300)
+        return True
+
+
+@register.filter
+def can_show_any_ui(user, element_ids):
+    """
+    Check if user can access ANY of the specified UI elements.
+    Usage: {% if user|can_show_any_ui:'btn_create,btn_edit,btn_delete' %}
+
+    Args:
+        user: The user object
+        element_ids: Comma-separated list of element IDs
+
+    Returns:
+        bool: True if user can access at least one element
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    if user.is_superuser:
+        return True
+
+    element_list = [e.strip() for e in element_ids.split(',')]
+
+    for element_id in element_list:
+        if can_show_ui(user, element_id):
+            return True
+
+    return False
+
+
+@register.filter
+def can_show_all_ui(user, element_ids):
+    """
+    Check if user can access ALL of the specified UI elements.
+    Usage: {% if user|can_show_all_ui:'btn_create,btn_edit,btn_delete' %}
+
+    Args:
+        user: The user object
+        element_ids: Comma-separated list of element IDs
+
+    Returns:
+        bool: True if user can access all elements
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    if user.is_superuser:
+        return True
+
+    element_list = [e.strip() for e in element_ids.split(',')]
+
+    for element_id in element_list:
+        if not can_show_ui(user, element_id):
+            return False
+
+    return True
+
+
+@register.simple_tag
+def ui_element_visible(user, element_id):
+    """
+    Simple tag version of can_show_ui for more complex usage.
+    Usage: {% ui_element_visible user 'btn_create_patient' as can_create %}
+    """
+    return can_show_ui(user, element_id)
+
+
+@register.simple_tag(takes_context=True)
+def render_ui_if_allowed(context, element_id, content=''):
+    """
+    Render content only if user has permission for the UI element.
+    Usage: {% render_ui_if_allowed 'btn_create' 'Button HTML here' %}
+    """
+    user = context.get('user')
+
+    if can_show_ui(user, element_id):
+        return mark_safe(content)
+
+    return ''
+
+
+@register.inclusion_tag('core/ui_permission_indicator.html')
+def show_permission_indicator(user, element_id):
+    """
+    Display a visual indicator of permission status.
+    Usage: {% show_permission_indicator user 'btn_create_patient' %}
+    """
+    can_access = can_show_ui(user, element_id)
+
+    return {
+        'can_access': can_access,
+        'element_id': element_id,
+        'user': user,
+    }
+
+
+@register.simple_tag
+def get_user_ui_elements(user, module=None):
+    """
+    Get all UI elements accessible to the user, optionally filtered by module.
+    Usage: {% get_user_ui_elements user 'patients' as patient_ui_elements %}
+
+    Args:
+        user: The user object
+        module: Optional module filter
+
+    Returns:
+        QuerySet of UIPermission objects user can access
+    """
+    if not user or not user.is_authenticated:
+        return []
+
+    from core.models import UIPermission
+
+    # Superusers get all active elements
+    if user.is_superuser:
+        queryset = UIPermission.objects.filter(is_active=True)
+        if module:
+            queryset = queryset.filter(module=module)
+        return queryset.order_by('display_order', 'element_label')
+
+    # Filter elements user can access
+    accessible_elements = []
+
+    queryset = UIPermission.objects.filter(is_active=True).prefetch_related(
+        'required_permissions', 'required_roles'
+    )
+
+    if module:
+        queryset = queryset.filter(module=module)
+
+    for ui_element in queryset:
+        if ui_element.user_can_access(user):
+            accessible_elements.append(ui_element)
+
+    return accessible_elements
+
+
+@register.filter
+def ui_elements_by_type(ui_elements, element_type):
+    """
+    Filter UI elements by type.
+    Usage: {{ user_ui_elements|ui_elements_by_type:'menu_item' }}
+    """
+    return [elem for elem in ui_elements if elem.element_type == element_type]
+
+
+@register.filter
+def has_ui_access(user, element_id):
+    """
+    Alias for can_show_ui for backward compatibility.
+    Usage: {% if user|has_ui_access:'btn_create_patient' %}
+    """
+    return can_show_ui(user, element_id)

@@ -1,0 +1,12 @@
+{% comment %}
+UI Permission Indicator Template
+Shows a visual indicator of permission status for a UI element
+{% endcomment %}
+
+<span class="ui-permission-indicator" data-element-id="{{ element_id }}">
+    {% if can_access %}
+        <i class="fas fa-check-circle text-success" title="Access granted"></i>
+    {% else %}
+        <i class="fas fa-times-circle text-danger" title="Access denied"></i>
+    {% endif %}
+</span>
