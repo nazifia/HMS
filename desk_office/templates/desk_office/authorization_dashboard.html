@@ -23,6 +23,14 @@
         </div>
     </div>
 
+    <!-- DEBUG ALERT - TEMPORARY -->
+    <div class="alert alert-danger" role="alert">
+        <strong>DEBUG:</strong> medical_module_requests variable = {{ medical_module_requests|length }} items
+        {% if medical_module_requests %}
+            <br>First item: {{ medical_module_requests.0.title }}
+        {% endif %}
+    </div>
+
     <!-- Info Alert -->
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <i class="fas fa-info-circle"></i>

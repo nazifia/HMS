@@ -28,26 +28,35 @@ def notifications_list(request):
     """
     List user notifications
     """
-    notifications = request.user.notifications.all().order_by('-created_at')
-    
+    notifications = InternalNotification.objects.filter(
+        user=request.user
+    ).order_by('-created_at')
+
     context = {
         'notifications': notifications,
     }
-    
+
     return render(request, 'core/notifications_list.html', context)
 
 
 @login_required
 def mark_notification_read(request, notification_id):
     """
-    Mark notification as read
+    Mark notification as read - allows any staff member to mark authorization request notifications
     """
-    notification = get_object_or_404(
-        request.user.notifications,
-        id=notification_id
-    )
+    # Get the notification - allow staff/superusers to mark any notification
+    if request.user.is_staff or request.user.is_superuser:
+        notification = get_object_or_404(InternalNotification, id=notification_id)
+    else:
+        # Regular users can only mark their own notifications
+        notification = get_object_or_404(InternalNotification, id=notification_id, user=request.user)
+
     notification.mark_as_read()
-    
+
+    # Return JSON for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.method == 'POST':
+        return JsonResponse({'success': True, 'message': 'Notification marked as read'})
+
     return redirect('core:notifications_list')
 
 
