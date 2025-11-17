@@ -146,16 +146,37 @@ def create_anc_record(request):
 def anc_record_detail(request, record_id):
     """View to display details of a specific anc record"""
     record = get_object_or_404(
-        AncRecord.objects.select_related('patient', 'doctor'), 
+        AncRecord.objects.select_related('patient', 'doctor'),
         id=record_id
     )
-    
+
     # Get prescriptions for this patient
     prescriptions = Prescription.objects.filter(patient=record.patient).order_by('-prescription_date')[:5]
-    
+
+    # NHIA AUTHORIZATION CHECK
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+        else:
+            authorization_message = "NHIA Authorization Required"
+            messages.warning(
+                request,
+                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                f"Please contact the desk office to obtain authorization for ANC services."
+            )
+
     context = {
         'record': record,
         'prescriptions': prescriptions,
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
     }
     return render(request, 'anc/anc_record_detail.html', context)
 

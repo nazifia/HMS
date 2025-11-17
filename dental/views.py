@@ -244,18 +244,45 @@ def create_dental_record(request):
 @login_required
 def dental_record_detail(request, record_id):
     """View to display details of a specific dental record"""
-    record = get_object_or_404(DentalRecord.objects.select_related('patient', 'service', 'dentist'), id=record_id)
-    
+    record = get_object_or_404(DentalRecord.objects.select_related('patient', 'service', 'dentist', 'authorization_code'), id=record_id)
+
     # Get prescriptions for this patient
     prescriptions = Prescription.objects.filter(patient=record.patient).order_by('-prescription_date')[:5]
-    
+
     # Get X-rays for this record
     xrays = DentalXRay.objects.filter(dental_record=record).order_by('-taken_at')
-    
+
+    # **NHIA AUTHORIZATION CHECK**
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = False
+    authorization_message = None
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            # Check if authorization is valid
+            if record.authorization_code.is_valid():
+                authorization_valid = True
+                authorization_message = f"Authorized - Code: {record.authorization_code.code}"
+            else:
+                authorization_message = f"Authorization expired or invalid - Code: {record.authorization_code.code}"
+                messages.warning(request, "The NHIA authorization code for this dental record is no longer valid.")
+        else:
+            authorization_message = "NHIA Authorization Required"
+            messages.warning(
+                request,
+                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                f"Please contact the desk office to obtain authorization for dental services."
+            )
+
     context = {
         'record': record,
         'prescriptions': prescriptions,
         'xrays': xrays,
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
     }
     return render(request, 'dental/dental_record_detail.html', context)
 
@@ -472,12 +499,32 @@ def delete_xray(request, xray_id):
 def generate_invoice_for_dental(request, record_id):
     """Generate an invoice for a dental record"""
     record = get_object_or_404(DentalRecord, id=record_id)
-    
+
     # Check if invoice already exists
     if record.invoice:
         messages.info(request, 'An invoice already exists for this dental record.')
         return redirect('dental:dental_record_detail', record_id=record.pk)
-    
+
+    # **NHIA AUTHORIZATION CHECK**: Prevent invoice generation without authorization
+    if record.patient.patient_type == 'nhia':
+        if not record.authorization_code:
+            messages.error(
+                request,
+                f"Cannot generate invoice for NHIA patient {record.patient.get_full_name()}. "
+                f"An authorization code from the desk office is required before generating an invoice. "
+                f"Please contact the desk office to obtain the authorization code."
+            )
+            return redirect('dental:dental_record_detail', record_id=record.pk)
+
+        # Check if authorization is valid
+        if not record.authorization_code.is_valid():
+            messages.error(
+                request,
+                f"Cannot generate invoice. The authorization code for this dental record is expired or invalid. "
+                f"Please contact the desk office for a new authorization code."
+            )
+            return redirect('dental:dental_record_detail', record_id=record.pk)
+
     if request.method == 'POST':
         try:
             with transaction.atomic():

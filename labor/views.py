@@ -152,12 +152,33 @@ def create_labor_record(request):
 def labor_record_detail(request, record_id):
     """View to display details of a specific labor record"""
     record = get_object_or_404(
-        LaborRecord.objects.select_related('patient', 'doctor'), 
+        LaborRecord.objects.select_related('patient', 'doctor'),
         id=record_id
     )
-    
+
+    # NHIA AUTHORIZATION CHECK
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+        else:
+            authorization_message = "NHIA Authorization Required"
+            messages.warning(
+                request,
+                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                f"Please contact the desk office to obtain authorization for labor services."
+            )
+
     context = {
         'record': record,
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
     }
     return render(request, 'labor/labor_record_detail.html', context)
 
