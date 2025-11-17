@@ -146,11 +146,11 @@
 
 {% block extra_js %}
 <script>
-// Initialize select2 for patient selection if available
+// Initialize select2 for all dropdowns
 document.addEventListener('DOMContentLoaded', function() {
     // Handle patient search
     if (typeof $ !== 'undefined') {
-        // Initialize Select2 for dropdowns
+        // Initialize Select2 for all select fields
         $('.select2').select2({
             placeholder: "Select an option",
             allowClear: true

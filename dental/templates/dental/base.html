@@ -4,45 +4,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse show">
-            <div class="position-sticky pt-3">
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
-                           href="{% url 'dental:dashboard' %}">
-                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_records' %}active{% endif %}"
-                           href="{% url 'dental:dental_records' %}">
-                            <i class="fas fa-tooth me-2"></i>Dental Records
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'create_dental_record' %}active{% endif %}"
-                           href="{% url 'dental:create_dental_record' %}">
-                            <i class="fas fa-plus-circle me-2"></i>Create Record
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'dental_services' %}active{% endif %}"
-                           href="{% url 'dental:dental_services' %}">
-                            <i class="fas fa-cogs me-2"></i>Services
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'department_referral_dashboard' %}active{% endif %}"
-                           href="{% url 'consultations:department_referral_dashboard' %}">
-                            <i class="fas fa-exchange-alt me-2"></i>Referrals
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-        
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <main class="px-md-4">
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">
                     {% block page_title %}
@@ -69,6 +31,5 @@
                 <!-- Main content goes here -->
             {% endblock %}
         </main>
-    </div>
 </div>
 {% endblock %}

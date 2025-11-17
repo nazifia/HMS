@@ -514,3 +514,7 @@ def generate_invoice_for_dental(request, record_id):
         'title': 'Generate Invoice'
     }
     return render(request, 'dental/generate_invoice.html', context)
+
+@login_required
+def edit_dental_record(request, record_id):
+    """View to edit an existing dental record"""
