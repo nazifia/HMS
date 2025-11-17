@@ -6,9 +6,11 @@ from django.db import transaction
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User
 from django.db.models import Count, Q
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
 from accounts.models import Role, CustomUser
+from patients.models import Patient
+from .models import InternalNotification
 
 
 def home_view(request):
@@ -109,5 +111,73 @@ def test_performance(request):
     messages.info(request, "Performance test functionality.")
     return redirect('dashboard:dashboard')
 
+
+@login_required
+@require_POST
+def request_nhia_authorization(request):
+    """
+    Send NHIA authorization request notification to desk office staff
+    """
+    try:
+        patient_id = request.POST.get('patient_id')
+        module_name = request.POST.get('module_name', 'Medical')
+        record_id = request.POST.get('record_id')
+
+        # Validate patient
+        try:
+            patient = Patient.objects.get(id=patient_id, patient_type='nhia')
+        except Patient.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid patient or patient is not registered under NHIA.'
+            }, status=400)
+
+        # Get all admin users and superusers (desk office staff)
+        desk_office_users = CustomUser.objects.filter(
+            Q(is_superuser=True) |
+            Q(is_staff=True) |
+            Q(profile__role='admin') |
+            Q(profile__role='accountant')
+        ).distinct()
+
+        if not desk_office_users.exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'No desk office staff available to receive authorization requests.'
+            }, status=400)
+
+        # Create notifications for all desk office staff
+        notification_title = f"NHIA Authorization Request - {module_name}"
+        notification_message = f"""
+Authorization request for NHIA patient: {patient.get_full_name()} (ID: {patient.patient_id})
+
+Module: {module_name}
+Record ID: {record_id}
+Requested by: {request.user.get_full_name() or request.user.username}
+
+Please generate an authorization code for this patient to proceed with treatment and billing.
+        """.strip()
+
+        notifications_created = 0
+        for user in desk_office_users:
+            InternalNotification.objects.create(
+                user=user,
+                sender=request.user,
+                title=notification_title,
+                message=notification_message,
+                notification_type='warning'
+            )
+            notifications_created += 1
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Authorization request sent to {notifications_created} desk office staff member(s). They will process your request shortly.'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error sending authorization request: {str(e)}'
+        }, status=500)
 
 

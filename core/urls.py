@@ -13,6 +13,9 @@ urlpatterns = [
     path('notifications/', views.notifications_list, name='notifications_list'),
     path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
 
+    # NHIA Authorization Request
+    path('request-nhia-authorization/', views.request_nhia_authorization, name='request_nhia_authorization'),
+
     # Transaction History URLs
     path('transactions/', transaction_views.comprehensive_transaction_history, name='comprehensive_transaction_history'),
     path('transactions/patient/<int:patient_id>/', transaction_views.comprehensive_transaction_history, name='comprehensive_transaction_history'),

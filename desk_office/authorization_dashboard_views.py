@@ -17,6 +17,7 @@ from theatre.models import Surgery
 from nhia.models import AuthorizationCode
 from patients.models import Patient
 from .forms import PatientSearchForm, AuthorizationCodeForm
+from core.models import InternalNotification
 import string
 import random
 
@@ -210,6 +211,13 @@ def authorization_dashboard(request):
     # Get recent authorization codes
     recent_codes = AuthorizationCode.objects.select_related('patient').order_by('-generated_at')[:10]
 
+    # Get pending medical module authorization requests (from notifications)
+    # Show all unread authorization requests for all desk office staff
+    medical_module_requests = InternalNotification.objects.filter(
+        is_read=False,
+        title__icontains='NHIA Authorization Request'
+    ).select_related('sender', 'user').order_by('-created_at')[:10]
+
     context = {
         'pending_consultations': pending_consultations[:10],  # Show top 10
         'pending_referrals': pending_referrals[:10],
@@ -217,6 +225,7 @@ def authorization_dashboard(request):
         'pending_lab_tests': pending_lab_tests[:10],
         'pending_radiology': pending_radiology[:10],
         'pending_surgeries': pending_surgeries[:10],
+        'medical_module_requests': medical_module_requests,
         'stats': stats,
         'recent_codes': recent_codes,
         'patient_search_form': patient_search_form,
@@ -227,7 +236,7 @@ def authorization_dashboard(request):
         'page_title': 'NHIA Authorization Dashboard',
         'active_nav': 'desk_office',
     }
-    
+
     return render(request, 'desk_office/authorization_dashboard.html', context)
 
 

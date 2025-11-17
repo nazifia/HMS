@@ -393,6 +393,89 @@
     </div>
 
     <div class="row">
+        <!-- DEBUG: Check if variable exists -->
+        <!-- medical_module_requests count: {{ medical_module_requests|length }} -->
+
+        <!-- Medical Module Authorization Requests -->
+        <!-- TEMPORARILY ALWAYS SHOW FOR DEBUGGING -->
+        <div class="col-12 mb-4">
+            <div class="card shadow border-warning">
+                <div class="card-header py-3 bg-warning text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-hospital me-2"></i>
+                        Pending Medical Module Authorization Requests
+                        <span class="badge bg-danger ms-2">{{ medical_module_requests|length }}</span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>DEBUG:</strong> medical_module_requests count = {{ medical_module_requests|length }}</p>
+                    {% if not medical_module_requests %}
+                    <p class="text-warning">Variable exists but is empty/None!</p>
+                    {% endif %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Module</th>
+                                    <th>Patient</th>
+                                    <th>Record ID</th>
+                                    <th>Requested By</th>
+                                    <th>Time</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for notification in medical_module_requests %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-primary">
+                                            {% if "Dental" in notification.title %}Dental
+                                            {% elif "Ophthalmic" in notification.title %}Ophthalmic
+                                            {% elif "ENT" in notification.title %}ENT
+                                            {% elif "Oncology" in notification.title %}Oncology
+                                            {% elif "SCBU" in notification.title %}SCBU
+                                            {% elif "ANC" in notification.title %}ANC
+                                            {% elif "Labor" in notification.title %}Labor
+                                            {% elif "ICU" in notification.title %}ICU
+                                            {% elif "Family Planning" in notification.title %}Family Planning
+                                            {% elif "Gynae Emergency" in notification.title %}Gynae Emergency
+                                            {% else %}{{ notification.title }}{% endif %}
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        <small>{{ notification.message|truncatewords:10 }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">View details</small>
+                                    </td>
+                                    <td>{{ notification.sender.get_full_name|default:notification.sender.username }}</td>
+                                    <td><small>{{ notification.created_at|timesince }} ago</small></td>
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-sm btn-success"
+                                                onclick="showAuthorizationModal('{{ notification.message|escapejs }}', {{ notification.id }})">
+                                            <i class="fas fa-check"></i> Generate Code
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-secondary"
+                                                onclick="markNotificationRead({{ notification.id }})">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if medical_module_requests %}
+                        <p class="text-success mt-3">✓ Found {{ medical_module_requests|length }} request(s)</p>
+                    {% else %}
+                        <p class="text-muted mt-3">No pending requests found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
         <!-- Pending Consultations -->
         <div class="col-lg-6 mb-4">
             <div class="card shadow">
@@ -546,5 +629,62 @@
         </div>
     </div>
 </div>
+
+<script>
+function showAuthorizationModal(message, notificationId) {
+    // Extract patient ID from the notification message
+    const lines = message.split('\n');
+    let patientInfo = '';
+    let patientId = '';
+
+    for (const line of lines) {
+        if (line.includes('patient:')) {
+            patientInfo = line.replace('Authorization request for NHIA patient:', '').trim();
+            // Extract patient ID from format "Name (ID: XXX)"
+            const match = patientInfo.match(/\(ID:\s*([^)]+)\)/);
+            if (match) {
+                patientId = match[1].trim();
+            }
+        }
+    }
+
+    // Show confirmation dialog
+    const confirmMsg = `Generate authorization code for:\n\n${patientInfo}\n\nThis will mark the notification as read.`;
+
+    if (confirm(confirmMsg)) {
+        // Redirect to authorization code generation page with patient ID
+        if (patientId) {
+            // Also mark notification as read
+            markNotificationRead(notificationId, false);
+            // Redirect to generate code page
+            window.location.href = `/desk-office/generate-code/?patient_id=${encodeURIComponent(patientId)}`;
+        } else {
+            alert('Could not extract patient ID from notification. Please use manual search.');
+        }
+    }
+}
+
+function markNotificationRead(notificationId, reload = true) {
+    // Get CSRF token
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                     document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+
+    // Send request to mark notification as read
+    fetch(`/core/notifications/${notificationId}/read/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        }
+    })
+    .then(response => {
+        if (response.ok && reload) {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+</script>
 {% endblock %}
 
