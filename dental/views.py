@@ -192,6 +192,7 @@ def create_dental_record(request):
     if request.method == 'POST':
         form = DentalRecordForm(request.POST)
         if form.is_valid():
+            # Extract patient from form field directly
             patient = form.cleaned_data.get('patient')
 
             # **AUTHORIZATION CHECK**: Check if patient has pending referrals requiring authorization
@@ -222,7 +223,13 @@ def create_dental_record(request):
                         )
                         return redirect('dental:create_dental_record')
 
-            record = form.save()
+            # Set default values for created_at and updated_at
+            record = form.save(commit=False)
+            if not record.created_at:
+                record.created_at = timezone.now()
+            if not record.updated_at:
+                record.updated_at = timezone.now()
+            record.save()
             messages.success(request, 'Dental record created successfully.')
             return redirect('dental:dental_record_detail', record_id=record.id)
     else:

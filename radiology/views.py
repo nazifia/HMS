@@ -124,9 +124,9 @@ def index(request):
         verified_by__isnull=True
     ).select_related('order__patient').count()
 
-    # Get recent orders for the table with filtering
-    recent_orders_query = RadiologyOrder.objects.select_related('patient', 'test', 'referring_doctor').order_by('-order_date')
-
+    # Build query with filters first
+    recent_orders_query = RadiologyOrder.objects.select_related('patient', 'test', 'referring_doctor')
+    
     # Apply filters if provided
     status_filter = request.GET.get('status')
     if status_filter:
@@ -136,7 +136,8 @@ def index(request):
     if patient_id_filter:
         recent_orders_query = recent_orders_query.filter(patient__patient_id=patient_id_filter)
 
-    recent_orders = recent_orders_query[:20]
+    # Apply ordering after all filters are applied to ensure most recent at top
+    recent_orders = recent_orders_query.order_by('-order_date', '-id')[:20]
 
     # Get patients with radiology orders (more relevant than all patients)
     patients = Patient.objects.filter(radiology_orders__isnull=False).distinct()[:50]

@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db import models
 from .models import RadiologyResult, RadiologyOrder
 
 User = get_user_model()
@@ -151,6 +152,22 @@ class RadiologyResultVerificationForm(forms.ModelForm):
         })
     )
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Include admin/superusers and eligible roles for verification
+        eligible_users = User.objects.filter(
+            is_active=True
+        ).filter(
+            models.Q(groups__name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']) |
+            models.Q(is_superuser=True) |
+            models.Q(is_staff=True)
+        ).distinct()
+        self.fields['verified_by'].queryset = eligible_users
+        
+        # Custom label function to show user role
+        self.fields['verified_by'].label_from_instance = lambda obj: f"{obj.get_full_name()} ({'Admin' if obj.is_superuser else 'Staff' if obj.is_staff else ', '.join([g.name for g in obj.groups.all()])})"
+    
     class Meta:
         model = RadiologyResult
         fields = ['verified_by']
@@ -158,17 +175,6 @@ class RadiologyResultVerificationForm(forms.ModelForm):
             'verified_by': forms.Select(attrs={'class': 'form-select'}),
         }
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Filter to senior radiologists
-        senior_radiologists = User.objects.filter(
-            is_active=True,
-            groups__name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']
-        ).distinct()
-        self.fields['verified_by'].queryset = senior_radiologists
-
-
 class RadiologyResultSearchForm(forms.Form):
     """Form for searching and filtering radiology results"""
     

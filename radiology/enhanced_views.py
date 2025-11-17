@@ -58,9 +58,12 @@ def enhanced_add_result(request, order_id):
                 
         elif 'submit_and_verify' in request.POST:
             # This requires special permissions
-            if request.user.groups.filter(
-                name__in=['Senior Radiologists', 'Radiology Consultants']
-            ).exists():
+            has_permission = (
+                request.user.is_superuser or 
+                request.user.is_staff or
+                request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
+            )
+            if has_permission:
                 if form.is_valid():
                     result_obj = form.save(commit=False)
                     result_obj.order = order
@@ -100,8 +103,14 @@ def verify_result(request, result_id):
     """View for verifying radiology results"""
     result = get_object_or_404(RadiologyResult, pk=result_id)
     
-    # Check permissions
-    if not request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants']).exists():
+    # Check permissions - allow admin/superuser or users in specific groups
+    has_permission = (
+        request.user.is_superuser or 
+        request.user.is_staff or
+        request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
+    )
+    
+    if not has_permission:
         messages.error(request, 'You do not have permission to verify results.')
         return redirect('radiology:order_detail', order_id=result.order.id)
     
@@ -142,8 +151,14 @@ def finalize_result(request, result_id):
     """View for finalizing radiology results"""
     result = get_object_or_404(RadiologyResult, pk=result_id)
     
-    # Check permissions
-    if not request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists():
+    # Check permissions - allow admin/superuser or users in specific groups
+    has_permission = (
+        request.user.is_superuser or 
+        request.user.is_staff or
+        request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
+    )
+    
+    if not has_permission:
         messages.error(request, 'You do not have permission to finalize results.')
         return redirect('radiology:order_detail', order_id=result.order.id)
     

@@ -231,7 +231,7 @@
                                     <th>Order ID</th>
                                     <th>Patient</th>
                                     <th>Test</th>
-                                    <th>Order Date</th>
+                                    <th>Order Date <small>(Newest First)</small></th>
                                     <th>Status</th>
                                     <th>Priority</th>
                                     <th>Actions</th>
@@ -240,11 +240,16 @@
                             <tbody>
                                 {% for order in recent_orders %}
                                     {% if not request.GET.patient_id or order.patient.patient_id|stringformat:'s' == request.GET.patient_id|stringformat:'s' %}
-                                    <tr>
+                                    <tr class="{% if order.order_date|date:'Y-m-d' == 'now'|date:'Y-m-d' %}table-info{% endif %}">
                                         <td>RAD-{{ order.id|stringformat:'03d' }}</td>
                                         <td>{{ order.patient.get_full_name }}<br><small class="text-muted">ID: {{ order.patient.patient_id }}</small></td>
                                         <td>{{ order.test.name }}</td>
-                                        <td>{{ order.order_date|date:'Y-m-d H:i' }}</td>
+                                        <td>
+                                            {{ order.order_date|date:'Y-m-d H:i' }}
+                                            {% if order.order_date|date:'Y-m-d' == 'now'|date:'Y-m-d' %}
+                                                <span class="badge bg-primary ms-2">Today</span>
+                                            {% endif %}
+                                        </td>
                                         <td>{{ order.status|radiology_status_badge }}</td>
                                         <td>{{ order.priority|priority_badge }}</td>
                                         <td>

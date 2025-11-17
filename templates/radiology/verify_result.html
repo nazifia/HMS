@@ -101,7 +101,16 @@
                             <div class="card-body">
                                 <div class="mb-3">
                                     <label for="{{ form.verified_by.id_for_label }}" class="form-label">Verified By <span class="text-danger">*</span></label>
-                                    {{ form.verified_by|add_class:"form-select" }}
+                                    <select name="{{ form.verified_by.name }}" id="{{ form.verified_by.id_for_label }}" class="form-select" required>
+                                        <option value="">---------</option>
+                                        {% for user in form.verified_by.field.queryset %}
+                                            <option value="{{ user.id }}" {% if form.verified_by.value == user.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ user.get_full_name }} 
+                                                {% if user.is_superuser %}(Admin){% elif user.is_staff %}(Staff){% else %}({% for group in user.groups.all %}{% if not forloop.first %}, {% endif %}{{ group.name }}{% endfor %}){% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Select the authorized user who is verifying this result</div>
                                 </div>
                                 
                                 <div class="mb-3">
