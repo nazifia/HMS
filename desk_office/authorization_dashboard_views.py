@@ -756,3 +756,45 @@ def bulk_authorize_referrals(request):
     
     return redirect('desk_office:pending_referrals')
 
+
+@login_required
+def delete_medical_module_request(request, notification_id):
+    """
+    HTMX endpoint to delete/mark as read a medical module authorization request
+    Returns updated HTML fragment for the requests list
+    """
+    if request.method == 'DELETE' or request.method == 'POST':
+        try:
+            # Get the notification
+            notification = get_object_or_404(InternalNotification, id=notification_id)
+            
+            # Mark as read (delete from pending list)
+            notification.mark_as_read()
+            
+            # Get updated list of medical module requests
+            medical_module_requests = InternalNotification.objects.filter(
+                is_read=False,
+                title__icontains='NHIA Authorization Request'
+            ).select_related('sender', 'user').order_by('-created_at')[:10]
+            
+            # Return updated HTML fragment for HTMX
+            from django.template.loader import render_to_string
+            html = render_to_string(
+                'desk_office/partials/medical_module_requests_rows.html',
+                {'medical_module_requests': medical_module_requests},
+                request=request
+            )
+            
+            from django.http import HttpResponse
+            return HttpResponse(html)
+            
+        except Exception as e:
+            from django.http import HttpResponse
+            return HttpResponse(
+                f'<tr><td colspan="5" class="text-danger">Error: {str(e)}</td></tr>',
+                status=500
+            )
+    
+    from django.http import HttpResponseNotAllowed
+    return HttpResponseNotAllowed(['DELETE', 'POST'])
+

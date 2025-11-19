@@ -1,0 +1,42 @@
+{% if medical_module_requests %}
+{% for notification in medical_module_requests %}
+<tr id="request-{{ notification.id }}">
+    <td>
+        <strong class="text-primary">
+            {% if "Dental" in notification.title %}Dental
+            {% elif "Ophthalmic" in notification.title %}Ophthalmic
+            {% elif "ENT" in notification.title %}ENT
+            {% elif "Oncology" in notification.title %}Oncology
+            {% elif "SCBU" in notification.title %}SCBU
+            {% elif "ANC" in notification.title %}ANC
+            {% elif "Labor" in notification.title %}Labor
+            {% elif "ICU" in notification.title %}ICU
+            {% elif "Family Planning" in notification.title %}Family Planning
+            {% elif "Gynae Emergency" in notification.title %}Gynae Emergency
+            {% else %}Medical Module{% endif %}
+        </strong>
+    </td>
+    <td><small>{{ notification.message|truncatewords:5 }}</small></td>
+    <td>{{ notification.sender.get_full_name|default:notification.sender.username }}</td>
+    <td><small>{{ notification.created_at|timesince }} ago</small></td>
+    <td>
+        <button type="button" class="btn btn-sm btn-success"
+            onclick="showAuthorizationModal('{{ notification.message|escapejs }}', {{ notification.id }})">
+            <i class="fas fa-check"></i> Generate Code
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary"
+            hx-delete="{% url 'desk_office:delete_medical_module_request' notification.id %}"
+            hx-target="#medical-module-requests-container" hx-swap="innerHTML"
+            hx-confirm="Are you sure you want to remove this authorization request?" title="Remove Request">
+            <i class="fas fa-times"></i>
+        </button>
+    </td>
+</tr>
+{% endfor %}
+{% else %}
+<tr>
+    <td colspan="5" class="text-center text-muted">
+        <i class="fas fa-check-circle"></i> No pending authorization requests
+    </td>
+</tr>
+{% endif %}

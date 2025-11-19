@@ -253,41 +253,6 @@ def dental_record_detail(request, record_id):
     xrays = DentalXRay.objects.filter(dental_record=record).order_by('-taken_at')
 
     # **NHIA AUTHORIZATION CHECK**
-    is_nhia_patient = record.patient.patient_type == 'nhia'
-    requires_authorization = is_nhia_patient and not record.authorization_code
-    authorization_valid = False
-    authorization_message = None
-
-    if is_nhia_patient:
-        if record.authorization_code:
-            # Check if authorization is valid
-            if record.authorization_code.is_valid():
-                authorization_valid = True
-                authorization_message = f"Authorized - Code: {record.authorization_code.code}"
-            else:
-                authorization_message = f"Authorization expired or invalid - Code: {record.authorization_code.code}"
-                messages.warning(request, "The NHIA authorization code for this dental record is no longer valid.")
-        else:
-            authorization_message = "NHIA Authorization Required"
-            messages.warning(
-                request,
-                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
-                f"Please contact the desk office to obtain authorization for dental services."
-            )
-
-    context = {
-        'record': record,
-        'prescriptions': prescriptions,
-        'xrays': xrays,
-        'is_nhia_patient': is_nhia_patient,
-        'requires_authorization': requires_authorization,
-        'authorization_valid': authorization_valid,
-        'authorization_message': authorization_message,
-    }
-    return render(request, 'dental/dental_record_detail.html', context)
-
-@login_required
-def edit_dental_record(request, record_id):
     """View to edit an existing dental record"""
     record = get_object_or_404(DentalRecord, id=record_id)
     

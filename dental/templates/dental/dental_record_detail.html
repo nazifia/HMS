@@ -34,29 +34,29 @@
                     </div>
                     <div class="col-md-6">
                         <h6>Record Information</h6>
-                        <p><strong>Service:</strong> 
+                        <p><strong>Service:</strong>
                             {% if record.service %}
-                                {{ record.service.name }}
+                            {{ record.service.name }}
                             {% else %}
-                                <span class="text-muted">Not specified</span>
+                            <span class="text-muted">Not specified</span>
                             {% endif %}
                         </p>
                         <p><strong>Tooth:</strong> {{ record.get_tooth_display }}</p>
-                        <p><strong>Status:</strong> 
+                        <p><strong>Status:</strong>
                             <span class="badge bg-{{ record.treatment_status|yesno:'success,warning,secondary' }}">
                                 {{ record.get_treatment_status_display }}
                             </span>
                         </p>
-                        <p><strong>Dentist:</strong> 
+                        <p><strong>Dentist:</strong>
                             {% if record.dentist %}
-                                {{ record.dentist.get_full_name }}
+                            {{ record.dentist.get_full_name }}
                             {% else %}
-                                <span class="text-muted">Not assigned</span>
+                            <span class="text-muted">Not assigned</span>
                             {% endif %}
                         </p>
                     </div>
                 </div>
-                
+
                 <div class="row mt-3">
                     <div class="col-md-6">
                         <h6>Diagnosis</h6>
@@ -71,7 +71,8 @@
                 {% if is_nhia_patient %}
                 <div class="row mt-3">
                     <div class="col-12">
-                        <div class="alert {% if authorization_valid %}alert-success{% elif requires_authorization %}alert-warning{% else %}alert-danger{% endif %}" role="alert">
+                        <div class="alert {% if authorization_valid %}alert-success{% elif requires_authorization %}alert-warning{% else %}alert-danger{% endif %}"
+                            role="alert">
                             <h6 class="alert-heading">
                                 <i class="fas fa-shield-alt"></i> NHIA Patient - Authorization Status
                             </h6>
@@ -80,30 +81,10 @@
                             </p>
                             {% if requires_authorization %}
                             <hr>
-                            <p class="mb-0">
-                                <small>
-                                    <i class="fas fa-info-circle"></i>
-                                    An authorization code from the NHIA desk office is required before proceeding with treatment or billing.
-                                </small>
-                            </p>
-                            <div class="mt-3">
-                                <button type="button"
-                                        class="btn btn-primary btn-sm nhia-auth-request-btn"
-                                        data-patient-id="{{ record.patient.id }}"
-                                        data-module-name="Dental"
-                                        data-record-id="{{ record.id }}"
-                                        onclick="requestNHIAAuthorization(this)">
-                                    <i class="fas fa-paper-plane"></i> Request Authorization from Desk Office
-                                </button>
-                            </div>
-                            {% elif authorization_valid %}
-                            <hr>
-                            <p class="mb-0">
-                                <small>
-                                    <i class="fas fa-check-circle"></i>
-                                    This dental record has been authorized for NHIA coverage.
-                                    NHIA will cover 90% of approved costs.
-                                </small>
+                            <i class="fas fa-check-circle"></i>
+                            This dental record has been authorized for NHIA coverage.
+                            NHIA will cover 90% of approved costs.
+                            </small>
                             </p>
                             {% endif %}
                         </div>
@@ -122,16 +103,17 @@
                     <div class="col-md-6">
                         <h6>Billing Information</h6>
                         <p><strong>Price:</strong> ₦{{ record.get_service_price }}</p>
-                        <p><strong>Invoice:</strong> 
+                        <p><strong>Invoice:</strong>
                             {% if record.invoice %}
-                                <a href="#" class="btn btn-sm btn-outline-primary">View Invoice</a>
+                            <a href="#" class="btn btn-sm btn-outline-primary">View Invoice</a>
                             {% else %}
-                                <a href="{% url 'dental:generate_invoice_for_dental' record.id %}" class="btn btn-sm btn-outline-success">Generate Invoice</a>
+                            <a href="{% url 'dental:generate_invoice_for_dental' record.id %}"
+                                class="btn btn-sm btn-outline-success">Generate Invoice</a>
                             {% endif %}
                         </p>
                     </div>
                 </div>
-                
+
                 {% if record.notes %}
                 <div class="row mt-3">
                     <div class="col-12">
@@ -142,7 +124,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- X-Rays Section -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -161,7 +143,8 @@
                                 <h6 class="card-title">{{ xray.get_xray_type_display }}</h6>
                                 <p class="card-text">
                                     <small class="text-muted">
-                                        Taken on {{ xray.taken_at|date:"M d, Y H:i" }} by {{ xray.taken_by.get_full_name }}
+                                        Taken on {{ xray.taken_at|date:"M d, Y H:i" }} by {{ xray.taken_by.get_full_name
+                                        }}
                                     </small>
                                 </p>
                                 {% if xray.image %}
@@ -184,13 +167,14 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-4">
         <!-- Prescriptions Section -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Prescriptions</h5>
-                <a href="{% url 'dental:create_prescription_for_dental' record.id %}" class="btn btn-sm btn-outline-primary">
+                <a href="{% url 'dental:create_prescription_for_dental' record.id %}"
+                    class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-plus"></i> New Prescription
                 </a>
             </div>
@@ -213,7 +197,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- Actions Section -->
         <div class="card">
             <div class="card-header">
@@ -225,7 +209,8 @@
                         <i class="fas fa-prescription"></i> Create Prescription
                     </a>
                     {% if is_nhia_patient and not authorization_valid %}
-                    <button class="btn btn-success" disabled title="NHIA authorization required before generating invoice">
+                    <button class="btn btn-success" disabled
+                        title="NHIA authorization required before generating invoice">
                         <i class="fas fa-file-invoice"></i> Generate Invoice (Authorization Required)
                     </button>
                     {% else %}
@@ -246,55 +231,55 @@
 </div>
 
 <script>
-function requestNHIAAuthorization(button) {
-    // Get data from button
-    const patientId = button.getAttribute('data-patient-id');
-    const moduleName = button.getAttribute('data-module-name');
-    const recordId = button.getAttribute('data-record-id');
+    function requestNHIAAuthorization(button) {
+        // Get data from button
+        const patientId = button.getAttribute('data-patient-id');
+        const moduleName = button.getAttribute('data-module-name');
+        const recordId = button.getAttribute('data-record-id');
 
-    // Disable button and show loading
-    const originalHTML = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending Request...';
+        // Disable button and show loading
+        const originalHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending Request...';
 
-    // Get CSRF token
-    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                     document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
 
-    // Send AJAX request
-    fetch("{% url 'core:request_nhia_authorization' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': csrftoken
-        },
-        body: new URLSearchParams({
-            'patient_id': patientId,
-            'module_name': moduleName,
-            'record_id': recordId
+        // Send AJAX request
+        fetch("{% url 'core:request_nhia_authorization' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrftoken
+            },
+            body: new URLSearchParams({
+                'patient_id': patientId,
+                'module_name': moduleName,
+                'record_id': recordId
+            })
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message
-            alert('✓ ' + data.message);
-            button.innerHTML = '<i class="fas fa-check"></i> Request Sent';
-            button.classList.remove('btn-primary');
-            button.classList.add('btn-success');
-        } else {
-            // Show error message
-            alert('✗ ' + data.message);
-            button.disabled = false;
-            button.innerHTML = originalHTML;
-        }
-    })
-    .catch(error => {
-        alert('Error sending authorization request. Please try again.');
-        console.error('Error:', error);
-        button.disabled = false;
-        button.innerHTML = originalHTML;
-    });
-}
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    alert('✓ ' + data.message);
+                    button.innerHTML = '<i class="fas fa-check"></i> Request Sent';
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-success');
+                } else {
+                    // Show error message
+                    alert('✗ ' + data.message);
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                }
+            })
+            .catch(error => {
+                alert('Error sending authorization request. Please try again.');
+                console.error('Error:', error);
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+            });
+    }
 </script>
 {% endblock %}

@@ -23,6 +23,9 @@ urlpatterns = [
     path('cancel-authorization-code/<str:code_id>/', views.cancel_authorization_code, name='cancel_authorization_code'),
     path('authorization-code-detail/<str:code_id>/', views.authorization_code_detail, name='authorization_code_detail'),
     
+    # HTMX endpoints
+    path('authorization-request/<int:notification_id>/delete/', authorization_dashboard_views.delete_medical_module_request, name='delete_medical_module_request'),
+    
     # Bulk operations
     path('bulk-authorize-consultations/', authorization_dashboard_views.bulk_authorize_consultations, name='bulk_authorize_consultations'),
     path('bulk-authorize-referrals/', authorization_dashboard_views.bulk_authorize_referrals, name='bulk_authorize_referrals'),

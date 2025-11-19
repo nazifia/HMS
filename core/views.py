@@ -53,6 +53,11 @@ def mark_notification_read(request, notification_id):
 
     notification.mark_as_read()
 
+    # Return empty response for HTMX requests to remove the element
+    if request.headers.get('HX-Request'):
+        from django.http import HttpResponse
+        return HttpResponse(status=200)
+
     # Return JSON for AJAX requests
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.method == 'POST':
         return JsonResponse({'success': True, 'message': 'Notification marked as read'})
@@ -131,6 +136,18 @@ def request_nhia_authorization(request):
         patient_id = request.POST.get('patient_id')
         module_name = request.POST.get('module_name', 'Medical')
         record_id = request.POST.get('record_id')
+
+        # Check for existing unread notification for this record
+        existing_notification = InternalNotification.objects.filter(
+            message__contains=f"Record ID: {record_id}",
+            is_read=False
+        ).exists()
+
+        if existing_notification:
+             return JsonResponse({
+                'success': False,
+                'message': 'An authorization request is already pending for this record.'
+            }, status=400)
 
         # Validate patient
         try:
