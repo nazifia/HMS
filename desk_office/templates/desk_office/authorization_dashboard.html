@@ -32,7 +32,7 @@
             <span aria-hidden="true">&times;</span>
         </button>
         <p class="mb-0 mt-2">
-            Medical departments are requesting NHIA authorization for their patients. 
+            Medical departments are requesting NHIA authorization for their patients.
             Click "View All Requests" below to process them.
         </p>
         <div class="mt-2">
@@ -46,7 +46,9 @@
     <!-- Info Alert -->
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <i class="fas fa-info-circle"></i>
-        <strong>New Feature!</strong> Check out the <a href="{% url 'core:universal_authorization_dashboard' %}" class="alert-link">Universal Authorization Dashboard</a> to view and manage authorization requests from all medical modules in one place.
+        <strong>New Feature!</strong> Check out the <a href="{% url 'core:universal_authorization_dashboard' %}"
+            class="alert-link">Universal Authorization Dashboard</a> to view and manage authorization requests from all
+        medical modules in one place.
         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
         </button>
@@ -175,14 +177,14 @@
                 </div>
                 <div class="card-body">
                     {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                        {% endfor %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    {% endfor %}
                     {% endif %}
 
                     <!-- Patient Search Form -->
@@ -204,176 +206,179 @@
 
                     <!-- Search Results -->
                     {% if search_results %}
-                        <div class="mb-4">
-                            <h6 class="text-muted mb-3">
-                                <i class="fas fa-users me-2"></i>
-                                Found {{ search_results.paginator.count }} NHIA patients matching "{{ search_query }}"
-                            </h6>
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Patient ID</th>
-                                            <th>Name</th>
-                                            <th>NHIA Number</th>
-                                            <th>Phone</th>
-                                            <th>Age</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for patient in search_results %}
-                                        <tr>
-                                            <td><code>{{ patient.patient_id }}</code></td>
-                                            <td>{{ patient.get_full_name }}</td>
-                                            <td><code>{{ patient.nhia_info.nhia_reg_number|default:"N/A" }}</code></td>
-                                            <td>{{ patient.phone_number }}</td>
-                                            <td>{{ patient.get_age }}</td>
-                                            <td>
-                                                <a href="?patient_id={{ patient.id }}" class="btn btn-sm btn-success">
-                                                    <i class="fas fa-check-circle"></i> Select
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted">
-                                                <i class="fas fa-info-circle"></i> No NHIA patients found matching your search.
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- Pagination -->
-                            {% if search_results.has_other_pages %}
-                                <nav aria-label="Patient search pagination">
-                                    <ul class="pagination justify-content-center">
-                                        {% if search_results.has_previous %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ search_results.previous_page_number }}">Previous</a>
-                                            </li>
-                                        {% else %}
-                                            <li class="page-item disabled">
-                                                <span class="page-link">Previous</span>
-                                            </li>
-                                        {% endif %}
-                                        
-                                        {% for num in search_results.paginator.page_range %}
-                                            {% if search_results.number == num %}
-                                                <li class="page-item active">
-                                                    <span class="page-link">{{ num }}</span>
-                                                </li>
-                                            {% else %}
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                                                </li>
-                                            {% endif %}
-                                        {% endfor %}
-                                        
-                                        {% if search_results.has_next %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ search_results.next_page_number }}">Next</a>
-                                            </li>
-                                        {% else %}
-                                            <li class="page-item disabled">
-                                                <span class="page-link">Next</span>
-                                            </li>
-                                        {% endif %}
-                                    </ul>
-                                </nav>
-                            {% endif %}
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-users me-2"></i>
+                            Found {{ search_results.paginator.count }} NHIA patients matching "{{ search_query }}"
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient ID</th>
+                                        <th>Name</th>
+                                        <th>NHIA Number</th>
+                                        <th>Phone</th>
+                                        <th>Age</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for patient in search_results %}
+                                    <tr>
+                                        <td><code>{{ patient.patient_id }}</code></td>
+                                        <td>{{ patient.get_full_name }}</td>
+                                        <td><code>{{ patient.nhia_info.nhia_reg_number|default:"N/A" }}</code></td>
+                                        <td>{{ patient.phone_number }}</td>
+                                        <td>{{ patient.get_age }}</td>
+                                        <td>
+                                            <a href="?patient_id={{ patient.id }}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check-circle"></i> Select
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">
+                                            <i class="fas fa-info-circle"></i> No NHIA patients found matching your
+                                            search.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
+                        <!-- Pagination -->
+                        {% if search_results.has_other_pages %}
+                        <nav aria-label="Patient search pagination">
+                            <ul class="pagination justify-content-center">
+                                {% if search_results.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link"
+                                        href="?page={{ search_results.previous_page_number }}">Previous</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Previous</span>
+                                </li>
+                                {% endif %}
+
+                                {% for num in search_results.paginator.page_range %}
+                                {% if search_results.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+
+                                {% if search_results.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ search_results.next_page_number }}">Next</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Next</span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    </div>
                     {% endif %}
 
                     <!-- Selected Patient and Authorization Form -->
                     {% if selected_patient %}
-                        <div class="border-top pt-4 mb-4">
-                            <h6 class="text-muted mb-3">
-                                <i class="fas fa-user-check me-2"></i>
-                                Selected Patient: {{ selected_patient.get_full_name }}
-                            </h6>
-                            
-                            <!-- Patient Summary Card -->
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <div class="card bg-light">
-                                        <div class="card-body py-3">
-                                            <div class="row">
-                                                <div class="col-6">
-                                                    <small class="text-muted">Patient ID:</small><br>
-                                                    <strong>{{ selected_patient.patient_id }}</strong>
-                                                </div>
-                                                <div class="col-6">
-                                                    <small class="text-muted">NHIA Number:</small><br>
-                                                    <strong><code>{{ selected_patient.nhia_info.nhia_reg_number|default:"N/A" }}</code></strong>
-                                                </div>
+                    <div class="border-top pt-4 mb-4">
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-user-check me-2"></i>
+                            Selected Patient: {{ selected_patient.get_full_name }}
+                        </h6>
+
+                        <!-- Patient Summary Card -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body py-3">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <small class="text-muted">Patient ID:</small><br>
+                                                <strong>{{ selected_patient.patient_id }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted">NHIA Number:</small><br>
+                                                <strong><code>{{ selected_patient.nhia_info.nhia_reg_number|default:"N/A" }}</code></strong>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Authorization Code Form -->
-                            <form method="post" id="auth-form">
-                                {% csrf_token %}
-                                <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ authorization_form.service_type.id_for_label }}" class="form-label">
-                                            Service Type <span class="text-danger">*</span>
-                                        </label>
-                                        {{ authorization_form.service_type }}
-                                        {% if authorization_form.service_type.errors %}
-                                            <div class="text-danger small">{{ authorization_form.service_type.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ authorization_form.amount.id_for_label }}" class="form-label">
-                                            Amount (₦) <span class="text-danger">*</span>
-                                        </label>
-                                        {{ authorization_form.amount }}
-                                        {% if authorization_form.amount.errors %}
-                                            <div class="text-danger small">{{ authorization_form.amount.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ authorization_form.expiry_date.id_for_label }}" class="form-label">
-                                            Expiry Date <span class="text-danger">*</span>
-                                        </label>
-                                        {{ authorization_form.expiry_date }}
-                                        {% if authorization_form.expiry_date.errors %}
-                                            <div class="text-danger small">{{ authorization_form.expiry_date.errors }}</div>
-                                        {% endif %}
-                                        <small class="text-muted">{{ authorization_form.expiry_date.help_text }}</small>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ authorization_form.notes.id_for_label }}" class="form-label">
-                                            Notes
-                                        </label>
-                                        {{ authorization_form.notes }}
-                                        {% if authorization_form.notes.errors %}
-                                            <div class="text-danger small">{{ authorization_form.notes.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-12">
-                                        <button type="submit" name="generate_code" class="btn btn-primary">
-                                            <i class="fas fa-plus-circle me-2"></i>Generate Authorization Code
-                                        </button>
-                                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-secondary ml-2">
-                                            <i class="fas fa-times me-2"></i>Clear Selection
-                                        </a>
-                                    </div>
-                                </div>
-                            </form>
                         </div>
+
+                        <!-- Authorization Code Form -->
+                        <form method="post" id="auth-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ authorization_form.service_type.id_for_label }}" class="form-label">
+                                        Service Type <span class="text-danger">*</span>
+                                    </label>
+                                    {{ authorization_form.service_type }}
+                                    {% if authorization_form.service_type.errors %}
+                                    <div class="text-danger small">{{ authorization_form.service_type.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ authorization_form.amount.id_for_label }}" class="form-label">
+                                        Amount (₦) <span class="text-danger">*</span>
+                                    </label>
+                                    {{ authorization_form.amount }}
+                                    {% if authorization_form.amount.errors %}
+                                    <div class="text-danger small">{{ authorization_form.amount.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ authorization_form.expiry_date.id_for_label }}" class="form-label">
+                                        Expiry Date <span class="text-danger">*</span>
+                                    </label>
+                                    {{ authorization_form.expiry_date }}
+                                    {% if authorization_form.expiry_date.errors %}
+                                    <div class="text-danger small">{{ authorization_form.expiry_date.errors }}</div>
+                                    {% endif %}
+                                    <small class="text-muted">{{ authorization_form.expiry_date.help_text }}</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ authorization_form.notes.id_for_label }}" class="form-label">
+                                        Notes
+                                    </label>
+                                    {{ authorization_form.notes }}
+                                    {% if authorization_form.notes.errors %}
+                                    <div class="text-danger small">{{ authorization_form.notes.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" name="generate_code" class="btn btn-primary">
+                                        <i class="fas fa-plus-circle me-2"></i>Generate Authorization Code
+                                    </button>
+                                    <a href="{% url 'desk_office:authorization_dashboard' %}"
+                                        class="btn btn-secondary ml-2">
+                                        <i class="fas fa-times me-2"></i>Clear Selection
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -401,30 +406,30 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Recent Authorization Codes -->
                     {% if recent_codes %}
-                        <h6 class="text-muted mb-3">Recent Authorization Codes</h6>
-                        <div class="list-group list-group-flush">
-                            {% for code in recent_codes %}
-                                <div class="list-group-item px-0">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <small class="text-muted">{{ code.generated_at|date:"H:i" }}</small><br>
-                                            <strong><code>{{ code.code }}</code></strong><br>
-                                            <small>{{ code.patient.get_full_name }}</small>
-                                        </div>
-                                        {% if code.status == 'active' %}
-                                        <span class="badge badge-success">
-                                    {% else %}
-                                        <span class="badge badge-secondary">
-                                    {% endif %}
-                                            {{ code.get_status_display }}
-                                        </span>
-                                    </div>
+                    <h6 class="text-muted mb-3">Recent Authorization Codes</h6>
+                    <div class="list-group list-group-flush">
+                        {% for code in recent_codes %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">{{ code.generated_at|date:"H:i" }}</small><br>
+                                    <strong><code>{{ code.code }}</code></strong><br>
+                                    <small>{{ code.patient.get_full_name }}</small>
                                 </div>
-                            {% endfor %}
+                                {% if code.status == 'active' %}
+                                <span class="badge badge-success">
+                                    {% else %}
+                                    <span class="badge badge-secondary">
+                                        {% endif %}
+                                        {{ code.get_status_display }}
+                                    </span>
+                            </div>
                         </div>
+                        {% endfor %}
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -463,14 +468,15 @@
                         </table>
                     </div>
                     {% if medical_module_requests %}
-                        <p class="text-success mt-3">✓ Processing {{ medical_module_requests|length }} pending request(s)</p>
-                        <div class="mt-2">
-                            <a href="{% url 'core:universal_authorization_dashboard' %}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-external-link-alt"></i> Switch to Universal Dashboard
-                            </a>
-                        </div>
+                    <p class="text-success mt-3">✓ Processing {{ medical_module_requests|length }} pending request(s)
+                    </p>
+                    <div class="mt-2">
+                        <a href="{% url 'core:universal_authorization_dashboard' %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-external-link-alt"></i> Switch to Universal Dashboard
+                        </a>
+                    </div>
                     {% else %}
-                        <p class="text-muted mt-3">No pending medical module requests.</p>
+                    <p class="text-muted mt-3">No pending medical module requests.</p>
                     {% endif %}
                 </div>
             </div>
@@ -488,36 +494,37 @@
                 </div>
                 <div class="card-body">
                     {% if pending_consultations %}
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Patient</th>
-                                        <th>Doctor</th>
-                                        <th>Room</th>
-                                        <th>Date</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for consultation in pending_consultations %}
-                                    <tr>
-                                        <td>{{ consultation.patient.get_full_name }}</td>
-                                        <td>Dr. {{ consultation.doctor.get_full_name }}</td>
-                                        <td>{{ consultation.consulting_room }}</td>
-                                        <td>{{ consultation.consultation_date|date:"M d, Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'desk_office:authorize_consultation' consultation.id %}" class="btn btn-sm btn-success">
-                                                <i class="fas fa-check"></i> Authorize
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Room</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consultation in pending_consultations %}
+                                <tr>
+                                    <td>{{ consultation.patient.get_full_name }}</td>
+                                    <td>Dr. {{ consultation.doctor.get_full_name }}</td>
+                                    <td>{{ consultation.consulting_room }}</td>
+                                    <td>{{ consultation.consultation_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'desk_office:authorize_consultation' consultation.id %}"
+                                            class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i> Authorize
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <p class="text-muted mb-0">No pending consultations requiring authorization.</p>
+                    <p class="text-muted mb-0">No pending consultations requiring authorization.</p>
                     {% endif %}
                 </div>
             </div>
@@ -535,36 +542,39 @@
                 </div>
                 <div class="card-body">
                     {% if pending_referrals %}
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Patient</th>
-                                        <th>From</th>
-                                        <th>To</th>
-                                        <th>Date</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for referral in pending_referrals %}
-                                    <tr>
-                                        <td>{{ referral.patient.get_full_name }}</td>
-                                        <td>Dr. {{ referral.referring_doctor.get_full_name }}</td>
-                                        <td>{% if referral.referred_to_doctor %}Dr. {{ referral.referred_to_doctor.get_full_name }}{% else %}{{ referral.get_referral_destination }}{% endif %}</td>
-                                        <td>{{ referral.referral_date|date:"M d, Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'desk_office:authorize_referral' referral.id %}" class="btn btn-sm btn-success">
-                                                <i class="fas fa-check"></i> Authorize
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for referral in pending_referrals %}
+                                <tr>
+                                    <td>{{ referral.patient.get_full_name }}</td>
+                                    <td>Dr. {{ referral.referring_doctor.get_full_name }}</td>
+                                    <td>{% if referral.referred_to_doctor %}Dr. {{
+                                        referral.referred_to_doctor.get_full_name }}{% else %}{{
+                                        referral.get_referral_destination }}{% endif %}</td>
+                                    <td>{{ referral.referral_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'desk_office:authorize_referral' referral.id %}"
+                                            class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i> Authorize
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <p class="text-muted mb-0">No pending referrals requiring authorization.</p>
+                    <p class="text-muted mb-0">No pending referrals requiring authorization.</p>
                     {% endif %}
                 </div>
             </div>
@@ -583,46 +593,46 @@
                 </div>
                 <div class="card-body">
                     {% if recent_codes %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Patient</th>
-                                        <th>Service Type</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th>Generated</th>
-                                        <th>Expiry</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for code in recent_codes %}
-                                    <tr>
-                                        <td><strong>{{ code.code }}</strong></td>
-                                        <td>{{ code.patient.get_full_name }}</td>
-                                        <td>{{ code.get_service_type_display }}</td>
-                                        <td>₦ {{ code.amount }}</td>
-                                        <td>
-                                            {% if code.status == 'active' %}
-                                                <span class="badge bg-success">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Patient</th>
+                                    <th>Service Type</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Generated</th>
+                                    <th>Expiry</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for code in recent_codes %}
+                                <tr>
+                                    <td><strong>{{ code.code }}</strong></td>
+                                    <td>{{ code.patient.get_full_name }}</td>
+                                    <td>{{ code.get_service_type_display }}</td>
+                                    <td>₦ {{ code.amount }}</td>
+                                    <td>
+                                        {% if code.status == 'active' %}
+                                        <span class="badge bg-success">
                                             {% elif code.status == 'used' %}
-                                                <span class="badge bg-secondary">
-                                            {% else %}
+                                            <span class="badge bg-secondary">
+                                                {% else %}
                                                 <span class="badge bg-danger">
-                                            {% endif %}
-                                                {{ code.get_status_display }}
-                                            </span>
-                                        </td>
-                                        <td>{{ code.generated_at|date:"M d, Y H:i" }}</td>
-                                        <td>{{ code.expiry_date|date:"M d, Y" }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                                                    {% endif %}
+                                                    {{ code.get_status_display }}
+                                                </span>
+                                    </td>
+                                    <td>{{ code.generated_at|date:"M d, Y H:i" }}</td>
+                                    <td>{{ code.expiry_date|date:"M d, Y" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <p class="text-muted mb-0">No authorization codes generated yet.</p>
+                    <p class="text-muted mb-0">No authorization codes generated yet.</p>
                     {% endif %}
                 </div>
             </div>
@@ -631,136 +641,145 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize HTMX and check for proper loading
-    if (typeof htmx === 'undefined') {
-        console.error('HTMX not loaded! Delete functionality may not work.');
-    } else {
-        console.log('HTMX loaded successfully');
-        
-        // Configure CSRF token for HTMX
-        document.body.addEventListener('htmx:configRequest', (event) => {
-            event.detail.headers['X-CSRFToken'] = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                                                document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-        });
-
-        // Listen for HTMX events for debugging
-        htmx.on('htmx:afterRequest', function(evt) {
-            console.log('HTMX request completed:', {
-                url: evt.detail.requestConfig.url,
-                status: evt.detail.successful ? 'success' : 'failed'
-            });
-        });
-    }
-});
-
-function showAuthorizationModal(message, notificationId) {
-    // Extract patient ID from the notification message
-    const lines = message.split('\n');
-    let patientInfo = '';
-    let patientId = '';
-
-    for (const line of lines) {
-        if (line.includes('patient:')) {
-            patientInfo = line.replace('Authorization request for NHIA patient:', '').trim();
-            // Extract patient ID from format "Name (ID: XXX)"
-            const match = patientInfo.match(/\(ID:\s*([^)]+)\)/);
-            if (match) {
-                patientId = match[1].trim();
-            }
-        }
-    }
-
-    // Show confirmation dialog
-    const confirmMsg = `Generate authorization code for:\n\n${patientInfo}\n\nThis will mark the notification as read.`;
-
-    if (confirm(confirmMsg)) {
-        // Redirect to authorization code generation page with patient ID
-        if (patientId) {
-            // Also mark notification as read
-            markNotificationRead(notificationId, false);
-            // Redirect to generate code page
-            window.location.href = `/desk-office/generate-code/?patient_id=${encodeURIComponent(patientId)}`;
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize HTMX and check for proper loading
+        if (typeof htmx === 'undefined') {
+            console.error('HTMX not loaded! Delete functionality may not work.');
         } else {
-            alert('Could not extract patient ID from notification. Please use manual search.');
-        }
-    }
-}
+            console.log('HTMX loaded successfully');
 
-function markNotificationRead(notificationId, reload = true) {
-    // Get CSRF token
-    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                     document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+            // Configure CSRF token for HTMX
+            document.body.addEventListener('htmx:configRequest', (event) => {
+                event.detail.headers['X-CSRFToken'] = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+            });
 
-    // Send request to mark notification as read
-    fetch(`/core/notifications/${notificationId}/read/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': csrftoken
-        }
-    })
-    .then(response => {
-        if (response.ok && reload) {
-            location.reload();
-        }
-    })
-    .catch(error => {
-        console.error('Error marking notification as read:', error);
-    });
-    
-    function testDeleteFunction() {
-        console.log('Test delete function called');
-        if (confirm('Test: delete first notification?')) {
-            deleteNotification(1);
-        }
-    }
-    
-    function deleteNotification(notificationId) {
-        if (confirm('Are you sure you want to remove this authorization request?')) {
-            const tbody = document.getElementById('medical-module-requests-tbody');
-            if (tbody) {
-                // Remove the row with animation
-                const row = document.getElementById(`request-${notificationId}`);
-                if (row) {
-                    row.style.transition = 'opacity 0.3s';
-                    row.style.opacity = '0';
-                    setTimeout(() => row.remove(), 300);
-                }
-                
-                // Send POST request to delete endpoint
-                const url = `/desk-office/authorization-request/${notificationId}/delete/`;
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
-                
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
-                })
-                .then(response => response.text())
-                .then(html => {
-                    // Update the tbody with new content
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = `<table><tbody>${html}</tbody></table>`;
-                    const newRows = tempDiv.querySelector('tbody').innerHTML;
-                    tbody.innerHTML = newRows;
-                })
-                .catch(error => {
-                    console.error('Error deleting notification:', error);
-                    // Show error message
-                    if (tbody) {
-                        const errorRow = document.createElement('tr');
-                        errorRow.innerHTML = '<td colspan="6" class="text-center text-danger py-3">Error deleting request</td>';
-                        tbody.appendChild(errorRow);
-                    }
+            // Listen for HTMX events for debugging
+            htmx.on('htmx:afterRequest', function (evt) {
+                console.log('HTMX request completed:', {
+                    url: evt.detail.requestConfig.url,
+                    status: evt.detail.successful ? 'success' : 'failed'
                 });
+            });
+
+            // Add confirmation handler for delete buttons
+            document.body.addEventListener('htmx:confirm', function (evt) {
+                if (evt.target.classList.contains('delete-request-btn')) {
+                    evt.preventDefault();
+                    if (confirm('Are you sure you want to remove this authorization request?')) {
+                        evt.detail.issueRequest();
+                    }
+                }
+            });
+        }
+    });
+
+    function showAuthorizationModal(message, notificationId) {
+        // Extract patient ID from the notification message
+        const lines = message.split('\n');
+        let patientInfo = '';
+        let patientId = '';
+
+        for (const line of lines) {
+            if (line.includes('patient:')) {
+                patientInfo = line.replace('Authorization request for NHIA patient:', '').trim();
+                // Extract patient ID from format "Name (ID: XXX)"
+                const match = patientInfo.match(/\(ID:\s*([^)]+)\)/);
+                if (match) {
+                    patientId = match[1].trim();
+                }
+            }
+        }
+
+        // Show confirmation dialog
+        const confirmMsg = `Generate authorization code for:\n\n${patientInfo}\n\nThis will mark the notification as read.`;
+
+        if (confirm(confirmMsg)) {
+            // Redirect to authorization code generation page with patient ID
+            if (patientId) {
+                // Also mark notification as read
+                markNotificationRead(notificationId, false);
+                // Redirect to generate code page
+                window.location.href = `/desk-office/generate-code/?patient_id=${encodeURIComponent(patientId)}`;
             } else {
-                console.error('Target tbody not found');
+                alert('Could not extract patient ID from notification. Please use manual search.');
             }
         }
     }
+
+    function markNotificationRead(notificationId, reload = true) {
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+
+        // Send request to mark notification as read
+        fetch(`/core/notifications/${notificationId}/read/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+            .then(response => {
+                if (response.ok && reload) {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error marking notification as read:', error);
+            });
+
+        function testDeleteFunction() {
+            console.log('Test delete function called');
+            if (confirm('Test: delete first notification?')) {
+                deleteNotification(1);
+            }
+        }
+
+        function deleteNotification(notificationId) {
+            if (confirm('Are you sure you want to remove this authorization request?')) {
+                const tbody = document.getElementById('medical-module-requests-tbody');
+                if (tbody) {
+                    // Remove the row with animation
+                    const row = document.getElementById(`request-${notificationId}`);
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s';
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 300);
+                    }
+
+                    // Send POST request to delete endpoint
+                    const url = `/desk-office/authorization-request/${notificationId}/delete/`;
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
+                    })
+                        .then(response => response.text())
+                        .then(html => {
+                            // Update the tbody with new content
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = `<table><tbody>${html}</tbody></table>`;
+                            const newRows = tempDiv.querySelector('tbody').innerHTML;
+                            tbody.innerHTML = newRows;
+                        })
+                        .catch(error => {
+                            console.error('Error deleting notification:', error);
+                            // Show error message
+                            if (tbody) {
+                                const errorRow = document.createElement('tr');
+                                errorRow.innerHTML = '<td colspan="6" class="text-center text-danger py-3">Error deleting request</td>';
+                                tbody.appendChild(errorRow);
+                            }
+                        });
+                } else {
+                    console.error('Target tbody not found');
+                }
+            }
+        }
 </script>
 {% endblock %}
-
