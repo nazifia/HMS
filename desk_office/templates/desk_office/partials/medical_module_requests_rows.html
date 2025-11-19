@@ -1,4 +1,3 @@
-{% if medical_module_requests %}
 {% for notification in medical_module_requests %}
 <tr id="request-{{ notification.id }}">
     <td>
@@ -13,34 +12,39 @@
             {% elif "ICU" in notification.title %}ICU
             {% elif "Family Planning" in notification.title %}Family Planning
             {% elif "Gynae Emergency" in notification.title %}Gynae Emergency
-            {% else %}Medical Module{% endif %}
+            {% else %}{{ notification.title }}{% endif %}
         </strong>
     </td>
-    <td><small>{{ notification.message|truncatewords:5 }}</small></td>
+    <td>
+        <small>{{ notification.message|truncatewords:10 }}</small>
+    </td>
+    <td>
+        <small class="text-muted">View details</small>
+    </td>
     <td>{{ notification.sender.get_full_name|default:notification.sender.username }}</td>
     <td><small>{{ notification.created_at|timesince }} ago</small></td>
     <td>
-        <button type="button" class="btn btn-sm btn-success"
-            onclick="showAuthorizationModal('{{ notification.message|escapejs }}', {{ notification.id }})">
+        <button type="button"
+                class="btn btn-sm btn-success"
+                onclick="showAuthorizationModal('{{ notification.message|escapejs }}', {{ notification.id }})">
             <i class="fas fa-check"></i> Generate Code
         </button>
-        <button type="button" class="btn btn-sm btn-outline-danger"
-            hx-post="{% url 'desk_office:delete_medical_module_request' notification.id %}"
-            hx-target="#medical-module-requests-tbody"
-            hx-swap="innerHTML"
-            hx-confirm="Are you sure you want to remove this authorization request?"
-            hx-indicator="#request-{{ notification.id }}"
-            title="Remove Request">
+        <button type="button"
+                class="btn btn-sm btn-outline-danger"
+                hx-post="{% url 'desk_office:delete_medical_module_request' notification.id %}"
+                hx-target="#medical-module-requests-tbody"
+                hx-swap="innerHTML"
+                hx-confirm="Are you sure you want to remove this authorization request?"
+                title="Remove Request">
             <i class="fas fa-times"></i>
-            <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status" aria-hidden="true"></span>
         </button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="6" class="text-center text-muted">
+        <i class="fas fa-check-circle text-success"></i>
+        <p class="mb-0 mt-2">No pending medical module requests.</p>
     </td>
 </tr>
 {% endfor %}
-{% else %}
-<tr>
-    <td colspan="5" class="text-center text-muted">
-        <i class="fas fa-check-circle"></i> No pending authorization requests
-    </td>
-</tr>
-{% endif %}

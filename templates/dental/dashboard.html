@@ -12,7 +12,7 @@
             Dental Department Dashboard
         </h1>
         <div>
-            <a href="{% url 'dental:create_dental_record' %}" class="btn btn-primary">
+            <a href="{% url 'dental:create_dental_record' %}" class="btn btn-outline-primary">
                 <i class="fas fa-plus"></i> New Dental Record
             </a>
         </div>
@@ -135,7 +135,7 @@
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="fas fa-exchange-alt"></i> Pending Referrals
                     </h6>
-                    <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-sm btn-primary">
+                    <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-sm btn-outline-primary">
                         View All
                     </a>
                 </div>
@@ -173,7 +173,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-info">
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>
@@ -271,7 +271,7 @@
                                         </td>
                                         <td>{{ record.created_at|timesince }} ago</td>
                                         <td>
-                                            <a href="{% url 'dental:dental_record_detail' record.id %}" class="btn btn-sm btn-primary">
+                                            <a href="{% url 'dental:dental_record_detail' record.id %}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>

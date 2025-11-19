@@ -12,6 +12,7 @@
 {% endblock %}
 
 {% block dental_content %}
+{% csrf_token %}
 <div class="row">
     <div class="col-md-8">
         <div class="card mb-4">
@@ -79,12 +80,42 @@
                             <p class="mb-0">
                                 <strong>Status:</strong> {{ authorization_message }}
                             </p>
+                            {% if authorization_amount %}
+                            <p class="mb-2">
+                                <strong>Authorization Amount:</strong> ₦{{ authorization_amount|floatformat:2 }}
+                            </p>
+                            {% endif %}
                             {% if requires_authorization %}
                             <hr>
-                            <i class="fas fa-check-circle"></i>
-                            This dental record has been authorized for NHIA coverage.
-                            NHIA will cover 90% of approved costs.
-                            </small>
+                            <p class="mb-0">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                This dental record requires NHIA authorization before proceeding with treatment.
+                                NHIA will cover 90% of approved costs once authorized.
+                            </p>
+                            {% if has_pending_request %}
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-clock"></i>
+                                <strong>Authorization Request Already Sent</strong><br>
+                                An authorization request has already been sent to the desk office. 
+                                Please wait for them to process your request before sending another.
+                            </div>
+                            {% else %}
+                            <div class="mt-2">
+                                <button class="btn btn-warning btn-sm" 
+                                    onclick="requestNHIAAuthorization(this)"
+                                    data-patient-id="{{ record.patient.id }}"
+                                    data-module-name="dental"
+                                    data-record-id="{{ record.id }}">
+                                    <i class="fas fa-shield-alt"></i> Request NHIA Authorization
+                                </button>
+                            </div>
+                            {% endif %}
+                            {% elif authorization_valid %}
+                            <hr>
+                            <p class="mb-0">
+                                <i class="fas fa-check-circle"></i>
+                                This dental record has been authorized for NHIA coverage.
+                                NHIA will cover 90% of approved costs.
                             </p>
                             {% endif %}
                         </div>
@@ -209,10 +240,29 @@
                         <i class="fas fa-prescription"></i> Create Prescription
                     </a>
                     {% if is_nhia_patient and not authorization_valid %}
+                    {% if has_pending_request %}
+                    <button class="btn btn-secondary" disabled
+                        title="Authorization request already sent to desk office">
+                        <i class="fas fa-clock"></i> Authorization Request Pending
+                    </button>
                     <button class="btn btn-success" disabled
                         title="NHIA authorization required before generating invoice">
                         <i class="fas fa-file-invoice"></i> Generate Invoice (Authorization Required)
                     </button>
+                    {% else %}
+                    <button class="btn btn-warning" 
+                        onclick="requestNHIAAuthorization(this)"
+                        data-patient-id="{{ record.patient.id }}"
+                        data-module-name="dental"
+                        data-record-id="{{ record.id }}"
+                        title="Request NHIA authorization for this dental record">
+                        <i class="fas fa-shield-alt"></i> Request NHIA Authorization
+                    </button>
+                    <button class="btn btn-success" disabled
+                        title="NHIA authorization required before generating invoice">
+                        <i class="fas fa-file-invoice"></i> Generate Invoice (Authorization Required)
+                    </button>
+                    {% endif %}
                     {% else %}
                     <a href="{% url 'dental:generate_invoice_for_dental' record.id %}" class="btn btn-success">
                         <i class="fas fa-file-invoice"></i> Generate Invoice
@@ -231,7 +281,18 @@
 </div>
 
 <script>
+    // Store if request is in progress to prevent multiple simultaneous requests
+    let requestInProgress = false;
+
     function requestNHIAAuthorization(button) {
+        // Prevent multiple simultaneous requests
+        if (requestInProgress) {
+            alert('Request already in progress. Please wait...');
+            return;
+        }
+        
+        requestInProgress = true;
+        
         // Get data from button
         const patientId = button.getAttribute('data-patient-id');
         const moduleName = button.getAttribute('data-module-name');
@@ -261,20 +322,37 @@
         })
             .then(response => response.json())
             .then(data => {
+                requestInProgress = false; // Reset flag
+                
                 if (data.success) {
                     // Show success message
                     alert('✓ ' + data.message);
                     button.innerHTML = '<i class="fas fa-check"></i> Request Sent';
-                    button.classList.remove('btn-primary');
+                    button.classList.remove('btn-primary', 'btn-warning');
                     button.classList.add('btn-success');
+                    button.disabled = true;  // Prevent multiple clicks
+                    
+                    // Auto-refresh page after 2 seconds to show updated authorization status
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
                 } else {
                     // Show error message
                     alert('✗ ' + data.message);
-                    button.disabled = false;
-                    button.innerHTML = originalHTML;
+                    // If it's a duplicate request, keep button disabled
+                    if (data.message.includes('already pending') || data.message.includes('already been sent')) {
+                        button.innerHTML = '<i class="fas fa-clock"></i> Request Pending';
+                        button.classList.remove('btn-primary', 'btn-warning');
+                        button.classList.add('btn-secondary');
+                    } else {
+                        // Re-enable for other errors
+                        button.disabled = false;
+                        button.innerHTML = originalHTML;
+                    }
                 }
             })
             .catch(error => {
+                requestInProgress = false; // Reset flag
                 alert('Error sending authorization request. Please try again.');
                 console.error('Error:', error);
                 button.disabled = false;

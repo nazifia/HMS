@@ -27,11 +27,12 @@ class AuthorizationCode(models.Model):
         ('other', 'Other Services'),
     )
 
-    code = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=255, unique=True, editable=False, primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     service_type = models.CharField(max_length=50, choices=SERVICE_TYPE_CHOICES, default='general')
     service_description = models.TextField(blank=True, null=True, help_text="Description of the specific service requested")
     department = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Amount covered by this authorization")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     used_at = models.DateTimeField(null=True, blank=True)
@@ -40,7 +41,7 @@ class AuthorizationCode(models.Model):
         def get_service_type_display(self) -> str: ...
 
     def __str__(self):
-        return f"{self.patient} - {self.get_service_type_display()} - {self.status}"
+        return f"{self.patient} - {self.get_service_type_display()} - ₦{self.amount} - {self.status}"
 
     def is_valid(self):
         """Check if the authorization code is still valid"""

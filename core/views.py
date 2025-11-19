@@ -172,38 +172,91 @@ def request_nhia_authorization(request):
                 'message': 'No desk office staff available to receive authorization requests.'
             }, status=400)
 
-        # Create notifications for all desk office staff
-        notification_title = f"NHIA Authorization Request - {module_name}"
-        notification_message = f"""
-Authorization request for NHIA patient: {patient.get_full_name()} (ID: {patient.patient_id})
+        # Check for existing unread notification with the same patient and module
+        from django.db.models import Q
+        existing_notification = InternalNotification.objects.filter(
+            Q(message__contains=f"Patient: {patient.get_full_name()} (ID: {patient.patient_id})") &
+            Q(message__contains=f"Module: {module_name}") &
+            Q(is_read=False)
+        ).first()
+
+        if existing_notification:
+            return JsonResponse({
+                'success': False,
+                'message': f'An authorization request for this {module_name} record is already pending. Request sent on {existing_notification.created_at|date:"M d, Y H:i"}.'
+            }, status=400)
+
+        # Create a single notification for the first admin/superuser
+        # Use select_for_update to prevent race conditions
+        from django.db import transaction
+        with transaction.atomic():
+            # Double check no one else created a notification in the meantime
+            final_check = InternalNotification.objects.filter(
+                Q(message__contains=f"Patient: {patient.get_full_name()} (ID: {patient.patient_id})") &
+                Q(message__contains=f"Module: {module_name}") &
+                Q(is_read=False)
+            ).first()
+            
+            if final_check:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'An authorization request for this {module_name} record is already pending. Request sent on {final_check.created_at|date:"M d, Y H:i"}.'
+                }, status=400)
+
+            # Get the first admin/superuser to receive the notification
+            primary_user = desk_office_users.first()
+            
+            notification_title = f"NHIA Authorization Request - {module_name}"
+            notification_message = f"""
+Authorization request for NHIA Patient: {patient.get_full_name()} (ID: {patient.patient_id})
 
 Module: {module_name}
 Record ID: {record_id}
 Requested by: {request.user.get_full_name() or request.user.username}
 
 Please generate an authorization code for this patient to proceed with treatment and billing.
-        """.strip()
+            """.strip()
 
-        notifications_created = 0
-        for user in desk_office_users:
             InternalNotification.objects.create(
-                user=user,
+                user=primary_user,
                 sender=request.user,
                 title=notification_title,
                 message=notification_message,
                 notification_type='warning'
             )
-            notifications_created += 1
 
         return JsonResponse({
             'success': True,
-            'message': f'Authorization request sent to {notifications_created} desk office staff member(s). They will process your request shortly.'
+            'message': f'Authorization request sent to desk office. They will process your request shortly.'
         })
 
     except Exception as e:
         return JsonResponse({
             'success': False,
             'message': f'Error sending authorization request: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def mark_notification_read(request, notification_id):
+    """
+    Mark notification as read and return JSON response
+    """
+    try:
+        notification = get_object_or_404(InternalNotification, id=notification_id)
+        
+        if not notification.is_read:
+            notification.mark_as_read()
+            
+        return JsonResponse({
+            'success': True,
+            'message': 'Notification marked as read.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error marking notification as read: {str(e)}'
         }, status=500)
 
 

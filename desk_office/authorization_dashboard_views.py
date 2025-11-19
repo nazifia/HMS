@@ -765,17 +765,23 @@ def delete_medical_module_request(request, notification_id):
     """
     if request.method == 'DELETE' or request.method == 'POST':
         try:
+            # Log for debugging
+            print(f"Deleting notification {notification_id}")
+            
             # Get the notification
             notification = get_object_or_404(InternalNotification, id=notification_id)
             
             # Mark as read (delete from pending list)
             notification.mark_as_read()
+            print(f"Marked notification {notification_id} as read")
             
             # Get updated list of medical module requests
             medical_module_requests = InternalNotification.objects.filter(
                 is_read=False,
                 title__icontains='NHIA Authorization Request'
             ).select_related('sender', 'user').order_by('-created_at')[:10]
+            
+            print(f"Found {len(medical_module_requests)} remaining requests")
             
             # Return updated HTML fragment for HTMX
             from django.template.loader import render_to_string
@@ -786,15 +792,23 @@ def delete_medical_module_request(request, notification_id):
             )
             
             from django.http import HttpResponse
-            return HttpResponse(html)
+            response = HttpResponse(html)
+            # Add HTMX response headers to ensure proper handling
+            response['HX-Trigger'] = 'notificationDeleted'
+            return response
             
         except Exception as e:
+            print(f"Error deleting notification: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
             from django.http import HttpResponse
             return HttpResponse(
-                f'<tr><td colspan="5" class="text-danger">Error: {str(e)}</td></tr>',
+                f'<tr><td colspan="6" class="text-center text-danger py-3">Error: {str(e)}</td></tr>',
                 status=500
             )
     
+    print(f"Invalid request method: {request.method}")
     from django.http import HttpResponseNotAllowed
     return HttpResponseNotAllowed(['DELETE', 'POST'])
 

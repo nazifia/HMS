@@ -12,6 +12,37 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script>
+        // Configure HTMX to send CSRF token with all requests
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof htmx !== 'undefined') {
+                htmx.config.globalViewTransitions = false;
+                htmx.config.scrollBehavior = 'smooth';
+                htmx.config.defaultSwapStyle = 'innerHTML';
+                htmx.config.defaultSwapDelay = 0;
+                htmx.config.defaultSettleDelay = 50;
+                
+                // Include CSRF token in all requests
+                htmx.on('htmx:configRequest', function(evt) {
+                    // Add CSRF token to all non-GET requests
+                    if (evt.detail.verb !== 'get') {
+                        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+                        if (csrfToken) {
+                            evt.detail.parameters['csrfmiddlewaretoken'] = csrfToken;
+                        }
+                    }
+                });
+                
+                console.log('HTMX configured successfully');
+            } else {
+                console.error('HTMX not loaded');
+            }
+        });
+    </script>
+
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 
@@ -1318,26 +1349,19 @@
 
     <!-- HTMX/Alpine.js Performance Optimizations -->
     <script>
-        // Prevent H.match errors at the source by overriding problematic HTMX functions
-        if (typeof window !== 'undefined') {
-            // Override any potential H.match access before HTMX loads
-            Object.defineProperty(window, 'H', {
-                get: function() {
-                    return {
-                        match: function() { return true; },
-                        find: function() { return null; }
-                    };
-                },
-                set: function(value) {
-                    // Allow HTMX to set H but ensure match method is safe
-                    if (value && typeof value === 'object') {
-                        value.match = value.match || function() { return true; };
-                        value.find = value.find || function() { return null; };
-                    }
-                    window._htmxH = value;
+        // Only handle H.match errors after HTMX has loaded
+        document.addEventListener('htmx:afterSettle', function() {
+            // If HTMX has loaded and there are issues with H.match, handle them gracefully
+            if (typeof window.H !== 'undefined' && window.H) {
+                // Ensure H has safe methods
+                if (!window.H.match) {
+                    window.H.match = function() { return true; };
                 }
-            });
-        }
+                if (!window.H.find) {
+                    window.H.find = function() { return null; };
+                }
+            }
+        });
 
         // Global error handler to prevent JavaScript errors
         window.addEventListener('error', function(e) {

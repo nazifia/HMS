@@ -1,5 +1,5 @@
 from django import forms
-from .models import AuthorizationCode
+from nhia.models import AuthorizationCode
 from patients.models import Patient
 
 class PatientSearchForm(forms.Form):
@@ -46,32 +46,53 @@ class AuthorizationCodeForm(forms.ModelForm):
         return label
     
     service_type = forms.ChoiceField(
-        choices=AuthorizationCode.SERVICE_TYPE_CHOICES,
+        choices=[
+            ('laboratory', 'Laboratory'),
+            ('radiology', 'Radiology'),
+            ('theatre', 'Theatre'),
+            ('inpatient', 'Inpatient'),
+            ('dental', 'Dental'),
+            ('opthalmic', 'Opthalmic'),
+            ('ent', 'ENT'),
+            ('oncology', 'Oncology'),
+            ('general', 'General'),
+        ],
         widget=forms.Select(attrs={'class': 'form-control'}),
         required=True
     )
-    
-    service_description = forms.CharField(
-        widget=forms.Textarea(attrs={
+
+    amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
             'class': 'form-control',
-            'rows': 2,
-            'placeholder': 'Describe the specific service requested (e.g., CBC, X-Ray, Surgery, etc.)'
-        }),
-        required=False
-    )
-    
-    department = forms.CharField(
-        max_length=255,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Department where service will be delivered'
+            'placeholder': '0.00',
+            'step': '0.01'
         }),
         required=True
     )
 
+    expiry_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        required=True,
+        help_text='Expiry date for this authorization code'
+    )
+
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Additional notes or remarks (optional)'
+        }),
+        required=False
+    )
+
     class Meta:
         model = AuthorizationCode
-        fields = ['patient', 'service_type', 'service_description', 'department']
+        fields = ['patient', 'service_type', 'amount', 'expiry_date', 'notes']
 
     def __init__(self, *args, **kwargs):
         patient = kwargs.pop('patient', None)

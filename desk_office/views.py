@@ -120,10 +120,39 @@ def generate_authorization_code(request):
     if request.method == 'GET' and 'patient_id' in request.GET:
         try:
             selected_patient = Patient.objects.get(id=request.GET.get('patient_id'), patient_type='nhia')
-            authorization_form = AuthorizationCodeForm(patient=selected_patient)
+            
+            # Check for existing active authorization code
+            existing_code = AuthorizationCode.objects.filter(
+                patient=selected_patient,
+                status='active'
+            ).first()
+            
+            initial_data = {}
+            if existing_code:
+                messages.warning(request, f'This patient already has an active authorization code: {existing_code.code}')
+            
+            # Pre-fill amount if provided in URL
+            if 'amount' in request.GET:
+                try:
+                    amount = float(request.GET.get('amount'))
+                    initial_data['amount'] = amount
+                except (ValueError, TypeError):
+                    pass
+            
+            authorization_form = AuthorizationCodeForm(patient=selected_patient, initial=initial_data)
+            
+            # Pass existing code to context
+            context = {
+                'patient_search_form': patient_search_form,
+                'authorization_form': authorization_form,
+                'selected_patient': selected_patient,
+                'existing_code': existing_code
+            }
+            return render(request, 'desk_office/generate_authorization_code.html', context)
+            
         except Patient.DoesNotExist:
             messages.error(request, 'Selected patient not found or is not an NHIA patient.')
-    
+
     # Handle authorization code generation
     if request.method == 'POST' and 'generate_code' in request.POST:
         try:

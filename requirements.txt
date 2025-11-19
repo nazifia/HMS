@@ -1,9 +1,9 @@
 absl-py==2.3.0
 asgiref==3.8.1
-cffi==1.17.1
+
 crispy-bootstrap5==2025.6
 cryptography==42.0.5
-Django==5.2
+Django>=5.0
 django-crispy-forms==2.4
 django-filter==23.2
 django-widget-tweaks==1.5.0
@@ -12,10 +12,10 @@ djangorestframework-simplejwt==5.3.1
 gunicorn==21.2.0
 immutabledict==4.2.1
 mysqlclient==2.2.7
-numpy==2.3.1
-ortools==9.14.6206
+# numpy==2.3.1
+# ortools==9.14.6206
 packaging==25.0
-pandas==2.3.0
+# pandas==2.3.0
 pillow==11.2.1
 protobuf==6.31.1
 pycparser==2.22
@@ -29,7 +29,7 @@ typing_extensions==4.14.0
 tzdata==2025.2
 whitenoise==6.5.0
 django-celery-beat==2.5.0
-timezone-field==6.1.0
+
 django-compressor==4.5.1
 rcssmin==1.1.2
 rjsmin==1.2.2

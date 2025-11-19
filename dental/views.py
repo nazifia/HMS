@@ -244,7 +244,7 @@ def create_dental_record(request):
 @login_required
 def dental_record_detail(request, record_id):
     """View to display details of a specific dental record"""
-    record = get_object_or_404(DentalRecord.objects.select_related('patient', 'service', 'dentist', 'authorization_code'), id=record_id)
+    record = get_object_or_404(DentalRecord.objects.select_related('patient', 'service', 'dentist'), id=record_id)
 
     # Get prescriptions for this patient
     prescriptions = Prescription.objects.filter(patient=record.patient).order_by('-prescription_date')[:5]
@@ -253,13 +253,62 @@ def dental_record_detail(request, record_id):
     xrays = DentalXRay.objects.filter(dental_record=record).order_by('-taken_at')
 
     # **NHIA AUTHORIZATION CHECK**
+    from core.models import InternalNotification
+    
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+    authorization_amount = None
+    has_pending_request = False
+
+    # Check for existing pending authorization request
+    if is_nhia_patient and requires_authorization:
+        from django.db.models import Q
+        has_pending_request = InternalNotification.objects.filter(
+            Q(message__icontains=f"Patient: {record.patient.get_full_name()} (ID: {record.patient.patient_id})") &
+            Q(message__icontains="Module: dental") &
+            Q(is_read=False)
+        ).exists()
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+            # Calculate authorization amount based on service price
+            if record.service:
+                authorization_amount = record.service.price
+            elif hasattr(record, 'get_service_price'):
+                authorization_amount = record.get_service_price
+        else:
+            authorization_message = "NHIA Authorization Required"
+            messages.warning(
+                request,
+                f"This is an NHIA patient. An authorization code from desk office is required before proceeding with treatment or billing. "
+                f"Please contact the desk office to obtain authorization for dental services."
+            )
+
+    context = {
+        'record': record,
+        'prescriptions': prescriptions,
+        'xrays': xrays,
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
+        'authorization_amount': authorization_amount,
+        'has_pending_request': has_pending_request,
+    }
+    return render(request, 'dental/dental_record_detail.html', context)
+
+@login_required
+def edit_dental_record(request, record_id):
     """View to edit an existing dental record"""
     record = get_object_or_404(DentalRecord, id=record_id)
     
     if request.method == 'POST':
         form = DentalRecordForm(request.POST, instance=record)
         if form.is_valid():
-            record = form.save()  # Capture the saved instance
+            record = form.save()
             messages.success(request, 'Dental record updated successfully.')
             return redirect('dental:dental_record_detail', record_id=record.id)
     else:
@@ -526,7 +575,3 @@ def generate_invoice_for_dental(request, record_id):
         'title': 'Generate Invoice'
     }
     return render(request, 'dental/generate_invoice.html', context)
-
-@login_required
-def edit_dental_record(request, record_id):
-    """View to edit an existing dental record"""
