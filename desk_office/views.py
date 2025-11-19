@@ -14,7 +14,7 @@ from patients.models import Patient
 @login_required
 def generate_authorization_code(request):
     # Handle AJAX POST request for code generation from modal
-    if request.method == 'POST' and request.headers.get('X-Requested-With') != 'XMLHttpRequest' and 'patient_id' in request.POST:
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest' and 'patient_id' in request.POST:
         try:
             patient_id = request.POST.get('patient_id')
             amount = request.POST.get('amount')
@@ -119,7 +119,16 @@ def generate_authorization_code(request):
     # Handle patient selection
     if request.method == 'GET' and 'patient_id' in request.GET:
         try:
-            selected_patient = Patient.objects.get(id=request.GET.get('patient_id'), patient_type='nhia')
+            # Try to look up by primary key first, then by custom patient_id
+            patient_identifier = request.GET.get('patient_id')
+            try:
+                if str(patient_identifier).isdigit():
+                    selected_patient = Patient.objects.get(id=patient_identifier, patient_type='nhia')
+                else:
+                    raise Patient.DoesNotExist
+            except Patient.DoesNotExist:
+                # Try custom patient_id
+                selected_patient = Patient.objects.get(patient_id=patient_identifier, patient_type='nhia')
             
             # Check for existing active authorization code
             existing_code = AuthorizationCode.objects.filter(
@@ -162,7 +171,7 @@ def generate_authorization_code(request):
             if authorization_form.is_valid():
                 authorization_code = authorization_form.save()
                 messages.success(request, f'Authorization code {authorization_code.code} generated successfully.')
-                return redirect('desk_office:generate_authorization_code')
+                return redirect('desk_office:authorization_code_list')
             else:
                 # Form is not valid, we'll display errors
                 pass

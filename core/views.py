@@ -173,7 +173,6 @@ def request_nhia_authorization(request):
             }, status=400)
 
         # Check for existing unread notification with the same patient and module
-        from django.db.models import Q
         existing_notification = InternalNotification.objects.filter(
             Q(message__contains=f"Patient: {patient.get_full_name()} (ID: {patient.patient_id})") &
             Q(message__contains=f"Module: {module_name}") &

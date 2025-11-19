@@ -24,18 +24,14 @@
     <td>{{ notification.sender.get_full_name|default:notification.sender.username }}</td>
     <td><small>{{ notification.created_at|timesince }} ago</small></td>
     <td>
-        <button type="button"
-                class="btn btn-sm btn-success"
-                onclick="showAuthorizationModal('{{ notification.message|escapejs }}', {{ notification.id }})">
+        <button type="button" class="btn btn-sm btn-success"
+            onclick="showAuthorizationModal('{{ notification.message|escapejs }}', {{ notification.id }})">
             <i class="fas fa-check"></i> Generate Code
         </button>
-        <button type="button"
-                class="btn btn-sm btn-outline-danger"
-                hx-post="{% url 'desk_office:delete_medical_module_request' notification.id %}"
-                hx-target="#medical-module-requests-tbody"
-                hx-swap="innerHTML"
-                hx-confirm="Are you sure you want to remove this authorization request?"
-                title="Remove Request">
+        <button type="button" class="btn btn-sm btn-outline-danger"
+            hx-post="{% url 'desk_office:delete_medical_module_request' notification.id %}" hx-target="closest tbody"
+            hx-swap="innerHTML" hx-confirm="Are you sure you want to remove this authorization request?"
+            title="Remove Request">
             <i class="fas fa-times"></i>
         </button>
     </td>
