@@ -63,8 +63,29 @@ def authorization_dashboard(request):
                 page_number = request.GET.get('page')
                 search_results = paginator.get_page(page_number)
     
+    # Also handle search query from GET request (for pagination)
+    elif 'search' in request.GET:
+        search_query = request.GET.get('search')
+        if search_query:
+            patient_search_form = PatientSearchForm(initial={'search': search_query})
+            # Search for NHIA patients by name, patient ID, or NHIA number
+            patients = Patient.objects.filter(
+                patient_type='nhia'
+            ).filter(
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(patient_id__icontains=search_query) |
+                Q(nhia_info__nhia_reg_number__icontains=search_query) |
+                Q(phone_number__icontains=search_query)
+            ).select_related('nhia_info').order_by('first_name', 'last_name')
+            
+            # Pagination for search results
+            paginator = Paginator(patients, 10)
+            page_number = request.GET.get('page')
+            search_results = paginator.get_page(page_number)
+    
     # Handle patient selection
-    elif request.method == 'GET' and 'patient_id' in request.GET:
+    if request.method == 'GET' and 'patient_id' in request.GET:
         try:
             selected_patient = Patient.objects.get(id=request.GET.get('patient_id'), patient_type='nhia')
             authorization_form = AuthorizationCodeForm(patient=selected_patient)
@@ -763,52 +784,51 @@ def delete_medical_module_request(request, notification_id):
     HTMX endpoint to delete/mark as read a medical module authorization request
     Returns updated HTML fragment for the requests list
     """
-    if request.method == 'DELETE' or request.method == 'POST':
-        try:
-            # Log for debugging
-            print(f"Deleting notification {notification_id}")
-            
-            # Get the notification
-            notification = get_object_or_404(InternalNotification, id=notification_id)
-            
-            # Mark as read (delete from pending list)
-            notification.mark_as_read()
-            print(f"Marked notification {notification_id} as read")
-            
-            # Get updated list of medical module requests
-            medical_module_requests = InternalNotification.objects.filter(
-                is_read=False,
-                title__icontains='NHIA Authorization Request'
-            ).select_related('sender', 'user').order_by('-created_at')[:10]
-            
-            print(f"Found {len(medical_module_requests)} remaining requests")
-            
-            # Return updated HTML fragment for HTMX
-            from django.template.loader import render_to_string
-            html = render_to_string(
-                'desk_office/partials/medical_module_requests_rows.html',
-                {'medical_module_requests': medical_module_requests},
-                request=request
-            )
-            
-            from django.http import HttpResponse
-            response = HttpResponse(html)
-            # Add HTMX response headers to ensure proper handling
-            response['HX-Trigger'] = 'notificationDeleted'
-            return response
-            
-        except Exception as e:
-            print(f"Error deleting notification: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            
-            from django.http import HttpResponse
-            return HttpResponse(
-                f'<tr><td colspan="6" class="text-center text-danger py-3">Error: {str(e)}</td></tr>',
-                status=500
-            )
+    # Support both DELETE and POST methods for HTMX compatibility
+    if request.method not in ['DELETE', 'POST']:
+        return HttpResponseNotAllowed(['DELETE', 'POST'])
     
-    print(f"Invalid request method: {request.method}")
-    from django.http import HttpResponseNotAllowed
-    return HttpResponseNotAllowed(['DELETE', 'POST'])
+    try:
+        # Get the notification
+        notification = get_object_or_404(InternalNotification, id=notification_id)
+        
+        # Mark as read (delete from pending list)
+        notification.mark_as_read()
+        
+        # Get updated list of medical module requests
+        medical_module_requests = InternalNotification.objects.filter(
+            is_read=False,
+            title__icontains='NHIA Authorization Request'
+        ).select_related('sender', 'user').order_by('-created_at')[:10]
+        
+        # Return updated HTML fragment for HTMX
+        from django.template.loader import render_to_string
+        html = render_to_string(
+            'desk_office/partials/medical_module_requests_rows.html',
+            {'medical_module_requests': medical_module_requests},
+            request=request
+        )
+        
+        from django.http import HttpResponse
+        response = HttpResponse(html)
+        
+        # Add HTMX response headers to ensure proper handling
+        response['HX-Trigger'] = 'notificationDeleted'
+        response['HX-Retarget'] = '#medical-module-requests-tbody'
+        response['HX-Reswap'] = 'innerHTML'
+        
+        return response
+        
+    except InternalNotification.DoesNotExist:
+        from django.http import HttpResponse
+        return HttpResponse(
+            '<tr><td colspan="6" class="text-center text-warning py-3">Notification already removed</td></tr>',
+            status=404
+        )
+    except Exception as e:
+        from django.http import HttpResponse
+        return HttpResponse(
+            f'<tr><td colspan="6" class="text-center text-danger py-3">Error: {str(e)}</td></tr>',
+            status=500
+        )
 

@@ -30,7 +30,8 @@
         </button>
         <button type="button" class="btn btn-sm btn-outline-danger delete-request-btn"
             hx-delete="{% url 'desk_office:delete_medical_module_request' notification.id %}"
-            hx-target="#medical-module-requests-tbody" hx-swap="innerHTML" title="Remove Request">
+            hx-target="#medical-module-requests-tbody" hx-swap="innerHTML" title="Remove Request"
+            onclick="if(!confirm('Are you sure you want to remove this authorization request?')) return false;">
             <i class="fas fa-times"></i>
         </button>
     </td>

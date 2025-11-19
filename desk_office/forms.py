@@ -10,7 +10,10 @@ class PatientSearchForm(forms.Form):
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Search by patient name or NHIA number...',
-            'id': 'patient-search'
+            'id': 'patient-search',
+            'autocomplete': 'off',
+            'data-bs-toggle': 'tooltip',
+            'title': 'Search by name, patient ID, NHIA number, or phone'
         })
     )
 
@@ -21,11 +24,6 @@ class AuthorizationCodeForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control', 'readonly': True}),
         required=True
     )
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Custom label_from_instance to show patient ID and type for better identification
-        self.fields['patient'].label_from_instance = self._format_patient_label
         
     def _format_patient_label(self, obj):
         """Format patient label with type information"""
@@ -52,7 +50,7 @@ class AuthorizationCodeForm(forms.ModelForm):
             ('theatre', 'Theatre'),
             ('inpatient', 'Inpatient'),
             ('dental', 'Dental'),
-            ('opthalmic', 'Opthalmic'),
+            ('opthalmic', 'Ophthalmic'),  # Fixed typo
             ('ent', 'ENT'),
             ('oncology', 'Oncology'),
             ('general', 'General'),
@@ -97,6 +95,8 @@ class AuthorizationCodeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         patient = kwargs.pop('patient', None)
         super().__init__(*args, **kwargs)
+        # Custom label_from_instance to show patient ID and type for better identification
+        self.fields['patient'].label_from_instance = self._format_patient_label
         if patient:
             self.fields['patient'].queryset = Patient.objects.filter(id=patient.id)
             self.fields['patient'].initial = patient

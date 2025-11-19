@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.urls import reverse
 from datetime import timedelta
 import string
 import random
@@ -243,8 +244,9 @@ def search_nhia_patients_ajax(request):
                 else:
                     # For regular patient search
                     nhia_info = f'<br><small class="text-info">NHIA: {patient.nhia_info.nhia_reg_number}</small>' if patient.nhia_info else ''
+                    auth_dashboard_url = reverse('desk_office:authorization_dashboard')
                     html = f"""
-                    <div class="patient-result-item card mb-2 p-3" onclick="window.location.href='/desk-office/authorization-dashboard/?patient_id={patient.pk}'">
+                    <div class="patient-result-item card mb-2 p-3" onclick="window.location.href='{auth_dashboard_url}?patient_id={patient.pk}'">
                         <div class="row">
                             <div class="col-md-8">
                                 <strong>{patient.get_full_name()}</strong>

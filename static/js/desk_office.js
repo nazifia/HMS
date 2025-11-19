@@ -1,19 +1,11 @@
 // Enhanced patient search functionality for desk office
 document.addEventListener('DOMContentLoaded', function() {
     const patientSearchInput = document.getElementById('patient-search');
-    const patientSearchResults = document.getElementById('patient-search-results');
     
     if (patientSearchInput) {
-        let searchTimeout;
-        
-        patientSearchForm.addEventListener('submit', function(e) {
-            // Prevent default form submission for AJAX search
-            if (patientSearchInput.value.length < 2) {
-                e.preventDefault();
-                alert('Please enter at least 2 characters to search.');
-                return false;
-            }
-        });
+        // For authorization dashboard, don't interfere with form submission
+        // The form should work normally without AJAX intervention
+        console.log('Patient search input found');
     }
     
     // Service type dependent fields

@@ -12,7 +12,7 @@
             NHIA Authorization Dashboard
         </h1>
         <div>
-            <a href="{% url 'core:universal_authorization_dashboard' %}" class="btn btn-success mr-2">
+            <a href="{% url 'core:universal_authorization_dashboard' %}" class="btn btn-success me-2">
                 <i class="fas fa-globe me-2"></i>
                 Universal Dashboard
             </a>
@@ -28,7 +28,7 @@
     <div class="alert alert-warning alert-dismissible fade show" role="alert">
         <i class="fas fa-exclamation-triangle"></i>
         <strong>{{ medical_module_requests|length }} Pending Medical Module Requests</strong>
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
         </button>
         <p class="mb-0 mt-2">
@@ -49,7 +49,7 @@
         <strong>New Feature!</strong> Check out the <a href="{% url 'core:universal_authorization_dashboard' %}"
             class="alert-link">Universal Authorization Dashboard</a> to view and manage authorization requests from all
         medical modules in one place.
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
@@ -59,12 +59,12 @@
         <div class="col-xl-2 col-md-4 mb-4">
             <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                    <div class="row align-items-center">
+                        <div class="col me-2">
+                            <div class="fs-6 fw-bold text-warning text-uppercase mb-1">
                                 Total Pending
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.total }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
@@ -77,12 +77,12 @@
         <div class="col-xl-2 col-md-4 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                    <div class="row align-items-center">
+                        <div class="col me-2">
+                            <div class="fs-6 fw-bold text-primary text-uppercase mb-1">
                                 Consultations
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.consultations }}</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.consultations }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
@@ -95,12 +95,12 @@
         <div class="col-xl-2 col-md-4 mb-4">
             <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                    <div class="row align-items-center">
+                        <div class="col me-2">
+                            <div class="fs-6 fw-bold text-info text-uppercase mb-1">
                                 Referrals
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.referrals }}</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.referrals }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
@@ -113,12 +113,12 @@
         <div class="col-xl-2 col-md-4 mb-4">
             <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                    <div class="row align-items-center">
+                        <div class="col me-2">
+                            <div class="fs-6 fw-bold text-success text-uppercase mb-1">
                                 Prescriptions
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.prescriptions }}</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.prescriptions }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-pills fa-2x text-gray-300"></i>
@@ -131,12 +131,12 @@
         <div class="col-xl-2 col-md-4 mb-4">
             <div class="card border-left-danger shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                    <div class="row align-items-center">
+                        <div class="col me-2">
+                            <div class="fs-6 fw-bold text-danger text-uppercase mb-1">
                                 Lab Tests
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.lab_tests }}</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.lab_tests }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-flask fa-2x text-gray-300"></i>
@@ -149,12 +149,12 @@
         <div class="col-xl-2 col-md-4 mb-4">
             <div class="card border-left-secondary shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                    <div class="row align-items-center">
+                        <div class="col me-2">
+                            <div class="fs-6 fw-bold text-secondary text-uppercase mb-1">
                                 Radiology
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.radiology }}</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.radiology }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-x-ray fa-2x text-gray-300"></i>
@@ -170,7 +170,7 @@
         <div class="col-xl-8 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
+                    <h6 class="m-0 fw-bold text-primary">
                         <i class="fas fa-search me-2"></i>
                         Patient Search & Authorization Generation
                     </h6>
@@ -180,7 +180,7 @@
                     {% for message in messages %}
                     <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                         {{ message }}
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
@@ -232,7 +232,7 @@
                                         <td>{{ patient.phone_number }}</td>
                                         <td>{{ patient.get_age }}</td>
                                         <td>
-                                            <a href="?patient_id={{ patient.id }}" class="btn btn-sm btn-success">
+                                            <a href="?search={{ search_query }}&patient_id={{ patient.id }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-check-circle"></i> Select
                                             </a>
                                         </td>
@@ -255,7 +255,7 @@
                                 {% if search_results.has_previous %}
                                 <li class="page-item">
                                     <a class="page-link"
-                                        href="?page={{ search_results.previous_page_number }}">Previous</a>
+                                        href="?search={{ search_query }}&page={{ search_results.previous_page_number }}">Previous</a>
                                 </li>
                                 {% else %}
                                 <li class="page-item disabled">
@@ -270,14 +270,14 @@
                                 </li>
                                 {% else %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    <a class="page-link" href="?search={{ search_query }}&page={{ num }}">{{ num }}</a>
                                 </li>
                                 {% endif %}
                                 {% endfor %}
 
                                 {% if search_results.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ search_results.next_page_number }}">Next</a>
+                                    <a class="page-link" href="?search={{ search_query }}&page={{ search_results.next_page_number }}">Next</a>
                                 </li>
                                 {% else %}
                                 <li class="page-item disabled">
@@ -319,7 +319,7 @@
                         </div>
 
                         <!-- Authorization Code Form -->
-                        <form method="post" id="auth-form">
+                        <form method="post" id="auth-form" class="mt-4">
                             {% csrf_token %}
                             <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
 
@@ -372,7 +372,7 @@
                                         <i class="fas fa-plus-circle me-2"></i>Generate Authorization Code
                                     </button>
                                     <a href="{% url 'desk_office:authorization_dashboard' %}"
-                                        class="btn btn-secondary ml-2">
+                                        class="btn btn-outline-secondary ms-2">
                                         <i class="fas fa-times me-2"></i>Clear Selection
                                     </a>
                                 </div>
@@ -388,7 +388,7 @@
         <div class="col-xl-4 mb-4">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-info">
+                    <h6 class="m-0 fw-bold text-info">
                         <i class="fas fa-info-circle me-2"></i>
                         Quick Stats
                     </h6>
@@ -396,12 +396,12 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-6 mb-3">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Pending</div>
-                            <div class="h4 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                            <div class="fs-6 fw-bold text-primary text-uppercase mb-1">Total Pending</div>
+                            <div class="h4 mb-0 fw-bold text-gray-800">{{ stats.total }}</div>
                         </div>
                         <div class="col-6 mb-3">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Active Codes</div>
-                            <div class="h4 mb-0 font-weight-bold text-gray-800">
+                            <div class="fs-6 fw-bold text-info text-uppercase mb-1">Active Codes</div>
+                            <div class="h4 mb-0 fw-bold text-gray-800">
                                 {{ recent_codes|length }}
                             </div>
                         </div>
@@ -441,7 +441,7 @@
         <div class="col-12 mb-4" id="medical-module-requests">
             <div class="card shadow border-warning">
                 <div class="card-header py-3 bg-warning text-white">
-                    <h6 class="m-0 font-weight-bold">
+                    <h6 class="m-0 fw-bold">
                         <i class="fas fa-hospital me-2"></i>
                         Pending Medical Module Authorization Requests
                         {% if medical_module_requests %}
@@ -486,7 +486,7 @@
         <div class="col-lg-6 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">
+                    <h6 class="m-0 fw-bold text-primary">
                         <i class="fas fa-stethoscope me-2"></i>
                         Pending Consultations
                     </h6>
@@ -534,7 +534,7 @@
         <div class="col-lg-6 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-info">
+                    <h6 class="m-0 fw-bold text-info">
                         <i class="fas fa-exchange-alt me-2"></i>
                         Pending Referrals
                     </h6>
@@ -586,7 +586,7 @@
         <div class="col-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
+                    <h6 class="m-0 fw-bold text-primary">
                         <i class="fas fa-key me-2"></i>
                         Recent Authorization Codes
                     </h6>
@@ -642,6 +642,31 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Add client-side validation for authorization form
+        const authForm = document.getElementById('auth-form');
+        if (authForm) {
+            authForm.addEventListener('submit', function(e) {
+                const amountField = authForm.querySelector('input[name="amount"]');
+                const serviceTypeField = authForm.querySelector('select[name="service_type"]');
+                const expiryDateField = authForm.querySelector('input[name="expiry_date"]');
+                
+                // Validate amount
+                if (amountField && parseFloat(amountField.value) <= 0) {
+                    e.preventDefault();
+                    alert('Amount must be greater than zero.');
+                    amountField.focus();
+                    return false;
+                }
+                
+                // Validate expiry date
+                if (expiryDateField && new Date(expiryDateField.value) <= new Date()) {
+                    e.preventDefault();
+                    alert('Expiry date must be in the future.');
+                    expiryDateField.focus();
+                    return false;
+                }
+            });
+        }
         // Initialize HTMX and check for proper loading
         if (typeof htmx === 'undefined') {
             console.error('HTMX not loaded! Delete functionality may not work.');
@@ -679,15 +704,21 @@
         const lines = message.split('\n');
         let patientInfo = '';
         let patientId = '';
+        let recordId = '';
+        let moduleName = '';
 
         for (const line of lines) {
-            if (line.includes('patient:')) {
-                patientInfo = line.replace('Authorization request for NHIA patient:', '').trim();
+            if (line.includes('Authorization request for NHIA Patient:')) {
+                patientInfo = line.replace('Authorization request for NHIA Patient:', '').trim();
                 // Extract patient ID from format "Name (ID: XXX)"
                 const match = patientInfo.match(/\(ID:\s*([^)]+)\)/);
                 if (match) {
                     patientId = match[1].trim();
                 }
+            } else if (line.includes('Module:')) {
+                moduleName = line.replace('Module:', '').trim();
+            } else if (line.includes('Record ID:')) {
+                recordId = line.replace('Record ID:', '').trim();
             }
         }
 
@@ -699,8 +730,8 @@
             if (patientId) {
                 // Also mark notification as read
                 markNotificationRead(notificationId, false);
-                // Redirect to generate code page
-                window.location.href = `/desk-office/generate-code/?patient_id=${encodeURIComponent(patientId)}`;
+                // Redirect to current page with patient_id parameter
+                window.location.href = `{% url 'desk_office:authorization_dashboard' %}?patient_id=${encodeURIComponent(patientId)}`;
             } else {
                 alert('Could not extract patient ID from notification. Please use manual search.');
             }
@@ -727,59 +758,75 @@
             .catch(error => {
                 console.error('Error marking notification as read:', error);
             });
+    }
 
-        function testDeleteFunction() {
-            console.log('Test delete function called');
-            if (confirm('Test: delete first notification?')) {
-                deleteNotification(1);
-            }
+    function testDeleteFunction() {
+        console.log('Test delete function called');
+        if (confirm('Test: delete first notification?')) {
+            deleteNotification(1);
         }
+    }
 
-        function deleteNotification(notificationId) {
-            if (confirm('Are you sure you want to remove this authorization request?')) {
-                const tbody = document.getElementById('medical-module-requests-tbody');
-                if (tbody) {
-                    // Remove the row with animation
-                    const row = document.getElementById(`request-${notificationId}`);
-                    if (row) {
-                        row.style.transition = 'opacity 0.3s';
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 300);
-                    }
-
-                    // Send POST request to delete endpoint
-                    const url = `/desk-office/authorization-request/${notificationId}/delete/`;
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
-
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': csrfToken
-                        },
-                        body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
-                    })
-                        .then(response => response.text())
-                        .then(html => {
-                            // Update the tbody with new content
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = `<table><tbody>${html}</tbody></table>`;
-                            const newRows = tempDiv.querySelector('tbody').innerHTML;
-                            tbody.innerHTML = newRows;
-                        })
-                        .catch(error => {
-                            console.error('Error deleting notification:', error);
-                            // Show error message
-                            if (tbody) {
-                                const errorRow = document.createElement('tr');
-                                errorRow.innerHTML = '<td colspan="6" class="text-center text-danger py-3">Error deleting request</td>';
-                                tbody.appendChild(errorRow);
-                            }
-                        });
-                } else {
-                    console.error('Target tbody not found');
+    function deleteNotification(notificationId) {
+        if (confirm('Are you sure you want to remove this authorization request?')) {
+            const tbody = document.getElementById('medical-module-requests-tbody');
+            if (tbody) {
+                // Show loading state
+                const row = document.getElementById(`request-${notificationId}`);
+                if (row) {
+                    const originalContent = row.innerHTML;
+                    row.innerHTML = '<td colspan="6" class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Deleting...</td>';
                 }
+
+                // Send POST request to delete endpoint
+                const url = `/desk-office/authorization-request/${notificationId}/delete/`;
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken,
+                        'Accept': 'text/html'
+                    },
+                    body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        // Update the tbody with new content
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = `<table><tbody>${html}</tbody></table>`;
+                        const newRows = tempDiv.querySelector('tbody').innerHTML;
+                        tbody.innerHTML = newRows;
+                    })
+                    .catch(error => {
+                        console.error('Error deleting notification:', error);
+                        // Restore original content and show error
+                        if (row) {
+                            row.innerHTML = originalContent;
+                            row.style.backgroundColor = '#f8d7da';
+                            setTimeout(() => {
+                                row.style.backgroundColor = '';
+                            }, 2000);
+                        }
+                        
+                        // Show error message
+                        if (tbody) {
+                            const errorRow = document.createElement('tr');
+                            errorRow.innerHTML = '<td colspan="6" class="text-center text-danger py-3">Error: ' + error.message + '</td>';
+                            tbody.appendChild(errorRow);
+                        }
+                    });
+            } else {
+                console.error('Target tbody not found');
+                alert('Error: Could not find request list. Please refresh the page.');
             }
         }
+    }
 </script>
 {% endblock %}
