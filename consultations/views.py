@@ -1778,17 +1778,25 @@ def department_referral_dashboard(request):
     if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department:
         user_department = request.user.profile.department
 
-    if not user_department:
+    # Superusers can view all referrals without department assignment
+    if not user_department and not request.user.is_superuser:
         messages.error(request, "You must be assigned to a department to view referrals.")
         return redirect('dashboard:dashboard')
 
-    # Get all referrals sent to this department
-    referrals = Referral.objects.filter(
-        referred_to_department=user_department
-    ).select_related(
-        'patient', 'referring_doctor', 'referred_to_department',
-        'assigned_doctor', 'consultation', 'authorization_code'
-    ).order_by('-referral_date')
+    # Get referrals - all for superusers, department-specific for others
+    if user_department:
+        referrals = Referral.objects.filter(
+            referred_to_department=user_department
+        ).select_related(
+            'patient', 'referring_doctor', 'referred_to_department',
+            'assigned_doctor', 'consultation', 'authorization_code'
+        ).order_by('-referral_date')
+    else:
+        # Superusers see all referrals
+        referrals = Referral.objects.all().select_related(
+            'patient', 'referring_doctor', 'referred_to_department',
+            'assigned_doctor', 'consultation', 'authorization_code'
+        ).order_by('-referral_date')
 
     # Apply status filter
     status_filter = request.GET.get('status', '')

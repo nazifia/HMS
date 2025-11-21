@@ -34,7 +34,8 @@ def index(request):
     # Get user's department for referral integration
     user_department = get_user_department(request.user)
 
-    if not user_department:
+    # Superusers don't need department assignment warnings
+    if not user_department and not request.user.is_superuser:
         messages.warning(request, "You are not assigned to a department. Some features may be limited.")
         user_department = None
 
