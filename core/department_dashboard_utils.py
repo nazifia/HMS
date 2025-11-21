@@ -36,13 +36,20 @@ def model_has_field(model, field_name):
 def get_user_department(user):
     """
     Get the department assigned to a user
-    
+
     Args:
         user: CustomUser instance
-        
+
     Returns:
         Department instance or None
+
+    Note:
+        Superusers are treated as having access to all departments.
+        For superusers, this function returns None but callers should check
+        user.is_superuser before blocking access based on None department.
     """
+    # Superusers don't need a department assignment but should have access everywhere
+    # Return None but views should check is_superuser separately
     if hasattr(user, 'profile') and user.profile and user.profile.department:
         return user.profile.department
     return None
@@ -194,15 +201,28 @@ def build_department_dashboard_context(
     
     # Get recent records
     recent_records = record_queryset.select_related('patient').order_by('-created_at')[:10]
-    
-    # Get referral statistics
-    referral_stats = get_department_referral_statistics(department)
-    pending_referrals = get_pending_referrals(department, limit=20)
-    
+
+    # Get referral statistics (only if department is provided)
+    if department:
+        referral_stats = get_department_referral_statistics(department)
+        pending_referrals = get_pending_referrals(department, limit=20)
+        department_name = department.name
+        page_title = f'{department.name} Department Dashboard'
+    else:
+        # For superusers without department assignment
+        referral_stats = {
+            'total_referrals': 0,
+            'pending_referrals': 0,
+            'requiring_authorization': 0,
+        }
+        pending_referrals = []
+        department_name = 'All Departments'
+        page_title = 'Department Dashboard'
+
     # Build context
     context = {
         'department': department,
-        'department_name': department.name,
+        'department_name': department_name,
         
         # Time periods
         'today': time_periods['today'],
@@ -223,7 +243,7 @@ def build_department_dashboard_context(
         'pending_authorizations': referral_stats['requiring_authorization'],
         
         # Page metadata
-        'page_title': f'{department.name} Department Dashboard',
+        'page_title': page_title,
         'active_nav': 'dashboard',
     }
     
@@ -629,15 +649,24 @@ def get_active_staff(department, hours=24):
     )
 
     # Get profiles for these users in the department
-    active_staff = (
-        CustomUserProfile.objects
-        .filter(
-            user_id__in=active_user_ids,
-            department=department
+    # If department is None (superuser), get all active staff
+    if department:
+        active_staff = (
+            CustomUserProfile.objects
+            .filter(
+                user_id__in=active_user_ids,
+                department=department
+            )
+            .select_related('user')
+            .order_by('user__first_name')
         )
-        .select_related('user')
-        .order_by('user__first_name')
-    )
+    else:
+        active_staff = (
+            CustomUserProfile.objects
+            .filter(user_id__in=active_user_ids)
+            .select_related('user')
+            .order_by('user__first_name')
+        )
 
     return active_staff
 

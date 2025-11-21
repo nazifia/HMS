@@ -35,7 +35,8 @@ def ophthalmic_dashboard(request):
 
     user_department = get_user_department(request.user)
 
-    if not user_department:
+    # Superusers can access all departments without assignment
+    if not user_department and not request.user.is_superuser:
         messages.error(request, "You must be assigned to a department.")
         return redirect('dashboard:dashboard')
 

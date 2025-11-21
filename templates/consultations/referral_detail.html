@@ -73,12 +73,10 @@
             <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-outline-primary btn-sm">
                 <i class="fas fa-list"></i> All Referrals
             </a>
-            {% if request.user.is_staff or request.user.profile %}  
-                {% if request.user.is_staff or request.user.profile.role == 'admin' %}
+            {% if request.user.is_superuser or (request.user.profile and request.user.profile.role == 'admin') %}
                 <a href="{% url 'desk_office:pending_referrals' %}" class="btn btn-outline-info btn-sm">
                     <i class="fas fa-shield-alt"></i> Pending Authorizations
                 </a>
-                {% endif %}
             {% endif %}
         </div>
     </div>
@@ -383,8 +381,7 @@
                             <i class="fas fa-user"></i> View Patient Profile
                         </a>
                         
-                        {% if request.user.is_staff or request.user.profile %}  
-                {% if request.user.is_staff or request.user.profile.role == 'admin' %}
+                        {% if request.user.is_superuser or (request.user.profile and request.user.profile.role == 'admin') %}
                             {% if referral.patient.patient_type == 'nhia' %}
                                 {% if referral.authorization_status == 'required' or referral.authorization_status == 'pending' %}
                                     <a href="{% url 'desk_office:authorize_referral' referral.id %}" class="btn btn-outline-warning">
@@ -392,7 +389,6 @@
                                     </a>
                                 {% endif %}
                             {% endif %}
-                        {% endif %}
                         {% endif %}
 
                         {% if referral.status == 'pending' %}

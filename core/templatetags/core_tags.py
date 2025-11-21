@@ -239,8 +239,56 @@ def user_role_display(user):
 def is_admin_user(context):
     """Check if current user is admin or superuser"""
     user = context.get('user')
-    return user.is_authenticated and (user.is_superuser or 
-                                    (hasattr(user, 'profile') and user.profile.role == 'admin'))
+    return user.is_authenticated and (user.is_superuser or
+                                    (hasattr(user, 'profile') and user.profile and user.profile.role == 'admin'))
+
+@register.filter
+def has_any_role(user, roles):
+    """
+    Check if user has any of the specified roles (or is superuser).
+    Usage: {% if user|has_any_role:"admin,doctor,nurse" %}
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    if user.is_superuser:
+        return True
+
+    # Parse roles string
+    if isinstance(roles, str):
+        role_list = [r.strip() for r in roles.split(',')]
+    else:
+        role_list = roles
+
+    # Check ManyToMany roles
+    if hasattr(user, 'roles'):
+        user_roles = list(user.roles.values_list('name', flat=True))
+        if any(role in role_list for role in user_roles):
+            return True
+
+    # Check legacy profile role
+    profile_role = getattr(getattr(user, 'profile', None), 'role', None)
+    return profile_role in role_list if profile_role else False
+
+@register.filter
+def is_superuser_or_admin(user):
+    """
+    Simplified check for superuser or admin access.
+    Usage: {% if user|is_superuser_or_admin %}
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    if user.is_superuser:
+        return True
+
+    # Check for admin role
+    if hasattr(user, 'roles') and user.roles.filter(name='admin').exists():
+        return True
+
+    # Check legacy profile role
+    profile_role = getattr(getattr(user, 'profile', None), 'role', None)
+    return profile_role == 'admin'
 
 @register.simple_tag(takes_context=True)
 def can_view_sensitive_data(context):

@@ -24,16 +24,21 @@ from core.models import send_notification_email, send_notification_sms, Internal
 @login_required
 def unified_dashboard(request):
     """Unified dashboard combining waiting list and consultations"""
-    if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
-        # Get consultations for this doctor
+    # Superusers and admins see all consultations
+    if request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']):
+        consultations = Consultation.objects.all().order_by('-consultation_date')
+        waiting_entries = WaitingList.objects.filter(
+            status__in=['waiting', 'in_progress']
+        ).order_by('priority', 'check_in_time')
+    elif hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
+        # Doctors see only their consultations
         consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
-        # Get waiting list entries for this doctor
         waiting_entries = WaitingList.objects.filter(
             doctor=request.user,
             status__in=['waiting', 'in_progress']
         ).order_by('priority', 'check_in_time')
     else:
-        # For admin staff, show all
+        # Default: show all
         consultations = Consultation.objects.all().order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
@@ -60,14 +65,21 @@ def unified_dashboard(request):
 @login_required
 def consultation_list(request):
     """View to list consultations for the logged-in doctor with waiting list integration"""
-    if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
+    # Superusers and admins see all consultations
+    if request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']):
+        consultations = Consultation.objects.all().order_by('-consultation_date')
+        waiting_entries = WaitingList.objects.filter(
+            status__in=['waiting', 'in_progress']
+        ).order_by('priority', 'check_in_time')
+    elif hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
+        # Doctors see only their consultations
         consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
-        # Get waiting list entries for this doctor
         waiting_entries = WaitingList.objects.filter(
             doctor=request.user,
             status__in=['waiting', 'in_progress']
         ).order_by('priority', 'check_in_time')
     else:
+        # Default: show all
         consultations = Consultation.objects.all().order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
@@ -90,10 +102,10 @@ def bulk_start_consultations(request):
             'message': 'Bulk start endpoint is accessible'
         })
     
-    if not hasattr(request.user, 'profile') or not request.user.profile.role == 'doctor':
+    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor')):
         return JsonResponse({
             'success': False,
-            'message': 'Only doctors can start consultations.'
+            'message': 'Only doctors and superusers can start consultations.'
         })
     
     try:
@@ -1599,7 +1611,7 @@ def update_waiting_status(request, entry_id):
             messages.error(request, "Invalid status.")
 
     # Redirect based on user role
-    if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
+    if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
         return redirect('consultations:doctor_waiting_list')
     else:
         return redirect('consultations:waiting_list')
