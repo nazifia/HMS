@@ -24,14 +24,24 @@
             onclick="showAuthorizationModal('{{ notification.message|escapejs }}', {{ notification.id }})">
             <i class="fas fa-check"></i> Generate Code
         </button>
+        <button type="button" class="btn btn-sm btn-outline-warning"
+            hx-post="{% url 'desk_office:delete_medical_module_request' notification.id %}"
+            hx-target="#medical-module-requests-container"
+            hx-swap="innerHTML"
+            hx-confirm="Are you sure you want to mark this authorization request as read?"
+            hx-indicator="#request-{{ notification.id }}"
+            title="Mark as Read">
+            <i class="fas fa-check"></i> 
+            <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status" aria-hidden="true"></span>
+        </button>
         <button type="button" class="btn btn-sm btn-outline-danger"
             hx-post="{% url 'desk_office:delete_medical_module_request' notification.id %}"
-            hx-target="#medical-module-requests-tbody"
+            hx-target="#medical-module-requests-container"
             hx-swap="innerHTML"
             hx-confirm="Are you sure you want to remove this authorization request?"
             hx-indicator="#request-{{ notification.id }}"
             title="Remove Request">
-            <i class="fas fa-times"></i>
+            <i class="fas fa-trash"></i>
             <span class="htmx-indicator spinner-border spinner-border-sm ms-1" role="status" aria-hidden="true"></span>
         </button>
     </td>

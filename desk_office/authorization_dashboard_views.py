@@ -8,7 +8,8 @@ from django.contrib import messages
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotAllowed
+
 from consultations.models import Consultation, Referral
 from pharmacy.models import Prescription
 from laboratory.models import TestRequest
@@ -784,9 +785,9 @@ def delete_medical_module_request(request, notification_id):
     HTMX endpoint to delete/mark as read a medical module authorization request
     Returns updated HTML fragment for the requests list
     """
-    # Support both DELETE and POST methods for HTMX compatibility
-    if request.method not in ['DELETE', 'POST']:
-        return HttpResponseNotAllowed(['DELETE', 'POST'])
+    # Accept POST for both mark as read and remove actions
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
     
     try:
         # Get the notification
@@ -814,8 +815,6 @@ def delete_medical_module_request(request, notification_id):
         
         # Add HTMX response headers to ensure proper handling
         response['HX-Trigger'] = 'notificationDeleted'
-        response['HX-Retarget'] = '#medical-module-requests-tbody'
-        response['HX-Reswap'] = 'innerHTML'
         
         return response
         
