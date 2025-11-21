@@ -933,13 +933,16 @@
         let patientId = '';
 
         for (const line of lines) {
-            if (line.includes('patient:')) {
-                patientInfo = line.replace('Authorization request for NHIA patient:', '').trim();
+            // Case-insensitive check for 'Patient:' or 'patient:'
+            if (line.toLowerCase().includes('patient:')) {
+                // Extract patient info - handle both lowercase and uppercase variations
+                patientInfo = line.replace(/Authorization request for NHIA [Pp]atient:\s*/i, '').trim();
                 // Extract patient ID from format "Name (ID: XXX)"
                 const match = patientInfo.match(/\(ID:\s*([^)]+)\)/);
                 if (match) {
                     patientId = match[1].trim();
                 }
+                break; // Found the patient line, no need to continue
             }
         }
 
