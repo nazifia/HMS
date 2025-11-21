@@ -42,6 +42,7 @@ def patient_list(request):
         city = request.GET.get('city', '').strip()
         date_from = request.GET.get('date_from', '').strip()
         date_to = request.GET.get('date_to', '').strip()
+        diagnosis = request.GET.get('diagnosis', '').strip()
 
         # Apply search query filter
         if search_query:
@@ -52,6 +53,15 @@ def patient_list(request):
                 Q(phone_number__icontains=search_query) |
                 Q(email__icontains=search_query)
             )
+
+        # Apply diagnosis filter
+        if diagnosis:
+            # Search across consultations, medical histories, and physiotherapy requests
+            patients = patients.filter(
+                Q(consultations__diagnosis__icontains=diagnosis) |
+                Q(medical_histories__diagnosis__icontains=diagnosis) |
+                Q(physiotherapy_requests__diagnosis__icontains=diagnosis)
+            ).distinct()
 
         # Apply additional filters
         if gender:

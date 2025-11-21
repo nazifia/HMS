@@ -86,13 +86,24 @@ class EnhancedPatientSearchForm(PatientSearchForm):
         }),
         help_text='Filter patients registered up to this date'
     )
-    
+
+    diagnosis = forms.CharField(
+        required=False,
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by diagnosis...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search patients by diagnosis from consultations or medical history'
+    )
+
     def clean(self):
         cleaned_data = super().clean()
         date_from = cleaned_data.get('date_from')
         date_to = cleaned_data.get('date_to')
-        
+
         if date_from and date_to and date_from > date_to:
             raise forms.ValidationError("Start date cannot be after end date.")
-            
+
         return cleaned_data

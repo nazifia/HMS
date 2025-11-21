@@ -9,10 +9,79 @@
                     <h3 class="card-title">Patient List</h3>
                 </div>
                 <div class="card-body">
-                    <form method="get" class="form-inline mb-3">
-                        {{ search_form.as_p }}
-                        <button type="submit" class="btn btn-primary">Search</button>
+                    <!-- ✨ UPDATED TEMPLATE - DIAGNOSIS SEARCH ENABLED ✨ -->
+                    <div class="alert alert-success mb-3" role="alert">
+                        <strong>✓ Template Updated!</strong> Diagnosis search is now available below.
+                    </div>
+                    <!-- Enhanced Search Form -->
+                    <form method="get" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ search_form.search.id_for_label }}" class="form-label">Search</label>
+                                {{ search_form.search }}
+                                <small class="form-text text-muted">{{ search_form.search.help_text }}</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ search_form.diagnosis.id_for_label }}" class="form-label">Diagnosis</label>
+                                {{ search_form.diagnosis }}
+                                <small class="form-text text-muted">{{ search_form.diagnosis.help_text }}</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ search_form.city.id_for_label }}" class="form-label">City</label>
+                                {{ search_form.city }}
+                                <small class="form-text text-muted">{{ search_form.city.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ search_form.gender.id_for_label }}" class="form-label">Gender</label>
+                                {{ search_form.gender }}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ search_form.blood_group.id_for_label }}" class="form-label">Blood Group</label>
+                                {{ search_form.blood_group }}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ search_form.patient_type.id_for_label }}" class="form-label">Patient Type</label>
+                                {{ search_form.patient_type }}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label>&nbsp;</label>
+                                <div>
+                                    <button type="submit" class="btn btn-primary btn-block">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ search_form.date_from.id_for_label }}" class="form-label">Registration From</label>
+                                {{ search_form.date_from }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ search_form.date_to.id_for_label }}" class="form-label">Registration To</label>
+                                {{ search_form.date_to }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label>&nbsp;</label>
+                                <div>
+                                    <a href="{% url 'patients:list' %}" class="btn btn-secondary btn-block">
+                                        <i class="fas fa-redo"></i> Clear Filters
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </form>
+
+                    <!-- Results Summary -->
+                    {% if total_patients %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Found <strong>{{ total_patients }}</strong> patient(s)
+                    </div>
+                    {% endif %}
+
+                    <!-- Patient Table -->
                     <table class="table table-bordered">
                         <thead>
                             <tr>

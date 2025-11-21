@@ -65,12 +65,19 @@
                     hx-target="#patient-table-container"
                     hx-trigger="submit, search"
                     hx-indicator=".search-loading">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="id_search" class="form-label">Search</label>
-                        <input type="text" name="{{ search_form.search.name }}" id="{{ search_form.search.id_for_label }}" 
-                               class="form-control" value="{{ search_form.search.value|default:'' }}" 
+                        <input type="text" name="{{ search_form.search.name }}" id="{{ search_form.search.id_for_label }}"
+                               class="form-control" value="{{ search_form.search.value|default:'' }}"
                                @input.debounce.300ms="performSearch()" placeholder="Search patients..." x-model="search">
                         <span x-show="typing" class="text-muted small">Typing...</span>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_diagnosis" class="form-label">Diagnosis</label>
+                        <input type="text" name="{{ search_form.diagnosis.name }}" id="{{ search_form.diagnosis.id_for_label }}"
+                               class="form-control" value="{{ search_form.diagnosis.value|default:'' }}"
+                               @input.debounce.300ms="performSearch()" placeholder="Search by diagnosis...">
+                        <small class="text-muted">Search patients by diagnosis</small>
                     </div>
                     <div class="col-md-2">
                         <label for="id_gender" class="form-label">Gender</label>
@@ -95,10 +102,10 @@
                             <option value="O-" {% if search_form.blood_group.value == 'O-' %}selected{% endif %}>O-</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <label for="id_city" class="form-label">City</label>
-                        <input type="text" name="{{ search_form.city.name }}" id="{{ search_form.city.id_for_label }}" 
-                               class="form-control" value="{{ search_form.city.value|default:'' }}" 
+                        <input type="text" name="{{ search_form.city.name }}" id="{{ search_form.city.id_for_label }}"
+                               class="form-control" value="{{ search_form.city.value|default:'' }}"
                                @input.debounce.300ms="performSearch()" placeholder="City">
                     </div>
                     <div class="col-md-2">
