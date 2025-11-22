@@ -127,10 +127,106 @@ def test_performance(request):
 
 
 @login_required
+def request_nhia_authorization_form(request, model_type, object_id):
+    """
+    Display form to request NHIA authorization
+    """
+    # Get the appropriate model and record
+    from ophthalmic.models import OphthalmicRecord
+    from dental.models import DentalRecord
+    from consultations.models import Consultation
+
+    model_map = {
+        'ophthalmic_record': OphthalmicRecord,
+        'dental_record': DentalRecord,
+        'consultation': Consultation,
+    }
+
+    model_class = model_map.get(model_type)
+    if not model_class:
+        messages.error(request, 'Invalid record type.')
+        return redirect('dashboard:dashboard')
+
+    record = get_object_or_404(model_class, id=object_id)
+
+    # Check if patient is NHIA
+    if record.patient.patient_type != 'nhia':
+        messages.error(request, 'Authorization request is only for NHIA patients.')
+        return redirect(request.META.get('HTTP_REFERER', 'dashboard:dashboard'))
+
+    # Check if already authorized
+    if hasattr(record, 'authorization_code') and record.authorization_code:
+        messages.info(request, 'This record already has an authorization code.')
+        return redirect(request.META.get('HTTP_REFERER', 'dashboard:dashboard'))
+
+    if request.method == 'POST':
+        notes = request.POST.get('notes', '').strip()
+        estimated_amount = request.POST.get('estimated_amount', '')
+
+        if not notes:
+            messages.error(request, 'Please provide a reason for the authorization request.')
+            return render(request, 'core/request_authorization_form.html', {
+                'record': record,
+                'model_type': model_type,
+                'module_name': model_type.replace('_', ' ').title(),
+            })
+
+        # Send authorization request
+        from django.db.models import Q
+        desk_office_users = CustomUser.objects.filter(
+            Q(is_superuser=True) |
+            Q(is_staff=True) |
+            Q(profile__role='admin') |
+            Q(profile__role='accountant')
+        ).distinct()
+
+        if not desk_office_users.exists():
+            messages.error(request, 'No desk office staff available to receive authorization requests.')
+            return render(request, 'core/request_authorization_form.html', {
+                'record': record,
+                'model_type': model_type,
+                'module_name': model_type.replace('_', ' ').title(),
+            })
+
+        # Create notification
+        primary_user = desk_office_users.first()
+        notification_title = f"NHIA Authorization Request - {model_type.replace('_', ' ').title()}"
+        notification_message = f"""
+Authorization request for NHIA Patient: {record.patient.get_full_name()} (ID: {record.patient.patient_id})
+
+Module: {model_type.replace('_', ' ').title()}
+Record ID: {record.id}
+Requested by: {request.user.get_full_name() or request.user.username}
+Reason: {notes}
+Estimated Amount: ₦{estimated_amount if estimated_amount else 'Not specified'}
+
+Please generate an authorization code for this patient to proceed with treatment and billing.
+        """.strip()
+
+        InternalNotification.objects.create(
+            user=primary_user,
+            sender=request.user,
+            title=notification_title,
+            message=notification_message,
+            notification_type='warning'
+        )
+
+        messages.success(request, 'Authorization request sent to desk office successfully.')
+        return redirect(request.META.get('HTTP_REFERER', 'dashboard:dashboard'))
+
+    context = {
+        'record': record,
+        'model_type': model_type,
+        'module_name': model_type.replace('_', ' ').title(),
+    }
+    return render(request, 'core/request_authorization_form.html', context)
+
+
+@login_required
 @require_POST
 def request_nhia_authorization(request):
     """
-    Send NHIA authorization request notification to desk office staff
+    Send NHIA authorization request notification to desk office staff (AJAX endpoint)
     """
     try:
         patient_id = request.POST.get('patient_id')

@@ -1,0 +1,110 @@
+{% load static %}
+<!-- Ophthalmic Authorization Widget for NHIA Patients -->
+{% if record and record.patient %}
+<div class="card border-left-warning shadow mb-4" id="authorizationWidget">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-warning">
+            <i class="fas fa-shield-alt"></i> NHIA Authorization Status
+        </h6>
+        {% if record.patient.patient_type == 'nhia' %}
+            <span class="badge badge-warning">NHIA Patient</span>
+        {% else %}
+            <span class="badge badge-secondary">Regular Patient</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if record.patient.patient_type != 'nhia' %}
+            <div class="alert alert-info mb-0">
+                <i class="fas fa-info-circle"></i> Authorization not required - Patient is not NHIA
+            </div>
+        {% else %}
+            {# Check authorization status for NHIA patients #}
+            {% if record.authorization_code %}
+                {# Has authorization code #}
+                <div class="alert alert-success">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 text-success"><strong>Authorization Granted</strong></h6>
+                            <p class="mb-1">
+                                <strong>Code:</strong> {{ record.authorization_code }}
+                            </p>
+                            <p class="mb-0 text-muted">
+                                <small>This patient has valid authorization for ophthalmic services.</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                {# Authorization history link #}
+                <div class="text-center mt-2">
+                    <a href="{% url 'core:authorization_history' model_type='ophthalmic_record' object_id=record.id %}" class="btn btn-sm btn-outline-info" target="_blank">
+                        <i class="fas fa-history"></i> View Authorization History
+                    </a>
+                </div>
+                
+            {% elif requires_authorization %}
+                {# Check if authorization request is pending #}
+                {% if authorization_request_pending %}
+                    {# Request already sent - show pending status #}
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-clock fa-2x me-3 text-info"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 text-info"><strong>Authorization Request Pending</strong></h6>
+                                <p class="mb-0">
+                                    An authorization request has been sent to desk office. You will be notified once it's processed.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Disabled button #}
+                    <div class="mt-3 text-center">
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i class="fas fa-check-circle"></i> Request Already Sent
+                        </button>
+                        <p class="text-muted small mt-2 mb-0">
+                            <i class="fas fa-info-circle"></i> Please wait for desk office to process your request
+                        </p>
+                    </div>
+                {% else %}
+                    {# Requires authorization - show request button #}
+                    <div class="alert alert-warning">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle fa-2x me-3 text-warning"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 text-warning"><strong>Authorization Required</strong></h6>
+                                <p class="mb-0">
+                                    This NHIA patient requires desk office authorization before proceeding with treatment or billing.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Action buttons #}
+                    <div class="mt-3">
+                        <a href="{% url 'core:request_authorization_form' model_type='ophthalmic_record' object_id=record.id %}" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Request Authorization
+                        </a>
+                    </div>
+                {% endif %}
+
+            {% else %}
+                {# Check authorization status #}
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle fa-2x me-3 text-info"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 text-info"><strong>Checking Authorization Status</strong></h6>
+                            <p class="mb-0">
+                                Verifying authorization status for this NHIA patient...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
