@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
+from decimal import Decimal
 from .models import DentalRecord, DentalService, DentalXRay
 from .forms import DentalRecordForm, DentalRecordSearchForm, DentalServiceForm, DentalXRayForm
 from patients.models import Patient
@@ -544,31 +545,36 @@ def generate_invoice_for_dental(request, record_id):
     if request.method == 'POST':
         try:
             with transaction.atomic():
+                # Calculate amounts
+                service_price = record.get_service_price()
+                subtotal = service_price
+                tax_amount = Decimal('0.00')  # No tax for dental services
+                discount_amount = Decimal('0.00')
+                total_amount = subtotal + tax_amount - discount_amount
+
+                # Set due date (7 days from now)
+                due_date = timezone.now().date() + timezone.timedelta(days=7)
+
                 # Create the invoice
                 invoice = Invoice.objects.create(
                     patient=record.patient,
-                    issued_by=request.user,
-                    total_amount=record.get_service_price(),
-                    status='pending'
+                    created_by=request.user,
+                    subtotal=subtotal,
+                    tax_amount=tax_amount,
+                    discount_amount=discount_amount,
+                    total_amount=total_amount,
+                    due_date=due_date,
+                    status='pending',
+                    source_app='other'  # Dental doesn't have a specific source_app choice
                 )
-                
-                # Create invoice item
-                if record.service:
-                    InvoiceItem.objects.create(
-                        invoice=invoice,
-                        item_name=record.service.name,
-                        quantity=1,
-                        unit_price=record.service.price,
-                        total_price=record.service.price
-                    )
-                
+
                 # Link invoice to dental record
                 record.invoice = invoice  # type: ignore
                 record.save()
-                
-                messages.success(request, 'Invoice generated successfully.')
+
+                messages.success(request, f'Invoice #{invoice.invoice_number} generated successfully.')
                 return redirect('dental:dental_record_detail', record_id=record.pk)
-                
+
         except Exception as e:
             messages.error(request, f'Error generating invoice: {str(e)}')
     
