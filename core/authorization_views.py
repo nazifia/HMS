@@ -177,16 +177,46 @@ def generate_authorization(request, model_type, object_id):
 def universal_authorization_dashboard(request):
     """
     Universal dashboard showing all pending authorization requests across all modules
+    Supports search by patient name or patient ID
     """
+    # Get search query from request
+    search_query = request.GET.get('search', '').strip()
+
     # Get all pending authorizations
     pending_items = get_all_pending_authorizations()
-    
+
+    # Filter pending items by search query if provided
+    if search_query:
+        filtered_pending_items = {}
+        for model_type, data in pending_items.items():
+            filtered_items = [
+                item for item in data['items']
+                if search_query.lower() in item.patient.get_full_name().lower() or
+                   search_query.lower() in str(item.patient.patient_id).lower()
+            ]
+            if filtered_items:
+                filtered_pending_items[model_type] = {
+                    'display_name': data['display_name'],
+                    'items': filtered_items,
+                    'count': len(filtered_items)
+                }
+        pending_items = filtered_pending_items
+
     # Calculate total count
     total_count = sum(item['count'] for item in pending_items.values())
-    
-    # Get recent authorization codes
-    recent_codes = AuthorizationCode.objects.select_related('patient', 'generated_by').order_by('-generated_at')[:20]
-    
+
+    # Get recent authorization codes with search filter
+    recent_codes_query = AuthorizationCode.objects.select_related('patient', 'generated_by')
+
+    if search_query:
+        recent_codes_query = recent_codes_query.filter(
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(patient__patient_id__icontains=search_query)
+        )
+
+    recent_codes = recent_codes_query.order_by('-generated_at')[:20]
+
     # Get statistics
     today = timezone.now().date()
     stats = {
@@ -195,15 +225,17 @@ def universal_authorization_dashboard(request):
         'active_codes': AuthorizationCode.objects.filter(status='active').count(),
         'expired_codes': AuthorizationCode.objects.filter(status='expired').count(),
     }
-    
+
     context = {
         'pending_items': pending_items,
         'recent_codes': recent_codes,
         'stats': stats,
+        'search_query': search_query,
         'page_title': 'Universal Authorization Dashboard',
         'active_nav': 'authorization',
+        'today': today,
     }
-    
+
     return render(request, 'core/universal_authorization_dashboard.html', context)
 
 

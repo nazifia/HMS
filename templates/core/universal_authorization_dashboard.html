@@ -67,6 +67,30 @@
     .table td .btn {
         white-space: nowrap;
     }
+
+    /* Search highlight styling */
+    mark {
+        background-color: #fff3cd;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-weight: 600;
+    }
+
+    /* Search input focus effect */
+    #searchInput:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+
+    /* Clear search button styling */
+    #clearSearch {
+        border-left: 0;
+    }
+
+    #clearSearch:hover {
+        background-color: #f8f9fc;
+        color: #dc3545;
+    }
 </style>
 {% endblock %}
 
@@ -81,6 +105,51 @@
             <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-arrow-left"></i> Back to Desk Office Dashboard
             </a>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="GET" action="{% url 'core:universal_authorization_dashboard' %}" id="searchForm">
+                <div class="row">
+                    <div class="col-md-10">
+                        <div class="input-group">
+                            <span class="input-group-text bg-primary text-white">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control form-control-lg"
+                                   id="searchInput"
+                                   name="search"
+                                   placeholder="Search by Patient Name or Patient ID..."
+                                   value="{{ search_query|default:'' }}"
+                                   autocomplete="off">
+                            {% if search_query %}
+                            <button type="button" class="btn btn-outline-secondary" id="clearSearch" title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                {% if search_query %}
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Showing results for: <strong>"{{ search_query }}"</strong>
+                        <a href="{% url 'core:universal_authorization_dashboard' %}" class="ms-2 text-primary">
+                            <i class="fas fa-redo"></i> Show All
+                        </a>
+                    </small>
+                </div>
+                {% endif %}
+            </form>
         </div>
     </div>
 
@@ -161,6 +230,9 @@
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">
                 <i class="fas fa-list"></i> Pending Authorization Requests
+                {% if search_query %}
+                <span class="badge badge-info">Filtered</span>
+                {% endif %}
             </h6>
         </div>
         <div class="card-body">
@@ -266,7 +338,13 @@
     </div>
     {% else %}
     <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i> No pending authorization requests at this time.
+        <i class="fas fa-info-circle"></i>
+        {% if search_query %}
+            No pending authorization requests match your search "{{ search_query }}".
+            <a href="{% url 'core:universal_authorization_dashboard' %}" class="alert-link">Show all requests</a>
+        {% else %}
+            No pending authorization requests at this time.
+        {% endif %}
     </div>
     {% endif %}
 
@@ -275,6 +353,9 @@
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">
                 <i class="fas fa-history"></i> Recent Authorization Codes
+                {% if search_query %}
+                <span class="badge badge-info">Filtered</span>
+                {% endif %}
             </h6>
         </div>
         <div class="card-body">
@@ -320,7 +401,14 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center">No authorization codes generated yet.</td>
+                            <td colspan="9" class="text-center">
+                                {% if search_query %}
+                                    No authorization codes match your search "{{ search_query }}".
+                                    <a href="{% url 'core:universal_authorization_dashboard' %}">Show all codes</a>
+                                {% else %}
+                                    No authorization codes generated yet.
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -329,5 +417,77 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Focus on search input if empty
+    const searchInput = $('#searchInput');
+    if (searchInput.val() === '') {
+        searchInput.focus();
+    }
+
+    // Clear search functionality
+    $('#clearSearch').on('click', function() {
+        window.location.href = '{% url "core:universal_authorization_dashboard" %}';
+    });
+
+    // Optional: Submit form on Enter key
+    searchInput.on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#searchForm').submit();
+        }
+    });
+
+    // Optional: Real-time client-side filtering (commented out for now)
+    /*
+    let searchTimeout;
+    searchInput.on('input', function() {
+        clearTimeout(searchTimeout);
+        const query = $(this).val().toLowerCase().trim();
+
+        if (query.length === 0) {
+            // Show all rows
+            $('.table tbody tr').show();
+            return;
+        }
+
+        searchTimeout = setTimeout(function() {
+            // Filter table rows
+            $('.table tbody tr').each(function() {
+                const rowText = $(this).text().toLowerCase();
+                if (rowText.includes(query)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        }, 300); // Debounce for 300ms
+    });
+    */
+
+    // Highlight search terms in results
+    {% if search_query %}
+    const searchTerm = "{{ search_query|escapejs }}";
+    if (searchTerm) {
+        highlightSearchTerm(searchTerm);
+    }
+    {% endif %}
+
+    function highlightSearchTerm(term) {
+        const regex = new RegExp('(' + term + ')', 'gi');
+        $('.table tbody td').each(function() {
+            const $td = $(this);
+            const text = $td.text();
+            if (regex.test(text)) {
+                const highlightedText = text.replace(regex, '<mark>$1</mark>');
+                $td.html(highlightedText);
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
 
