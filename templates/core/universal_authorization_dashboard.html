@@ -3,6 +3,73 @@
 
 {% block title %}Universal Authorization Dashboard{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Make status column more readable in both tables */
+    .table th:nth-child(5),
+    .table td:nth-child(5),
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
+        min-width: 150px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* Status badge improvements */
+    .badge {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .badge i {
+        font-size: 0.9rem;
+    }
+
+    /* Table hover effect */
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transition: background-color 0.2s ease;
+    }
+
+    /* Accordion button styling */
+    .accordion .btn-link {
+        text-decoration: none;
+        color: #4e73df;
+        font-weight: 600;
+    }
+
+    .accordion .btn-link:hover {
+        text-decoration: none;
+        color: #2e59d9;
+    }
+
+    /* Table header improvements */
+    .table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .table thead th {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        padding: 1rem 0.75rem;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    /* Action buttons in tables */
+    .table td .btn {
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <!-- Page Heading -->
@@ -120,14 +187,16 @@
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
-                                    <thead>
+                                    <thead class="bg-light">
                                         <tr>
                                             <th>ID</th>
                                             <th>Patient</th>
                                             <th>Patient ID</th>
                                             <th>Date</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
+                                            <th class="text-center">
+                                                <i class="fas fa-shield-alt"></i> Authorization Status
+                                            </th>
+                                            <th class="text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -137,7 +206,9 @@
                                             <td>{{ item.patient.get_full_name }}</td>
                                             <td>{{ item.patient.patient_id }}</td>
                                             <td>
-                                                {% if item.visit_date %}
+                                                {% if item.appointment_date %}
+                                                    {{ item.appointment_date|date:"Y-m-d" }}
+                                                {% elif item.visit_date %}
                                                     {{ item.visit_date|date:"Y-m-d" }}
                                                 {% elif item.consultation_date %}
                                                     {{ item.consultation_date|date:"Y-m-d" }}
@@ -149,17 +220,30 @@
                                                     {{ item.prescription_date|date:"Y-m-d" }}
                                                 {% elif item.referral_date %}
                                                     {{ item.referral_date|date:"Y-m-d" }}
+                                                {% elif item.surgery_date %}
+                                                    {{ item.surgery_date|date:"Y-m-d" }}
+                                                {% elif item.admission_date %}
+                                                    {{ item.admission_date|date:"Y-m-d" }}
+                                                {% elif item.created_at %}
+                                                    <span class="text-muted" title="Created Date">{{ item.created_at|date:"Y-m-d" }}</span>
                                                 {% else %}
-                                                    N/A
+                                                    <span class="text-muted">N/A</span>
                                                 {% endif %}
                                             </td>
                                             <td>
                                                 {% if item.authorization_status %}
-                                                    <span class="badge badge-{% if item.authorization_status == 'pending' %}warning{% elif item.authorization_status == 'required' %}danger{% else %}secondary{% endif %}">
+                                                    <span class="badge bg-{% if item.authorization_status == 'pending' %}warning{% elif item.authorization_status == 'required' %}danger{% elif item.authorization_status == 'authorized' %}success{% else %}secondary{% endif %} text-white px-3 py-2" style="font-size: 0.875rem;">
+                                                        <i class="fas fa-{% if item.authorization_status == 'pending' %}clock{% elif item.authorization_status == 'required' %}exclamation-triangle{% elif item.authorization_status == 'authorized' %}check-circle{% else %}question-circle{% endif %}"></i>
                                                         {{ item.authorization_status|title }}
                                                     </span>
+                                                {% elif item.authorization_code %}
+                                                    <span class="badge bg-success text-white px-3 py-2" style="font-size: 0.875rem;">
+                                                        <i class="fas fa-check-circle"></i> Authorized
+                                                    </span>
                                                 {% else %}
-                                                    <span class="badge badge-warning">Required</span>
+                                                    <span class="badge bg-danger text-white px-3 py-2" style="font-size: 0.875rem;">
+                                                        <i class="fas fa-exclamation-triangle"></i> Required
+                                                    </span>
                                                 {% endif %}
                                             </td>
                                             <td>
@@ -196,7 +280,7 @@
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-bordered table-hover">
-                    <thead>
+                    <thead class="bg-light">
                         <tr>
                             <th>Code</th>
                             <th>Patient</th>
@@ -204,7 +288,9 @@
                             <th>Service Type</th>
                             <th>Amount</th>
                             <th>Expiry Date</th>
-                            <th>Status</th>
+                            <th class="text-center">
+                                <i class="fas fa-info-circle"></i> Status
+                            </th>
                             <th>Generated By</th>
                             <th>Generated At</th>
                         </tr>
@@ -224,7 +310,8 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge badge-{% if code.status == 'active' %}success{% elif code.status == 'used' %}info{% elif code.status == 'expired' %}danger{% else %}secondary{% endif %}">
+                                <span class="badge bg-{% if code.status == 'active' %}success{% elif code.status == 'used' %}info{% elif code.status == 'expired' %}danger{% elif code.status == 'cancelled' %}secondary{% else %}warning{% endif %} text-white px-3 py-2" style="font-size: 0.875rem;">
+                                    <i class="fas fa-{% if code.status == 'active' %}check-circle{% elif code.status == 'used' %}arrow-circle-right{% elif code.status == 'expired' %}times-circle{% elif code.status == 'cancelled' %}ban{% else %}question-circle{% endif %}"></i>
                                     {{ code.get_status_display }}
                                 </span>
                             </td>

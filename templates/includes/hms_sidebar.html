@@ -526,9 +526,9 @@
                     <a class="collapse-item {% if 'universal_authorization_dashboard' in request.path %}active{% endif %}" href="{% url 'core:universal_authorization_dashboard' %}">
                         <i class="fas fa-globe me-1"></i> Universal Dashboard <span class="badge badge-success"></span>
                     </a>
-                    <a class="collapse-item {% if 'authorization-dashboard' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_dashboard' %}">
+                    {% comment %} <a class="collapse-item {% if 'authorization-dashboard' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_dashboard' %}">
                         <i class="fas fa-tachometer-alt me-1"></i> Dashboard
-                    </a>
+                    </a> {% endcomment %}
                     <a class="collapse-item {% if 'pending-consultations' in request.path %}active{% endif %}" href="{% url 'desk_office:pending_consultations' %}">
                         <i class="fas fa-stethoscope me-1"></i> Pending Consultations
                     </a>

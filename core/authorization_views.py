@@ -134,7 +134,6 @@ def generate_authorization(request, model_type, object_id):
                 return render(request, 'core/generate_authorization.html', context)
 
             # Create authorization code with manual code
-            from core.authorization_utils import generate_authorization_for_object
             auth_code, error = generate_authorization_for_object(
                 obj, request.user, amount, expiry_days, notes, manual_code=manual_code
             )

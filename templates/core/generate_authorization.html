@@ -3,6 +3,75 @@
 
 {% block title %}Generate Authorization Code{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Radio button container styling */
+    .form-check.border {
+        transition: all 0.3s ease;
+    }
+
+    .form-check.border:hover {
+        border-color: #4e73df !important;
+        background-color: #e3e9f7 !important;
+    }
+
+    /* Highlight selected radio option */
+    .form-check input[type="radio"]:checked + label {
+        color: #2e59d9;
+    }
+
+    .form-check input[type="radio"]:checked ~ * {
+        border-left: 3px solid #4e73df;
+    }
+
+    /* Make radio buttons larger */
+    .form-check-input {
+        width: 1.25rem;
+        height: 1.25rem;
+        margin-top: 0.125rem;
+        cursor: pointer;
+    }
+
+    /* Badge styling improvements */
+    .badge {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    /* Form group spacing */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    /* Manual code input styling */
+    #manualCodeGroup {
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    #manual_code {
+        border: 2px solid #ffc107;
+        background-color: #fffbf0;
+    }
+
+    #manual_code:focus {
+        border-color: #ff9800;
+        box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
+        background-color: #fff;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <!-- Page Heading -->
@@ -41,8 +110,9 @@
                         <tr>
                             <th>Patient Type:</th>
                             <td>
-                                <span class="badge badge-{% if object.patient.patient_type == 'nhia' %}info{% else %}secondary{% endif %}">
-                                    {{ object.patient.get_patient_type_display }}
+                                <span class="badge bg-{% if object.patient.patient_type == 'nhia' %}info{% else %}secondary{% endif %} text-white px-3 py-2" style="font-size: 0.875rem;">
+                                    <i class="fas fa-{% if object.patient.patient_type == 'nhia' %}shield-alt{% else %}user{% endif %}"></i>
+                                    {{ object.patient.get_patient_type_display|upper }}
                                 </span>
                             </td>
                         </tr>
@@ -78,38 +148,65 @@
                         {% csrf_token %}
 
                         <!-- Code Type Selection -->
-                        <div class="form-group">
-                            <label>Authorization Code Type <span class="text-danger">*</span></label>
-                            <div class="custom-control custom-radio">
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-bold">Authorization Code Type <span class="text-danger">*</span></label>
+                            <div class="form-check p-3 border rounded mb-2" style="background-color: #f8f9fa;">
                                 <input type="radio" id="codeTypeAuto" name="code_type" value="auto"
-                                       class="custom-control-input" checked>
-                                <label class="custom-control-label" for="codeTypeAuto">
-                                    <i class="fas fa-magic text-primary"></i> <strong>Auto-Generate Code</strong>
-                                    <small class="d-block text-muted">System will automatically generate a unique code</small>
+                                       class="form-check-input" checked>
+                                <label class="form-check-label w-100" for="codeTypeAuto" style="cursor: pointer;">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-magic text-primary mt-1 me-2" style="font-size: 1.2rem;"></i>
+                                        <div>
+                                            <strong class="d-block">Auto-Generate Code</strong>
+                                            <small class="text-muted">System will automatically generate a unique code (e.g., AUTH-20251122-ABC123)</small>
+                                        </div>
+                                    </div>
                                 </label>
                             </div>
-                            <div class="custom-control custom-radio mt-2">
+                            <div class="form-check p-3 border rounded" style="background-color: #f8f9fa;">
                                 <input type="radio" id="codeTypeManual" name="code_type" value="manual"
-                                       class="custom-control-input">
-                                <label class="custom-control-label" for="codeTypeManual">
-                                    <i class="fas fa-keyboard text-success"></i> <strong>Manual Code Input</strong>
-                                    <small class="d-block text-muted">Enter your own authorization code</small>
+                                       class="form-check-input">
+                                <label class="form-check-label w-100" for="codeTypeManual" style="cursor: pointer;">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-keyboard text-success mt-1 me-2" style="font-size: 1.2rem;"></i>
+                                        <div>
+                                            <strong class="d-block">Manual Code Input</strong>
+                                            <small class="text-muted">Enter your own custom authorization code</small>
+                                        </div>
+                                    </div>
                                 </label>
                             </div>
                         </div>
 
                         <!-- Manual Code Input (Hidden by default) -->
-                        <div class="form-group" id="manualCodeGroup" style="display: none;">
-                            <label for="manual_code">Manual Authorization Code <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control text-uppercase" id="manual_code" name="manual_code"
-                                   placeholder="e.g., NHIA-2025-001, CUSTOM-CODE-123"
-                                   pattern="[A-Z0-9\-]+"
-                                   title="Only uppercase letters, numbers, and hyphens allowed"
-                                   {% if form_data.code_type == 'manual' %}value="{{ form_data.manual_code }}"{% endif %}>
-                            <small class="form-text text-muted">
-                                <i class="fas fa-info-circle"></i> Enter a unique code (letters, numbers, and hyphens only).
-                                Code will be automatically converted to uppercase.
-                            </small>
+                        <div class="form-group mb-4" id="manualCodeGroup" style="display: none;">
+                            <div class="alert alert-warning" role="alert">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-keyboard"></i> Manual Authorization Code Entry
+                                </h6>
+                                <label for="manual_code" class="form-label fw-bold">
+                                    Enter Custom Authorization Code <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       class="form-control form-control-lg text-uppercase"
+                                       id="manual_code"
+                                       name="manual_code"
+                                       placeholder="e.g., NHIA-2025-001, CUSTOM-CODE-123"
+                                       pattern="[A-Z0-9\-]+"
+                                       title="Only uppercase letters, numbers, and hyphens allowed"
+                                       style="font-size: 1.1rem; letter-spacing: 1px; font-weight: 600;"
+                                       {% if form_data.code_type == 'manual' %}value="{{ form_data.manual_code }}"{% endif %}>
+                                <small class="form-text text-dark mt-2">
+                                    <i class="fas fa-info-circle"></i> <strong>Enter a unique code</strong> using only:
+                                    <ul class="mb-0 mt-1">
+                                        <li>Uppercase letters (A-Z)</li>
+                                        <li>Numbers (0-9)</li>
+                                        <li>Hyphens (-)</li>
+                                        <li>Minimum 3 characters</li>
+                                    </ul>
+                                    Code will be automatically converted to uppercase as you type.
+                                </small>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -242,62 +339,96 @@
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    // Toggle manual code input visibility
-    $('input[name="code_type"]').change(function() {
-        if ($(this).val() === 'manual') {
-            $('#manualCodeGroup').slideDown();
-            $('#manual_code').prop('required', true);
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Authorization form initialized');
+
+    const codeTypeAuto = document.getElementById('codeTypeAuto');
+    const codeTypeManual = document.getElementById('codeTypeManual');
+    const manualCodeGroup = document.getElementById('manualCodeGroup');
+    const manualCodeInput = document.getElementById('manual_code');
+    const authForm = document.getElementById('authorizationForm');
+
+    // Function to toggle manual code input visibility
+    function toggleManualCodeInput() {
+        if (codeTypeManual && codeTypeManual.checked) {
+            console.log('Showing manual code input');
+            manualCodeGroup.style.display = 'block';
+            if (manualCodeInput) {
+                manualCodeInput.required = true;
+                manualCodeInput.focus();
+            }
         } else {
-            $('#manualCodeGroup').slideUp();
-            $('#manual_code').prop('required', false);
+            console.log('Hiding manual code input');
+            manualCodeGroup.style.display = 'none';
+            if (manualCodeInput) {
+                manualCodeInput.required = false;
+            }
         }
-    });
+    }
+
+    // Add change event listeners to radio buttons
+    if (codeTypeAuto) {
+        codeTypeAuto.addEventListener('change', toggleManualCodeInput);
+    }
+
+    if (codeTypeManual) {
+        codeTypeManual.addEventListener('change', toggleManualCodeInput);
+    }
 
     // Auto-uppercase manual code input
-    $('#manual_code').on('input', function() {
-        this.value = this.value.toUpperCase();
-    });
+    if (manualCodeInput) {
+        manualCodeInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+    }
 
     // Form validation
-    $('#authorizationForm').submit(function(e) {
-        var codeType = $('input[name="code_type"]:checked').val();
+    if (authForm) {
+        authForm.addEventListener('submit', function(e) {
+            const checkedCodeType = document.querySelector('input[name="code_type"]:checked');
 
-        if (codeType === 'manual') {
-            var manualCode = $('#manual_code').val().trim();
+            if (checkedCodeType && checkedCodeType.value === 'manual') {
+                const manualCode = manualCodeInput.value.trim();
 
-            if (!manualCode) {
-                e.preventDefault();
-                alert('Please enter a manual authorization code.');
-                $('#manual_code').focus();
-                return false;
+                if (!manualCode) {
+                    e.preventDefault();
+                    alert('Please enter a manual authorization code.');
+                    manualCodeInput.focus();
+                    return false;
+                }
+
+                // Validate format (alphanumeric and hyphens only)
+                const pattern = /^[A-Z0-9\-]+$/;
+                if (!pattern.test(manualCode)) {
+                    e.preventDefault();
+                    alert('Authorization code can only contain uppercase letters, numbers, and hyphens.');
+                    manualCodeInput.focus();
+                    return false;
+                }
+
+                // Minimum length check
+                if (manualCode.length < 3) {
+                    e.preventDefault();
+                    alert('Authorization code must be at least 3 characters long.');
+                    manualCodeInput.focus();
+                    return false;
+                }
             }
 
-            // Validate format (alphanumeric and hyphens only)
-            var pattern = /^[A-Z0-9\-]+$/;
-            if (!pattern.test(manualCode)) {
-                e.preventDefault();
-                alert('Authorization code can only contain uppercase letters, numbers, and hyphens.');
-                $('#manual_code').focus();
-                return false;
-            }
-
-            // Minimum length check
-            if (manualCode.length < 3) {
-                e.preventDefault();
-                alert('Authorization code must be at least 3 characters long.');
-                $('#manual_code').focus();
-                return false;
-            }
-        }
-
-        return true;
-    });
+            return true;
+        });
+    }
 
     // Check if manual code was previously selected (form resubmission)
     {% if form_data.code_type == 'manual' %}
-    $('#codeTypeManual').prop('checked', true).trigger('change');
+    if (codeTypeManual) {
+        codeTypeManual.checked = true;
+        toggleManualCodeInput();
+    }
     {% endif %}
+
+    // Initial state check
+    toggleManualCodeInput();
 });
 </script>
 {% endblock %}
