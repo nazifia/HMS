@@ -5658,6 +5658,52 @@ def create_pack_order(request, pack_id=None):
             pack_order.ordered_by = request.user
             if pack:
                 pack_order.pack = pack
+
+            # Validate NHIA authorization before saving
+            selected_patient = pack_order.patient
+            selected_pack = pack_order.pack
+
+            # Check if patient is NHIA
+            is_nhia = hasattr(selected_patient, 'patient_type') and selected_patient.patient_type == 'nhia'
+            if is_nhia:
+                # NHIA patients require authorization code
+                if not pack_order.authorization_code:
+                    messages.error(
+                        request,
+                        'NHIA authorization code is required for NHIA patients. '
+                        'Please obtain authorization from desk office before creating this pack order.'
+                    )
+                    # Re-render form with error
+                    context = {
+                        'form': form,
+                        'pack': pack,
+                        'surgery': surgery,
+                        'labor_record': labor_record,
+                        'patient': patient,
+                        'page_title': 'Create Pack Order',
+                        'active_nav': 'pharmacy',
+                    }
+                    return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+
+                # Validate authorization code
+                if hasattr(pack_order.authorization_code, 'is_valid'):
+                    if not pack_order.authorization_code.is_valid():
+                        messages.error(
+                            request,
+                            f'Authorization code is {pack_order.authorization_code.status}. '
+                            'Please provide a valid authorization code.'
+                        )
+                        context = {
+                            'form': form,
+                            'pack': pack,
+                            'surgery': surgery,
+                            'labor_record': labor_record,
+                            'patient': patient,
+                            'page_title': 'Create Pack Order',
+                            'active_nav': 'pharmacy',
+                        }
+                        return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+
             pack_order.save()
 
             # Automatically create prescription from pack items

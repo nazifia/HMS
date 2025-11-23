@@ -635,34 +635,18 @@ class Prescription(models.Model):
     def check_authorization_requirement(self):
         """
         Check if this prescription requires authorization.
-        NHIA patients with prescriptions from non-NHIA units require authorization.
+        All NHIA patients require authorization for dispensing medications.
 
         Authorization is required if:
-        1. Patient is NHIA patient, AND
-        2. Either:
-           a. Prescription is linked to a consultation that requires authorization, OR
-           b. Prescription is created by a doctor NOT in NHIA department
+        - Patient is an NHIA patient
         """
         if self.is_nhia_patient():
-            # Check if linked to a consultation that requires authorization
-            if self.consultation and self.consultation.requires_authorization:
-                self.requires_authorization = True
-                if not self.authorization_code:
-                    self.authorization_status = 'required'
-                return True
-
-            # Check if prescribing doctor is from non-NHIA department
-            if self.doctor:
-                # Check if doctor is in NHIA department
-                if hasattr(self.doctor, 'profile') and self.doctor.profile:
-                    doctor_profile = self.doctor.profile
-                    if doctor_profile.department:
-                        # If doctor is NOT in NHIA department, authorization required
-                        if doctor_profile.department.name.upper() != 'NHIA':
-                            self.requires_authorization = True
-                            if not self.authorization_code:
-                                self.authorization_status = 'required'
-                            return True
+            self.requires_authorization = True
+            if not self.authorization_code:
+                self.authorization_status = 'required'
+            elif self.authorization_code.is_valid():
+                self.authorization_status = 'authorized'
+            return True
 
         self.requires_authorization = False
         self.authorization_status = 'not_required'
@@ -733,10 +717,10 @@ class Prescription(models.Model):
         if self.status in ['cancelled', 'dispensed']:
             return False, f'Cannot dispense prescription with status: {self.get_status_display()}'
 
-        # Check authorization requirement for NHIA patients from non-NHIA consultations
+        # Check authorization requirement for NHIA patients
         if self.requires_authorization:
             if not self.authorization_code:
-                return False, 'Desk office authorization required for NHIA patient from non-NHIA unit. Please obtain authorization code before dispensing.'
+                return False, 'Authorization code required for NHIA patient. Please obtain authorization code before dispensing.'
             elif not self.authorization_code.is_valid():
                 return False, f'Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.'
 
@@ -1147,11 +1131,51 @@ class PackOrder(models.Model):
     surgery = models.ForeignKey('theatre.Surgery', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
     labor_record = models.ForeignKey('labor.LaborRecord', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
 
+    # NHIA Authorization fields
+    authorization_code = models.ForeignKey(
+        'nhia.AuthorizationCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pack_orders',
+        help_text="Authorization code for NHIA patients"
+    )
+
     def __str__(self):
         return f"Pack Order #{self.id} - {self.pack.name}"
 
+    def is_nhia_patient(self):
+        """Check if the patient is an NHIA patient"""
+        return hasattr(self.patient, 'patient_type') and self.patient.patient_type == 'nhia'
+
+    def requires_authorization(self):
+        """Check if this pack order requires NHIA authorization"""
+        return self.is_nhia_patient()
+
+    def has_valid_authorization(self):
+        """Check if pack order has valid authorization code"""
+        if not self.requires_authorization():
+            return True  # Not required, so considered valid
+
+        if not self.authorization_code:
+            return False
+
+        # Check if authorization code has is_valid method
+        if hasattr(self.authorization_code, 'is_valid'):
+            return self.authorization_code.is_valid()
+
+        return True
+
     def can_be_processed(self):
-        return self.status == 'pending'
+        """Check if pack order can be processed"""
+        if self.status != 'pending':
+            return False
+
+        # Check NHIA authorization requirement
+        if self.requires_authorization() and not self.has_valid_authorization():
+            return False
+
+        return True
 
     def process_order(self, user):
         """Process the pack order and create prescription"""
@@ -1363,7 +1387,8 @@ class PackOrder(models.Model):
         return prescription
 
     def create_prescription(self):
-        """Create a prescription from pack items"""
+        """Create a prescription from pack items with authorization if required"""
+        # Create prescription with authorization code if NHIA patient
         prescription = Prescription.objects.create(
             patient=self.patient,
             doctor=self.ordered_by,
@@ -1371,16 +1396,20 @@ class PackOrder(models.Model):
             status='approved',
             payment_status='unpaid',
             prescription_type='outpatient',
-            notes=f"Created from Pack Order #{self.id}"
+            notes=f"Created from Pack Order #{self.id}",
+            authorization_code=self.authorization_code  # Pass authorization code to prescription
         )
-        
+
+        # The prescription's save method will automatically set requires_authorization
+        # and authorization_status based on the patient type and authorization_code
+
         for pack_item in self.pack.items.all():
             PrescriptionItem.objects.create(
                 prescription=prescription,
                 medication=pack_item.medication,
                 quantity=pack_item.quantity
             )
-        
+
         return prescription
 
 class MedicalPack(models.Model):

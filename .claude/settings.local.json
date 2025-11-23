@@ -22,7 +22,9 @@
       "Bash(do echo '=== $mod views ===' grep '^def ' ./$mod/views.py)",
       "Bash(dir:*)",
       "Bash(find:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(taskkill:*)",
+      "WebFetch(domain:127.0.0.1)"
     ],
     "deny": [],
     "ask": []
