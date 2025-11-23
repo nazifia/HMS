@@ -20,7 +20,9 @@
       "Bash(xargs -I {} basename {} done)",
       "Bash(for mod in ophthalmic ent anc scbu labor icu family_planning gynae_emergency oncology dental)",
       "Bash(do echo '=== $mod views ===' grep '^def ' ./$mod/views.py)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(find:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
