@@ -76,13 +76,13 @@
                                 <td>{{ record.patient.patient_id }}</td>
                                 <td>{{ record.created_at|date:"M d, Y H:i" }}</td>
                                 <td>
-                                    <a href="{% url 'dental:dental_record_detail' record.id %}" class="btn btn-sm btn-primary">
+                                    <a href="{% url 'dental:dental_record_detail' record.id %}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i> View
                                     </a>
-                                    <a href="{% url 'dental:edit_dental_record' record.id %}" class="btn btn-sm btn-warning">
+                                    <a href="{% url 'dental:edit_dental_record' record.id %}" class="btn btn-sm btn-outline-warning">
                                         <i class="fas fa-edit"></i> Edit
                                     </a>
-                                    <a href="{% url 'dental:create_prescription_for_dental' record.id %}" class="btn btn-sm btn-success">
+                                    <a href="{% url 'dental:create_prescription_for_dental' record.id %}" class="btn btn-sm btn-outline-success">
                                         <i class="fas fa-prescription"></i> Prescribe
                                     </a>
                                 </td>
