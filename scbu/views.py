@@ -46,8 +46,8 @@ def scbu_dashboard(request):
         record_model=ScbuRecord,
         record_queryset=ScbuRecord.objects.all(),
         priority_field=None,
-        status_field='status',
-        completed_status='discharged'
+        status_field=None,
+        completed_status=None
     )
 
     # SCBU-specific statistics
@@ -57,8 +57,8 @@ def scbu_dashboard(request):
     # Total admissions
     total_admissions = ScbuRecord.objects.count()
 
-    # Current admissions (not yet discharged)
-    current_admissions = ScbuRecord.objects.exclude(status='discharged').count()
+    # Current admissions (all records since no discharge status field exists)
+    current_admissions = ScbuRecord.objects.count()
 
     # Admissions today
     admissions_today = ScbuRecord.objects.filter(
@@ -89,12 +89,12 @@ def scbu_dashboard(request):
     # Babies on respiratory support
     respiratory_support_count = ScbuRecord.objects.filter(
         respiratory_support=True
-    ).exclude(status='discharged').count()
+    ).count()
 
     # Babies with infection
     infection_count = ScbuRecord.objects.filter(
         infection_status=True
-    ).exclude(status='discharged').count()
+    ).count()
 
     # Average APGAR scores
     avg_apgar_1min = ScbuRecord.objects.aggregate(avg=Avg('apgar_score_1min'))['avg']

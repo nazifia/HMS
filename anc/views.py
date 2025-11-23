@@ -47,8 +47,8 @@ def anc_dashboard(request):
         record_model=AncRecord,
         record_queryset=AncRecord.objects.all(),
         priority_field=None,
-        status_field='status',
-        completed_status='completed'
+        status_field=None,
+        completed_status=None
     )
 
     # ANC-specific statistics
@@ -68,17 +68,23 @@ def anc_dashboard(request):
     ).count()
 
     # High risk pregnancies (high blood pressure or protein in urine)
+    # Note: blood_pressure is stored as string like "120/80", so we can't easily filter numerically
+    # This is a simplified approach - in production, consider storing systolic/diastolic separately
     high_risk_pregnancies = AncRecord.objects.filter(
-        Q(blood_pressure_systolic__gte=140) |
-        Q(blood_pressure_diastolic__gte=90) |
+        Q(blood_pressure__icontains='140/') |
+        Q(blood_pressure__icontains='/90') |
+        Q(blood_pressure__icontains='150/') |
+        Q(blood_pressure__icontains='/100') |
+        Q(blood_pressure__icontains='160/') |
+        Q(blood_pressure__icontains='/110') |
         Q(urine_protein__in=['+++', '++++', 'positive'])
     ).values('patient').distinct().count()
 
     # Due dates within next 4 weeks
     four_weeks_later = today + timedelta(days=28)
     due_soon = AncRecord.objects.filter(
-        expected_delivery_date__gte=today,
-        expected_delivery_date__lte=four_weeks_later
+        edd__gte=today,
+        edd__lte=four_weeks_later
     ).values('patient').distinct().count()
 
     # Common diagnoses (top 5)
