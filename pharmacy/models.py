@@ -1456,6 +1456,63 @@ class MedicalPack(models.Model):
         except AttributeError:
             return 0
 
+    def can_be_ordered(self, patient=None, authorization_code=None):
+        """
+        Check if this pack can be ordered for a specific patient.
+        Returns a tuple: (can_order: bool, message: str)
+
+        Args:
+            patient: Optional Patient instance to check NHIA authorization requirements
+            authorization_code: Optional AuthorizationCode instance for NHIA patients
+        """
+        # Check if pack is active
+        if not self.is_active:
+            return False, "This pack is not currently active"
+
+        # Check if pack has items
+        if not self.items.exists():
+            return False, "This pack has no items configured"
+
+        # Check NHIA authorization if patient is provided
+        if patient:
+            # Check if patient is NHIA
+            is_nhia = hasattr(patient, 'patient_type') and patient.patient_type == 'nhia'
+            if is_nhia:
+                # NHIA patients require authorization for pack orders
+                if not authorization_code:
+                    return False, "NHIA authorization code required. Please obtain authorization from desk office before ordering this pack."
+
+                # Check if authorization code is valid
+                if hasattr(authorization_code, 'is_valid'):
+                    if not authorization_code.is_valid():
+                        status = getattr(authorization_code, 'status', 'invalid')
+                        return False, f"Authorization code is {status}. Please obtain a valid authorization code."
+
+        # Check if all items are available in sufficient quantities
+        missing_items = []
+        for pack_item in self.items.all():
+            # Check total available stock across all active stores
+            total_available = ActiveStoreInventory.objects.filter(
+                medication=pack_item.medication
+            ).aggregate(total=models.Sum('stock_quantity'))['total'] or 0
+
+            if total_available < pack_item.quantity:
+                missing_items.append({
+                    'medication': pack_item.medication.name,
+                    'required': pack_item.quantity,
+                    'available': total_available,
+                    'shortage': pack_item.quantity - total_available
+                })
+
+        if missing_items:
+            shortage_details = ", ".join([
+                f"{item['medication']} (need {item['shortage']} more)"
+                for item in missing_items
+            ])
+            return False, f"Insufficient stock for: {shortage_details}"
+
+        return True, "Pack is available for ordering"
+
 
 class MedicalPackItem(models.Model):
     """Model representing items in a medical pack"""
