@@ -161,6 +161,8 @@ MIDDLEWARE = [
     # User Activity Monitoring Middleware
     'accounts.middleware.UserActivityMiddleware',
     'accounts.middleware.LoginTrackingMiddleware',
+    # Activity Logging Middleware
+    'core.activity_log.ActivityLogMiddleware',
     # Other middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     # Module Access Control Middleware (must be after MessageMiddleware)
