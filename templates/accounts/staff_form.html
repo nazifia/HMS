@@ -1,120 +1,661 @@
-{% extends 'base.html' %}
+{% extends 'enhanced_base.html' %}
 {% load form_tags %}
+{% load core_tags %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12 mb-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">{{ title }}</h4>
-            </div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                    {% endif %}
-                    <div class="row">
-                        <!-- Always show all required fields for new staff -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number (Login ID) <span class="text-danger">*</span></label>
-                            {{ form.phone_number|add_class:"form-control" }}
-                            {% if form.phone_number.errors %}
-                                <div class="text-danger">{{ form.phone_number.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.username.id_for_label }}" class="form-label">Username <span class="text-danger">*</span></label>
-                            {{ form.username|add_class:"form-control" }}
-                            {% if form.username.errors %}
-                                <div class="text-danger">{{ form.username.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.email.id_for_label }}" class="form-label">Email <span class="text-danger">*</span></label>
-                            {{ form.email|add_class:"form-control" }}
-                            {% if form.email.errors %}
-                                <div class="text-danger">{{ form.email.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name <span class="text-danger">*</span></label>
-                            {{ form.first_name|add_class:"form-control" }}
-                            {% if form.first_name.errors %}
-                                <div class="text-danger">{{ form.first_name.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name <span class="text-danger">*</span></label>
-                            {{ form.last_name|add_class:"form-control" }}
-                            {% if form.last_name.errors %}
-                                <div class="text-danger">{{ form.last_name.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.password1.id_for_label }}" class="form-label">Password <span class="text-danger">*</span></label>
-                            {{ form.password1|add_class:"form-control" }}
-                            {% if form.password1.errors %}
-                                <div class="text-danger">{{ form.password1.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">{{ form.password1.help_text }}</div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password <span class="text-danger">*</span></label>
-                            {{ form.password2|add_class:"form-control" }}
-                            {% if form.password2.errors %}
-                                <div class="text-danger">{{ form.password2.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <!-- Roles/Modules -->
-                        <div class="col-md-12 mb-3">
-                            <label for="{{ form.roles.id_for_label }}" class="form-label">Modules / Roles <span class="text-danger">*</span></label>
-                            <div class="role-checkboxes border rounded p-2 bg-light">
-                                {% for role in form.roles %}
-                                    <div class="form-check form-check-inline">
-                                        {{ role.tag }}
-                                        <label class="form-check-label" for="{{ role.id_for_label }}">
-                                            {{ role.choice_label }}
-                                        </label>
-                                    </div>
-                                {% endfor %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-user-plus me-2"></i>{{ title }}
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'accounts:staff_list' %}">Staff Management</a></li>
+                    <li class="breadcrumb-item active">{{ title }}</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <a href="{% url 'accounts:staff_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Staff List
+            </a>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-edit me-2 text-primary"></i>
+                        Staff Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="staff-form" method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Global Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger mb-4">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Error:</strong> {{ form.non_field_errors }}
                             </div>
-                            <div class="form-text">{{ form.roles.help_text }}</div>
-                            {% if form.roles.errors %}
-                                <div class="text-danger">{{ form.roles.errors }}</div>
-                            {% endif %}
+                        {% endif %}
+                        <!-- Personal Information -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-user me-2"></i>Personal Information
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                                        <i class="fas fa-phone me-1 text-muted"></i>Phone Number (Login ID)
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.phone_number|add_class:"form-control" }}
+                                    {% if form.phone_number.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.phone_number.errors }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">This will be used as the login ID. Must contain only digits.</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.username.id_for_label }}" class="form-label">
+                                        <i class="fas fa-user me-1 text-muted"></i>Username
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.username|add_class:"form-control" }}
+                                    {% if form.username.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.username.errors }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">For display purposes and records.</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.email.id_for_label }}" class="form-label">
+                                        <i class="fas fa-envelope me-1 text-muted"></i>Email Address
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.email|add_class:"form-control" }}
+                                    {% if form.email.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.email.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                        <i class="fas fa-user me-1 text-muted"></i>First Name
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.first_name|add_class:"form-control" }}
+                                    {% if form.first_name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.first_name.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                                        <i class="fas fa-user me-1 text-muted"></i>Last Name
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.last_name|add_class:"form-control" }}
+                                    {% if form.last_name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.last_name.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                        <!-- Profile fields -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.employee_id_profile.id_for_label }}" class="form-label">Employee ID</label>
-                            {{ form.employee_id_profile|add_class:"form-control" }}
-                            {% if form.employee_id_profile.errors %}
-                                <div class="text-danger">{{ form.employee_id_profile.errors }}</div>
-                            {% endif %}
+
+                        <!-- Password Information -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-lock me-2"></i>Security Information
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.password1.id_for_label }}" class="form-label">
+                                        <i class="fas fa-key me-1 text-muted"></i>Password
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.password1|add_class:"form-control" }}
+                                        <button class="btn btn-outline-secondary" type="button" id="togglePassword1">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    {% if form.password1.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.password1.errors }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">{{ form.password1.help_text }}</div>
+                                    <!-- Password Strength Indicator -->
+                                    <div class="progress mt-2" style="height: 4px;">
+                                        <div id="password-strength" class="progress-bar" role="progressbar"></div>
+                                    </div>
+                                    <small id="password-feedback" class="form-text"></small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.password2.id_for_label }}" class="form-label">
+                                        <i class="fas fa-lock me-1 text-muted"></i>Confirm Password
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.password2|add_class:"form-control" }}
+                                        <button class="btn btn-outline-secondary" type="button" id="togglePassword2">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    {% if form.password2.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.password2.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.department_profile.id_for_label }}" class="form-label">Department</label>
-                            {{ form.department_profile|add_class:"form-control" }}
-                            {% if form.department_profile.errors %}
-                                <div class="text-danger">{{ form.department_profile.errors }}</div>
-                            {% endif %}
+                        <!-- Roles & Permissions -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-shield-alt me-2"></i>Roles & Permissions
+                            </h6>
+                            <div class="card border-light">
+                                <div class="card-body p-3">
+                                    <label for="{{ form.roles.id_for_label }}" class="form-label">
+                                        <i class="fas fa-user-tag me-1 text-muted"></i>Assign Modules / Roles
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="role-selection border rounded p-3 bg-light">
+                                        {% for role in form.roles %}
+                                            <div class="form-check mb-2">
+                                                <div class="d-flex align-items-center">
+                                                    {{ role.tag }}
+                                                    <label class="form-check-label ms-2 flex-grow-1" for="{{ role.id_for_label }}">
+                                                        <strong>{{ role.choice_label }}</strong>
+                                                        <div class="text-muted small">Select to grant {{ role.choice_label|lower }} module access</div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>{{ form.roles.help_text }}
+                                    </div>
+                                    {% if form.roles.errors %}
+                                        <div class="invalid-feedback d-block mt-2">
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ form.roles.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="d-flex justify-content-between mt-4">
-                        <a href="{% url 'accounts:staff_list' %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Back to Staff List
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save
-                        </button>
-                    </div>
+
+                        <!-- Profile Information -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-id-card me-2"></i>Profile Information
+                            </h6>
+                            <div class="card border-light">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.employee_id_profile.id_for_label }}" class="form-label">
+                                                <i class="fas fa-id-badge me-1 text-muted"></i>Employee ID
+                                            </label>
+                                            {{ form.employee_id_profile|add_class:"form-control" }}
+                                            {% if form.employee_id_profile.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.employee_id_profile.errors }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Optional: Staff identification number</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.department_profile.id_for_label }}" class="form-label">
+                                                <i class="fas fa-building me-1 text-muted"></i>Department
+                                            </label>
+                                            {{ form.department_profile|add_class:"form-control form-select" }}
+                                            {% if form.department_profile.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.department_profile.errors }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Assign to a department for organization</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="card border-0 bg-light">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <a href="{% url 'accounts:staff_list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>Cancel
+                                    </a>
+                                    <div>
+                                        <button type="button" class="btn btn-outline-primary me-2" id="previewBtn">
+                                            <i class="fas fa-eye me-2"></i>Preview
+                                        </button>
+                                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                                            <i class="fas fa-user-plus me-2"></i>Create Staff Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                 </form>
+            </div>
+        </div>
+        
+        <!-- Right Sidebar - Information & Help -->
+        <div class="col-lg-4">
+            <!-- Form Information Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        Form Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <strong>Required Fields:</strong> Marked with <span class="text-danger">*</span>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <strong>Login ID:</strong> Phone number will be used for login
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <strong>At least one role:</strong> Must be selected for access
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-info-circle text-info me-2"></i>
+                            <strong>Password:</strong> Minimum 8 characters
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Role Descriptions Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0">
+                        <i class="fas fa-shield-alt text-primary me-2"></i>
+                        Role Descriptions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="accordion accordion-flush" id="roleAccordion">
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header" id="headingAdmin">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdmin">
+                                    <i class="fas fa-user-shield me-2"></i>Admin
+                                </button>
+                            </h2>
+                            <div id="collapseAdmin" class="accordion-collapse collapse" data-bs-parent="#roleAccordion">
+                                <div class="accordion-body">
+                                    <p class="small">Full system access including user management, billing, and all modules.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header" id="headingDoctor">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDoctor">
+                                    <i class="fas fa-user-md me-2"></i>Doctor
+                                </button>
+                            </h2>
+                            <div id="collapseDoctor" class="accordion-collapse collapse" data-bs-parent="#roleAccordion">
+                                <div class="accordion-body">
+                                    <p class="small">Patient management, consultations, prescriptions, and medical records access.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header" id="headingNurse">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNurse">
+                                    <i class="fas fa-user-nurse me-2"></i>Nurse
+                                </button>
+                            </h2>
+                            <div id="collapseNurse" class="accordion-collapse collapse" data-bs-parent="#roleAccordion">
+                                <div class="accordion-body">
+                                    <p class="small">Patient care, medication administration, and ward management access.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header" id="headingPharmacist">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePharmacist">
+                                    <i class="fas fa-pills me-2"></i>Pharmacist
+                                </button>
+                            </h2>
+                            <div id="collapsePharmacist" class="accordion-collapse collapse" data-bs-parent="#roleAccordion">
+                                <div class="accordion-body">
+                                    <p class="small">Medication management, dispensing, and pharmacy operations access.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Tips Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                        Quick Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="fas fa-keyboard text-info me-2"></i>
+                            Use tab key to move between fields
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-mobile-alt text-info me-2"></i>
+                            Phone number should contain digits only
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-envelope text-info me-2"></i>
+                            Email will be used for notifications
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form elements
+    const form = document.getElementById('staff-form');
+    const password1Input = document.getElementById('{{ form.password1.id_for_label }}');
+    const password2Input = document.getElementById('{{ form.password2.id_for_label }}');
+    const phoneInput = document.getElementById('{{ form.phone_number.id_for_label }}');
+    const emailInput = document.getElementById('{{ form.email.id_for_label }}');
+    const usernameInput = document.getElementById('{{ form.username.id_for_label }}');
+    
+    // Password visibility toggle
+    const togglePassword1 = document.getElementById('togglePassword1');
+    const togglePassword2 = document.getElementById('togglePassword2');
+    
+    if (togglePassword1 && password1Input) {
+        togglePassword1.addEventListener('click', function() {
+            const type = password1Input.type === 'password' ? 'text' : 'password';
+            password1Input.type = type;
+            this.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        });
+    }
+    
+    if (togglePassword2 && password2Input) {
+        togglePassword2.addEventListener('click', function() {
+            const type = password2Input.type === 'password' ? 'text' : 'password';
+            password2Input.type = type;
+            this.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        });
+    }
+    
+    // Password strength checker
+    function checkPasswordStrength(password) {
+        let strength = 0;
+        const feedback = document.getElementById('password-feedback');
+        const strengthBar = document.getElementById('password-strength');
+        
+        if (!password || !feedback || !strengthBar) return;
+        
+        // Check various criteria
+        if (password.length >= 8) strength++;
+        if (password.length >= 12) strength++;
+        if (/[a-z]/.test(password)) strength++;
+        if (/[A-Z]/.test(password)) strength++;
+        if (/[0-9]/.test(password)) strength++;
+        if (/[^a-zA-Z0-9]/.test(password)) strength++;
+        
+        // Update feedback and strength bar
+        let strengthText = '';
+        let strengthClass = '';
+        
+        if (password.length === 0) {
+            strengthText = 'Please enter a password';
+            strengthClass = 'bg-secondary';
+        } else if (strength < 3) {
+            strengthText = 'Weak password - add more characters, numbers, or symbols';
+            strengthClass = 'bg-danger';
+        } else if (strength < 5) {
+            strengthText = 'Medium password - could be stronger';
+            strengthClass = 'bg-warning';
+        } else {
+            strengthText = 'Strong password!';
+            strengthClass = 'bg-success';
+        }
+        
+        strengthBar.style.width = (strength / 6 * 100) + '%';
+        strengthBar.className = `progress-bar ${strengthClass}`;
+        feedback.textContent = strengthText;
+        feedback.className = `form-text ${strength <= 2 ? 'text-danger' : strength <= 4 ? 'text-warning' : 'text-success'}`;
+    }
+    
+    if (password1Input) {
+        password1Input.addEventListener('input', function() {
+            checkPasswordStrength(this.value);
+            
+            // Check if passwords match when both have values
+            if (password2Input.value && this.value !== password2Input.value) {
+                password2Input.setCustomValidity('Passwords do not match');
+            } else if (password2Input.value) {
+                password2Input.setCustomValidity('');
+            }
+        });
+    }
+    
+    if (password2Input) {
+        password2Input.addEventListener('input', function() {
+            // Check if passwords match
+            if (password1Input.value && this.value !== password1Input.value) {
+                this.setCustomValidity('Passwords do not match');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    
+    // Phone number validation
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            // Remove non-digit characters
+            this.value = this.value.replace(/\D/g, '');
+            
+            // Show feedback if too short/long
+            if (this.value.length > 0 && (this.value.length < 10 || this.value.length > 15)) {
+                this.setCustomValidity('Phone number should be 10-15 digits');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    
+    // Email validation
+    if (emailInput) {
+        emailInput.addEventListener('blur', function() {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (this.value && !emailRegex.test(this.value)) {
+                this.setCustomValidity('Please enter a valid email address');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    
+    // Auto-generate username from email
+    if (emailInput && usernameInput) {
+        emailInput.addEventListener('blur', function() {
+            if (this.value && !usernameInput.value) {
+                const suggestedUsername = this.value.split('@')[0];
+                if (suggestedUsername) {
+                    usernameInput.value = suggestedUsername;
+                    usernameInput.placeholder = `Suggested: ${suggestedUsername}`;
+                }
+            }
+        });
+    }
+    
+    // Form submission
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Check if at least one role is selected
+            const roleCheckboxes = form.querySelectorAll('input[type="checkbox"][name*="roles"]');
+            const checkedRoles = Array.from(roleCheckboxes).filter(cb => cb.checked);
+            
+            if (checkedRoles.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one role for staff member.');
+                return false;
+            }
+            
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Account...';
+            }
+            
+            return true;
+        });
+    }
+    
+    // Preview button functionality
+    const previewBtn = document.getElementById('previewBtn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            // Collect form data for preview
+            const formData = new FormData(form);
+            const selectedRoles = Array.from(form.querySelectorAll('input[type="checkbox"][name*="roles"]:checked'))
+                .map(cb => cb.nextElementSibling.textContent.trim());
+            
+            let previewContent = `
+                <h5>Staff Account Preview</h5>
+                <p><strong>Name:</strong> ${formData.get('first_name')} ${formData.get('last_name')}</p>
+                <p><strong>Email:</strong> ${formData.get('email')}</p>
+                <p><strong>Phone:</strong> ${formData.get('phone_number')}</p>
+                <p><strong>Username:</strong> ${formData.get('username')}</p>
+                <p><strong>Roles:</strong> ${selectedRoles.join(', ')}</p>
+                <p><strong>Department:</strong> ${form.querySelector('[name*="department"] option:checked')?.text || 'None'}</p>
+            `;
+            
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Account Preview</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            ${previewContent}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            // Clean up modal when hidden
+            modal.addEventListener('hidden.bs.modal', function() {
+                document.body.removeChild(modal);
+            });
+        });
+    }
+});
+</script>
+
+<style>
+.accordion-button {
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.accordion-button:not(.collapsed) {
+    color: #0d6efd;
+}
+
+.accordion-button:hover {
+    background-color: #f8f9fa;
+}
+
+.accordion-collapse {
+    border: none;
+}
+
+.role-selection {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+}
+
+.form-control.is-valid {
+    border-color: #198754;
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+#submitBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+</style>
 {% endblock %}
