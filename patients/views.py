@@ -118,11 +118,14 @@ def register_patient(request):
     if request.method == 'POST':
         form = PatientForm(request.POST, request.FILES)
         if form.is_valid():
-            patient = form.save()
+            patient = form.save(commit=False)
+            # Ensure patient is always registered as active
+            patient.is_active = True
+            patient.save()
             messages.success(request, f'Patient {patient.get_full_name()} registered successfully.')
             return redirect('patients:detail', patient_id=patient.id)
     else:
-        form = PatientForm()
+        form = PatientForm(initial={'is_active': True})
     
     context = {
         'form': form,
