@@ -95,14 +95,14 @@
                             </small>
                         </p>
                         <div class="mt-3">
-                            <button type="button"
-                                    class="btn btn-primary btn-sm nhia-auth-request-btn"
-                                    data-patient-id="{{ record.patient.id }}"
-                                    data-module-name="Ophthalmic"
-                                    data-record-id="{{ record.id }}"
-                                    onclick="requestNHIAAuthorization(this)">
+                            <a href="{% url 'core:request_authorization' model_type='ophthalmic_record' object_id=record.id %}"
+                               class="btn btn-primary btn-sm">
                                 <i class="fas fa-paper-plane"></i> Request Authorization from Desk Office
-                            </button>
+                            </a>
+                            <a href="{% url 'desk_office:authorization_dashboard' %}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-shield-alt"></i> Go to Authorization Dashboard
+                            </a>
                         </div>
                         {% elif authorization_valid %}
                         <hr>

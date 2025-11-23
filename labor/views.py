@@ -49,20 +49,55 @@ def labor_dashboard(request):
         record_model=LaborRecord,
         record_queryset=LaborRecord.objects.all(),
         priority_field=None,
-        status_field='status',
-        completed_status='delivered'
+        status_field=None,
+        completed_status=None
     )
 
     # Labor-specific statistics
+    today = timezone.now().date()
+    week_end = today + timedelta(days=7)
+
+    # Deliveries today
+    deliveries_today = LaborRecord.objects.filter(
+        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    ).count()
+
+    # Follow-ups due this week
+    followups_due = LaborRecord.objects.filter(
+        follow_up_required=True,
+        follow_up_date__gte=today,
+        follow_up_date__lte=week_end
+    ).count()
+
     # Mode of delivery distribution
-    svd_count = LaborRecord.objects.filter(mode_of_delivery='SVD').count()
-    csection_count = LaborRecord.objects.filter(mode_of_delivery='C-Section').count()
-    assisted_count = LaborRecord.objects.filter(mode_of_delivery='Assisted').count()
+    svd_count = LaborRecord.objects.filter(mode_of_delivery__icontains='SVD').count()
+    csection_count = LaborRecord.objects.filter(mode_of_delivery__icontains='C-Section').count()
+    assisted_count = LaborRecord.objects.filter(mode_of_delivery__icontains='Assisted').count()
+    vbac_count = LaborRecord.objects.filter(mode_of_delivery__icontains='VBAC').count()
+
+    # Cervical dilation tracking (patients in active labor, dilation < 10cm)
+    active_labor = LaborRecord.objects.filter(
+        cervical_dilation__lt=10,
+        cervical_dilation__gte=4,
+        visit_date__gte=today - timedelta(days=1)
+    ).count()
+
+    # Ruptured membranes count (today)
+    ruptured_membranes = LaborRecord.objects.filter(
+        rupture_of_membranes=True,
+        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    ).count()
+
+    # Common diagnoses (top 5)
+    diagnosis_data = LaborRecord.objects.filter(
+        diagnosis__isnull=False
+    ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
+    diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]
+    diagnosis_counts = [item['count'] for item in diagnosis_data]
 
     # Delivery mode distribution for chart
-    delivery_labels = ['Spontaneous Vaginal Delivery', 'Cesarean Section', 'Assisted Delivery']
-    delivery_counts = [svd_count, csection_count, assisted_count]
-    delivery_colors = ['#28a745', '#ffc107', '#17a2b8']
+    delivery_labels = ['SVD', 'C-Section', 'Assisted', 'VBAC']
+    delivery_counts = [svd_count, csection_count, assisted_count, vbac_count]
 
     # Get recent records with patient info
     recent_records = LaborRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
@@ -72,12 +107,17 @@ def labor_dashboard(request):
 
     # Add to context
     context.update({
+        'deliveries_today': deliveries_today,
+        'followups_due': followups_due,
         'svd_count': svd_count,
         'csection_count': csection_count,
         'assisted_count': assisted_count,
+        'active_labor': active_labor,
+        'ruptured_membranes': ruptured_membranes,
+        'diagnosis_labels': json.dumps(diagnosis_labels),
+        'diagnosis_counts': json.dumps(diagnosis_counts),
         'delivery_labels': json.dumps(delivery_labels),
         'delivery_counts': json.dumps(delivery_counts),
-        'delivery_colors': json.dumps(delivery_colors),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

@@ -53,11 +53,46 @@ def anc_dashboard(request):
 
     # ANC-specific statistics
     today = timezone.now().date()
+    week_end = today + timedelta(days=7)
 
     # Appointments today
     appointments_today = AncRecord.objects.filter(
         visit_date__date=today
     ).count()
+
+    # Follow-ups due this week
+    followups_due = AncRecord.objects.filter(
+        follow_up_required=True,
+        follow_up_date__gte=today,
+        follow_up_date__lte=week_end
+    ).count()
+
+    # High risk pregnancies (high blood pressure or protein in urine)
+    high_risk_pregnancies = AncRecord.objects.filter(
+        Q(blood_pressure_systolic__gte=140) |
+        Q(blood_pressure_diastolic__gte=90) |
+        Q(urine_protein__in=['+++', '++++', 'positive'])
+    ).values('patient').distinct().count()
+
+    # Due dates within next 4 weeks
+    four_weeks_later = today + timedelta(days=28)
+    due_soon = AncRecord.objects.filter(
+        expected_delivery_date__gte=today,
+        expected_delivery_date__lte=four_weeks_later
+    ).values('patient').distinct().count()
+
+    # Common diagnoses (top 5)
+    diagnosis_data = AncRecord.objects.filter(
+        diagnosis__isnull=False
+    ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
+    diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]
+    diagnosis_counts = [item['count'] for item in diagnosis_data]
+
+    # Total unique patients
+    total_patients = AncRecord.objects.values('patient').distinct().count()
+
+    # Average gravida (number of pregnancies)
+    avg_gravida = AncRecord.objects.aggregate(Avg('gravida'))['gravida__avg'] or 0
 
     # Get recent records with patient info
     recent_records = AncRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
@@ -68,6 +103,13 @@ def anc_dashboard(request):
     # Add to context
     context.update({
         'appointments_today': appointments_today,
+        'followups_due': followups_due,
+        'high_risk_pregnancies': high_risk_pregnancies,
+        'due_soon': due_soon,
+        'diagnosis_labels': json.dumps(diagnosis_labels),
+        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'total_patients': total_patients,
+        'avg_gravida': round(avg_gravida, 1),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

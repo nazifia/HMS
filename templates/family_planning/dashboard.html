@@ -20,88 +20,88 @@
 
     <!-- Statistics Cards Row -->
     <div class="row">
-        <!-- Total Records Card -->
+        <!-- Visits Today Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Records
+                                Visits Today
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ visits_today|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-day"></i> Today: {{ records_today|default:0 }}
+                                <i class="fas fa-calendar-check"></i> Follow-ups Due: {{ followups_due|default:0 }}
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-notes-medical fa-2x text-gray-300"></i>
+                            <i class="fas fa-user-check fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Week Card -->
+        <!-- Active Clients Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-success shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                This Week
+                                Active Clients
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_week|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_clients|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-week"></i> Since {{ week_start|date:"M d" }}
+                                <i class="fas fa-users"></i> On Contraceptives
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Month Card -->
+        <!-- New Clients Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-info shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                This Month
+                                New Clients This Month
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_month|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ new_clients_month|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-alt"></i> Since {{ month_start|date:"M d" }}
+                                <i class="fas fa-user-plus"></i> First Time Visits
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                            <i class="fas fa-user-plus fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Pending Referrals Card -->
+        <!-- Education Sessions Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-warning shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pending Referrals
+                                Education Sessions
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals_count|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ education_sessions_month|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-lock text-danger"></i> Need Auth: {{ pending_authorizations|default:0 }}
+                                <i class="fas fa-chalkboard-teacher"></i> This Month
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                            <i class="fas fa-chalkboard-teacher fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -109,9 +109,59 @@
         </div>
     </div>
 
-    
+
     <!-- Charts Row -->
     <div class="row mb-4">
+        <!-- Top Methods Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie"></i> Top 5 Contraceptive Methods
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="diagnosisChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Family Planning Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-user-check text-primary"></i> Visits Today</span>
+                            <span class="badge bg-primary rounded-pill">{{ visits_today|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-users text-success"></i> Active Clients</span>
+                            <span class="badge bg-success rounded-pill">{{ active_clients|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-user-plus text-info"></i> New Clients (Month)</span>
+                            <span class="badge bg-info rounded-pill">{{ new_clients_month|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-chalkboard-teacher text-warning"></i> Education Sessions</span>
+                            <span class="badge bg-warning rounded-pill">{{ education_sessions_month|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calendar-week text-secondary"></i> Follow-ups Due</span>
+                            <span class="badge bg-secondary rounded-pill">{{ followups_due|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 <div class="row">
@@ -268,6 +318,61 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-// Charts removed for performance optimization
+document.addEventListener('DOMContentLoaded', function() {
+    // Top Contraceptive Methods Chart
+    const methodLabels = {{ method_labels|safe }};
+    const methodCounts = {{ method_counts|safe }};
+
+    if (methodLabels && methodLabels.length > 0) {
+        const ctx = document.getElementById('diagnosisChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: methodLabels,
+                    datasets: [{
+                        label: 'Number of Clients',
+                        data: methodCounts,
+                        backgroundColor: [
+                            'rgba(78, 115, 223, 0.8)',
+                            'rgba(28, 200, 138, 0.8)',
+                            'rgba(246, 194, 62, 0.8)',
+                            'rgba(231, 74, 59, 0.8)',
+                            'rgba(133, 135, 150, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(78, 115, 223, 1)',
+                            'rgba(28, 200, 138, 1)',
+                            'rgba(246, 194, 62, 1)',
+                            'rgba(231, 74, 59, 1)',
+                            'rgba(133, 135, 150, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+});
 </script>
 {% endblock %}

@@ -52,14 +52,24 @@ def scbu_dashboard(request):
 
     # SCBU-specific statistics
     today = timezone.now().date()
+    week_end = today + timedelta(days=7)
 
     # Total admissions
     total_admissions = ScbuRecord.objects.count()
 
-    # Admissions this week
-    week_start = today - timedelta(days=today.weekday())
-    admissions_this_week = ScbuRecord.objects.filter(
-        visit_date__gte=week_start
+    # Current admissions (not yet discharged)
+    current_admissions = ScbuRecord.objects.exclude(status='discharged').count()
+
+    # Admissions today
+    admissions_today = ScbuRecord.objects.filter(
+        visit_date__date=today
+    ).count()
+
+    # Follow-ups due this week
+    followups_due = ScbuRecord.objects.filter(
+        follow_up_required=True,
+        follow_up_date__gte=today,
+        follow_up_date__lte=week_end
     ).count()
 
     # Average birth weight
@@ -71,6 +81,35 @@ def scbu_dashboard(request):
         gestational_age__lt=37
     ).count()
 
+    # Low birth weight babies (<2.5kg)
+    low_birth_weight = ScbuRecord.objects.filter(
+        birth_weight__lt=2.5
+    ).count()
+
+    # Babies on respiratory support
+    respiratory_support_count = ScbuRecord.objects.filter(
+        respiratory_support=True
+    ).exclude(status='discharged').count()
+
+    # Babies with infection
+    infection_count = ScbuRecord.objects.filter(
+        infection_status=True
+    ).exclude(status='discharged').count()
+
+    # Average APGAR scores
+    avg_apgar_1min = ScbuRecord.objects.aggregate(avg=Avg('apgar_score_1min'))['avg']
+    avg_apgar_1min = round(avg_apgar_1min, 1) if avg_apgar_1min else 0
+
+    avg_apgar_5min = ScbuRecord.objects.aggregate(avg=Avg('apgar_score_5min'))['avg']
+    avg_apgar_5min = round(avg_apgar_5min, 1) if avg_apgar_5min else 0
+
+    # Common diagnoses (top 5)
+    diagnosis_data = ScbuRecord.objects.filter(
+        diagnosis__isnull=False
+    ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
+    diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]
+    diagnosis_counts = [item['count'] for item in diagnosis_data]
+
     # Get recent records with patient info
     recent_records = ScbuRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
 
@@ -80,9 +119,18 @@ def scbu_dashboard(request):
     # Add to context
     context.update({
         'total_admissions': total_admissions,
-        'admissions_this_week': admissions_this_week,
+        'current_admissions': current_admissions,
+        'admissions_today': admissions_today,
+        'followups_due': followups_due,
         'avg_birth_weight': avg_birth_weight,
         'premature_babies': premature_babies,
+        'low_birth_weight': low_birth_weight,
+        'respiratory_support_count': respiratory_support_count,
+        'infection_count': infection_count,
+        'avg_apgar_1min': avg_apgar_1min,
+        'avg_apgar_5min': avg_apgar_5min,
+        'diagnosis_labels': json.dumps(diagnosis_labels),
+        'diagnosis_counts': json.dumps(diagnosis_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

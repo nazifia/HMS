@@ -14,7 +14,12 @@
       "Bash(timeout /t 3 /nobreak)",
       "Bash(python manage.py collectstatic:*)",
       "Bash(python manage.py:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(for module in anc scbu labor icu family_planning gynae_emergency oncology dental)",
+      "Bash(do echo \"=== $module ===\" find \"./$module\" -maxdepth 1 -name \"*.py\" -type f)",
+      "Bash(xargs -I {} basename {} done)",
+      "Bash(for mod in ophthalmic ent anc scbu labor icu family_planning gynae_emergency oncology dental)",
+      "Bash(do echo '=== $mod views ===' grep '^def ' ./$mod/views.py)"
     ],
     "deny": [],
     "ask": []
