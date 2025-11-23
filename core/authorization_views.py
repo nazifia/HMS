@@ -63,11 +63,13 @@ def request_authorization(request, model_type, object_id):
     # GET request - show confirmation page
     context = {
         'object': obj,
+        'record': obj,  # Template expects 'record'
         'model_type': model_type,
         'model_info': model_info,
+        'module_name': model_info["display_name"],  # Template expects 'module_name'
         'page_title': f'Request Authorization - {model_info["display_name"]}',
     }
-    return render(request, 'core/request_authorization.html', context)
+    return render(request, 'core/request_authorization_form.html', context)
 
 
 @login_required

@@ -131,22 +131,16 @@ def request_nhia_authorization_form(request, model_type, object_id):
     """
     Display form to request NHIA authorization
     """
-    # Get the appropriate model and record
-    from ophthalmic.models import OphthalmicRecord
-    from dental.models import DentalRecord
-    from consultations.models import Consultation
+    # Import authorization utilities
+    from .authorization_utils import get_model_class, get_model_info, check_if_requires_authorization
 
-    model_map = {
-        'ophthalmic_record': OphthalmicRecord,
-        'dental_record': DentalRecord,
-        'consultation': Consultation,
-    }
-
-    model_class = model_map.get(model_type)
+    # Get the model class for the specified type
+    model_class = get_model_class(model_type)
     if not model_class:
         messages.error(request, 'Invalid record type.')
         return redirect('dashboard:dashboard')
 
+    # Get the record
     record = get_object_or_404(model_class, id=object_id)
 
     # Check if patient is NHIA
@@ -154,10 +148,18 @@ def request_nhia_authorization_form(request, model_type, object_id):
         messages.error(request, 'Authorization request is only for NHIA patients.')
         return redirect(request.META.get('HTTP_REFERER', 'dashboard:dashboard'))
 
-    # Check if already authorized
-    if hasattr(record, 'authorization_code') and record.authorization_code:
-        messages.info(request, 'This record already has an authorization code.')
+    # Check if already authorized or not required
+    requires_auth, reason = check_if_requires_authorization(record)
+    if not requires_auth:
+        messages.info(request, f'Authorization not required: {reason}')
         return redirect(request.META.get('HTTP_REFERER', 'dashboard:dashboard'))
+
+    # Get model information for display
+    model_info = get_model_info(model_type)
+    if not model_info:
+        display_name = model_type.replace('_', ' ').title()
+    else:
+        display_name = model_info['display_name']
 
     if request.method == 'POST':
         notes = request.POST.get('notes', '').strip()
@@ -168,7 +170,7 @@ def request_nhia_authorization_form(request, model_type, object_id):
             return render(request, 'core/request_authorization_form.html', {
                 'record': record,
                 'model_type': model_type,
-                'module_name': model_type.replace('_', ' ').title(),
+                'module_name': display_name,
             })
 
         # Send authorization request
@@ -185,16 +187,16 @@ def request_nhia_authorization_form(request, model_type, object_id):
             return render(request, 'core/request_authorization_form.html', {
                 'record': record,
                 'model_type': model_type,
-                'module_name': model_type.replace('_', ' ').title(),
+                'module_name': display_name,
             })
 
         # Create notification
         primary_user = desk_office_users.first()
-        notification_title = f"NHIA Authorization Request - {model_type.replace('_', ' ').title()}"
+        notification_title = f"NHIA Authorization Request - {display_name}"
         notification_message = f"""
 Authorization request for NHIA Patient: {record.patient.get_full_name()} (ID: {record.patient.patient_id})
 
-Module: {model_type.replace('_', ' ').title()}
+Module: {display_name}
 Record ID: {record.id}
 Requested by: {request.user.get_full_name() or request.user.username}
 Reason: {notes}
@@ -217,7 +219,7 @@ Please generate an authorization code for this patient to proceed with treatment
     context = {
         'record': record,
         'model_type': model_type,
-        'module_name': model_type.replace('_', ' ').title(),
+        'module_name': display_name,
     }
     return render(request, 'core/request_authorization_form.html', context)
 

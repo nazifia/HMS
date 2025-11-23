@@ -210,22 +210,34 @@ def scbu_record_detail(request, record_id):
         id=record_id
     )
 
-    # NHIA AUTHORIZATION CHECK
+    # **NHIA AUTHORIZATION CHECK**
     is_nhia_patient = record.patient.patient_type == 'nhia'
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
+    authorization_request_pending = False
 
     if is_nhia_patient:
         if record.authorization_code:
             authorization_message = f"Authorized - Code: {record.authorization_code}"
         else:
             authorization_message = "NHIA Authorization Required"
-            messages.warning(
-                request,
-                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
-                f"Please contact the desk office to obtain authorization for SCBU services."
-            )
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="SCBU"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for SCBU services."
+                )
 
     context = {
         'record': record,
@@ -233,6 +245,7 @@ def scbu_record_detail(request, record_id):
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'scbu/scbu_record_detail.html', context)
 
@@ -240,7 +253,7 @@ def scbu_record_detail(request, record_id):
 def edit_scbu_record(request, record_id):
     """View to edit an existing scbu record"""
     record = get_object_or_404(ScbuRecord, id=record_id)
-    
+
     if request.method == 'POST':
         form = ScbuRecordForm(request.POST, instance=record)
         if form.is_valid():
@@ -249,11 +262,45 @@ def edit_scbu_record(request, record_id):
             return redirect('scbu:scbu_record_detail', record_id=record.id)
     else:
         form = ScbuRecordForm(instance=record)
-    
+
+    # **NHIA AUTHORIZATION CHECK**
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+    authorization_request_pending = False
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+        else:
+            authorization_message = "NHIA Authorization Required"
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="SCBU"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for SCBU services."
+                )
+
     context = {
         'form': form,
         'record': record,
-        'title': 'Edit SCBU Record'
+        'title': 'Edit SCBU Record',
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'scbu/scbu_record_form.html', context)
 
