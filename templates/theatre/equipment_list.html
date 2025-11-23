@@ -31,7 +31,7 @@
                                 Total Equipment
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ total_equipment }}
+                                {{ object_list.count }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -41,17 +41,18 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                In Use
+                                Available
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ in_use }}
+                                {% widthratio object_list|length|add:0 1 1 as total %}
+                                {{ object_list|length|add:0 }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -61,41 +62,42 @@
                 </div>
             </div>
         </div>
-        
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Quantity
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% for equipment in object_list %}{% if forloop.first %}0{% endif %}{% endfor %}
+                                <span id="total-qty">Loading...</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Maintenance
+                                Needs Calibration
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ under_maintenance }}
+                                <span id="needs-calib">Loading...</span>
                             </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-wrench fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Out of Service
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ out_of_service }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-times-circle fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -122,55 +124,90 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    {% if equipment_list %}
+                    {% if object_list %}
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="equipmentTable" width="100%" cellspacing="0">
-                            <thead>
+                        <table class="table table-bordered table-hover" id="equipmentTable" width="100%" cellspacing="0">
+                            <thead class="table-light">
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>Type</th>
-                                    <th>Model</th>
-                                    <th>Serial Number</th>
-                                    <th>Location</th>
-                                    <th>Status</th>
+                                    <th>Description</th>
+                                    <th>Quantity</th>
+                                    <th>Available</th>
                                     <th>Last Maintenance</th>
                                     <th>Next Maintenance</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for equipment in equipment_list %}
+                                {% for equipment in object_list %}
                                 <tr>
                                     <td>{{ equipment.id }}</td>
-                                    <td>{{ equipment.name }}</td>
-                                    <td>{{ equipment.get_equipment_type_display }}</td>
-                                    <td>{{ equipment.model_number|default:"N/A" }}</td>
-                                    <td>{{ equipment.serial_number|default:"N/A" }}</td>
-                                    <td>{{ equipment.location|default:"N/A" }}</td>
+                                    <td><strong>{{ equipment.name }}</strong></td>
                                     <td>
-                                        {% if equipment.status == 'active' %}
-                                            <span class="badge bg-success">In Use</span>
-                                        {% elif equipment.status == 'maintenance' %}
-                                            <span class="badge bg-warning">Maintenance</span>
+                                        <span class="badge
+                                            {% if equipment.equipment_type == 'instrument' %}bg-primary
+                                            {% elif equipment.equipment_type == 'monitor' %}bg-info
+                                            {% elif equipment.equipment_type == 'anesthesia' %}bg-warning
+                                            {% elif equipment.equipment_type == 'imaging' %}bg-success
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ equipment.get_equipment_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>{{ equipment.description|truncatewords:10 }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-dark">{{ equipment.quantity_available }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if equipment.is_available %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> Yes
+                                            </span>
                                         {% else %}
-                                            <span class="badge bg-danger">Out of Service</span>
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times"></i> No
+                                            </span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ equipment.last_maintenance_date|date:"Y-m-d"|default:"Never" }}</td>
-                                    <td>{{ equipment.next_maintenance_date|date:"Y-m-d"|default:"Not scheduled" }}</td>
                                     <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'theatre:equipment_detail' equipment.id %}" class="btn btn-info btn-sm">
+                                        {% if equipment.last_maintenance_date %}
+                                            <small>{{ equipment.last_maintenance_date|date:"M d, Y" }}</small>
+                                        {% else %}
+                                            <small class="text-muted">Never</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if equipment.next_maintenance_date %}
+                                            <small class="{% now 'Y-m-d' as today %}
+                                                {% if equipment.next_maintenance_date|date:'Y-m-d' < today %}text-danger
+                                                {% elif equipment.next_maintenance_date|date:'Y-m-d' == today %}text-warning
+                                                {% else %}text-success{% endif %}">
+                                                {{ equipment.next_maintenance_date|date:"M d, Y" }}
+                                            </small>
+                                        {% else %}
+                                            <small class="text-muted">Not scheduled</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{% url 'theatre:equipment_detail' equipment.id %}"
+                                               class="btn btn-info btn-sm"
+                                               title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
-                                            <a href="{% url 'theatre:equipment_update' equipment.id %}" class="btn btn-warning btn-sm">
+                                            <a href="{% url 'theatre:equipment_update' equipment.id %}"
+                                               class="btn btn-warning btn-sm"
+                                               title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            {% endif %}
-                                            {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
-                                            <a href="{% url 'theatre:equipment_delete' equipment.id %}" class="btn btn-danger btn-sm" onclick="return confirmDelete('equipment')">
+                                            <a href="{% url 'theatre:equipment_delete' equipment.id %}"
+                                               class="btn btn-danger btn-sm"
+                                               onclick="return confirmDelete('equipment')"
+                                               title="Delete">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                             {% endif %}
@@ -182,9 +219,15 @@
                         </table>
                     </div>
                     {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-tools fa-3x text-gray-400 mb-3"></i>
-                        <p class="text-gray-500">No equipment found.</p>
+                    <div class="text-center py-5">
+                        <i class="fas fa-tools fa-4x text-gray-300 mb-3"></i>
+                        <p class="text-gray-500 h5">No equipment found.</p>
+                        <p class="text-muted">Add your first equipment to get started.</p>
+                        {% if user.is_superuser or user.profile.role in 'admin,doctor' %}
+                        <a href="{% url 'theatre:equipment_create' %}" class="btn btn-primary mt-3">
+                            <i class="fas fa-plus"></i> Add Equipment
+                        </a>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -196,13 +239,36 @@
 
 {% block extra_js %}
 <script>
-// Initialize DataTables if available
+// Calculate statistics from equipment data
 $(document).ready(function() {
+    // Calculate total quantity
+    let totalQty = 0;
+    let needsCalib = 0;
+    const today = new Date();
+
+    {% for equipment in object_list %}
+        totalQty += {{ equipment.quantity_available }};
+        {% if equipment.next_maintenance_date %}
+            const nextMaint = new Date('{{ equipment.next_maintenance_date|date:"Y-m-d" }}');
+            if (nextMaint <= today) {
+                needsCalib++;
+            }
+        {% endif %}
+    {% endfor %}
+
+    // Update statistics
+    document.getElementById('total-qty').textContent = totalQty;
+    document.getElementById('needs-calib').textContent = needsCalib;
+
+    // Initialize DataTables if available
     if (window.jQuery && $.fn.DataTable) {
         $('#equipmentTable').DataTable({
             responsive: true,
             pageLength: 25,
-            order: [[0, 'asc']]
+            order: [[1, 'asc']],
+            columnDefs: [
+                { orderable: false, targets: -1 } // Disable sorting on Actions column
+            ]
         });
     }
 });
