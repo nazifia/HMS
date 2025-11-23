@@ -6,7 +6,7 @@
 {% block extra_css %}
 <style>
 .cart-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4965e4ff 0%, #8034ccff 100%);
     color: white;
     padding: 2rem;
     border-radius: 10px;
@@ -78,7 +78,7 @@
 }
 
 .table-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #3b5ae4ff 0%, #5d1e9dff 100%);
     padding: 1.25rem 1rem;
     border-bottom: none;
     color: white;
@@ -93,7 +93,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    background: linear-gradient(135deg, rgba(181, 97, 97, 0.1) 0%, rgba(255,255,255,0) 100%);
 }
 
 .table-header h5 {
@@ -112,7 +112,7 @@
     font-weight: bold;
 }
 
-.stock-available { background: #d4edda; color: #155724; }
+.stock-available { background: #9df5b2ff; color: #155724; }
 .stock-partial { background: #fff3cd; color: #856404; }
 .stock-out { background: #f8d7da; color: #721c24; }
 
@@ -139,7 +139,7 @@
 .table thead th {
     border-bottom: 3px solid #667eea;
     font-weight: 600;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: linear-gradient(135deg, #4da3f9ff 0%, #2c7ed1ff 100%);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -157,7 +157,7 @@
 }
 
 .table tbody tr:nth-child(odd) {
-    background-color: rgba(248, 249, 250, 0.5);
+    background-color: rgba(58, 59, 59, 0.5);
 }
 
 .table tbody tr:hover {
@@ -415,6 +415,11 @@
     padding-top: 1rem;
     border-top: 2px solid #667eea;
 }
+
+.field-text-black {
+    color: black !important;
+    font-weight: normal;
+}
 </style>
 {% endblock %}
 
@@ -570,9 +575,9 @@
                                         <div class="mb-1">
                                             <del class="text-muted small">{{ item.prescription_item.medication.strength|default:"-" }}</del>
                                         </div>
-                                        <span class="badge badge-success">{{ item.substitute_medication.strength|default:"-" }}</span>
+                                        <span class="field-text-black">{{ item.substitute_medication.strength|default:"-" }}</span>
                                     {% else %}
-                                        <span class="badge badge-info">{{ item.prescription_item.medication.strength|default:"-" }}</span>
+                                        <span class="field-text-black">{{ item.prescription_item.medication.strength|default:"-" }}</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
@@ -580,9 +585,9 @@
                                         <div class="mb-1">
                                             <del class="text-muted small">{{ item.prescription_item.medication.dosage_form|default:"-" }}</del>
                                         </div>
-                                        <span class="badge badge-success">{{ item.substitute_medication.dosage_form|default:"-" }}</span>
+                                        <span class="field-text-black">{{ item.substitute_medication.dosage_form|default:"-" }}</span>
                                     {% else %}
-                                        <span class="badge badge-secondary">{{ item.prescription_item.medication.dosage_form|default:"-" }}</span>
+                                        <span class="field-text-black">{{ item.prescription_item.medication.dosage_form|default:"-" }}</span>
                                     {% endif %}
                                 </td>
                                 <td class="quantity-cell">
@@ -604,13 +609,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="quantity-cell">
-                                    {% if item.is_fully_dispensed %}
-                                        <span class="badge badge-success">
-                                    {% elif item.is_partially_dispensed %}
-                                        <span class="badge badge-warning">
-                                    {% else %}
-                                        <span class="badge badge-secondary">
-                                    {% endif %}
+                                    <span class="field-text-black">
                                         {{ item.quantity_dispensed }}
                                     </span>
                                 </td>
