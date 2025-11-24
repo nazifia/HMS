@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!-- Payment Modal for Outstanding Admission Payments -->
 <div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
@@ -40,7 +41,7 @@
                                     <h6 class="mb-0"><i class="fas fa-wallet"></i> Wallet Balance</h6>
                                 </div>
                                 <div class="card-body text-center">
-                                    <h3 class="text-success" id="modalWalletBalance">₦{{ admission.patient.wallet.balance|floatformat:2 }}</h3>
+                                    <h3 class="text-success" id="modalWalletBalance">{{ admission.patient.wallet.balance|currency }}</h3>
                                     <p class="text-muted mb-0">Available Balance</p>
                                     <div id="walletStatus">
                                         {% if admission.patient.wallet.balance >= admission.get_outstanding_admission_cost %}
@@ -66,7 +67,7 @@
                                             <table class="table table-sm">
                                                 <tr>
                                                     <td><strong>Outstanding Amount:</strong></td>
-                                                    <td class="text-danger" id="modalOutstandingAmount">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                                    <td class="text-danger" id="modalOutstandingAmount">{{ admission.get_outstanding_admission_cost|currency }}</td>
                                                 </tr>
                                                 <tr>
                                                     <td><strong>Duration:</strong></td>
@@ -74,7 +75,7 @@
                                                 </tr>
                                                 <tr>
                                                     <td><strong>Daily Rate:</strong></td>
-                                                    <td>₦{{ admission.bed.ward.charge_per_day|floatformat:2 }}</td>
+                                                    <td>{{ admission.bed.ward.charge_per_day|currency }}</td>
                                                 </tr>
                                             </table>
                                         </div>
@@ -86,12 +87,12 @@
                                                 <div id="paymentImpact">
                                                     {% if admission.patient.wallet.balance >= admission.get_outstanding_admission_cost %}
                                                         <p class="mb-1">✓ Wallet covers full outstanding amount</p>
-                                                        <p class="mb-1">✓ Balance after payment: <strong>₦{{ admission.patient.wallet.balance|subtract:admission.get_outstanding_admission_cost|floatformat:2 }}</strong></p>
+                                                        <p class="mb-1">✓ Balance after payment: <strong>{{ admission.patient.wallet.balance|subtract:admission.get_outstanding_admission_cost|currency }}</strong></p>
                                                         <p class="mb-0">✓ Outstanding balance will be cleared</p>
                                                     {% else %}
                                                         <p class="mb-1">⚠ Wallet covers partial amount</p>
-                                                        <p class="mb-1">✓ Amount to be paid: <strong>₦{{ admission.patient.wallet.balance|floatformat:2 }}</strong></p>
-                                                        <p class="mb-0">⚠ Remaining outstanding: <strong>₦{{ admission.get_outstanding_admission_cost|subtract:admission.patient.wallet.balance|floatformat:2 }}</strong></p>
+                                                        <p class="mb-1">✓ Amount to be paid: <strong>{{ admission.patient.wallet.balance|currency }}</strong></p>
+                                                        <p class="mb-0">⚠ Remaining outstanding: <strong>{{ admission.get_outstanding_admission_cost|subtract:admission.patient.wallet.balance|currency }}</strong></p>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -113,7 +114,7 @@
                     <div class="form-check mt-3">
                         <input class="form-check-input" type="checkbox" id="confirmPayment" required>
                         <label class="form-check-label" for="confirmPayment">
-                            I confirm that I want to process this payment of <strong id="confirmAmount">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</strong>
+                            I confirm that I want to process this payment of <strong id="confirmAmount">{{ admission.get_outstanding_admission_cost|currency }}</strong>
                             from the patient's wallet. This action cannot be undone.
                         </label>
                     </div>

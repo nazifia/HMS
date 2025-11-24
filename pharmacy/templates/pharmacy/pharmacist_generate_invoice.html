@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -183,7 +184,7 @@
                                 <div class="h4 mb-0" id="total-{{ item_data.item.id }}">
                                     ₦0.00
                                 </div>
-                                <small class="text-muted">Unit: ₦{{ item_data.item.medication.selling_price|floatformat:2 }}</small>
+                                <small class="text-muted">Unit: {{ item_data.item.medication.selling_price|currency }}</small>
                             </div>
                         </div>
                     </div>

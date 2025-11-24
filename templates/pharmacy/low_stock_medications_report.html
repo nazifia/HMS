@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
@@ -49,7 +50,7 @@
                                         </td>
                                         <td>{{ medication.category.name }}</td>
                                         <td>{{ medication.reorder_level }}</td>
-                                        <td>₦{{ medication.price }}</td>
+                                        <td>{{ medication.price |currency }}</td>
                                         <td>{{ medication|stock_status_badge }}</td>
                                         <td class="no-print">
                                             <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
@@ -89,7 +90,7 @@
                                         <td>{{ medication.category.name }}</td>
                                         <td>{{ medication.stock_quantity }}</td>
                                         <td>{{ medication.reorder_level }}</td>
-                                        <td>₦{{ medication.price }}</td>
+                                        <td>{{ medication.price |currency }}</td>
                                         <td class="no-print">
                                             <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
                                                 <i class="fas fa-eye"></i> View

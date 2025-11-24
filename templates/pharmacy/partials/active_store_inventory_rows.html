@@ -1,3 +1,4 @@
+{% load custom_filters %}
 {% load pharmacy_tags %}
 {% for item in inventory_items %}
     {% with category_name=item.medication.category.name|default:"No category" %}

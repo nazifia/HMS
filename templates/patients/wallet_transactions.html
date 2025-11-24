@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Wallet Transactions - {{ patient.get_full_name }}{% endblock %}
 
@@ -23,7 +24,7 @@
                                 Current Balance
                             </div>
                             <div class="h5 mb-0 font-weight-bold {% if patient.wallet.balance < 0 %}text-danger{% else %}text-gray-800{% endif %}">
-                                ₦{{ patient.wallet.balance|floatformat:2 }}
+                                {{ patient.wallet.balance|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -44,7 +45,7 @@
                                 Total Impact
                             </div>
                             <div class="h5 mb-0 font-weight-bold {% if admission_total < 0 %}text-danger{% else %}text-success{% endif %}">
-                                ₦{{ admission_total|floatformat:2 }}
+                                {{ admission_total|currency }}
                             </div>
                             <div class="text-xs text-muted">
                                 Including outstanding admission costs
@@ -72,10 +73,10 @@
                                 Day {{ current_admission.get_duration }}
                             </div>
                             <div class="text-xs text-muted">
-                                Total: ₦{{ current_admission.get_total_cost|floatformat:2 }}
+                                Total: {{ current_admission.get_total_cost|currency }}
                             </div>
                             <div class="text-xs text-{% if current_admission.get_outstanding_admission_cost > 0 %}danger{% else %}success{% endif %}">
-                                Outstanding: ₦{{ current_admission.get_outstanding_admission_cost|floatformat:2 }}
+                                Outstanding: {{ current_admission.get_outstanding_admission_cost|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -182,7 +183,7 @@
                                         <span class="badge bg-secondary">{{ transaction.get_transaction_type_display }}</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ transaction.amount|floatformat:2 }}</td>
+                                    <td>{{ transaction.amount|currency }}</td>
                                     <td>{{ transaction.description }}</td>
                                     <td>
                                         {% if transaction.admission %}
@@ -195,7 +196,7 @@
                                     </td>
                                     <td>
                                         <span class="{% if transaction.balance_after < 0 %}text-danger font-weight-bold{% else %}text-success{% endif %}">
-                                            ₦{{ transaction.balance_after|floatformat:2 }}
+                                            {{ transaction.balance_after|currency }}
                                         </span>
                                     </td>
                                 </tr>

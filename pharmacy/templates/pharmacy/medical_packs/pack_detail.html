@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
@@ -69,7 +70,7 @@
                 <p class="mb-0 lead">{{ pack.description }}</p>
             </div>
             <div class="col-md-4">
-                <div class="cost-display">₦{{ pack.get_total_cost|floatformat:2 }}</div>
+                <div class="cost-display">{{ pack.get_total_cost|currency }}</div>
                 <small>Total Cost</small>
             </div>
         </div>
@@ -235,7 +236,7 @@
                                                 <small class="text-muted">Quantity</small>
                                             </div>
                                             <div class="col-6">
-                                                <div class="fw-bold text-success">₦{{ item.get_total_cost|floatformat:2 }}</div>
+                                                <div class="fw-bold text-success">{{ item.get_total_cost|currency }}</div>
                                                 <small class="text-muted">Cost</small>
                                             </div>
                                         </div>
@@ -253,7 +254,7 @@
                                         {% endif %}
 
                                         <div class="mt-2">
-                                            <small class="text-muted">Unit Price: ₦{{ item.medication.price|floatformat:2 }}</small>
+                                            <small class="text-muted">Unit Price: {{ item.medication.price|currency }}</small>
                                         </div>
                                     </div>
                                 </div>

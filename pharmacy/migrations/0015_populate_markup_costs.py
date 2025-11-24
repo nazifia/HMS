@@ -10,9 +10,9 @@ def populate_markup_costs(apps, schema_editor):
 
     # Get all bulk store inventory items
     for item in BulkStoreInventory.objects.all():
-        # Apply default 2.5% markup if not already set
+        # Apply default 20% markup if not already set
         if item.unit_cost and item.marked_up_cost == 0:
-            item.markup_percentage = Decimal('2.50')
+            item.markup_percentage = Decimal('20.00')
             markup_multiplier = 1 + (item.markup_percentage / 100)
             item.marked_up_cost = item.unit_cost * markup_multiplier
             item.save()

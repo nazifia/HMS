@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Generate Service Authorization Code{% endblock %}
 
@@ -101,7 +102,7 @@
                 <hr>
                 <p class="mb-0">
                     Generated on: {{ existing_code.generated_at|date:"M d, Y H:i" }}<br>
-                    Amount: ₦{{ existing_code.amount }}<br>
+                    Amount: {{ existing_code.amount |currency }}<br>
                     Expiry: {{ existing_code.expiry_date|date:"M d, Y" }}
                 </p>
                 <div class="mt-3">

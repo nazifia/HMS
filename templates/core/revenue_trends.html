@@ -135,7 +135,7 @@
                                 Total Revenue ({{ months }} months)
                             </div>
                             <div class="revenue-amount">
-                                ₦{{ trends|sum:'total_revenue'|floatformat:2|intcomma }}
+                                {{ trends|sum:'total_revenue'|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -156,7 +156,7 @@
                                 Average Monthly
                             </div>
                             <div class="revenue-amount text-success">
-                                ₦{% calculate_average trends 'total_revenue' %}
+                                {% calculate_average trends 'total_revenue' %}|currency
                             </div>
                         </div>
                         <div class="col-auto">
@@ -274,28 +274,28 @@
                             {% for trend in trends %}
                             <tr>
                                 <td>{{ trend.month|date:"M Y" }}</td>
-                                <td class="trend-value text-primary">₦{{ trend.total_revenue|floatformat:2|intcomma }}</td>
-                                <td>₦{{ trend.pharmacy|floatformat:2|intcomma }}</td>
-                                <td>₦{{ trend.laboratory|floatformat:2|intcomma }}</td>
-                                <td>₦{{ trend.consultations|floatformat:2|intcomma }}</td>
-                                <td>₦{{ trend.theatre|floatformat:2|intcomma }}</td>
-                                <td>₦{{ trend.admissions|floatformat:2|intcomma }}</td>
-                                <td>₦{{ trend.general|floatformat:2|intcomma }}</td>
-                                <td>₦{{ trend.wallet|floatformat:2|intcomma }}</td>
+                                <td class="trend-value text-primary">{{ trend.total_revenue|currency }}</td>
+                                <td>{{ trend.pharmacy|currency }}</td>
+                                <td>{{ trend.laboratory|currency }}</td>
+                                <td>{{ trend.consultations|currency }}</td>
+                                <td>{{ trend.theatre|currency }}</td>
+                                <td>{{ trend.admissions|currency }}</td>
+                                <td>{{ trend.general|currency }}</td>
+                                <td>{{ trend.wallet|currency }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                         <tfoot>
                             <tr class="bg-light">
                                 <th>Total</th>
-                                <th class="trend-value">₦{{ trends|sum:'total_revenue'|floatformat:2|intcomma }}</th>
-                                <th>₦{{ trends|sum:'pharmacy'|floatformat:2|intcomma }}</th>
-                                <th>₦{{ trends|sum:'laboratory'|floatformat:2|intcomma }}</th>
-                                <th>₦{{ trends|sum:'consultations'|floatformat:2|intcomma }}</th>
-                                <th>₦{{ trends|sum:'theatre'|floatformat:2|intcomma }}</th>
-                                <th>₦{{ trends|sum:'admissions'|floatformat:2|intcomma }}</th>
-                                <th>₦{{ trends|sum:'general'|floatformat:2|intcomma }}</th>
-                                <th>₦{{ trends|sum:'wallet'|floatformat:2|intcomma }}</th>
+                                <th class="trend-value">{{ trends|sum:'total_revenue'|currency }}</th>
+                                <th>{{ trends|sum:'pharmacy'|currency }}</th>
+                                <th>{{ trends|sum:'laboratory'|currency }}</th>
+                                <th>{{ trends|sum:'consultations'|currency }}</th>
+                                <th>{{ trends|sum:'theatre'|currency }}</th>
+                                <th>{{ trends|sum:'admissions'|currency }}</th>
+                                <th>{{ trends|sum:'general'|currency }}</th>
+                                <th>{{ trends|sum:'wallet'|currency }}</th>
                             </tr>
                         </tfoot>
                     </table>

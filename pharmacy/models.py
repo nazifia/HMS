@@ -364,7 +364,7 @@ class BulkStoreInventory(models.Model):
     stock_quantity = models.IntegerField(default=0)
     expiry_date = models.DateField()
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=2.50,
+    markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=20.00,
                                            help_text="Markup percentage (0-100)")
     marked_up_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,
                                         help_text="Cost after markup applied")

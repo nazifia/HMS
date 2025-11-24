@@ -1,5 +1,6 @@
 {% extends 'base_print.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Cart Receipt - #{{ cart.id }}{% endblock %}
 
@@ -259,11 +260,11 @@
                     <small>{{ item.prescription_item.medication.strength }}</small>
                 </td>
                 <td style="text-align: center;">{{ item.quantity }}</td>
-                <td style="text-align: right;">₦{{ item.unit_price|floatformat:2 }}</td>
-                <td style="text-align: right;">₦{{ item.get_subtotal|floatformat:2 }}</td>
+                <td style="text-align: right;">{{ item.unit_price|currency }}</td>
+                <td style="text-align: right;">{{ item.get_subtotal|currency }}</td>
                 {% if cart.prescription.patient.is_nhia_patient %}
-                <td style="text-align: right;">₦{{ item.get_patient_pays|floatformat:2 }}</td>
-                <td style="text-align: right;">₦{{ item.get_nhia_covers|floatformat:2 }}</td>
+                <td style="text-align: right;">{{ item.get_patient_pays|currency }}</td>
+                <td style="text-align: right;">{{ item.get_nhia_covers|currency }}</td>
                 {% endif %}
             </tr>
             {% endfor %}
@@ -274,19 +275,19 @@
     <div class="summary-section">
         <div class="summary-row">
             <span>Subtotal:</span>
-            <span>₦{{ cart.get_subtotal|floatformat:2 }}</span>
+            <span>{{ cart.get_subtotal|currency }}</span>
         </div>
         
         {% if cart.prescription.patient.is_nhia_patient %}
         <div class="summary-row">
             <span>NHIA Coverage (90%):</span>
-            <span class="text-success">₦{{ cart.get_nhia_coverage|floatformat:2 }}</span>
+            <span class="text-success">{{ cart.get_nhia_coverage|currency }}</span>
         </div>
         {% endif %}
         
         <div class="summary-row total">
             <span>{% if cart.prescription.patient.is_nhia_patient %}Patient Pays (10%):{% else %}Total Amount:{% endif %}</span>
-            <span>₦{{ cart.get_patient_payable|floatformat:2 }}</span>
+            <span>{{ cart.get_patient_payable|currency }}</span>
         </div>
     </div>
 

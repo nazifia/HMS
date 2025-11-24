@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load billing_tags %}
 {% load form_tags %}
 
@@ -79,20 +80,20 @@
                                     <div class="col-md-3">
                                         <div class="text-center">
                                             <h6 class="text-muted">Total Amount</h6>
-                                            <h4 class="text-primary">₦{{ invoice.total_amount|floatformat:2 }}</h4>
+                                            <h4 class="text-primary">{{ invoice.total_amount|currency }}</h4>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="text-center">
                                             <h6 class="text-muted">Amount Paid</h6>
-                                            <h4 class="text-success">₦{{ invoice.amount_paid|floatformat:2 }}</h4>
+                                            <h4 class="text-success">{{ invoice.amount_paid|currency }}</h4>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="text-center">
                                             <h6 class="text-muted">Balance Due</h6>
                                             <h4 class="{% if invoice.get_balance > 0 %}text-danger{% else %}text-success{% endif %}">
-                                                ₦{{ invoice.get_balance|floatformat:2 }}
+                                                {{ invoice.get_balance|currency }}
                                             </h4>
                                         </div>
                                     </div>
@@ -108,7 +109,7 @@
                                     <div class="col-md-12">
                                         <div class="alert alert-warning">
                                             <i class="fas fa-exclamation-triangle me-2"></i>
-                                            <strong>Payment Required:</strong> This invoice has an outstanding balance of ₦{{ invoice.get_balance|floatformat:2 }}.
+                                            <strong>Payment Required:</strong> This invoice has an outstanding balance of {{ invoice.get_balance|currency }}.
                                             {% if invoice.due_date %}
                                                 Due date: {{ invoice.due_date|date:"F d, Y" }}
                                             {% endif %}
@@ -164,39 +165,39 @@
                                                         </td>
                                                         <td>{{ item.description }}</td>
                                                         <td class="text-center">{{ item.quantity }}</td>
-                                                        <td class="text-end">₦{{ item.unit_price|floatformat:2 }}</td>
-                                                        <td class="text-end">₦{{ item.total_price|floatformat:2 }}</td>
+                                                        <td class="text-end">{{ item.unit_price|currency }}</td>
+                                                        <td class="text-end">{{ item.total_price|currency }}</td>
                                                     </tr>
                                                 {% endfor %}
                                             </tbody>
                                             <tfoot>
                                                 <tr>
                                                     <th colspan="4" class="text-end">Subtotal:</th>
-                                                    <th class="text-end">₦{{ invoice.subtotal|floatformat:2 }}</th>
+                                                    <th class="text-end">{{ invoice.subtotal|currency }}</th>
                                                 </tr>
                                                 {% if invoice.tax_amount > 0 %}
                                                 <tr>
                                                     <th colspan="4" class="text-end">Tax:</th>
-                                                    <th class="text-end">₦{{ invoice.tax_amount|floatformat:2 }}</th>
+                                                    <th class="text-end">{{ invoice.tax_amount|currency }}</th>
                                                 </tr>
                                                 {% endif %}
                                                 {% if invoice.discount_amount > 0 %}
                                                 <tr>
                                                     <th colspan="4" class="text-end">Discount:</th>
-                                                    <th class="text-end">-₦{{ invoice.discount_amount|floatformat:2 }}</th>
+                                                    <th class="text-end">-{{ invoice.discount_amount|currency }}</th>
                                                 </tr>
                                                 {% endif %}
                                                 <tr>
                                                     <th colspan="4" class="text-end">Total:</th>
-                                                    <th class="text-end">₦{{ invoice.total_amount|floatformat:2 }}</th>
+                                                    <th class="text-end">{{ invoice.total_amount|currency }}</th>
                                                 </tr>
                                                 <tr>
                                                     <th colspan="4" class="text-end">Amount Paid:</th>
-                                                    <th class="text-end">₦{{ invoice.amount_paid|floatformat:2 }}</th>
+                                                    <th class="text-end">{{ invoice.amount_paid|currency }}</th>
                                                 </tr>
                                                 <tr>
                                                     <th colspan="4" class="text-end">Balance Due:</th>
-                                                    <th class="text-end">₦{{ invoice.get_balance|floatformat:2 }}</th>
+                                                    <th class="text-end">{{ invoice.get_balance|currency }}</th>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -241,7 +242,7 @@
                                                 {% for payment in payments %}
                                                     <tr>
                                                         <td>{{ payment.payment_date|date:"M d, Y" }}</td>
-                                                        <td>₦{{ payment.amount|floatformat:2 }}</td>
+                                                        <td>{{ payment.amount|currency }}</td>
                                                         <td>{{ payment.get_payment_method_display }}</td>
                                                         <td>{{ payment.reference_number|default:"-" }}</td>
                                                         <td>{% if payment.received_by %}{{ payment.received_by.get_full_name|default:payment.received_by.username }}{% else %}-{% endif %}</td>
@@ -252,7 +253,7 @@
                                             <tfoot>
                                                 <tr>
                                                     <th colspan="5" class="text-end">Total Paid:</th>
-                                                    <th>{% if invoice.amount_paid %}₦{{ invoice.amount_paid|floatformat:2 }}{% else %}₦0.00{% endif %}</th>
+                                                    <th>{% if invoice.amount_paid %}{{ invoice.amount_paid|currency }}{% else %}₦0.00{% endif %}</th>
                                                 </tr>
                                             </tfoot>
                                     </div>

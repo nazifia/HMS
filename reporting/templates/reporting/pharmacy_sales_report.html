@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -26,7 +27,7 @@
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Sales List</h6>
-            <div class="font-weight-bold">Total Sales: ₦{{ total_sales|floatformat:2 }}</div>
+            <div class="font-weight-bold">Total Sales: {{ total_sales|currency }}</div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -45,7 +46,7 @@
                             <td>{{ prescription.id }}</td>
                             <td>{{ prescription.patient.get_full_name }}</td>
                             <td>{{ prescription.prescription_date }}</td>
-                            <td>₦{{ prescription.get_total_prescribed_price|floatformat:2 }}</td>
+                            <td>{{ prescription.get_total_prescribed_price|currency }}</td>
                         </tr>
                         {% empty %}
                         <tr>

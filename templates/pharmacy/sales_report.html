@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% block title %}Pharmacy Report Dashboard{% endblock %}
 {% block content %}
 <div class="container mt-4">
@@ -8,7 +9,7 @@
             <div class="card text-white bg-primary mb-3">
                 <div class="card-body">
                     <h5 class="card-title">Total Monthly Sales</h5>
-                    <p class="card-text display-6">₦{{ monthly_sales|floatformat:2 }}</p>
+                    <p class="card-text display-6">{{ monthly_sales|currency }}</p>
                     <div class="text-muted">From {{ month_start|date:'M d, Y' }} to {{ month_end|date:'M d, Y' }}</div>
                 </div>
             </div>
@@ -28,7 +29,7 @@
                             {% for row in daily_sales %}
                                 <tr>
                                     <td>{{ row.dispensed_by__first_name }} {{ row.dispensed_by__last_name }}</td>
-                                    <td>{{ row.total_sales|floatformat:2 }}</td>
+                                    <td>{{ row.total_sales|currency }}</td>
                                 </tr>
                             {% empty %}
                                 <tr><td colspan="2">No sales for today.</td></tr>

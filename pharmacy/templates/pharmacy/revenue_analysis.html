@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -60,7 +61,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Revenue
                             </div>
-                            <div class="metric-value">₦{{ total_revenue|floatformat:2 }}</div>
+                            <div class="metric-value">{{ total_revenue|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -79,7 +80,7 @@
                                 Gross Profit
                             </div>
                             <div class="metric-value {% if gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
-                                ₦{{ gross_profit|floatformat:2 }}
+                                {{ gross_profit|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -184,9 +185,9 @@
                                 {% for med in medication_revenue|slice:":15" %}
                                 <tr>
                                     <td>{{ med.medication__name }}</td>
-                                    <td>₦{{ med.total_revenue|floatformat:2 }}</td>
+                                    <td>{{ med.total_revenue|currency }}</td>
                                     <td>{{ med.total_quantity }}</td>
-                                    <td>₦{{ med.avg_price|floatformat:2 }}</td>
+                                    <td>{{ med.avg_price|currency }}</td>
                                     <td>
                                         <span class="{% if med.profit_margin >= 20 %}text-success{% elif med.profit_margin >= 10 %}text-warning{% else %}text-danger{% endif %}">
                                             {{ med.profit_margin|floatformat:1 }}%
@@ -233,11 +234,11 @@
                         <h6 class="text-info">Revenue Insights</h6>
                         <ul class="list-unstyled">
                             <li><small><i class="fas fa-chart-line text-success"></i> 
-                                Avg Revenue per Prescription: ₦{{ total_revenue|div:prescription_revenue.total_prescriptions|floatformat:2 }}</small></li>
+                                Avg Revenue per Prescription: {{ total_revenue|div:prescription_revenue.total_prescriptions|currency }}</small></li>
                             <li><small><i class="fas fa-pills text-info"></i> 
                                 Total Medications Dispensed: {{ prescription_revenue.total_medications_dispensed }}</small></li>
                             <li><small><i class="fas fa-calculator text-warning"></i> 
-                                Avg Revenue per Medication: ₦{{ total_revenue|div:prescription_revenue.total_medications_dispensed|floatformat:2 }}</small></li>
+                                Avg Revenue per Medication: {{ total_revenue|div:prescription_revenue.total_medications_dispensed|currency }}</small></li>
                         </ul>
                     </div>
                 </div>
@@ -267,9 +268,9 @@
                                 {% for patient in patient_revenue|slice:":10" %}
                                 <tr>
                                     <td>{{ patient.prescription__patient__first_name }} {{ patient.prescription__patient__last_name }}</td>
-                                    <td>₦{{ patient.total_spent|floatformat:2 }}</td>
+                                    <td>{{ patient.total_spent|currency }}</td>
                                     <td>{{ patient.total_prescriptions }}</td>
-                                    <td>₦{{ patient.total_spent|div:patient.total_prescriptions|floatformat:2 }}</td>
+                                    <td>{{ patient.total_spent|div:patient.total_prescriptions|currency }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

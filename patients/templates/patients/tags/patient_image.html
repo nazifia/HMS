@@ -1,4 +1,5 @@
 {% load static %}
+{% load custom_filters %}
 {% if has_image %}
     <img src="{{ image_url }}" 
          alt="{{ patient.get_full_name }}" 

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
 
@@ -56,7 +57,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Wallet Balance</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800 {% if wallet_balance < 0 %}text-danger{% endif %}">
-                                ₦{{ wallet_balance|floatformat:2 }}
+                                {{ wallet_balance|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -73,7 +74,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Credits</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_credits|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_credits|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-plus-circle fa-2x text-gray-300"></i>
@@ -89,7 +90,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Debits</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_debits|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_debits|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-minus-circle fa-2x text-gray-300"></i>
@@ -105,7 +106,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Outstanding Balance</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ outstanding_balance|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ outstanding_balance|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
@@ -146,7 +147,7 @@
                                         </span>
                                     </td>
                                     <td>{{ transaction.description }}</td>
-                                    <td>₦{{ transaction.amount|floatformat:2 }}</td>
+                                    <td>{{ transaction.amount|currency }}</td>
                                     <td><code>{{ transaction.reference }}</code></td>
                                 </tr>
                                 {% endfor %}
@@ -186,7 +187,7 @@
                     <p><strong>Last Updated:</strong> {{ wallet.last_updated|date:"M d, Y H:i" }}</p>
                     <p><strong>Current Balance:</strong> 
                         <span class="{% if wallet_balance < 0 %}text-danger{% else %}text-success{% endif %}">
-                            ₦{{ wallet_balance|floatformat:2 }}
+                            {{ wallet_balance|currency }}
                         </span>
                     </p>
                     
@@ -214,13 +215,13 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
                             <span>Total Invoiced:</span>
-                            <strong>₦{{ total_invoiced|floatformat:2 }}</strong>
+                            <strong>{{ total_invoiced|currency }}</strong>
                         </div>
                     </div>
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
                             <span>Total Paid:</span>
-                            <strong class="text-success">₦{{ total_paid|floatformat:2 }}</strong>
+                            <strong class="text-success">{{ total_paid|currency }}</strong>
                         </div>
                     </div>
                     <hr>
@@ -228,7 +229,7 @@
                         <div class="d-flex justify-content-between">
                             <span>Outstanding:</span>
                             <strong class="{% if outstanding_balance > 0 %}text-danger{% else %}text-success{% endif %}">
-                                ₦{{ outstanding_balance|floatformat:2 }}
+                                {{ outstanding_balance|currency }}
                             </strong>
                         </div>
                     </div>

@@ -1,4 +1,5 @@
 {% extends 'dental/base.html' %}
+{% load custom_filters %}
 {% load crispy_forms_tags %}
 
 {% block page_title %}Dental Services{% endblock %}
@@ -33,7 +34,7 @@
                             <tr>
                                 <td>{{ service.name }}</td>
                                 <td>{{ service.description|truncatewords:10 }}</td>
-                                <td>₦{{ service.price }}</td>
+                                <td>{{ service.price |currency }}</td>
                                 <td>
                                     {% if service.is_active %}
                                         <span class="badge bg-success">Active</span>

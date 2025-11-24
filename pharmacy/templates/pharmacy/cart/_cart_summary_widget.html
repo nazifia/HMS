@@ -1,3 +1,4 @@
+{% load custom_filters %}
 {% comment %}
 Cart Summary Widget - Reusable component for displaying cart summary
 Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_actions=True %}
@@ -177,11 +178,11 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
     <div class="nhia-breakdown">
         <div class="nhia-row">
             <span><i class="fas fa-user"></i> Patient (10%):</span>
-            <strong id="summary-patient-payable">₦{{ cart.get_patient_payable|floatformat:2 }}</strong>
+            <strong id="summary-patient-payable">{{ cart.get_patient_payable|currency }}</strong>
         </div>
         <div class="nhia-row">
             <span><i class="fas fa-hospital"></i> NHIA (90%):</span>
-            <strong id="summary-nhia-coverage">₦{{ cart.get_nhia_coverage|floatformat:2 }}</strong>
+            <strong id="summary-nhia-coverage">{{ cart.get_nhia_coverage|currency }}</strong>
         </div>
     </div>
     {% endif %}
@@ -190,13 +191,13 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
     <div class="summary-items">
         <div class="summary-item">
             <span class="item-label">Subtotal:</span>
-            <span class="item-value" id="summary-subtotal">₦{{ cart.get_subtotal|floatformat:2 }}</span>
+            <span class="item-value" id="summary-subtotal">{{ cart.get_subtotal|currency }}</span>
         </div>
 
         {% if cart.prescription.patient.is_nhia_patient %}
         <div class="summary-item">
             <span class="item-label">NHIA Coverage:</span>
-            <span class="item-value text-success" id="summary-nhia-coverage-detail">-₦{{ cart.get_nhia_coverage|floatformat:2 }}</span>
+            <span class="item-value text-success" id="summary-nhia-coverage-detail">-{{ cart.get_nhia_coverage|currency }}</span>
         </div>
         {% endif %}
         
@@ -217,7 +218,7 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
             Total Amount
             {% endif %}
         </div>
-        <div class="total-amount" id="summary-total-amount">₦{{ cart.get_patient_payable|floatformat:2 }}</div>
+        <div class="total-amount" id="summary-total-amount">{{ cart.get_patient_payable|currency }}</div>
     </div>
     
     <!-- Action Buttons (if show_actions is True) -->

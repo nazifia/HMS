@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -99,7 +100,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Revenue</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ overall_stats.total_revenue|floatformat:2|default:"0.00" }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ overall_stats.total_revenue|default:0|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -182,8 +183,8 @@
                                 <tr>
                                     <td><strong>{{ stat.test__category__name|default:"Unknown" }}</strong></td>
                                     <td>{{ stat.total_orders|default:"0" }}</td>
-                                    <td>₦{{ stat.total_revenue|floatformat:2|default:"0.00" }}</td>
-                                    <td>₦{{ stat.avg_price|floatformat:2|default:"0.00" }}</td>
+                                    <td>{{ stat.total_revenue|default:0|currency }}</td>
+                                    <td>{{ stat.avg_price|default:0|currency }}</td>
                                     <td>{{ stat.unique_patients|default:"0" }}</td>
                                 </tr>
                                 {% empty %}
@@ -347,7 +348,7 @@
                             <small class="text-muted">Referring Doctors</small>
                         </div>
                         <div class="col-md-3">
-                            <h4 class="text-warning">₦{{ overall_stats.avg_revenue_per_order|floatformat:0|default:"0" }}</h4>
+                            <h4 class="text-warning">{{ overall_stats.avg_revenue_per_order|default:0|currency }}</h4>
                             <small class="text-muted">Avg Revenue per Order</small>
                         </div>
                     </div>

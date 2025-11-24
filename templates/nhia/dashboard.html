@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}NHIA Desk Office{% endblock %}
 
@@ -117,7 +118,7 @@
                                     <td>{{ code.code }}</td>
                                     <td>{{ code.patient.get_full_name }}</td>
                                     <td>{{ code.get_service_type_display }}</td>
-                                    <td>₦{{ code.amount }}</td>
+                                    <td>{{ code.amount |currency }}</td>
                                     <td>{{ code.expiry_date }}</td>
                                     <td>
                                         {% if code.status == 'active' %}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Wallet Net Impact - {{ patient.get_full_name }}{% endblock %}
 
@@ -60,7 +61,7 @@
                                 Current Balance
                             </div>
                             <div class="h5 mb-0 font-weight-bold {% if patient.wallet.balance < 0 %}text-danger{% else %}text-gray-800{% endif %}">
-                                ₦{{ patient.wallet.balance|floatformat:2 }}
+                                {{ patient.wallet.balance|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -80,7 +81,7 @@
                                 Net Impact (Current)
                             </div>
                             <div class="h5 mb-0 font-weight-bold {% if net_impact_without_update < 0 %}text-danger{% else %}text-info{% endif %}">
-                                ₦{{ net_impact_without_update|floatformat:2 }}
+                                {{ net_impact_without_update|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -100,7 +101,7 @@
                                 Total Outstanding
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-warning">
-                                ₦{{ total_outstanding|floatformat:2 }}
+                                {{ total_outstanding|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -120,7 +121,7 @@
                                 Projected Balance
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-success">
-                                ₦{{ projected_balance|floatformat:2 }}
+                                {{ projected_balance|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -157,7 +158,7 @@
                                 <tr>
                                     <td>Current Wallet Balance</td>
                                     <td class="{% if patient.wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
-                                        ₦{{ patient.wallet.balance|floatformat:2 }}
+                                        {{ patient.wallet.balance|currency }}
                                     </td>
                                 </tr>
                                 <tr>
@@ -166,15 +167,15 @@
                                 </tr>
                                 <tr>
                                     <td>Outstanding Admission Costs</td>
-                                    <td class="text-warning">₦{{ admission_outstanding|floatformat:2 }}</td>
+                                    <td class="text-warning">{{ admission_outstanding|currency }}</td>
                                 </tr>
                                 <tr>
                                     <td>Outstanding Invoices</td>
-                                    <td class="text-warning">₦{{ invoice_outstanding|floatformat:2 }}</td>
+                                    <td class="text-warning">{{ invoice_outstanding|currency }}</td>
                                 </tr>
                                 <tr>
                                     <th>Total Outstanding</th>
-                                    <th class="text-warning">₦{{ total_outstanding|floatformat:2 }}</th>
+                                    <th class="text-warning">{{ total_outstanding|currency }}</th>
                                 </tr>
                             </table>
                         </div>
@@ -183,16 +184,16 @@
                             <table class="table table-bordered">
                                 <tr>
                                     <td>Wallet Balance</td>
-                                    <td>₦{{ patient.wallet.balance|floatformat:2 }}</td>
+                                    <td>{{ patient.wallet.balance|currency }}</td>
                                 </tr>
                                 <tr>
                                     <td>Total Outstanding</td>
-                                    <td>- ₦{{ total_outstanding|floatformat:2 }}</td>
+                                    <td>- {{ total_outstanding|currency }}</td>
                                 </tr>
                                 <tr>
                                     <th>Net Impact</th>
                                     <th class="{% if net_impact_without_update < 0 %}text-danger{% else %}text-success{% endif %}">
-                                        ₦{{ net_impact_without_update|floatformat:2 }}
+                                        {{ net_impact_without_update|currency }}
                                     </th>
                                 </tr>
                                 <tr>
@@ -232,9 +233,9 @@
                                         <td>{{ admission.id }}</td>
                                         <td>{{ admission.admission_date|date:"M d, Y" }}</td>
                                         <td>{{ admission.bed.ward.name|default:"-" }}</td>
-                                        <td>₦{{ admission.get_total_cost|floatformat:2 }}</td>
-                                        <td>₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</td>
-                                        <td class="text-warning">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                        <td>{{ admission.get_total_cost|currency }}</td>
+                                        <td>{{ admission.get_actual_charges_from_wallet|currency }}</td>
+                                        <td class="text-warning">{{ admission.get_outstanding_admission_cost|currency }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -263,9 +264,9 @@
                                     <tr>
                                         <td>{{ invoice.invoice_number }}</td>
                                         <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
-                                        <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
-                                        <td>₦{{ invoice.amount_paid|floatformat:2 }}</td>
-                                        <td class="text-warning">₦{{ invoice.get_balance|floatformat:2 }}</td>
+                                        <td>{{ invoice.total_amount|currency }}</td>
+                                        <td>{{ invoice.amount_paid|currency }}</td>
+                                        <td class="text-warning">{{ invoice.get_balance|currency }}</td>
                                         <td>
                                             <span class="badge badge-{{ invoice.status }}">
                                                 {{ invoice.get_status_display }}
@@ -299,9 +300,9 @@
                         <div class="alert alert-info">
                             <h6>Summary of Changes:</h6>
                             <ul>
-                                <li>Current Balance: <strong>₦{{ patient.wallet.balance|floatformat:2 }}</strong></li>
-                                <li>Net Impact: <strong>₦{{ net_impact_without_update|floatformat:2 }}</strong></li>
-                                <li>New Balance: <strong>₦{{ projected_balance|floatformat:2 }}</strong></li>
+                                <li>Current Balance: <strong>{{ patient.wallet.balance|currency }}</strong></li>
+                                <li>Net Impact: <strong>{{ net_impact_without_update|currency }}</strong></li>
+                                <li>New Balance: <strong>{{ projected_balance|currency }}</strong></li>
                             </ul>
                         </div>
                         

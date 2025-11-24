@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -99,7 +100,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Revenue</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ overall_stats.total_revenue|floatformat:2|default:"0.00" }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ overall_stats.total_revenue|default:0|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -147,7 +148,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Avg Revenue per Test</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ overall_stats.avg_revenue_per_request|floatformat:2|default:"0.00" }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ overall_stats.avg_revenue_per_request|default:0|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-chart-line fa-2x text-gray-300"></i>
@@ -182,8 +183,8 @@
                                 <tr>
                                     <td><strong>{{ stat.tests__category__name|default:"Unknown" }}</strong></td>
                                     <td>{{ stat.total_requests|default:"0" }}</td>
-                                    <td>₦{{ stat.total_revenue|floatformat:2|default:"0.00" }}</td>
-                                    <td>₦{{ stat.avg_price|floatformat:2|default:"0.00" }}</td>
+                                    <td>{{ stat.total_revenue|default:0|currency }}</td>
+                                    <td>{{ stat.avg_price|default:0|currency }}</td>
                                     <td>{{ stat.unique_patients|default:"0" }}</td>
                                 </tr>
                                 {% empty %}
@@ -244,7 +245,7 @@
                                     <td>{{ forloop.counter }}</td>
                                     <td>{{ test.tests__name }}</td>
                                     <td>{{ test.total_requests }}</td>
-                                    <td>₦{{ test.total_revenue|floatformat:0 }}</td>
+                                    <td>{{ test.total_revenue|currency }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
@@ -280,7 +281,7 @@
                                     <td>{{ forloop.counter }}</td>
                                     <td>{{ doctor.doctor__first_name }} {{ doctor.doctor__last_name }}</td>
                                     <td>{{ doctor.total_requests }}</td>
-                                    <td>₦{{ doctor.total_revenue|floatformat:0 }}</td>
+                                    <td>{{ doctor.total_revenue|currency }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>

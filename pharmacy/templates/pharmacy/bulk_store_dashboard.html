@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -80,7 +81,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Stock Value
                             </div>
-                            <div class="metric-value text-success">₦{{ total_stock_value|floatformat:2 }}</div>
+                            <div class="metric-value text-success">{{ total_stock_value|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -246,14 +247,14 @@
                                             {{ item.stock_quantity }}
                                         {% endif %}
                                     </td>
-                                    <td>₦{{ item.unit_cost|floatformat:2 }}</td>
+                                    <td>{{ item.unit_cost|currency }}</td>
                                     <td>
                                         <span class="markup-percentage">{{ item.markup_percentage|floatformat:2 }}%</span>
                                     </td>
                                     <td>
-                                        <span class="marked-up-cost">₦{{ item.marked_up_cost|floatformat:2 }}</span>
+                                        <span class="marked-up-cost">{{ item.marked_up_cost|currency }}</span>
                                     </td>
-                                    <td>₦{{ item.stock_quantity|mul:item.marked_up_cost|floatformat:2 }}</td>
+                                    <td>{{ item.stock_quantity|mul:item.marked_up_cost|currency }}</td>
                                     <td>{{ item.batch_number|default:"N/A" }}</td>
                                     <td>
                                         {% if item.expiry_date %}
@@ -441,7 +442,7 @@
                         </label>
                         <input type="number" class="form-control" id="bulk_markup_percentage"
                                name="markup_percentage" min="0" max="100" step="0.01"
-                               value="2.5" required>
+                               value="20" required>
                         <div class="form-text">Enter markup percentage between 0% and 100%</div>
                     </div>
                     <div class="mb-3">

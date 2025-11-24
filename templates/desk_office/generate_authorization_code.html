@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Generate Authorization Code - NHIA Authorization{% endblock %}
 
@@ -361,7 +362,7 @@
                             <div>
                                 <code class="text-primary">{{ code.code }}</code><br>
                                 <small class="text-muted">{{ code.patient.get_full_name }}</small><br>
-                                <small>₦{{ code.amount|floatformat:2 }}</small>
+                                <small>{{ code.amount|currency }}</small>
                             </div>
                             <span class="badge 
                                 {% if code.status == 'active' %}bg-success

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load form_tags %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}Dispense Medications - Hospital Management System{% endblock %}
@@ -174,7 +175,7 @@
                             <div class="col-md-4">
                                 <div class="text-center p-3 bg-light rounded">
                                     <small class="text-muted d-block mb-1">Total Medication Cost</small>
-                                    <h4 class="text-primary mb-0">₦{{ total_medication_cost|floatformat:2 }}</h4>
+                                    <h4 class="text-primary mb-0">{{ total_medication_cost|currency }}</h4>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -182,7 +183,7 @@
                                     <small class="text-muted d-block mb-1">
                                         <i class="fas fa-user me-1"></i>Patient Pays (10%)
                                     </small>
-                                    <h3 class="text-warning mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <h3 class="text-warning mb-0 fw-bold">{{ total_patient_pays|currency }}</h3>
                                     <small class="text-success mt-1 d-block">
                                         <i class="fas fa-info-circle"></i> Only 10% required
                                     </small>
@@ -193,7 +194,7 @@
                                     <small class="text-muted d-block mb-1">
                                         <i class="fas fa-shield-alt me-1"></i>NHIA Covers (90%)
                                     </small>
-                                    <h4 class="text-success mb-0">₦{{ total_nhia_covers|floatformat:2 }}</h4>
+                                    <h4 class="text-success mb-0">{{ total_nhia_covers|currency }}</h4>
                                     <small class="text-muted mt-1 d-block">
                                         <i class="fas fa-check-circle"></i> Covered by insurance
                                     </small>
@@ -202,8 +203,8 @@
                         </div>
                         <div class="alert alert-info mt-3 mb-0">
                             <i class="fas fa-info-circle me-2"></i>
-                            <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>₦{{ total_nhia_covers|floatformat:2 }}</strong> (90% of total cost).
-                            You only need to pay <strong>₦{{ total_patient_pays|floatformat:2 }}</strong> for all medications.
+                            <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>{{ total_nhia_covers|currency }}</strong> (90% of total cost).
+                            You only need to pay <strong>{{ total_patient_pays|currency }}</strong> for all medications.
                         </div>
                     </div>
                 </div>
@@ -219,7 +220,7 @@
                             <div class="col-md-6 offset-md-3">
                                 <div class="text-center p-3 bg-primary bg-opacity-10 rounded border border-primary">
                                     <small class="text-muted d-block mb-1">Total Amount Due</small>
-                                    <h3 class="text-primary mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <h3 class="text-primary mb-0 fw-bold">{{ total_patient_pays|currency }}</h3>
                                     <small class="text-muted mt-1 d-block">Full payment required</small>
                                 </div>
                             </div>
@@ -368,7 +369,7 @@
                         <span class="badge badge-info">Select dispensary</span>
                     {% endif %}
                 </td>
-                                                <td>₦{{ item.medication.price|floatformat:2 }}</td>
+                                                <td>{{ item.medication.price|currency }}</td>
                                                 <td>
                                                     {{ form.quantity_to_dispense|add_class:"form-control form-control-sm quantity-input" }}
                                                     {% if form.quantity_to_dispense.errors %}
@@ -399,14 +400,14 @@
                                                 {% for pricing in items_with_pricing %}
                                                     {% if pricing.item.id == item.id %}
                                                 <td class="text-end">
-                                                    <span class="item-total-price">₦{{ pricing.total_cost|floatformat:2 }}</span>
+                                                    <span class="item-total-price">{{ pricing.total_cost|currency }}</span>
                                                 </td>
                                                 <td class="text-end bg-warning bg-opacity-10">
-                                                    <strong class="text-warning item-patient-pays">₦{{ pricing.patient_pays|floatformat:2 }}</strong>
+                                                    <strong class="text-warning item-patient-pays">{{ pricing.patient_pays|currency }}</strong>
                                                     <div class="small text-muted">10%</div>
                                                 </td>
                                                 <td class="text-end bg-success bg-opacity-10">
-                                                    <strong class="text-success item-nhia-covers">₦{{ pricing.nhia_covers|floatformat:2 }}</strong>
+                                                    <strong class="text-success item-nhia-covers">{{ pricing.nhia_covers|currency }}</strong>
                                                     <div class="small text-muted">90%</div>
                                                 </td>
                                                     {% endif %}
@@ -415,7 +416,7 @@
                                                 {% for pricing in items_with_pricing %}
                                                     {% if pricing.item.id == item.id %}
                                                 <td class="text-end">
-                                                    <span class="item-total-price">₦{{ pricing.total_cost|floatformat:2 }}</span>
+                                                    <span class="item-total-price">{{ pricing.total_cost|currency }}</span>
                                                 </td>
                                                     {% endif %}
                                                 {% endfor %}
@@ -438,18 +439,18 @@
                                         {% if is_nhia_patient %}
                                         <tr class="fw-bold">
                                             <td colspan="7" class="text-end">TOTAL:</td>
-                                            <td id="overall-total-price" class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td id="overall-total-price" class="text-end">{{ total_medication_cost|currency }}</td>
                                             <td class="text-end bg-warning bg-opacity-10">
-                                                <span class="text-warning">₦{{ total_patient_pays|floatformat:2 }}</span>
+                                                <span class="text-warning">{{ total_patient_pays|currency }}</span>
                                             </td>
                                             <td class="text-end bg-success bg-opacity-10">
-                                                <span class="text-success">₦{{ total_nhia_covers|floatformat:2 }}</span>
+                                                <span class="text-success">{{ total_nhia_covers|currency }}</span>
                                             </td>
                                         </tr>
                                         {% else %}
                                         <tr class="fw-bold">
                                             <td colspan="7" class="text-end">TOTAL:</td>
-                                            <td id="overall-total-price" class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td id="overall-total-price" class="text-end">{{ total_medication_cost|currency }}</td>
                                         </tr>
                                         {% endif %}
                                     </tfoot>

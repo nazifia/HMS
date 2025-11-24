@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -109,18 +110,18 @@
                     Payment Summary
                 </h5>
                 <div class="mb-3">
-                    <div class="amount-display">₦{{ remaining_amount|floatformat:2 }}</div>
+                    <div class="amount-display">{{ remaining_amount|currency }}</div>
                     <small>Amount Due</small>
                 </div>
                 <hr style="border-color: rgba(255,255,255,0.3);">
                 <div class="row text-sm">
                     <div class="col-6">
                         <strong>Invoice Total:</strong><br>
-                        ₦{{ invoice.total_amount|floatformat:2 }}
+                        {{ invoice.total_amount|currency }}
                     </div>
                     <div class="col-6">
                         <strong>Amount Paid:</strong><br>
-                        ₦{{ invoice.amount_paid|floatformat:2 }}
+                        {{ invoice.amount_paid|currency }}
                     </div>
                 </div>
             </div>
@@ -189,12 +190,12 @@
                     {% endif %}
                 </h6>
                 <div class="text-sm">
-                    <p class="mb-1"><strong>Total Medication Cost:</strong> ₦{{ pricing_breakdown.total_medication_cost|floatformat:2 }}</p>
+                    <p class="mb-1"><strong>Total Medication Cost:</strong> {{ pricing_breakdown.total_medication_cost|currency }}</p>
                     {% if pricing_breakdown.is_nhia_patient %}
-                    <p class="mb-1"><strong>Patient Pays (10%):</strong> <span class="text-success font-weight-bold">₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</span></p>
-                    <p class="mb-0"><strong>NHIA Covers (90%):</strong> <span class="text-primary font-weight-bold">₦{{ pricing_breakdown.nhia_portion|floatformat:2 }}</span></p>
+                    <p class="mb-1"><strong>Patient Pays (10%):</strong> <span class="text-success font-weight-bold">{{ pricing_breakdown.patient_portion|currency }}</span></p>
+                    <p class="mb-0"><strong>NHIA Covers (90%):</strong> <span class="text-primary font-weight-bold">{{ pricing_breakdown.nhia_portion|currency }}</span></p>
                     {% else %}
-                    <p class="mb-0"><strong>Patient Pays (100%):</strong> <span class="text-warning font-weight-bold">₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</span></p>
+                    <p class="mb-0"><strong>Patient Pays (100%):</strong> <span class="text-warning font-weight-bold">{{ pricing_breakdown.patient_portion|currency }}</span></p>
                     {% endif %}
                 </div>
             </div>
@@ -206,7 +207,7 @@
                 <h6 class="alert-heading"><i class="fas fa-wallet"></i> Patient Wallet</h6>
                 <p class="mb-0"><strong>Current Balance:</strong>
                     <span class="{% if patient_wallet.balance >= remaining_amount %}text-success{% else %}text-warning{% endif %} font-weight-bold">
-                        ₦{{ patient_wallet.balance|floatformat:2 }}
+                        {{ patient_wallet.balance|currency }}
                     </span>
                 </p>
             </div>
@@ -274,7 +275,7 @@
                                         </div>
                                     {% endif %}
                                     <small class="form-text text-muted">
-                                        Maximum: ₦{{ remaining_amount|floatformat:2 }}
+                                        Maximum: {{ remaining_amount|currency }}
                                     </small>
                                 </div>
                             </div>
@@ -400,7 +401,7 @@
                                 {% for payment in payments %}
                                 <tr>
                                     <td>{{ payment.payment_date|date:"M d, Y" }}</td>
-                                    <td>₦{{ payment.amount|floatformat:2 }}</td>
+                                    <td>{{ payment.amount|currency }}</td>
                                     <td>{{ payment.get_payment_method_display }}</td>
                                     <td>{{ payment.received_by.get_full_name|default:payment.created_by.get_full_name }}</td>
                                     <td>
@@ -432,8 +433,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const paymentSourceCards = document.querySelectorAll('.payment-source-card');
     const transactionIdInput = document.getElementById('{{ form.transaction_id.id_for_label }}');
 
-    const walletBalance = parseFloat('{% if patient_wallet and patient_wallet.balance is not None %}{{ patient_wallet.balance|floatformat:2 }}{% else %}0{% endif %}');
-    const maxAmount = parseFloat('{{ remaining_amount|floatformat:2 }}');
+    const walletBalance = parseFloat('{% if patient_wallet and patient_wallet.balance is not None %}{{ patient_wallet.balance|currency }}{% else %}0{% endif %}');
+    const maxAmount = parseFloat('{{ remaining_amount|currency }}');
     const isNhiaPatient = '{% if pricing_breakdown.is_nhia_patient %}true{% else %}false{% endif %}' === 'true';
 
     // Handle payment source selection

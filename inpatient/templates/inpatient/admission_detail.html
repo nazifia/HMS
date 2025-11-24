@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="container">
@@ -50,7 +51,7 @@
                                         Current Wallet Balance
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold {% if admission.patient.wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                        ₦{{ admission.patient.wallet.balance|floatformat:2 }}
+                                        {{ admission.patient.wallet.balance|currency }}
                                     </div>
                                 </div>
                                 <div class="col-auto">
@@ -71,10 +72,10 @@
                                         Daily Admission Charges
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        ₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}
+                                        {{ admission.get_actual_charges_from_wallet|currency }}
                                     </div>
                                     <div class="text-xs text-muted">
-                                        {{ admission.get_duration }} days × ₦{{ admission.bed.ward.charge_per_day|floatformat:2 }}/day
+                                        {{ admission.get_duration }} days × {{ admission.bed.ward.charge_per_day|currency }}/day
                                     </div>
                                 </div>
                                 <div class="col-auto">
@@ -95,7 +96,7 @@
                                         Total Admission Cost
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        ₦{{ admission.get_total_cost|floatformat:2 }}
+                                        {{ admission.get_total_cost|currency }}
                                     </div>
                                     <div class="text-xs text-muted">
                                         Complete admission cost
@@ -119,7 +120,7 @@
                                         Amount Paid from Wallet
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        ₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}
+                                        {{ admission.get_actual_charges_from_wallet|currency }}
                                     </div>
                                     <div class="text-xs text-muted">
                                         Actual wallet deductions made
@@ -143,7 +144,7 @@
                                         Outstanding Balance
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold {% if admission.get_outstanding_admission_cost > 0 %}text-danger{% else %}text-success{% endif %}">
-                                        ₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}
+                                        {{ admission.get_outstanding_admission_cost|currency }}
                                     </div>
                                     <div class="text-xs text-muted">
                                         {% if admission.get_outstanding_admission_cost > 0 %}
@@ -171,7 +172,7 @@
                                         Net Impact
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold {% if admission.get_total_wallet_impact < 0 %}text-danger{% else %}text-success{% endif %}">
-                                        ₦{{ admission.get_total_wallet_impact|floatformat:2 }}
+                                        {{ admission.get_total_wallet_impact|currency }}
                                     </div>
                                     <div class="text-xs text-muted">
                                         {% if admission.get_total_wallet_impact >= 0 %}
@@ -199,18 +200,18 @@
                             Payment Status
                         </h6>
                         <p class="mb-2">
-                            <strong>Total Cost:</strong> ₦{{ admission.get_total_cost|floatformat:2 }} |
-                            <strong>Paid from Wallet:</strong> ₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }} |
-                            <strong>Outstanding:</strong> ₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}
+                            <strong>Total Cost:</strong> {{ admission.get_total_cost|currency }} |
+                            <strong>Paid from Wallet:</strong> {{ admission.get_actual_charges_from_wallet|currency }} |
+                            <strong>Outstanding:</strong> {{ admission.get_outstanding_admission_cost|currency }}
                         </p>
                         {% if admission.get_outstanding_admission_cost > 0 %}
                             <p class="mb-0">
-                                This admission has an outstanding balance of ₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}.
-                                The patient's wallet balance of ₦{{ admission.patient.wallet.balance|floatformat:2 }}
+                                This admission has an outstanding balance of {{ admission.get_outstanding_admission_cost|currency }}.
+                                The patient's wallet balance of {{ admission.patient.wallet.balance|currency }}
                                 {% if admission.patient.wallet.balance >= admission.get_outstanding_admission_cost %}
                                     is sufficient to cover the full outstanding amount.
                                 {% elif admission.patient.wallet.balance > 0 %}
-                                    can partially cover ₦{{ admission.patient.wallet.balance|floatformat:2 }} of the outstanding amount.
+                                    can partially cover {{ admission.patient.wallet.balance|currency }} of the outstanding amount.
                                 {% else %}
                                     is insufficient to cover the outstanding amount.
                                 {% endif %}
@@ -362,7 +363,7 @@
                                 <h6 class="mb-0"><i class="fas fa-wallet"></i> Wallet Balance</h6>
                             </div>
                             <div class="card-body text-center">
-                                <h3 class="text-success" id="modalWalletBalance">₦{{ admission.patient.wallet.balance|floatformat:2 }}</h3>
+                                <h3 class="text-success" id="modalWalletBalance">{{ admission.patient.wallet.balance|currency }}</h3>
                                 <p class="text-muted mb-0">Available Balance</p>
                                 <div id="walletStatus">
                                     {% if admission.patient.wallet.balance >= admission.get_outstanding_admission_cost %}
@@ -388,7 +389,7 @@
                                         <table class="table table-sm">
                                             <tr>
                                                 <td><strong>Outstanding Amount:</strong></td>
-                                                <td class="text-danger" id="modalOutstandingAmount">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                                <td class="text-danger" id="modalOutstandingAmount">{{ admission.get_outstanding_admission_cost|currency }}</td>
                                             </tr>
                                             <tr>
                                                 <td><strong>Duration:</strong></td>
@@ -396,7 +397,7 @@
                                             </tr>
                                             <tr>
                                                 <td><strong>Daily Rate:</strong></td>
-                                                <td>₦{{ admission.bed.ward.charge_per_day|floatformat:2 }}</td>
+                                                <td>{{ admission.bed.ward.charge_per_day|currency }}</td>
                                             </tr>
                                         </table>
                                     </div>
@@ -408,12 +409,12 @@
                                             <div id="paymentImpact">
                                                 {% if admission.patient.wallet.balance >= admission.get_outstanding_admission_cost %}
                                                     <p class="mb-1">✓ Wallet covers full outstanding amount</p>
-                                                    <p class="mb-1">✓ Balance after payment: <strong>₦{{ admission.patient.wallet.balance|subtract:admission.get_outstanding_admission_cost|floatformat:2 }}</strong></p>
+                                                    <p class="mb-1">✓ Balance after payment: <strong>{{ admission.patient.wallet.balance|subtract:admission.get_outstanding_admission_cost|currency }}</strong></p>
                                                     <p class="mb-0">✓ Outstanding balance will be cleared</p>
                                                 {% else %}
                                                     <p class="mb-1">⚠ Wallet covers partial amount</p>
-                                                    <p class="mb-1">✓ Amount to be paid: <strong>₦{{ admission.patient.wallet.balance|floatformat:2 }}</strong></p>
-                                                    <p class="mb-0">⚠ Remaining outstanding: <strong>₦{{ admission.get_outstanding_admission_cost|subtract:admission.patient.wallet.balance|floatformat:2 }}</strong></p>
+                                                    <p class="mb-1">✓ Amount to be paid: <strong>{{ admission.patient.wallet.balance|currency }}</strong></p>
+                                                    <p class="mb-0">⚠ Remaining outstanding: <strong>{{ admission.get_outstanding_admission_cost|subtract:admission.patient.wallet.balance|currency }}</strong></p>
                                                 {% endif %}
                                             </div>
                                         </div>
@@ -433,7 +434,7 @@
                 <div class="form-check mt-3">
                     <input class="form-check-input" type="checkbox" id="confirmPayment" required>
                     <label class="form-check-label" for="confirmPayment">
-                        I confirm that I want to process this payment of <strong id="confirmAmount">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</strong>
+                        I confirm that I want to process this payment of <strong id="confirmAmount">{{ admission.get_outstanding_admission_cost|currency }}</strong>
                         from the patient's wallet. This action cannot be undone.
                     </label>
                 </div>

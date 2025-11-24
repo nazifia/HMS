@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -264,7 +265,7 @@
                                 </td>
                                 <td>
                                     <div class="cost-display text-success">
-                                        ₦{{ order.pack.get_total_cost|floatformat:2 }}
+                                        {{ order.pack.get_total_cost|currency }}
                                     </div>
                                 </td>
                                 <td>

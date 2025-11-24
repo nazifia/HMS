@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
@@ -124,7 +125,7 @@
                         </div>
                         <div class="col-6">
                             <small class="text-muted">Total Cost:</small><br>
-                            <span class="pack-cost text-success">₦{{ pack.get_total_cost|floatformat:2 }}</span>
+                            <span class="pack-cost text-success">{{ pack.get_total_cost|currency }}</span>
                         </div>
                     </div>
 

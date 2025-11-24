@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% load static %} {# Assuming you might have static files for custom CSS or default images #}
+{% load static %}
+{% load custom_filters %} {# Assuming you might have static files for custom CSS or default images #}
 
 {% block title %}
     Profile for {{ viewed_user_object.username }}

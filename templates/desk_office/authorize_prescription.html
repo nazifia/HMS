@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_filters %}
 
 {% block title %}Authorize Prescription - NHIA Authorization{% endblock %}
@@ -196,8 +197,8 @@
                                         <td>{{ item.medication.name }}</td>
                                         <td>{{ item.strength|default:"-" }}</td>
                                         <td>{{ item.quantity }}</td>
-                                        <td class="amount-column">{{ item.medication.price|default:"0.00"|floatformat:2 }}</td>
-                                        <td class="amount-column">{{ item.medication.price|default:"0.00"|floatformat:2|multiply:item.quantity|default:"0.00"|floatformat:2 }}</td>
+                                        <td class="amount-column">{{ item.medication.price|default:"0.00"|currency }}</td>
+                                        <td class="amount-column">{{ item.medication.price|default:"0.00"|floatformat:2|multiply:item.quantity|default:"0.00"|currency }}</td>
                                         <td>{{ item.frequency|default:"-" }}</td>
                                         <td>{{ item.duration|default:"-" }}</td>
                                     </tr>
@@ -206,7 +207,7 @@
                                 <tfoot>
                                     <tr class="table-info fw-bold total-amount">
                                         <td colspan="4">Total Amount:</td>
-                                        <td colspan="3">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</td>
+                                        <td colspan="3">{{ prescription.get_total_prescribed_price|default:"0.00"|currency }}</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -240,12 +241,12 @@
                         <div class="col-md-6">
                             <p class="mb-1">
                                 <strong>Total Medication Cost:</strong> 
-                                <span class="text-success h5 amount-display">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</span>
+                                <span class="text-success h5 amount-display">{{ prescription.get_total_prescribed_price|default:"0.00"|currency }}</span>
                             </p>
                             {% if prescription.patient.patient_type == 'nhia' %}
                             <p class="mb-1">
                                 <strong>NHIA Coverage (90%):</strong> 
-                                <span class="text-info h6 amount-display">₦{{ prescription.get_total_prescribed_price|multiply:0.9|default:"0.00"|floatformat:2 }}</span>
+                                <span class="text-info h6 amount-display">{{ prescription.get_total_prescribed_price|multiply:0.9|default:"0.00"|currency }}</span>
                             </p>
                             {% endif %}
                         </div>
@@ -253,18 +254,18 @@
                             {% if prescription.patient.patient_type == 'nhia' %}
                             <p class="mb-1">
                                 <strong>Patient Payable (10%):</strong> 
-                                <span class="text-warning h6 amount-display">₦{{ prescription.get_total_prescribed_price|multiply:0.1|default:"0.00"|floatformat:2 }}</span>
+                                <span class="text-warning h6 amount-display">{{ prescription.get_total_prescribed_price|multiply:0.1|default:"0.00"|currency }}</span>
                             </p>
                             {% else %}
                             <p class="mb-1">
                                 <strong>Patient Payable (100%):</strong> 
-                                <span class="text-warning h6 amount-display">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</span>
+                                <span class="text-warning h6 amount-display">{{ prescription.get_total_prescribed_price|default:"0.00"|currency }}</span>
                             </p>
                             {% endif %}
                             <div class="alert alert-info mt-3">
                                 <i class="fas fa-info-circle"></i>
                                 <strong>Recommended Authorization Amount:</strong>
-                                <span class="h5 amount-display">₦{{ prescription.get_total_prescribed_price|default:"0.00"|floatformat:2 }}</span>
+                                <span class="h5 amount-display">{{ prescription.get_total_prescribed_price|default:"0.00"|currency }}</span>
                                 <br>
                                 <small class="text-muted">This covers the full cost of medications in this prescription</small>
                             </div>
@@ -293,7 +294,7 @@
                                            class="form-control" 
                                            id="amount" 
                                            name="amount" 
-                                           value="{{ prescription.get_total_prescribed_price|default:'0.00'|floatformat:2 }}"
+                                           value="{{ prescription.get_total_prescribed_price|default:'0.00'|currency }}"
                                            step="0.01" 
                                            min="0" 
                                            required>

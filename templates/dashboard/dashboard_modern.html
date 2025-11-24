@@ -1,5 +1,6 @@
 
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% block title %}Modern Dashboard - HMS{% endblock %}
 
 {% block content %}
@@ -87,7 +88,7 @@
                                 <div class="row no-gutters align-items-center">
                                     <div class="col mr-2">
                                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Wallet Balance</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_wallet_balance|floatformat:2 }}</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_wallet_balance|currency }}</div>
                                     </div>
                                     <div class="col-auto">
                                         <i class="fas fa-wallet fa-2x text-gray-300"></i>
@@ -338,12 +339,12 @@
                                                 </div>
                                                 <div class="text-right">
                                                     {% if transaction.transaction_type in "credit deposit" %}
-                                                        <span class="text-success">+₦{{ transaction.amount|floatformat:2 }}</span>
+                                                        <span class="text-success">+{{ transaction.amount|currency }}</span>
                                                     {% else %}
-                                                        <span class="text-danger">-₦{{ transaction.amount|floatformat:2 }}</span>
+                                                        <span class="text-danger">-{{ transaction.amount|currency }}</span>
                                                     {% endif %}
                                                     <br>
-                                                    <small class="text-muted">Bal: ₦{{ transaction.balance_after|floatformat:2 }}</small>
+                                                    <small class="text-muted">Bal: {{ transaction.balance_after|currency }}</small>
                                                 </div>
                                             </li>
                                         {% endfor %}

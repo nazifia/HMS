@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Labor Record Details{% endblock %}
 
@@ -314,7 +315,7 @@
                                         <span class="badge bg-danger">Cancelled</span>
                                     {% endif %}
                                 </td>
-                                <td class="text-success">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</td>
+                                <td class="text-success">{{ pack_order.pack.get_total_cost|currency }}</td>
                                 <td>
                                     <a href="{% url 'pharmacy:pack_order_detail' pack_order.id %}" 
                                        class="btn btn-sm btn-outline-primary">

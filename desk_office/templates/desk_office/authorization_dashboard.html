@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }} - Hospital Management System{% endblock %}
 
@@ -612,7 +613,7 @@
                                     <td><strong>{{ code.code }}</strong></td>
                                     <td>{{ code.patient.get_full_name }}</td>
                                     <td>{{ code.get_service_type_display }}</td>
-                                    <td>₦ {{ code.amount }}</td>
+                                    <td>{{ code.amount |currency }}</td>
                                     <td>
                                         {% if code.status == 'active' %}
                                         <span class="badge bg-success">

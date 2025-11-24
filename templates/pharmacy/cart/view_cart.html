@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -459,7 +460,7 @@
                 <p class="mb-0">
                     <strong>Invoice #{{ cart.invoice.invoice_number }}</strong> - 
                     Paid on {{ cart.invoice.updated_at|date:"M d, Y H:i" }}<br>
-                    Amount Paid: ₦{{ cart.invoice.amount_paid|floatformat:2 }}<br>
+                    Amount Paid: {{ cart.invoice.amount_paid|currency }}<br>
                     {% if cart.invoice.payments.exists %}
                         {% for payment in cart.invoice.payments.all %}
                             Payment Method: {{ payment.get_payment_method_display }}{% if payment.notes %} - {{ payment.notes }}{% endif %}<br>
@@ -472,8 +473,8 @@
                 <h5><i class="fas fa-exclamation-triangle text-warning"></i> Partial Payment Processed</h5>
                 <p class="mb-0">
                     <strong>Invoice #{{ cart.invoice.invoice_number }}</strong><br>
-                    Amount Paid: ₦{{ cart.invoice.amount_paid|floatformat:2 }} of ₦{{ cart.invoice.total_amount|floatformat:2 }}<br>
-                    Remaining: ₦{{ cart.invoice.get_balance|floatformat:2 }}
+                    Amount Paid: {{ cart.invoice.amount_paid|currency }} of {{ cart.invoice.total_amount|currency }}<br>
+                    Remaining: {{ cart.invoice.get_balance|currency }}
                 </p>
             </div>
         {% else %}
@@ -481,7 +482,7 @@
                 <h5><i class="fas fa-clock text-info"></i> Invoice Generated - Awaiting Payment</h5>
                 <p class="mb-0">
                     <strong>Invoice #{{ cart.invoice.invoice_number }}</strong><br>
-                    Total Amount: ₦{{ cart.invoice.total_amount|floatformat:2 }}<br>
+                    Total Amount: {{ cart.invoice.total_amount|currency }}<br>
                     <small>Payment can be processed at the billing office</small>
                 </p>
             </div>
@@ -618,10 +619,10 @@
                                         {{ item.get_stock_status.message }}
                                     </span>
                                 </td>
-                                <td class="price-cell">₦{{ item.unit_price|floatformat:2 }}</td>
-                                <td class="price-cell patient-pays">₦{{ item.get_patient_pays|floatformat:2 }}</td>
+                                <td class="price-cell">{{ item.unit_price|currency }}</td>
+                                <td class="price-cell patient-pays">{{ item.get_patient_pays|currency }}</td>
                                 {% if is_nhia_patient %}
-                                <td class="price-cell nhia-covers">₦{{ item.get_nhia_covers|floatformat:2 }}</td>
+                                <td class="price-cell nhia-covers">{{ item.get_nhia_covers|currency }}</td>
                                 {% endif %}
                                 <td class="actions-cell">
                                     {% if cart.status == 'active' %}
@@ -723,17 +724,17 @@
                 {% if is_nhia_patient %}
                 <div class="summary-item">
                     <span>Subtotal:</span>
-                    <span>₦{{ subtotal|floatformat:2 }}</span>
+                    <span>{{ subtotal|currency }}</span>
                 </div>
                 
                 <div class="summary-item">
                     <span>NHIA Coverage (90%):</span>
-                    <span style="color: #4caf50;">-₦{{ nhia_coverage|floatformat:2 }}</span>
+                    <span style="color: #4caf50;">-{{ nhia_coverage|currency }}</span>
                 </div>
                 {% endif %}
 
                 <div class="summary-total">
-                    Patient Pays: ₦{{ patient_payable|floatformat:2 }}
+                    Patient Pays: {{ patient_payable|currency }}
                 </div>
 
                 {% if cart.invoice %}
@@ -759,17 +760,17 @@
                 
                 <div class="summary-item">
                     <span>Total Amount:</span>
-                    <span>₦{{ cart.invoice.total_amount|floatformat:2 }}</span>
+                    <span>{{ cart.invoice.total_amount|currency }}</span>
                 </div>
                 
                 <div class="summary-item">
                     <span>Amount Paid:</span>
-                    <span style="color: #28a745;">₦{{ cart.invoice.amount_paid|floatformat:2 }}</span>
+                    <span style="color: #28a745;">{{ cart.invoice.amount_paid|currency }}</span>
                 </div>
                 
                 <div class="summary-item">
                     <span>Balance:</span>
-                    <span><strong>₦{{ cart.invoice.get_balance|floatformat:2 }}</strong></span>
+                    <span><strong>{{ cart.invoice.get_balance|currency }}</strong></span>
                 </div>
                 {% endif %}
 
@@ -779,7 +780,7 @@
                 {% for payment in cart.invoice.payments.all %}
                 <div class="summary-item">
                     <span>{{ payment.payment_date|date:"M d, Y" }}:</span>
-                    <span>₦{{ payment.amount|floatformat:2 }}</span>
+                    <span>{{ payment.amount|currency }}</span>
                 </div>
                 <div class="summary-item">
                     <span>Method:</span>

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ page_title }} - HMS{% endblock %}
@@ -241,7 +242,7 @@
                                         <span class="fw-bold">{{ item.stock_quantity }}</span>
                                     </td>
                                     <td>{{ item.reorder_level }}</td>
-                                    <td>₦{{ item.unit_cost|floatformat:2 }}</td>
+                                    <td>{{ item.unit_cost|currency }}</td>
                                     <td>
                                         {% if item.stock_quantity == 0 %}
                                             <span class="stock-indicator stock-out"></span>

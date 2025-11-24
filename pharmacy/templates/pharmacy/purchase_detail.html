@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -197,7 +198,7 @@
                     <p><strong><i class="fas fa-truck me-2"></i>Supplier:</strong> {{ purchase.supplier.name|default:"N/A" }}</p>
                     <p><strong><i class="fas fa-calendar me-2"></i>Purchase Date:</strong> {{ purchase.purchase_date|date:"Y-m-d"|default:"N/A" }}</p>
                     <p><strong><i class="fas fa-money-bill-wave me-2"></i>Total Amount:</strong> 
-                        <span class="text-success fw-bold">₦{{ purchase.total_amount|floatformat:2|default:"0.00" }}</span>
+                        <span class="text-success fw-bold">{{ purchase.total_amount|default:0|currency }}</span>
                     </p>
                     <p><strong><i class="fas fa-check-circle me-2"></i>Approval Status:</strong> 
                         {% if purchase.approval_status == 'draft' %}
@@ -289,8 +290,8 @@
                                 {% endif %}
                             </td>
                             <td>{{ item.quantity }}</td>
-                            <td>₦{{ item.unit_price|floatformat:2 }}</td>
-                            <td>₦{{ item.total_price|floatformat:2 }}</td>
+                            <td>{{ item.unit_price|currency }}</td>
+                            <td>{{ item.total_price|currency }}</td>
                             <td>{{ item.batch_number|default:"N/A" }}</td>
                             <td>
                                 {{ item.expiry_date|date:"Y-m-d" }}
@@ -310,7 +311,7 @@
                     <tfoot class="table-light">
                         <tr>
                             <th colspan="3"><strong>Total:</strong></th>
-                            <th><strong>₦{{ purchase.total_amount|floatformat:2 }}</strong></th>
+                            <th><strong>{{ purchase.total_amount|currency }}</strong></th>
                             <th colspan="2"></th>
                         </tr>
                     </tfoot>
@@ -400,7 +401,7 @@
                         {% for payment in purchase.payment_history %}
                         <tr {% if payment.payment_method == 'pending' %}class="table-warning"{% endif %}>
                             <td>{% if payment.processed_by %}{{ payment.processed_by.get_full_name|default:payment.processed_by.username }}{% else %}<span class="text-muted">Pending</span>{% endif %}</td>
-                            <td class="fw-bold">₦{{ payment.amount|floatformat:2 }}</td>
+                            <td class="fw-bold">{{ payment.amount|currency }}</td>
                             <td>
                                 {% if payment.payment_method == 'pending' %}
                                     <span class="badge bg-warning">Pending</span>
@@ -417,7 +418,7 @@
                     <tfoot class="table-light">
                         <tr>
                             <th colspan="2"><strong>Total Paid:</strong></th>
-                            <th colspan="4"><strong>₦{{ purchase.total_paid|floatformat:2 }}</strong></th>
+                            <th colspan="4"><strong>{{ purchase.total_paid|currency }}</strong></th>
                         </tr>
                     </tfoot>
                 </table>
@@ -435,7 +436,7 @@
                 <div class="alert alert-warning">
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     <strong>Payment Status:</strong> {{ purchase.get_payment_status_display }}
-                    <br><small>Amount Due: ₦{{ purchase.amount_due|floatformat:2 }}</small>
+                    <br><small>Amount Due: {{ purchase.amount_due|currency }}</small>
                 </div>
             </div>
             {% endif %}
@@ -468,7 +469,7 @@
                                 <span class="badge bg-primary">Created</span>
                             </td>
                             <td>{{ purchase.created_at|date:"Y-m-d H:i:s" }}</td>
-                            <td>Purchase created with {{ purchase.items.count }} items. Total: ₦{{ purchase.total_amount|floatformat:2 }}</td>
+                            <td>Purchase created with {{ purchase.items.count }} items. Total: {{ purchase.total_amount|currency }}</td>
                         </tr>
                         
                         <!-- Last Updated -->
@@ -766,7 +767,7 @@
                                            name="payment_amount" value="{{ purchase.total_amount }}" 
                                            step="0.01" min="0" required>
                                 </div>
-                                <div class="form-text">Total due: ₦{{ purchase.total_amount|floatformat:2 }}</div>
+                                <div class="form-text">Total due: {{ purchase.total_amount|currency }}</div>
                             </div>
                         </div>
                         <div class="col-md-6">

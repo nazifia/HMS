@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load form_tags %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}Dispense Medications - Hospital Management System{% endblock %}
@@ -173,7 +174,7 @@
                             <div class="col-md-4">
                                 <div class="text-center p-3 bg-light rounded">
                                     <small class="text-muted d-block mb-1">Total Medication Cost</small>
-                                    <h4 class="text-primary mb-0">₦{{ total_medication_cost|floatformat:2 }}</h4>
+                                    <h4 class="text-primary mb-0">{{ total_medication_cost|currency }}</h4>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -181,7 +182,7 @@
                                     <small class="text-muted d-block mb-1">
                                         <i class="fas fa-user me-1"></i>Patient Pays (10%)
                                     </small>
-                                    <h3 class="text-warning mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <h3 class="text-warning mb-0 fw-bold">{{ total_patient_pays|currency }}</h3>
                                     <small class="text-success mt-1 d-block">
                                         <i class="fas fa-info-circle"></i> Only 10% required
                                     </small>
@@ -192,7 +193,7 @@
                                     <small class="text-muted d-block mb-1">
                                         <i class="fas fa-shield-alt me-1"></i>NHIA Covers (90%)
                                     </small>
-                                    <h4 class="text-success mb-0">₦{{ total_nhia_covers|floatformat:2 }}</h4>
+                                    <h4 class="text-success mb-0">{{ total_nhia_covers|currency }}</h4>
                                     <small class="text-muted mt-1 d-block">
                                         <i class="fas fa-check-circle"></i> Covered by insurance
                                     </small>
@@ -201,8 +202,8 @@
                         </div>
                         <div class="alert alert-info mt-3 mb-0">
                             <i class="fas fa-info-circle me-2"></i>
-                            <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>₦{{ total_nhia_covers|floatformat:2 }}</strong> (90% of total cost).
-                            You only need to pay <strong>₦{{ total_patient_pays|floatformat:2 }}</strong> for all medications.
+                            <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>{{ total_nhia_covers|currency }}</strong> (90% of total cost).
+                            You only need to pay <strong>{{ total_patient_pays|currency }}</strong> for all medications.
                         </div>
                     </div>
                 </div>
@@ -218,7 +219,7 @@
                             <div class="col-md-6 offset-md-3">
                                 <div class="text-center p-3 bg-primary bg-opacity-10 rounded border border-primary">
                                     <small class="text-muted d-block mb-1">Total Amount Due</small>
-                                    <h3 class="text-primary mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                    <h3 class="text-primary mb-0 fw-bold">{{ total_patient_pays|currency }}</h3>
                                     <small class="text-muted mt-1 d-block">Full payment required</small>
                                 </div>
                             </div>

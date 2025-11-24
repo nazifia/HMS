@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load widget_tweaks %}
 
 {% block title %}Invoices - Hospital Management System{% endblock %}
@@ -76,9 +77,9 @@
                     <td>{{ invoice.created_at|date:"M d, Y" }}</td>
                     <td>{{ invoice.get_source_app_display|default:"N/A" }}</td>
                     <td>{{ invoice.status|capfirst }}</td>
-                    <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
-                    <td>₦{{ invoice.amount_paid|floatformat:2 }}</td>
-                    <td>₦{{ invoice.get_balance|floatformat:2 }}</td>
+                    <td>{{ invoice.total_amount|currency }}</td>
+                    <td>{{ invoice.amount_paid|currency }}</td>
+                    <td>{{ invoice.get_balance|currency }}</td>
                     <td>
                         <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-sm btn-primary">View</a>
                         {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.get_balance > 0 %}

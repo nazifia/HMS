@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
 
@@ -191,7 +192,7 @@
                 </h5>
                 <p class="mb-2">{{ pack.description }}</p>
                 <div class="text-center">
-                    <div class="h4 mb-0">₦{{ pack.get_total_cost|floatformat:2 }}</div>
+                    <div class="h4 mb-0">{{ pack.get_total_cost|currency }}</div>
                     <small>Total Cost</small>
                 </div>
             </div>
@@ -214,7 +215,7 @@
                             </div>
                             <div class="text-end">
                                 <div>Qty: <strong>{{ item.quantity }}</strong></div>
-                                <small class="text-muted">₦{{ item.get_total_cost|floatformat:2 }}</small>
+                                <small class="text-muted">{{ item.get_total_cost|currency }}</small>
                             </div>
                         </div>
                     </div>

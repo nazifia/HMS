@@ -1,3 +1,4 @@
+{% load custom_filters %}
 {% comment %}
 Cart Status Widget - Reusable component for displaying cart status
 Usage: {% include 'pharmacy/cart/_cart_status_widget.html' with cart=cart %}
@@ -162,7 +163,7 @@ Usage: {% include 'pharmacy/cart/_cart_status_widget.html' with cart=cart %}
         </div>
         <div class="meta-item">
             <div class="meta-label">Total</div>
-            <div class="meta-value text-primary">₦{{ cart.get_patient_payable|floatformat:2 }}</div>
+            <div class="meta-value text-primary">{{ cart.get_patient_payable|currency }}</div>
         </div>
         <div class="meta-item">
             <div class="meta-label">Created</div>

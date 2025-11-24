@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
@@ -43,7 +44,7 @@
                                     <td>{{ purchase.invoice_number }}</td>
                                     <td>{{ purchase.supplier.name }}</td>
                                     <td>{{ purchase.items.count }}</td>
-                                    <td>₦{{ purchase.total_amount }}</td>
+                                    <td>{{ purchase.total_amount |currency }}</td>
                                     <td>
                                         {% if purchase.payment_status == 'paid' %}
                                             <span class="badge bg-success">Paid</span>

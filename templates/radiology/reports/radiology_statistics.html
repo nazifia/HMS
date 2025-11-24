@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load humanize %}
 
 {% block title %}Radiology Statistics - Hospital Management System{% endblock %}
@@ -175,19 +176,19 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="text-center">
-                                <div class="text-2xl font-weight-bold text-primary">₦{{ total_revenue|floatformat:2|intcomma }}</div>
+                                <div class="text-2xl font-weight-bold text-primary">{{ total_revenue|currency }}</div>
                                 <div class="text-sm text-gray-500">Total Revenue</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="text-center">
-                                <div class="text-2xl font-weight-bold text-info">₦{{ pending_revenue|floatformat:2|intcomma }}</div>
+                                <div class="text-2xl font-weight-bold text-info">{{ pending_revenue|currency }}</div>
                                 <div class="text-sm text-gray-500">Pending Revenue</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="text-center">
-                                <div class="text-2xl font-weight-bold text-success">₦{{ completed_revenue|floatformat:2|intcomma }}</div>
+                                <div class="text-2xl font-weight-bold text-success">{{ completed_revenue|currency }}</div>
                                 <div class="text-sm text-gray-500">Completed Revenue</div>
                             </div>
                         </div>

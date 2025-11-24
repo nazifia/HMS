@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -756,17 +757,17 @@
                         </strong>
                     </td>
                     {% endif %}
-                    <td class="price-cell">₦{{ item.unit_price|floatformat:2 }}</td>
+                    <td class="price-cell">{{ item.unit_price|currency }}</td>
                     <td class="status-badge-cell">
                         <span class="stock-badge bg-{{ stock_status.css_class }} text-white">
                             <i class="fas fa-{{ stock_status.icon }}"></i>
                             {{ stock_status.message }}
                         </span>
                     </td>
-                    <td class="price-cell price-highlight item-subtotal">₦{{ item.get_subtotal|floatformat:2 }}</td>
+                    <td class="price-cell price-highlight item-subtotal">{{ item.get_subtotal|currency }}</td>
                     {% if is_nhia_patient %}
-                    <td class="price-cell text-primary item-patient-pays">₦{{ item.get_patient_pays|floatformat:2 }}</td>
-                    <td class="price-cell text-success item-nhia-covers">₦{{ item.get_nhia_covers|floatformat:2 }}</td>
+                    <td class="price-cell text-primary item-patient-pays">{{ item.get_patient_pays|currency }}</td>
+                    <td class="price-cell text-success item-nhia-covers">{{ item.get_nhia_covers|currency }}</td>
                     {% endif %}
                     {% if cart.status in 'active,invoiced' %}
                     <td class="text-center">

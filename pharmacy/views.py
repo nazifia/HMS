@@ -5379,6 +5379,7 @@ def dispensary_inventory(request, dispensary_id):
     context = {
         'dispensary': dispensary,
         'inventory_items': inventory_items,
+        'title': f'{dispensary.name} Inventory',
         'page_title': f'{dispensary.name} Inventory',
         'active_nav': 'pharmacy',
         'can_edit_inventory': can_edit_inventory,
@@ -6578,7 +6579,7 @@ def bulk_apply_markup(request):
     """Apply markup percentage to multiple items in bulk store"""
     if request.method == 'POST':
         try:
-            markup_percentage = Decimal(request.POST.get('markup_percentage', '2.5'))
+            markup_percentage = Decimal(request.POST.get('markup_percentage', '20'))
             bulk_store_id = request.POST.get('bulk_store_id')
             item_ids = request.POST.getlist('item_ids[]')
 
@@ -6640,7 +6641,7 @@ def update_item_markup(request, item_id):
 
     if request.method == 'POST':
         try:
-            markup_percentage = Decimal(request.POST.get('markup_percentage', '2.5'))
+            markup_percentage = Decimal(request.POST.get('markup_percentage', '20'))
 
             # Validate markup percentage
             if markup_percentage < 0 or markup_percentage > 100:

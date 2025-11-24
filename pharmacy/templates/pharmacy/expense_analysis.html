@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -128,7 +129,7 @@
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                 Total Expenses
                             </div>
-                            <div class="metric-value">₦{{ total_expenses|floatformat:2 }}</div>
+                            <div class="metric-value">{{ total_expenses|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
@@ -146,7 +147,7 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Avg Monthly Expense
                             </div>
-                            <div class="metric-value text-warning">₦{{ expense_ratios.avg_monthly_expense|floatformat:2 }}</div>
+                            <div class="metric-value text-warning">{{ expense_ratios.avg_monthly_expense|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-calendar fa-2x text-gray-300"></i>
@@ -164,7 +165,7 @@
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Expense to Revenue Ratio
                             </div>
-                            <div class="metric-value text-info">{{ expense_ratios.procurement_to_revenue|floatformat:1 }}%</div>
+                            <div class="metric-value text-info">{{ expense_ratios.procurement_to_revenue|currency }}%</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-percentage fa-2x text-gray-300"></i>
@@ -182,7 +183,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Pending Payments
                             </div>
-                            <div class="metric-value text-success">₦{{ procurement_expenses.pending_payments|floatformat:2 }}</div>
+                            <div class="metric-value text-success">{{ procurement_expenses.pending_payments|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-clock fa-2x text-gray-300"></i>
@@ -248,10 +249,10 @@
                                 {% for supplier in supplier_expenses %}
                                 <tr>
                                     <td>{{ supplier.supplier__name }}</td>
-                                    <td>₦{{ supplier.total_spent|floatformat:2 }}</td>
+                                    <td>{{ supplier.total_spent|currency }}</td>
                                     <td>{{ supplier.order_count }}</td>
-                                    <td>₦{{ supplier.avg_order_value|floatformat:2 }}</td>
-                                    <td>{{ supplier.payment_efficiency|floatformat:1 }}%</td>
+                                    <td>{{ supplier.avg_order_value|currency }}</td>
+                                    <td>{{ supplier.payment_efficiency|currency }}%</td>
                                     <td>
                                         {% with efficiency=supplier.payment_efficiency|default:0 %}
                                             <span class="badge badge-{% if efficiency >= 90 %}success{% elif efficiency >= 70 %}warning{% else %}danger{% endif %}">
@@ -288,8 +289,8 @@
                                 {% for category in category_expenses|slice:":8" %}
                                 <tr>
                                     <td>{{ category.medication__category__name|truncatechars:15 }}</td>
-                                    <td>₦{{ category.total_cost|floatformat:2 }}</td>
-                                    <td>{{ category.total_cost|mul:100|div:total_expenses|floatformat:1 }}%</td>
+                                    <td>{{ category.total_cost|currency }}</td>
+                                    <td>{{ category.total_cost|mul:100|div:total_expenses|currency }}%</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -328,12 +329,12 @@
                                 {% for opportunity in optimization_opportunities|slice:":15" %}
                                 <tr>
                                     <td>{{ opportunity.medication__name }}</td>
-                                    <td>₦{{ opportunity.avg_price|floatformat:2 }}</td>
-                                    <td class="text-success">₦{{ opportunity.min_price|floatformat:2 }}</td>
-                                    <td class="text-danger">₦{{ opportunity.max_price|floatformat:2 }}</td>
-                                    <td>₦{{ opportunity.price_range|floatformat:2 }}</td>
+                                    <td>{{ opportunity.avg_price|currency }}</td>
+                                    <td class="text-success">{{ opportunity.min_price|currency }}</td>
+                                    <td class="text-danger">{{ opportunity.max_price|currency }}</td>
+                                    <td>{{ opportunity.price_range|currency }}</td>
                                     <td class="savings-opportunity">
-                                        ₦{{ opportunity.avg_price|sub:opportunity.min_price|floatformat:2 }}
+                                        {{ opportunity.avg_price|sub:opportunity.min_price|currency }}
                                     </td>
                                     <td>{{ opportunity.supplier_count }}</td>
                                     <td>
@@ -380,11 +381,11 @@
                                 {% for med in medication_efficiency|slice:":20" %}
                                 <tr>
                                     <td>{{ med.medication__name }}</td>
-                                    <td>₦{{ med.total_cost|floatformat:2 }}</td>
+                                    <td>{{ med.total_cost|currency }}</td>
                                     <td>{{ med.total_quantity }}</td>
-                                    <td>₦{{ med.avg_unit_cost|floatformat:2 }}</td>
-                                    <td>₦{{ med.cost_variance|floatformat:2|default:"0.00" }}</td>
-                                    <td class="savings-opportunity">₦{{ med.potential_savings|floatformat:2|default:"0.00" }}</td>
+                                    <td>{{ med.avg_unit_cost|currency }}</td>
+                                    <td>{{ med.cost_variance|default:0|currency }}</td>
+                                    <td class="savings-opportunity">{{ med.potential_savings|default:0|currency }}</td>
                                     <td>
                                         {% with variance=med.cost_variance|default:0 %}
                                             <span class="badge badge-{% if variance <= 1 %}success{% elif variance <= 3 %}warning{% else %}danger{% endif %}">

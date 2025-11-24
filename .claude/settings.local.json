@@ -28,7 +28,9 @@
       "Bash(timeout /t 5 /nobreak)",
       "Bash(powershell -Command:*)",
       "Bash(del test_page.html)",
-      "Bash($null)"
+      "Bash($null)",
+      "Bash(update_results.txt)",
+      "Bash(del update_currency_formatting.py)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Authorization Code Details{% endblock %}
 
@@ -26,7 +27,7 @@
                             <p><strong>Patient:</strong> {{ code.patient.get_full_name }}</p>
                             <p><strong>Patient ID:</strong> {{ code.patient.patient_id }}</p>
                             <p><strong>Service Type:</strong> {{ code.get_service_type_display }}</p>
-                            <p><strong>Amount:</strong> ₦{{ code.amount }}</p>
+                            <p><strong>Amount:</strong> {{ code.amount |currency }}</p>
                         </div>
                         <div class="col-md-6">
                             <p><strong>Status:</strong> 

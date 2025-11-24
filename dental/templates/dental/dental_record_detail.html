@@ -1,4 +1,5 @@
 {% extends 'dental/base.html' %}
+{% load custom_filters %}
 
 {% block page_title %}Dental Record Details{% endblock %}
 
@@ -82,7 +83,7 @@
                             </p>
                             {% if authorization_amount %}
                             <p class="mb-2">
-                                <strong>Authorization Amount:</strong> ₦{{ authorization_amount|floatformat:2 }}
+                                <strong>Authorization Amount:</strong> {{ authorization_amount|currency }}
                             </p>
                             {% endif %}
                             {% if requires_authorization %}
@@ -134,7 +135,7 @@
                     </div>
                     <div class="col-md-6">
                         <h6>Billing Information</h6>
-                        <p><strong>Price:</strong> ₦{{ record.get_service_price }}</p>
+                        <p><strong>Price:</strong> {{ record.get_service_price |currency }}</p>
                         <p><strong>Invoice:</strong>
                             {% if record.invoice %}
                             <a href="#" class="btn btn-sm btn-outline-primary">View Invoice</a>

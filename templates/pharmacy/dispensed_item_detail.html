@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Dispensed Item Detail{% endblock %}
 
@@ -39,11 +40,11 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <p class="mb-1 text-muted small">Unit Price</p>
-                            <p class="mb-0">₦{{ dispensing_log.unit_price_at_dispense|floatformat:2 }}</p>
+                            <p class="mb-0">{{ dispensing_log.unit_price_at_dispense|currency }}</p>
                         </div>
                         <div class="col-md-6 mb-3">
                             <p class="mb-1 text-muted small">Total Price</p>
-                            <p class="mb-0">₦{{ dispensing_log.total_price_for_this_log|floatformat:2 }}</p>
+                            <p class="mb-0">{{ dispensing_log.total_price_for_this_log|currency }}</p>
                         </div>
                         <div class="col-md-6 mb-3">
                             <p class="mb-1 text-muted small">Dispensed By</p>

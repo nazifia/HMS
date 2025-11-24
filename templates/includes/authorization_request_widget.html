@@ -1,4 +1,5 @@
 {% load static %}
+{% load custom_filters %}
 {% comment %}
 Universal Authorization Request Widget
 Can be included in any module's detail page to request/view authorization
@@ -55,7 +56,7 @@ Parameters:
                             {% endif %}
                             {% if object.authorization_code.amount %}
                                 <p class="mb-0">
-                                    <strong>Amount Covered:</strong> ₦ {{ object.authorization_code.amount|floatformat:2 }}
+                                    <strong>Amount Covered:</strong> {{ object.authorization_code.amount|currency }}
                                 </p>
                             {% endif %}
                         </div>

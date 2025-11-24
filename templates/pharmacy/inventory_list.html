@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 {# Template version: 2024-11-06-v2 #}
 
@@ -372,7 +373,7 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="fw-bold text-success fs-6">₦{{ medication.price|floatformat:2 }}</span>
+                                <span class="fw-bold text-success fs-6">{{ medication.price|currency }}</span>
                             </td>
                             <td>
                                 {% for inventory in medication.inventories.all %}

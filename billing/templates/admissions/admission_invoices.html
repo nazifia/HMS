@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="container-fluid">
@@ -28,8 +29,8 @@
                             <td>{{ admission.id }}</td>
                             <td>{{ admission.patient.get_full_name }}</td>
                             <td>{{ admission.admission_date|date:"Y-m-d" }}</td>
-                            <td>₦{{ admission.billed_amount|floatformat:2 }}</td>
-                            <td>₦{{ admission.amount_paid|floatformat:2 }}</td>
+                            <td>{{ admission.billed_amount|currency }}</td>
+                            <td>{{ admission.amount_paid|currency }}</td>
                             <td><span class="badge badge-{{ admission.status_badge_class }}">{{ admission.payment_status_display }}</span></td>
                             <td>
                                 <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-info btn-sm">View</a>

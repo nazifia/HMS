@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -94,7 +95,7 @@
                                 Estimated Value
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ₦{% widthratio suggestions|length 1 50000 %}
+                                {% widthratio suggestions|length 1 50000 %}|currency
                             </div>
                         </div>
                         <div class="col-auto">
@@ -185,7 +186,7 @@
                             </div>
                             <div class="col-4 text-right">
                                 <div class="text-success font-weight-bold">
-                                    ₦{{ suggestion.best_supplier.avg_price|floatformat:2 }}
+                                    {{ suggestion.best_supplier.avg_price|currency }}
                                 </div>
                                 <small class="text-muted">per unit</small>
                                 <br>

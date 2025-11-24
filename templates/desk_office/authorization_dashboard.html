@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load patient_tags %}
 
 {% block title %}NHIA Authorization Dashboard - HMS{% endblock %}
@@ -250,7 +251,7 @@
                                         <small>{{ code.patient.get_full_name }}</small><br>
                                         <small class="text-muted">{{ code.patient.patient_id }}</small>
                                     </td>
-                                    <td>₦{{ code.amount|floatformat:2 }}</td>
+                                    <td>{{ code.amount|currency }}</td>
                                     <td>
                                         <span class="badge 
                                                     {% if code.status == 'active' %}bg-success

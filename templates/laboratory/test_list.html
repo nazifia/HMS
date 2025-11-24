@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Laboratory Tests - Hospital Management System{% endblock %}
 
@@ -114,7 +115,7 @@
                                     <td>{{ test.category.name }}</td>
                                     <td>{{ test.sample_type }}</td>
                                     <td>{{ test.duration }}</td>
-                                    <td>₦{{ test.price }}</td>
+                                    <td>{{ test.price |currency }}</td>
                                     <td>
                                         {% if test.is_active %}
                                             <span class="badge bg-success">Active</span>

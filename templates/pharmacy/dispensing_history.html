@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
@@ -47,8 +48,8 @@
                                             ({{ log.prescription_item.medication.strength }} - {{ log.prescription_item.medication.dosage_form }})
                                         </td>
                                         <td>{{ log.dispensed_quantity }}</td>
-                                        <td>{{ log.unit_price_at_dispense|floatformat:2 }}</td>
-                                        <td>{{ log.total_price_for_this_log|floatformat:2 }}</td>
+                                        <td>{{ log.unit_price_at_dispense|currency }}</td>
+                                        <td>{{ log.total_price_for_this_log|currency }}</td>
                                         <td>{{ log.dispensed_by.get_full_name|default:log.dispensed_by.username|default:"Unknown" }}</td>
                                     </tr>
                                 {% endfor %}

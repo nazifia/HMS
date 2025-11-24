@@ -332,7 +332,7 @@ def intcomma(value):
 def get_growth_rate_class(context, data_list, field):
     """
     Get growth rate and CSS class for first vs last values.
-    
+
     Usage: {% get_growth_rate_class trends 'total_revenue' as growth_info %}
     """
     try:
@@ -340,17 +340,17 @@ def get_growth_rate_class(context, data_list, field):
             context['growth_rate'] = 0.0
             context['growth_class'] = 'growth-positive'
             return ''
-            
+
         first_val = float(data_list[0].get(field, 0))
         last_val = float(data_list[-1].get(field, 0))
-        
+
         if first_val == 0:
             growth_rate = 0.0
         else:
             growth_rate = ((last_val - first_val) / first_val) * 100
-            
+
         growth_class = 'growth-positive' if growth_rate >= 0 else 'growth-negative'
-        
+
         context['growth_rate'] = round(growth_rate, 2)
         context['growth_class'] = growth_class
         return ''
@@ -358,3 +358,153 @@ def get_growth_rate_class(context, data_list, field):
         context['growth_rate'] = 0.0
         context['growth_class'] = 'growth-positive'
         return ''
+
+@register.filter
+def currency(value):
+    """
+    Format a monetary value with Naira symbol and thousand separators.
+
+    Usage: {{ amount|currency }}
+    Output: ₦ 1,234.56
+
+    Args:
+        value: Numeric value (int, float, Decimal, or string)
+
+    Returns:
+        Formatted currency string
+    """
+    try:
+        if value is None or value == '':
+            return '₦ 0.00'
+
+        # Convert to float for processing
+        numeric_value = float(value)
+
+        # Handle negative values
+        is_negative = numeric_value < 0
+        numeric_value = abs(numeric_value)
+
+        # Format with 2 decimal places
+        formatted_value = f"{numeric_value:,.2f}"
+
+        # Add currency symbol
+        result = f"₦ {formatted_value}"
+
+        # Add negative sign if needed
+        if is_negative:
+            result = f"-{result}"
+
+        return result
+    except (ValueError, TypeError, AttributeError):
+        return '₦ 0.00'
+
+@register.filter
+def currency_no_symbol(value):
+    """
+    Format a monetary value with thousand separators but without currency symbol.
+    Useful for input fields or when you want to add the symbol separately.
+
+    Usage: {{ amount|currency_no_symbol }}
+    Output: 1,234.56
+
+    Args:
+        value: Numeric value (int, float, Decimal, or string)
+
+    Returns:
+        Formatted number string
+    """
+    try:
+        if value is None or value == '':
+            return '0.00'
+
+        # Convert to float for processing
+        numeric_value = float(value)
+
+        # Format with 2 decimal places and thousand separators
+        return f"{numeric_value:,.2f}"
+    except (ValueError, TypeError, AttributeError):
+        return '0.00'
+
+@register.filter
+def subtract(value, arg):
+    """
+    Subtract arg from value. Useful for calculating differences.
+
+    Usage: {{ total|subtract:paid }}
+
+    Args:
+        value: First numeric value
+        arg: Value to subtract
+
+    Returns:
+        Result of subtraction
+    """
+    try:
+        return float(value or 0) - float(arg or 0)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
+def multiply(value, arg):
+    """
+    Multiply value by arg.
+
+    Usage: {{ price|multiply:quantity }}
+
+    Args:
+        value: First numeric value
+        arg: Multiplier
+
+    Returns:
+        Result of multiplication
+    """
+    try:
+        return float(value or 0) * float(arg or 0)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
+def div(value, arg):
+    """
+    Divide value by arg.
+
+    Usage: {{ total|div:count }}
+
+    Args:
+        value: Dividend
+        arg: Divisor
+
+    Returns:
+        Result of division, or 0 if division by zero
+    """
+    try:
+        divisor = float(arg or 0)
+        if divisor == 0:
+            return 0
+        return float(value or 0) / divisor
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
+def percentage(value, total):
+    """
+    Calculate percentage of value relative to total.
+
+    Usage: {{ part|percentage:whole }}
+
+    Args:
+        value: Part value
+        total: Total value
+
+    Returns:
+        Percentage with 1 decimal place
+    """
+    try:
+        total_val = float(total or 0)
+        if total_val == 0:
+            return '0.0%'
+        part_val = float(value or 0)
+        pct = (part_val / total_val) * 100
+        return f"{pct:.1f}%"
+    except (ValueError, TypeError):
+        return '0.0%'

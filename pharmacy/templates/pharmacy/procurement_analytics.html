@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -53,7 +54,7 @@
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Procurement Value
                             </div>
-                            <div class="metric-value text-gray-800">₦{{ total_procurement_value|floatformat:2 }}</div>
+                            <div class="metric-value text-gray-800">{{ total_procurement_value|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
@@ -195,8 +196,8 @@
                                     <tr>
                                         <td>{{ supplier.supplier__name }}</td>
                                         <td>{{ supplier.total_orders }}</td>
-                                        <td>₦{{ supplier.total_value|floatformat:2 }}</td>
-                                        <td>₦{{ supplier.avg_order_value|floatformat:2 }}</td>
+                                        <td>{{ supplier.total_value|currency }}</td>
+                                        <td>{{ supplier.avg_order_value|currency }}</td>
                                         <td>{{ supplier.on_time_deliveries }}</td>
                                         <td>
                                             {% with score=supplier.on_time_deliveries|mul:100|div:supplier.total_orders %}
@@ -243,7 +244,7 @@
                                     {% for med in medication_analysis|slice:":10" %}
                                     <tr>
                                         <td>{{ med.medication__name|truncatechars:20 }}</td>
-                                        <td>₦{{ med.total_cost|floatformat:2 }}</td>
+                                        <td>{{ med.total_cost|currency }}</td>
                                         <td>{{ med.total_quantity }}</td>
                                     </tr>
                                     {% endfor %}
@@ -344,7 +345,7 @@ const monthlyData = {
         label: 'Procurement Costs',
         data: [
             {% for item in monthly_costs %}
-                {{ item.total_cost|default:0|floatformat:2 }}{% if not forloop.last %},{% endif %}
+                {{ item.total_cost|default:0|currency }}{% if not forloop.last %},{% endif %}
             {% endfor %}
         ],
         borderColor: 'rgb(75, 192, 192)',
@@ -384,7 +385,7 @@ const categoryData = {
     datasets: [{
         data: [
             {% for item in category_performance|slice:":6" %}
-                {{ item.total_value|default:0|floatformat:2 }}{% if not forloop.last %},{% endif %}
+                {{ item.total_value|default:0|currency }}{% if not forloop.last %},{% endif %}
             {% endfor %}
         ],
         backgroundColor: [

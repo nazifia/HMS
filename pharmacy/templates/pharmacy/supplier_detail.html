@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -97,7 +98,7 @@
                             <small class="text-muted">Total Purchases</small>
                         </div>
                         <div class="mb-3">
-                            <h4 class="text-success">₦{{ total_amount|floatformat:2 }}</h4>
+                            <h4 class="text-success">{{ total_amount|currency }}</h4>
                             <small class="text-muted">Total Amount</small>
                         </div>
                         <div class="mb-3">
@@ -138,7 +139,7 @@
                                 <tr>
                                     <td>{{ purchase.invoice_number }}</td>
                                     <td>{{ purchase.purchase_date|date:"M d, Y" }}</td>
-                                    <td>₦{{ purchase.total_amount }}</td>
+                                    <td>{{ purchase.total_amount |currency }}</td>
                                     <td>
                                         <span class="badge {% if purchase.payment_status == 'paid' %}bg-success{% elif purchase.payment_status == 'partial' %}bg-warning{% else %}bg-secondary{% endif %}">
                                             {{ purchase.get_payment_status_display }}
@@ -189,7 +190,7 @@
                                 <tr>
                                     <td>{{ item.medication.name|truncatechars:25 }}</td>
                                     <td>{{ item.quantity }}</td>
-                                    <td>₦{{ item.unit_price }}</td>
+                                    <td>{{ item.unit_price |currency }}</td>
                                     <td>{{ item.purchase.purchase_date|date:"M d" }}</td>
                                 </tr>
                                 {% endfor %}
@@ -223,7 +224,7 @@
                                 <select name="medication" id="medication-select" class="form-select" required>
                                     <option value="">Choose medication...</option>
                                     {% for medication in medications %}
-                                    <option value="{{ medication.id }}">{{ medication.name }} - ₦{{ medication.price }}</option>
+                                    <option value="{{ medication.id }}">{{ medication.name }} - {{ medication.price |currency }}</option>
                                     {% endfor %}
                                 </select>
                             </div>

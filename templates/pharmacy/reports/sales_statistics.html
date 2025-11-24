@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Pharmacy Sales Statistics{% endblock %}
 
@@ -62,7 +63,7 @@
                         <div class="card bg-primary text-white">
                             <div class="card-body">
                                 <h5 class="card-title">Total Sales</h5>
-                                <h3>₦{{ overall_stats.total_sales|floatformat:2|default:"0.00" }}</h3>
+                                <h3>{{ overall_stats.total_sales|default:0|currency }}</h3>
                             </div>
                         </div>
                     </div>
@@ -86,7 +87,7 @@
                         <div class="card bg-warning text-dark">
                             <div class="card-body">
                                 <h5 class="card-title">Avg. Transaction</h5>
-                                <h3>₦{{ overall_stats.avg_transaction_value|floatformat:2|default:"0.00" }}</h3>
+                                <h3>{{ overall_stats.avg_transaction_value|default:0|currency }}</h3>
                             </div>
                         </div>
                     </div>
@@ -100,7 +101,7 @@
                                 <h5 class="mb-0">NHIA Sales</h5>
                             </div>
                             <div class="card-body">
-                                <h4>₦{{ nhia_stats.total_sales|floatformat:2|default:"0.00" }}</h4>
+                                <h4>{{ nhia_stats.total_sales|default:0|currency }}</h4>
                                 <p>{{ nhia_stats.total_transactions|default:"0" }} transactions ({{ nhia_percentage|floatformat:1 }}%)</p>
                             </div>
                         </div>
@@ -111,7 +112,7 @@
                                 <h5 class="mb-0">Non-NHIA Sales</h5>
                             </div>
                             <div class="card-body">
-                                <h4>₦{{ non_nhia_stats.total_sales|floatformat:2|default:"0.00" }}</h4>
+                                <h4>{{ non_nhia_stats.total_sales|default:0|currency }}</h4>
                                 <p>{{ non_nhia_stats.total_transactions|default:"0" }} transactions ({{ non_nhia_percentage|floatformat:1 }}%)</p>
                             </div>
                         </div>
@@ -141,10 +142,10 @@
                                     {% for stat in dispensary_stats %}
                                     <tr>
                                         <td>{{ stat.dispensary__name }}</td>
-                                        <td>₦{{ stat.total_sales|floatformat:2 }}</td>
+                                        <td>{{ stat.total_sales|currency }}</td>
                                         <td>{{ stat.total_items }}</td>
                                         <td>{{ stat.total_transactions }}</td>
-                                        <td>₦{{ stat.avg_transaction_value|floatformat:2 }}</td>
+                                        <td>{{ stat.avg_transaction_value|currency }}</td>
                                         <td>{{ stat.unique_patients }}</td>
                                     </tr>
                                     {% endfor %}
@@ -176,7 +177,7 @@
                                     {% for med in top_medications %}
                                     <tr>
                                         <td>{{ med.prescription_item__medication__name }}</td>
-                                        <td>₦{{ med.total_sales|floatformat:2 }}</td>
+                                        <td>{{ med.total_sales|currency }}</td>
                                         <td>{{ med.total_quantity }}</td>
                                         <td>{{ med.total_transactions }}</td>
                                     </tr>
@@ -209,7 +210,7 @@
                                     {% for staff in top_staff %}
                                     <tr>
                                         <td>{{ staff.dispensed_by__first_name }} {{ staff.dispensed_by__last_name }}</td>
-                                        <td>₦{{ staff.total_sales|floatformat:2 }}</td>
+                                        <td>{{ staff.total_sales|currency }}</td>
                                         <td>{{ staff.total_items }}</td>
                                         <td>{{ staff.total_transactions }}</td>
                                     </tr>

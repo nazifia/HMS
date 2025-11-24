@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="container">
@@ -64,7 +65,7 @@
                                         Current Wallet Balance
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold {% if admission.patient.wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                        <span id="walletBalanceValue">₦{{ admission.patient.wallet.balance|floatformat:2 }}</span>
+                                        <span id="walletBalanceValue">{{ admission.patient.wallet.balance|currency }}</span>
                                     </div>
                                 </div>
                                 <div class="col-auto">
@@ -85,10 +86,10 @@
                                         Daily Admission Charges
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        ₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}
+                                        {{ admission.get_actual_charges_from_wallet|currency }}
                                     </div>
                                     <div class="text-xs text-muted">
-                                        {{ admission.get_duration }} days × ₦{{ admission.bed.ward.charge_per_day|floatformat:2 }}/day
+                                        {{ admission.get_duration }} days × {{ admission.bed.ward.charge_per_day|currency }}/day
                                     </div>
                                 </div>
                                 <div class="col-auto">
@@ -109,7 +110,7 @@
                                         Total Admission Cost
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        <span id="totalCostValue">₦{{ admission.get_total_cost|floatformat:2 }}</span>
+                                        <span id="totalCostValue">{{ admission.get_total_cost|currency }}</span>
                                     </div>
                                     <div class="text-xs text-muted">
                                         Complete admission cost
@@ -133,7 +134,7 @@
                                         Total Amount Paid
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        <span id="totalPaidValue">₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</span>
+                                        <span id="totalPaidValue">{{ admission.get_actual_charges_from_wallet|currency }}</span>
                                     </div>
                                     <div class="text-xs text-muted">
                                         From wallet deductions
@@ -157,7 +158,7 @@
                                         Outstanding Balance
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold {% if admission.get_outstanding_admission_cost > 0 %}text-danger{% else %}text-success{% endif %}">
-                                        <span id="outstandingValue">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</span>
+                                        <span id="outstandingValue">{{ admission.get_outstanding_admission_cost|currency }}</span>
                                     </div>
                                     <div class="text-xs text-muted">
                                         {% if admission.get_outstanding_admission_cost > 0 %}
@@ -185,7 +186,7 @@
                                         Net Impact
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold {% if admission.get_total_wallet_impact < 0 %}text-danger{% else %}text-success{% endif %}">
-                                        <span id="netImpactValue">₦{{ admission.get_total_wallet_impact|floatformat:2 }}</span>
+                                        <span id="netImpactValue">{{ admission.get_total_wallet_impact|currency }}</span>
                                     </div>
                                     <div class="text-xs text-muted">
                                         {% if admission.get_total_wallet_impact >= 0 %}
@@ -213,13 +214,13 @@
                             Payment Status
                         </h6>
                         <p class="mb-2">
-                            <strong>Total Cost:</strong> <span id="psTotalCost">₦{{ admission.get_total_cost|floatformat:2 }}</span> |
-                            <strong>Paid:</strong> <span id="psPaid">₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</span> |
-                            <strong>Outstanding:</strong> <span id="psOutstanding">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</span>
+                            <strong>Total Cost:</strong> <span id="psTotalCost">{{ admission.get_total_cost|currency }}</span> |
+                            <strong>Paid:</strong> <span id="psPaid">{{ admission.get_actual_charges_from_wallet|currency }}</span> |
+                            <strong>Outstanding:</strong> <span id="psOutstanding">{{ admission.get_outstanding_admission_cost|currency }}</span>
                         </p>
                         {% if admission.get_outstanding_admission_cost > 0 %}
                             <p class="mb-0">
-                                This admission has an outstanding balance. The patient's wallet balance of ₦{{ admission.patient.wallet.balance|floatformat:2 }}
+                                This admission has an outstanding balance. The patient's wallet balance of {{ admission.patient.wallet.balance|currency }}
                                 {% if admission.patient.wallet.balance > 0 %}
                                     can partially cover the outstanding amount.
                                 {% else %}
