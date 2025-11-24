@@ -4,7 +4,7 @@ Universal Authorization Request Widget
 Can be included in any module's detail page to request/view authorization
 
 Usage:
-    {% include 'includes/authorization_request_widget.html' with object=record model_type='dental_record' %}
+    {% include 'includes/authorization_request_widget.html' with object=record model_type='prescription' %}
     
 Parameters:
     - object: The model instance (consultation, prescription, dental_record, etc.)
@@ -155,11 +155,11 @@ Parameters:
                     </div>
                     
                     <div class="form-group">
-                        <label for="request_notes{{ object.id }}">Reason for Authorization Request</label>
+                        <label for="request_notes{{ object.id }}">Notes</label>
                         <textarea class="form-control" id="request_notes{{ object.id }}" name="notes" rows="3" 
-                                  placeholder="Explain why this service requires authorization..."></textarea>
+                                  placeholder="Add any additional notes..."></textarea>
                         <small class="form-text text-muted">
-                            Provide details to help desk office staff process this request quickly.
+                            Provide details to help desk office staff process this request.
                         </small>
                     </div>
                     

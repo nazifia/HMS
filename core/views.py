@@ -165,14 +165,6 @@ def request_nhia_authorization_form(request, model_type, object_id):
         notes = request.POST.get('notes', '').strip()
         estimated_amount = request.POST.get('estimated_amount', '')
 
-        if not notes:
-            messages.error(request, 'Please provide a reason for the authorization request.')
-            return render(request, 'core/request_authorization_form.html', {
-                'record': record,
-                'model_type': model_type,
-                'module_name': display_name,
-            })
-
         # Send authorization request
         from django.db.models import Q
         desk_office_users = CustomUser.objects.filter(
