@@ -515,7 +515,7 @@ function processWalletTopUp() {
             HMSUI.notifications.show('Wallet topped up successfully!', 'success');
             HMSUI.modals.close();
             // Reload page to show updated balance
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => location.reload(), 300);
         } else {
             HMSUI.notifications.show(data.error || 'Failed to top up wallet', 'error');
         }

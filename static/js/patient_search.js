@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Debounce search requests
             searchTimeout = setTimeout(() => {
                 searchPatients(query, resultsContainer, selectField);
-            }, 300);
+            }, 150);
         });
         
         // Hide results when clicking outside

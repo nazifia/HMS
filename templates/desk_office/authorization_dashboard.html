@@ -575,7 +575,7 @@
                         <label for="quick_patient_search" class="form-label">Search Patient</label>
                         <input type="text" class="form-control" id="quick_patient_search" name="q"
                             placeholder="Type patient name or ID..." hx-get="{% url 'core:patient_search_ajax' %}"
-                            hx-target="#quickPatientResults" hx-trigger="keyup changed delay:300ms"
+                            hx-target="#quickPatientResults" hx-trigger="keyup changed delay:150ms"
                             hx-include="[name='q']" hx-vals='{"patient_type": "nhia", "quick": "true"}'
                             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
                         <div id="quickPatientResults" class="mt-2"></div>

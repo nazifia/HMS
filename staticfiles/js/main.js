@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Popover(popoverTriggerEl);
     });
 
-    // Auto-hide alerts after 5 seconds
+    // Auto-hide alerts after 3 seconds
     setTimeout(function() {
         $('.alert').alert('close');
-    }, 5000);
+    }, 3000);
 
     // Appointment date picker enhancement
     if (document.getElementById('appointment-date')) {

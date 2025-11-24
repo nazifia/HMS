@@ -475,7 +475,7 @@ function exportData(format) {
     params.set('format', format);
     
     window.location.href = '{% url "core:export_revenue_breakdown" %}?' + params.toString();
-    setTimeout(hideLoading, 2000);
+    setTimeout(hideLoading, 1000);
 }
 
 function showLoading() {

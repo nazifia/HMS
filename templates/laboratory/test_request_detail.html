@@ -924,7 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Show success message
                 showSuccessMessage(data.message || 'Test result saved successfully!');
-                setTimeout(() => window.location.reload(), 1500);
+                setTimeout(() => window.location.reload(), 500);
             } else {
                 // Show form errors
                 document.getElementById('testResultModalBody').innerHTML = data.html || data;
@@ -955,7 +955,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         document.body.appendChild(alert);
-        setTimeout(() => alert.remove(), 5000);
+        setTimeout(() => alert.remove(), 3000);
     }
 
     function showErrorMessage(message) {
@@ -970,7 +970,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         document.body.appendChild(alert);
-        setTimeout(() => alert.remove(), 5000);
+        setTimeout(() => alert.remove(), 3000);
     }
 });
 </script>

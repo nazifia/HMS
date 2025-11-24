@@ -493,7 +493,7 @@ $(document).ready(function() {
                     if (modal) modal.hide();
                 });
                 // Reload page to show updated transfers
-                setTimeout(() => location.reload(), 500);
+                setTimeout(() => location.reload(), 200);
             },
             error: function(xhr, status, error) {
                 console.error('Error approving transfer:', error);
@@ -520,7 +520,7 @@ $(document).ready(function() {
                     const modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();
                 });
-                setTimeout(() => location.reload(), 500);
+                setTimeout(() => location.reload(), 200);
             },
             error: function(xhr, status, error) {
                 console.error('Error cancelling transfer:', error);

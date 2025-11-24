@@ -106,7 +106,7 @@
                                        value="{{ search_query|default:'' }}"
                                        hx-get="{% url 'core:patient_search_ajax' %}"
                                        hx-target="#patientResults"
-                                       hx-trigger="keyup changed delay:300ms"
+                                       hx-trigger="keyup changed delay:150ms"
                                        hx-include="[name='q']"
                                        hx-vals='{"patient_type": "nhia"}'
                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'

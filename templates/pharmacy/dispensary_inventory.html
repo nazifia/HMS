@@ -424,7 +424,7 @@
                                                placeholder="Search by medication name, generic name, or brand name..."
                                                hx-get="/pharmacy/api/search_medication_inventory/?dispensary_id={{ dispensary.id }}"
                                                hx-target="#inventory-results"
-                                               hx-trigger="keyup changed delay:300ms"
+                                               hx-trigger="keyup changed delay:150ms"
                                                hx-indicator=".search-loading">
                                         <div class="search-loading htmx-indicator spinner-border spinner-border-sm text-primary ms-2" role="status">
                                             <span class="visually-hidden">Searching...</span>

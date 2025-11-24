@@ -4,7 +4,7 @@
 const HMSUI = {
     config: {
         animationDuration: 300,
-        notificationTimeout: 5000,
+        notificationTimeout: 3000,
         autoRefreshInterval: 0, // Disabled for manual operation
         sessionWarningTime: 600000, // 10 minutes
         sessionLogoutTime: 1200000 // 20 minutes
@@ -217,8 +217,8 @@ const HMSUI = {
                 };
                 
                 ws.onclose = () => {
-                    // Reconnect after 5 seconds
-                    setTimeout(() => this.setupWebSocket(), 5000);
+                    // Reconnect after 3 seconds
+                    setTimeout(() => this.setupWebSocket(), 3000);
                 };
             }
         }
@@ -379,7 +379,7 @@ const HMSUI = {
                 let timeout;
                 form.addEventListener('input', () => {
                     clearTimeout(timeout);
-                    timeout = setTimeout(() => this.autoSave(form), 1000);
+                    timeout = setTimeout(() => this.autoSave(form), 500);
                 });
             });
             
