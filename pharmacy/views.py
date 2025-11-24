@@ -1398,6 +1398,32 @@ def active_store_detail(request, dispensary_id):
                 'bulk_store': bulk_store,
                 'medications': medications
             })
+    
+    # Create JSON-serializable version for JavaScript
+    import json
+    available_bulk_medications_json = []
+    for bulk_store_data in available_bulk_medications:
+        bulk_store = bulk_store_data['bulk_store']
+        medications_data = []
+        
+        for med_inventory in bulk_store_data['medications']:
+            medications_data.append({
+                'medication': {
+                    'id': med_inventory.medication.id,
+                    'name': med_inventory.medication.name
+                },
+                'batch_number': med_inventory.batch_number or '',
+                'stock_quantity': med_inventory.stock_quantity,
+                'unit_cost': float(med_inventory.unit_cost) if med_inventory.unit_cost else 0.00
+            })
+        
+        available_bulk_medications_json.append({
+            'bulk_store': {
+                'id': bulk_store.id,
+                'name': bulk_store.name
+            },
+            'medications': medications_data
+        })
 
     # Handle active store to dispensary transfer
     dispensary_transfer_form = None
@@ -1443,7 +1469,6 @@ def active_store_detail(request, dispensary_id):
                 # Process bulk transfer
                 bulk_store = bulk_transfer_form.cleaned_data['bulk_store']
                 transfer_medications = request.POST.getlist('transfer_medications')
-                transfer_quantities = request.POST.getlist('transfer_quantities')
 
                 # Validate that we have medications to transfer
                 if not transfer_medications:
@@ -1454,47 +1479,58 @@ def active_store_detail(request, dispensary_id):
                 errors = []
 
                 with transaction.atomic():
-                    for i, medication_id in enumerate(transfer_medications):
-                        if medication_id and i < len(transfer_quantities):
+                    for medication_id in transfer_medications:
+                        if medication_id:
                             try:
-                                quantity = int(transfer_quantities[i])
-                                if quantity > 0:
-                                    # Get bulk inventory with validation
-                                    bulk_inventory = BulkStoreInventory.objects.filter(
-                                        bulk_store=bulk_store,
-                                        medication_id=medication_id
-                                    ).first()
+                                # Get quantity from medication-specific field
+                                quantity_field_name = f'transfer_quantity_{medication_id}'
+                                quantity_value = request.POST.get(quantity_field_name, '')
 
-                                    if not bulk_inventory:
-                                        errors.append(f'Medication ID {medication_id} not found in bulk store')
-                                        continue
+                                if not quantity_value:
+                                    errors.append(f'No quantity specified for medication ID {medication_id}')
+                                    continue
 
-                                    # Check if medication is expired
-                                    from datetime import date
-                                    if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
-                                        errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
-                                        continue
+                                quantity = int(quantity_value)
+                                if quantity <= 0:
+                                    errors.append(f'Invalid quantity for medication ID {medication_id}')
+                                    continue
 
-                                    # Check if sufficient stock
-                                    if bulk_inventory.stock_quantity < quantity:
-                                        errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
-                                        continue
+                                # Get bulk inventory with validation
+                                bulk_inventory = BulkStoreInventory.objects.filter(
+                                    bulk_store=bulk_store,
+                                    medication_id=medication_id
+                                ).first()
 
-                                    # Create transfer
-                                    transfer = MedicationTransfer.objects.create(
-                                        medication=bulk_inventory.medication,
-                                        from_bulk_store=bulk_store,
-                                        to_active_store=active_store,
-                                        quantity=quantity,
-                                        batch_number=bulk_inventory.batch_number,
-                                        expiry_date=bulk_inventory.expiry_date,
-                                        unit_cost=bulk_inventory.unit_cost,
-                                        requested_by=request.user,
-                                        status='pending'
-                                    )
-                                    transfers_created += 1
+                                if not bulk_inventory:
+                                    errors.append(f'Medication ID {medication_id} not found in bulk store')
+                                    continue
+
+                                # Check if medication is expired
+                                from datetime import date
+                                if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
+                                    errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
+                                    continue
+
+                                # Check if sufficient stock
+                                if bulk_inventory.stock_quantity < quantity:
+                                    errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
+                                    continue
+
+                                # Create transfer
+                                transfer = MedicationTransfer.objects.create(
+                                    medication=bulk_inventory.medication,
+                                    from_bulk_store=bulk_store,
+                                    to_active_store=active_store,
+                                    quantity=quantity,
+                                    batch_number=bulk_inventory.batch_number,
+                                    expiry_date=bulk_inventory.expiry_date,
+                                    unit_cost=bulk_inventory.unit_cost,
+                                    requested_by=request.user,
+                                    status='pending'
+                                )
+                                transfers_created += 1
                             except ValueError as e:
-                                errors.append(f'Invalid quantity for medication ID {medication_id}')
+                                errors.append(f'Invalid quantity for medication ID {medication_id}: {str(e)}')
                             except Exception as e:
                                 errors.append(f'Error processing medication ID {medication_id}: {str(e)}')
 
@@ -1531,15 +1567,23 @@ def active_store_detail(request, dispensary_id):
         status='pending'
     ).select_related('medication', 'to_dispensary', 'requested_by')
 
+    # Get pending bulk store transfers (medication transfers) for this active store
+    pending_medication_transfers = MedicationTransfer.objects.filter(
+        to_active_store=active_store,
+        status='pending'
+    ).select_related('medication', 'from_bulk_store', 'requested_by').order_by('-created_at')
+
     context = {
         'active_store': active_store,
         'dispensary': dispensary,
         'inventory_items': inventory_items,
         'bulk_stores': bulk_stores,
         'available_bulk_medications': available_bulk_medications,
+        'available_bulk_medications_json': json.dumps(available_bulk_medications_json),
         'bulk_transfer_form': bulk_transfer_form,
         'dispensary_transfer_form': dispensary_transfer_form,
         'pending_dispensary_transfers': pending_dispensary_transfers,
+        'pending_medication_transfers': pending_medication_transfers,
         'page_title': f'Active Store - {active_store.name}',
         'active_nav': 'pharmacy',
     }

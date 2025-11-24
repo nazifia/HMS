@@ -24,7 +24,9 @@
       "Bash(find:*)",
       "Bash(python:*)",
       "Bash(taskkill:*)",
-      "WebFetch(domain:127.0.0.1)"
+      "WebFetch(domain:127.0.0.1)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []
