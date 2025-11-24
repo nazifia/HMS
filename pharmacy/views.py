@@ -4942,22 +4942,11 @@ def add_dispensary(request):
     if request.method == 'POST':
         form = DispensaryForm(request.POST)
         if form.is_valid():
-            with transaction.atomic():
-                # Save dispensary
-                dispensary = form.save()
+            # Save dispensary - ActiveStore will be created automatically by signal
+            dispensary = form.save()
 
-                # Automatically create associated active store
-                active_store = ActiveStore.objects.create(
-                    dispensary=dispensary,
-                    name=f"Active Store - {dispensary.name}",
-                    location=dispensary.location or "Same as dispensary",
-                    description=f"Active storage area for {dispensary.name}",
-                    capacity=1000,  # Default capacity
-                    is_active=dispensary.is_active
-                )
-
-                messages.success(request, f'Dispensary {dispensary.name} created successfully with active store.')
-                return redirect('pharmacy:dispensary_list')
+            messages.success(request, f'Dispensary {dispensary.name} created successfully with active store.')
+            return redirect('pharmacy:dispensary_list')
     else:
         form = DispensaryForm()
 
