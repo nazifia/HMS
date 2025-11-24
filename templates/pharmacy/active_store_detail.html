@@ -145,6 +145,14 @@
                 </p>
             </div>
             <div class="col-md-4 text-md-end">
+                <a href="{% url 'pharmacy:active_store_bulk_transfers' dispensary.id %}" class="btn btn-info me-2">
+                    <i class="fas fa-exchange-alt me-2"></i>
+                    Bulk Transfers
+                </a>
+                <a href="{% url 'pharmacy:active_store_dispensary_transfers' dispensary.id %}" class="btn btn-success me-2">
+                    <i class="fas fa-arrow-down me-2"></i>
+                    Dispensary Transfers
+                </a>
                 <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-light">
                     <i class="fas fa-arrow-left me-2"></i>
                     Back to Dispensaries
@@ -263,58 +271,32 @@
         </div>
     </div>
 
-    <!-- Bulk Transfer Section -->
-    <div class="transfer-section">
-        <div class="section-title">
-            <i class="fas fa-truck me-2"></i>
-            Transfer from Bulk Store
+    <!-- Quick Transfer Access -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <i class="fas fa-exchange-alt fa-3x text-info mb-3"></i>
+                    <h5>Bulk Store Transfers</h5>
+                    <p class="text-muted">Request medications from bulk store</p>
+                    <a href="{% url 'pharmacy:active_store_bulk_transfers' dispensary.id %}" class="btn btn-info">
+                        <i class="fas fa-plus me-2"></i>Create Bulk Transfer
+                    </a>
+                </div>
+            </div>
         </div>
-        <form method="post" id="bulkTransferForm">
-            {% csrf_token %}
-            <input type="hidden" name="bulk_transfer" value="1">
-            
-            <div class="row">
-                <div class="col-md-4">
-                    <label for="id_bulk_store" class="form-label">Select Bulk Store</label>
-                    {{ bulk_transfer_form.bulk_store|add_class:"form-select" }}
-                    {% if bulk_transfer_form.bulk_store.errors %}
-                        <div class="text-danger">{{ bulk_transfer_form.bulk_store.errors }}</div>
-                    {% endif %}
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <i class="fas fa-arrow-down fa-3x text-success mb-3"></i>
+                    <h5>Dispensary Transfers</h5>
+                    <p class="text-muted">Transfer medications to dispensary</p>
+                    <a href="{% url 'pharmacy:active_store_dispensary_transfers' dispensary.id %}" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>Create Dispensary Transfer
+                    </a>
                 </div>
             </div>
-            
-            <div id="medicationSelection" class="mt-3" style="display: none;">
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th width="30">
-                                    <input type="checkbox" id="selectAll" class="form-check-input">
-                                </th>
-                                <th>Medication</th>
-                                <th>Available Stock</th>
-                                <th>Transfer Quantity</th>
-                                <th>Unit Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody id="medicationTableBody">
-                            <!-- Medications will be loaded here -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="mt-3">
-                    <button type="submit" class="btn btn-primary" id="bulkTransferSubmitBtn">
-                        <i class="fas fa-exchange-alt me-2"></i>
-                        Transfer Selected Items
-                    </button>
-                    <button type="button" class="btn btn-secondary" onclick="$('#medicationSelection').hide(); $('#id_bulk_store').val(''); $('#medicationTableBody').empty();">
-                        <i class="fas fa-times me-2"></i>
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        </form>
+        </div>
     </div>
 
     <!-- Pending Bulk Store Transfers -->
@@ -376,227 +358,14 @@
         </div>
     {% endif %}
 
-    <!-- Dispensary Transfer Section -->
-    <div class="transfer-section">
-        <div class="section-title">
-            <i class="fas fa-exchange-alt me-2"></i>
-            Transfer to Dispensary
-        </div>
-        <form method="post" id="dispensaryTransferForm">
-            {% csrf_token %}
-            <input type="hidden" name="dispensary_transfer" value="1">
-            
-            <div class="row">
-                <div class="col-md-3">
-                    <label for="id_medication" class="form-label">Medication</label>
-                    {{ dispensary_transfer_form.medication|add_class:"form-select" }}
-                    {% if dispensary_transfer_form.medication.errors %}
-                        <div class="text-danger">{{ dispensary_transfer_form.medication.errors }}</div>
-                    {% endif %}
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="id_quantity" class="form-label">Quantity</label>
-                    {{ dispensary_transfer_form.quantity|add_class:"form-control" }}
-                    {% if dispensary_transfer_form.quantity.errors %}
-                        <div class="text-danger">{{ dispensary_transfer_form.quantity.errors }}</div>
-                    {% endif %}
-                </div>
-                
-                <div class="col-md-3">
-                    <label for="id_to_dispensary" class="form-label">To Dispensary</label>
-                    {{ dispensary_transfer_form.to_dispensary|add_class:"form-select" }}
-                    {% if dispensary_transfer_form.to_dispensary.errors %}
-                        <div class="text-danger">{{ dispensary_transfer_form.to_dispensary.errors }}</div>
-                    {% endif %}
-                </div>
-                
-                <div class="col-md-4">
-                    <label for="id_notes" class="form-label">Notes</label>
-                    {{ dispensary_transfer_form.notes|add_class:"form-control" }}
-                    {% if dispensary_transfer_form.notes.errors %}
-                        <div class="text-danger">{{ dispensary_transfer_form.notes.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <div class="mt-3">
-                <button type="submit" class="btn btn-success">
-                    <i class="fas fa-share me-2"></i>
-                    Create Transfer Request
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Pending Transfers -->
-    {% if pending_dispensary_transfers %}
-        <div class="inventory-card">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">
-                    <i class="fas fa-clock me-2"></i>
-                    Pending Dispensary Transfers ({{ pending_dispensary_transfers.count }})
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Transfer ID</th>
-                                <th>Medication</th>
-                                <th>Quantity</th>
-                                <th>To Dispensary</th>
-                                <th>Requested By</th>
-                                <th>Requested At</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for transfer in pending_dispensary_transfers %}
-                                <tr class="transfer-pending">
-                                    <td><strong>#{{ transfer.id }}</strong></td>
-                                    <td>{{ transfer.medication.name }}</td>
-                                    <td>{{ transfer.quantity }}</td>
-                                    <td>{{ transfer.to_dispensary.name }}</td>
-                                    <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
-                                    <td>{{ transfer.created_at|date:"M d, Y H:i" }}</td>
-                                    <td>
-                                        <form method="post" action="{% url 'pharmacy:approve_dispensary_transfer' transfer.id %}" class="d-inline">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-success" 
-                                                    onclick="return confirm('Approve this transfer request?')">
-                                                <i class="fas fa-check"></i> Approve
-                                            </button>
-                                        </form>
-                                        <form method="post" action="{% url 'pharmacy:cancel_dispensary_transfer' transfer.id %}" class="d-inline">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-danger" 
-                                                    onclick="return confirm('Cancel this transfer request?')">
-                                                <i class="fas fa-times"></i> Cancel
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // Handle bulk store selection
-    $('#id_bulk_store').on('change', function() {
-        var bulkStoreId = $(this).val();
-        if (bulkStoreId) {
-            loadMedications(bulkStoreId);
-        } else {
-            $('#medicationSelection').hide();
-        }
-    });
-    
-    // Pre-populate medication data for easier JavaScript access
-    window.bulkStoreMedications = {{ available_bulk_medications_json|safe }};
-
-    // Handle select all checkbox
-    $('#selectAll').on('change', function() {
-        var isChecked = $(this).prop('checked');
-        $('.medication-checkbox').prop('checked', isChecked);
-        $('.transfer-quantity-input').prop('disabled', !isChecked);
-        if (!isChecked) {
-            $('.transfer-quantity-input').val('');
-        }
-    });
-
-    // Handle medication selection
-    $(document).on('change', '.medication-checkbox', function() {
-        var medicationId = $(this).data('medication-id');
-        var quantityInput = $('#quantity_' + medicationId);
-
-        if ($(this).prop('checked')) {
-            quantityInput.prop('disabled', false);
-            quantityInput.focus();
-        } else {
-            quantityInput.prop('disabled', true);
-            quantityInput.val('');
-        }
-    });
-
-    // Form validation before submission
-    $('#bulkTransferForm').on('submit', function(e) {
-        var checkedMedications = $('.medication-checkbox:checked');
-
-        if (checkedMedications.length === 0) {
-            e.preventDefault();
-            alert('Please select at least one medication to transfer.');
-            return false;
-        }
-
-        var hasError = false;
-        var errorMessages = [];
-
-        checkedMedications.each(function() {
-            var medicationId = $(this).data('medication-id');
-            var maxQuantity = $(this).data('max-quantity');
-            var quantityInput = $('#quantity_' + medicationId);
-            var quantity = parseInt(quantityInput.val());
-
-            if (!quantity || quantity <= 0) {
-                hasError = true;
-                errorMessages.push('Please enter a valid quantity for all selected medications.');
-                return false;
-            }
-
-            if (quantity > maxQuantity) {
-                hasError = true;
-                errorMessages.push('Quantity for medication ID ' + medicationId + ' exceeds available stock (' + maxQuantity + ').');
-            }
-        });
-
-        if (hasError) {
-            e.preventDefault();
-            alert(errorMessages.join('\n'));
-            return false;
-        }
-
-        return true;
-    });
+    console.log('Active Store Detail page loaded');
+    // Page-specific JavaScript can be added here if needed
 });
-
-function loadMedications(bulkStoreId) {
-    // Use pre-loaded medications data
-    var medications = window.bulkStoreMedications || [];
-    var tbody = $('#medicationTableBody');
-    tbody.empty();
-
-    var found = false;
-    $.each(medications, function(index, bulkStore) {
-        if (bulkStore.bulk_store.id == bulkStoreId && bulkStore.medications.length > 0) {
-            found = true;
-            $.each(bulkStore.medications, function(medIndex, med) {
-                var row = '<tr>' +
-                    '<td><input type="checkbox" name="transfer_medications" value="' + med.medication.id + '" class="form-check-input medication-checkbox" data-medication-id="' + med.medication.id + '" data-max-quantity="' + med.stock_quantity + '"></td>' +
-                    '<td><strong>' + med.medication.name + '</strong><br><small class="text-muted">Batch: ' + med.batch_number + '</small></td>' +
-                    '<td>' + med.stock_quantity + '</td>' +
-                    '<td><input type="number" name="transfer_quantity_' + med.medication.id + '" id="quantity_' + med.medication.id + '" class="form-control form-control-sm transfer-quantity-input" min="1" max="' + med.stock_quantity + '" placeholder="0" disabled></td>' +
-                    '<td>₦' + parseFloat(med.unit_cost).toFixed(2) + '</td>' +
-                    '</tr>';
-                tbody.append(row);
-            });
-        }
-    });
-
-    if (!found) {
-        tbody.append('<tr><td colspan="5" class="text-center text-muted">No medications available in this bulk store</td></tr>');
-    }
-
-    $('#medicationSelection').show();
-}
 </script>
 {% endblock %}

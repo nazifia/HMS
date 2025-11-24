@@ -46,7 +46,10 @@
         font-weight: bold;
     }
     .medication-row {
-        display: none;
+        display: none !important;
+    }
+    .medication-row.show {
+        display: table-row !important;
     }
     tr.table-info {
         background-color: #cfe2ff !important;
@@ -57,12 +60,6 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Version indicator -->
-    <div class="alert alert-info mb-3" style="padding: 8px 15px; font-size: 12px;">
-        <i class="fas fa-code-branch me-1"></i>
-        <strong>Template:</strong> Bulk Transfers v2025.11.05.002
-    </div>
-
     <div class="row">
         <div class="col-12">
             <!-- Transfer Header -->
@@ -128,9 +125,9 @@
                         <i class="fas fa-plus me-1"></i>New Transfer Request
                     </button>
                 </div>
-                <div class="collapse" id="bulkTransferSection">
+                <div class="collapse show" id="bulkTransferSection">
                     <div class="card-body">
-                        <form method="post" id="bulkTransferForm" action="">
+                        <form method="post" id="bulkTransferForm">
                             {% csrf_token %}
                             <input type="hidden" name="bulk_transfer" value="1">
 
@@ -160,7 +157,14 @@
                             <div id="medicationsList">
                                 <h6 class="mb-3">
                                     <i class="fas fa-pills me-2"></i>Available Medications
-                                    <small class="text-muted">(Select bulk store to view available medications)</small>
+                                    <small class="text-muted" id="medicationListHint">(Select bulk store above to view available medications)</small>
+                                    {% if available_bulk_medications %}
+                                        <span class="badge bg-success ms-2" id="debugMedicationCount">
+                                            Debug: {{ available_bulk_medications|length }} bulk store(s) loaded
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger ms-2">Debug: No medications loaded from backend</span>
+                                    {% endif %}
                                 </h6>
                                 <div class="table-responsive">
                                     <table class="table table-sm table-hover" id="bulkMedicationsTable">
@@ -177,8 +181,10 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <!-- Debug: available_bulk_medications count = {{ available_bulk_medications|length }} -->
                                             {% if available_bulk_medications %}
                                                 {% for bulk_data in available_bulk_medications %}
+                                                    <!-- Bulk Store: {{ bulk_data.bulk_store.name }} (ID: {{ bulk_data.bulk_store.id }}) with {{ bulk_data.medications|length }} medications -->
                                                     <tr class="bulk-store-row" data-bulk-store="{{ bulk_data.bulk_store.id }}">
                                                         <td colspan="6" class="py-2">
                                                             <i class="fas fa-warehouse me-2"></i>
@@ -207,7 +213,7 @@
                                                             </td>
                                                             <td>
                                                                 <input type="number"
-                                                                       name="transfer_quantities"
+                                                                       name="transfer_quantity_{{ med_inventory.medication.id }}"
                                                                        min="0"
                                                                        max="{{ med_inventory.stock_quantity }}"
                                                                        value="0"
@@ -384,8 +390,8 @@
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    console.log('=== Bulk Transfers Page Loaded ===');
+(function() {
+    try {
 
     // Function to update submit button state
     function updateSubmitButton() {
@@ -414,19 +420,12 @@ $(document).ready(function() {
 
     // Medication checkbox handler using EVENT DELEGATION
     $(document).on('change', '.medication-checkbox', function() {
-        console.log('=== Checkbox Change Event ===');
-        console.log('Checked:', this.checked);
-
         const $checkbox = $(this);
         const $row = $checkbox.closest('tr');
         const $quantityInput = $row.find('.quantity-input');
         const availableQty = parseInt($checkbox.data('available')) || 0;
-        const medName = $checkbox.data('med-name');
-
-        console.log('Medication:', medName, 'Available:', availableQty);
 
         if ($checkbox.is(':checked')) {
-            console.log('✓ Enabling input');
             // Enable the input and set default value
             $quantityInput.prop('disabled', false);
             $quantityInput.attr('max', availableQty);
@@ -434,7 +433,6 @@ $(document).ready(function() {
             $quantityInput.focus();
             $row.addClass('table-info'); // Highlight row
         } else {
-            console.log('✗ Disabling input');
             $quantityInput.prop('disabled', true);
             $quantityInput.val(0);
             $row.removeClass('table-info');
@@ -446,17 +444,31 @@ $(document).ready(function() {
     // Handle bulk store selection
     $('#id_bulk_store').on('change', function() {
         const selectedBulkStore = $(this).val();
-        console.log('=== Bulk Store Selected:', selectedBulkStore, '===');
 
         // Hide all rows first
-        $('.medication-row, .bulk-store-row').hide();
+        $('.medication-row').removeClass('show').css('display', 'none');
+        $('.bulk-store-row').removeClass('show').css('display', 'none');
 
         if (selectedBulkStore) {
             // Show selected bulk store and its medications
-            $('.bulk-store-row[data-bulk-store="' + selectedBulkStore + '"]').show();
+            const $bulkStoreRow = $('.bulk-store-row[data-bulk-store="' + selectedBulkStore + '"]');
             const $medicationRows = $('.medication-row[data-bulk-store="' + selectedBulkStore + '"]');
-            $medicationRows.show();
-            console.log('Showing', $medicationRows.length, 'medications');
+
+            // Explicitly set display to table-row by adding 'show' class
+            $bulkStoreRow.addClass('show').css('display', 'table-row');
+            $medicationRows.addClass('show').css('display', 'table-row');
+
+            // Update hint message
+            if ($medicationRows.length > 0) {
+                $('#medicationListHint').html('(' + $medicationRows.length + ' medications available - select items to transfer)').removeClass('text-muted').addClass('text-success');
+                $('#selectAllMedications').prop('disabled', false);
+            } else {
+                $('#medicationListHint').html('(No medications found for selected bulk store)').removeClass('text-success').addClass('text-warning');
+            }
+        } else {
+            // Reset hint message
+            $('#medicationListHint').html('(Select bulk store above to view available medications)').removeClass('text-success').addClass('text-muted');
+            $('#selectAllMedications').prop('disabled', true);
         }
 
         // Reset selections
@@ -480,62 +492,74 @@ $(document).ready(function() {
 
     // Initialize form state
     function initializeFormState() {
-        $('.medication-row, .bulk-store-row').hide();
+        // First, hide all rows
+        $('.medication-row').css('display', 'none');
+        $('.bulk-store-row').css('display', 'none');
+
         const initialBulkStore = $('#id_bulk_store').val();
-        if (initialBulkStore) {
-            $('#id_bulk_store').trigger('change');
+
+        // Auto-select if there's only one bulk store
+        const bulkStoreOptions = $('#id_bulk_store option').length;
+
+        if (bulkStoreOptions === 2 && !initialBulkStore) {
+            // 2 options means 1 blank + 1 actual store
+            $('#id_bulk_store option:eq(1)').prop('selected', true);
+            setTimeout(function() {
+                $('#id_bulk_store').trigger('change');
+            }, 100);
+        } else if (initialBulkStore) {
+            setTimeout(function() {
+                $('#id_bulk_store').trigger('change');
+            }, 100);
         }
+
         updateSubmitButton();
     }
 
-    setTimeout(initializeFormState, 100);
+    // Run initialization after a short delay
+    setTimeout(initializeFormState, 200);
 
-    // Handle form submission
+    // Handle form submission validation
     $('#bulkTransferForm').on('submit', function(e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-        const transfers = [];
-
-        // Collect transfer data
-        $('.medication-checkbox:checked').each(function() {
-            const medicationId = $(this).val();
-            const quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
-
-            if (quantity > 0) {
-                transfers.push({
-                    medication_id: medicationId,
-                    quantity: quantity
-                });
-            }
-        });
-
-        if (transfers.length === 0) {
-            alert('Please select at least one medication with a valid quantity.');
-            return;
+        // Check if bulk store is selected
+        const bulkStoreId = $('#id_bulk_store').val();
+        if (!bulkStoreId) {
+            e.preventDefault();
+            alert('Please select a bulk store.');
+            return false;
         }
 
-        console.log('Submitting', transfers.length, 'transfer(s)');
+        // Collect transfer data
+        const checkedBoxes = $('.medication-checkbox:checked');
 
-        // Submit via AJAX
-        $.ajax({
-            url: window.location.href,
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                alert('Transfer requests submitted successfully!');
-                window.location.reload();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error:', error);
-                alert('Error submitting transfer request: ' + error);
+        if (checkedBoxes.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one medication to transfer.');
+            return false;
+        }
+
+        // Validate quantities
+        let hasInvalidQuantity = false;
+        checkedBoxes.each(function() {
+            const quantity = parseInt($(this).closest('tr').find('.quantity-input').val()) || 0;
+            if (quantity <= 0) {
+                hasInvalidQuantity = true;
             }
         });
+
+        if (hasInvalidQuantity) {
+            e.preventDefault();
+            alert('Please enter valid quantities for all selected medications.');
+            return false;
+        }
+
+        // Allow normal form submission
+        return true;
     });
 
-    console.log('=== All event handlers initialized ===');
-});
+    } catch (error) {
+        console.error('ERROR in bulk transfers JavaScript:', error);
+    }
+})();
 </script>
 {% endblock %}
