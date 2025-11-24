@@ -2186,7 +2186,7 @@ def add_purchase(request):
                 with transaction.atomic():
                     purchase.save()
                     # If save succeeded
-                    messages.success(request, f'Purchase #{purchase.invoice_number} created successfully.')
+                    messages.success(request, f'Purchase #{purchase.invoice_number or "No Invoice"} created successfully.')
                     return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
             except IntegrityError:
                 # Likely duplicate invoice_number (unique constraint). Add a form error and re-render.

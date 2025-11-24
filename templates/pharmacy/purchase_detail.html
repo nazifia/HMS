@@ -69,7 +69,7 @@
                             </div>
                             <div class="row mb-3">
                                 <div class="col-md-4 text-muted">Invoice Number:</div>
-                                <div class="col-md-8">{{ purchase.invoice_number }}</div>
+                                <div class="col-md-8">{{ purchase.invoice_number|default:"N/A" }}</div>
                             </div>
                             <div class="row mb-3">
                                 <div class="col-md-4 text-muted">Purchase Date:</div>
@@ -499,7 +499,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Are you sure you want to submit Purchase #<strong>{{ purchase.invoice_number }}</strong> for approval?
+                        Are you sure you want to submit Purchase #<strong>{{ purchase.invoice_number|default:"No Invoice" }}</strong> for approval?
                     </div>
 
                     <div class="mb-3">
@@ -557,7 +557,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Are you sure you want to approve Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                        Are you sure you want to approve Purchase #<strong>{{ purchase.invoice_number|default:"No Invoice" }}</strong>?
                     </div>
 
                     <div class="mb-3">
@@ -596,7 +596,7 @@
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Are you sure you want to reject Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                        Are you sure you want to reject Purchase #<strong>{{ purchase.invoice_number|default:"No Invoice" }}</strong>?
                     </div>
 
                     <div class="mb-3">

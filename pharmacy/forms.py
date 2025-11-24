@@ -67,7 +67,8 @@ class PurchaseForm(forms.ModelForm):
     
     invoice_number = forms.CharField(
         max_length=50,
-        help_text="Enter a unique invoice number"
+        required=False,
+        help_text="Enter a unique invoice number (optional)"
     )
 
     class Meta:
@@ -82,7 +83,7 @@ class PurchaseForm(forms.ModelForm):
     
     def clean_invoice_number(self):
         invoice_number = self.cleaned_data.get('invoice_number')
-        if Purchase.objects.filter(invoice_number=invoice_number).exists():
+        if invoice_number and Purchase.objects.filter(invoice_number=invoice_number).exists():
             raise ValidationError('This invoice number already exists. Please enter a unique invoice number.')
         return invoice_number
 
