@@ -364,6 +364,10 @@ class BulkStoreInventory(models.Model):
     stock_quantity = models.IntegerField(default=0)
     expiry_date = models.DateField()
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=2.50,
+                                           help_text="Markup percentage (0-100)")
+    marked_up_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,
+                                        help_text="Cost after markup applied")
     supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True)
     purchase_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -378,27 +382,105 @@ class BulkStoreInventory(models.Model):
     def is_low_stock(self):
         return self.stock_quantity <= self.medication.reorder_level
 
+    def calculate_marked_up_cost(self):
+        """Calculate cost after applying markup percentage"""
+        if self.unit_cost and self.markup_percentage is not None:
+            markup_multiplier = 1 + (self.markup_percentage / 100)
+            return self.unit_cost * markup_multiplier
+        return self.unit_cost
+
+    def apply_markup(self):
+        """Apply the markup and save the marked up cost"""
+        self.marked_up_cost = self.calculate_marked_up_cost()
+        self.save()
+
+    def save(self, *args, **kwargs):
+        """Override save to automatically calculate marked_up_cost"""
+        if self.unit_cost:
+            self.marked_up_cost = self.calculate_marked_up_cost()
+        super().save(*args, **kwargs)
+
 class ActiveStoreInventory(models.Model):
-    """Model for tracking medication inventory in active stores"""
+    """Model for tracking medication inventory in active stores (consolidated view)"""
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='active_inventories')
     active_store = models.ForeignKey(ActiveStore, on_delete=models.CASCADE, related_name='inventories')
-    batch_number = models.CharField(max_length=50)
-    stock_quantity = models.IntegerField(default=0)
+    batch_number = models.CharField(max_length=50, blank=True, null=True,
+                                   help_text="Latest batch number (for display only)")
+    stock_quantity = models.IntegerField(default=0, help_text="Total quantity across all batches")
     reorder_level = models.IntegerField(default=10, help_text="Minimum stock level before reorder is needed")
-    expiry_date = models.DateField()
-    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    expiry_date = models.DateField(blank=True, null=True,
+                                  help_text="Earliest expiry date (from FIFO)")
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,
+                                   help_text="Weighted average cost")
     last_restock_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['medication', 'active_store']
 
     def __str__(self):
         return f"{self.medication.name} in {self.active_store.name}"
 
     def is_expired(self):
-        return self.expiry_date < timezone.now().date()
+        """Check if the earliest batch is expired"""
+        if self.expiry_date:
+            return self.expiry_date < timezone.now().date()
+        return False
 
     def is_low_stock(self):
         return self.stock_quantity <= self.reorder_level
+
+    def get_total_quantity(self):
+        """Get total quantity from all batches"""
+        return self.batches.aggregate(total=models.Sum('quantity'))['total'] or 0
+
+    def get_earliest_expiry(self):
+        """Get earliest expiry date from all batches"""
+        earliest_batch = self.batches.filter(quantity__gt=0).order_by('expiry_date').first()
+        return earliest_batch.expiry_date if earliest_batch else None
+
+    def update_summary_fields(self):
+        """Update summary fields from batch data"""
+        batches = self.batches.filter(quantity__gt=0)
+
+        # Update total quantity
+        self.stock_quantity = batches.aggregate(total=models.Sum('quantity'))['total'] or 0
+
+        # Update earliest expiry
+        earliest_batch = batches.order_by('expiry_date').first()
+        if earliest_batch:
+            self.expiry_date = earliest_batch.expiry_date
+            self.batch_number = earliest_batch.batch_number
+
+        # Update weighted average cost
+        total_value = sum(b.quantity * b.unit_cost for b in batches)
+        if self.stock_quantity > 0:
+            self.unit_cost = total_value / self.stock_quantity
+
+        self.save()
+
+
+class ActiveStoreBatch(models.Model):
+    """Model for tracking individual batches within active stores (FIFO)"""
+    active_inventory = models.ForeignKey(ActiveStoreInventory, on_delete=models.CASCADE, related_name='batches')
+    batch_number = models.CharField(max_length=50)
+    quantity = models.IntegerField(default=0)
+    expiry_date = models.DateField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    received_date = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['expiry_date', 'received_date']  # FIFO: oldest expiry first, then oldest received
+        unique_together = ['active_inventory', 'batch_number']
+
+    def __str__(self):
+        return f"Batch {self.batch_number} - {self.quantity} units"
+
+    def is_expired(self):
+        return self.expiry_date < timezone.now().date()
 
 class MedicationTransfer(models.Model):
     """Model to track transfers of medications from bulk store to active store"""
@@ -446,7 +528,7 @@ class MedicationTransfer(models.Model):
         return self.status == 'completed'
 
     def execute_transfer(self, user):
-        """Execute the transfer by moving stock from bulk store to active store"""
+        """Execute the transfer by moving stock from bulk store to active store with FIFO tracking"""
         if not self.can_execute():
             raise ValueError("Transfer cannot be executed in current status")
 
@@ -470,8 +552,7 @@ class MedicationTransfer(models.Model):
             bulk_inventory.stock_quantity -= self.quantity
             bulk_inventory.save()
 
-            # Add to active store inventory
-            # Consolidate by medication only (not batch_number) to avoid duplicates
+            # Get or create consolidated active store inventory
             active_inventory, created = ActiveStoreInventory.objects.get_or_create(
                 medication=self.medication,
                 active_store=self.to_active_store,
@@ -480,33 +561,47 @@ class MedicationTransfer(models.Model):
                     'reorder_level': self.medication.reorder_level if hasattr(self.medication, 'reorder_level') else 10,
                     'batch_number': self.batch_number,
                     'expiry_date': self.expiry_date or bulk_inventory.expiry_date,
-                    'unit_cost': self.unit_cost or bulk_inventory.unit_cost,
-                    'last_restock_date': timezone.now().date()
+                    'unit_cost': bulk_inventory.marked_up_cost or bulk_inventory.unit_cost,
+                    'last_restock_date': timezone.now()
                 }
             )
 
-            # Update stock quantity and related fields
-            if created:
-                active_inventory.stock_quantity = self.quantity
-            else:
-                active_inventory.stock_quantity += self.quantity
-                active_inventory.last_restock_date = timezone.now().date()
-                # Update to latest batch info if transferring newer batch
-                if self.batch_number:
-                    active_inventory.batch_number = self.batch_number
-                if self.expiry_date or bulk_inventory.expiry_date:
-                    # Keep the later expiry date (better for the medication)
-                    new_expiry = self.expiry_date or bulk_inventory.expiry_date
-                    if not active_inventory.expiry_date or new_expiry > active_inventory.expiry_date:
-                        active_inventory.expiry_date = new_expiry
+            # Create or update batch record for FIFO tracking
+            batch_record, batch_created = ActiveStoreBatch.objects.get_or_create(
+                active_inventory=active_inventory,
+                batch_number=self.batch_number,
+                defaults={
+                    'quantity': self.quantity,
+                    'expiry_date': self.expiry_date or bulk_inventory.expiry_date,
+                    'unit_cost': bulk_inventory.marked_up_cost or bulk_inventory.unit_cost,
+                }
+            )
 
-            active_inventory.save()
+            if not batch_created:
+                # Update existing batch
+                batch_record.quantity += self.quantity
+                batch_record.save()
+
+            # Update consolidated inventory summary
+            active_inventory.last_restock_date = timezone.now()
+            active_inventory.update_summary_fields()
 
             # Update transfer status
             self.status = 'completed'
             self.transferred_by = user
             self.transferred_at = timezone.now()
             self.save()
+
+            # Create audit log
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=user,
+                    action="MEDICATION_TRANSFER_EXECUTED",
+                    details=f"Transferred {self.quantity} units of {self.medication.name} (Batch: {self.batch_number}) from {self.from_bulk_store.name} to {self.to_active_store.name}"
+                )
+            except ImportError:
+                pass
 
 class DispensingLog(models.Model):
     """Model to track when medications are dispensed to patients"""
@@ -1008,40 +1103,45 @@ class DispensaryTransfer(models.Model):
         return self.status in ['pending', 'in_transit'] and self.approved_by is not None
 
     def execute_transfer(self, user):
-        """Execute the transfer by moving stock from active store to dispensary"""
+        """Execute the transfer by moving stock from active store to dispensary using FIFO"""
         if not self.can_execute():
             raise ValueError("Transfer cannot be executed in current status")
 
         with transaction.atomic():
             # Import models here to avoid circular imports
-            from .models import ActiveStoreInventory, MedicationInventory
-            
+            from .models import ActiveStoreInventory, ActiveStoreBatch, MedicationInventory
+
             # Find active store inventory
             active_inventory = ActiveStoreInventory.objects.filter(
                 medication=self.medication,
-                active_store=self.from_active_store,
-                batch_number=self.batch_number,
-                stock_quantity__gte=self.quantity
+                active_store=self.from_active_store
             ).first()
 
-            if not active_inventory:
+            if not active_inventory or active_inventory.stock_quantity < self.quantity:
                 raise ValueError("Insufficient stock in active store")
 
-            # Reduce active store inventory
-            active_inventory.stock_quantity -= self.quantity
+            # Use FIFO: deduct from oldest batches first
+            remaining_qty = self.quantity
+            batches = active_inventory.batches.filter(quantity__gt=0).order_by('expiry_date', 'received_date')
 
-            # If quantity reaches zero, handle according to business logic
-            if active_inventory.stock_quantity == 0:
-                # Option 1: Keep record with zero stock for audit trail
-                active_inventory.save()
-                # Log that item is now out of stock
-                print(f"Item {self.medication.name} is now out of stock in {self.from_active_store.name}")
+            for batch in batches:
+                if remaining_qty <= 0:
+                    break
 
-                # Option 2: Remove the record entirely (uncomment if preferred)
-                # active_inventory.delete()
-                # print(f"Removed {self.medication.name} from {self.from_active_store.name} (quantity reached zero)")
-            else:
-                active_inventory.save()
+                deduct_qty = min(batch.quantity, remaining_qty)
+                batch.quantity -= deduct_qty
+                remaining_qty -= deduct_qty
+
+                if batch.quantity == 0:
+                    batch.delete()  # Remove empty batches
+                else:
+                    batch.save()
+
+            if remaining_qty > 0:
+                raise ValueError(f"Could not fulfill transfer. Short by {remaining_qty} units.")
+
+            # Update consolidated active store inventory
+            active_inventory.update_summary_fields()
 
             # Add to dispensary inventory (legacy model for backward compatibility)
             dispensary_inventory, created = MedicationInventory.objects.get_or_create(
@@ -1069,7 +1169,7 @@ class DispensaryTransfer(models.Model):
                 AuditLog.objects.create(
                     user=user,
                     action="DISPENSARY_TRANSFER_EXECUTED",
-                    details=f"Transferred {self.quantity} units of {self.medication.name} from {self.from_active_store.name} to {self.to_dispensary.name}"
+                    details=f"Transferred {self.quantity} units of {self.medication.name} from {self.from_active_store.name} to {self.to_dispensary.name} (FIFO)"
                 )
             except ImportError:
                 # AuditLog not available, skip logging

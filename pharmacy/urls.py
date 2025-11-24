@@ -214,4 +214,8 @@ urlpatterns = [
     path('transfers/inter/<int:transfer_id>/execute/', inter_dispensary_views.execute_inter_dispensary_transfer, name='execute_inter_dispensary_transfer'),
     path('transfers/inter/<int:transfer_id>/cancel/', inter_dispensary_views.cancel_inter_dispensary_transfer, name='cancel_inter_dispensary_transfer'),
     path('transfers/inter/statistics/', inter_dispensary_views.transfer_statistics, name='transfer_statistics'),
+
+    # Markup Management
+    path('bulk-store/markup/bulk-apply/', views.bulk_apply_markup, name='bulk_apply_markup'),
+    path('bulk-store/markup/<int:item_id>/update/', views.update_item_markup, name='update_item_markup'),
 ]

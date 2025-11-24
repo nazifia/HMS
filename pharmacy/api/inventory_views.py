@@ -183,6 +183,7 @@ def search_medication_inventory(request):
                     'items': [],
                     'total_count': len(inventory_items),
                     'dispensary_id': dispensary_id,
+                    'dispensary': dispensary,
                     'can_edit_inventory': can_edit_inventory
                 }
                 

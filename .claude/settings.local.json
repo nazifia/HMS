@@ -27,7 +27,8 @@
       "WebFetch(domain:127.0.0.1)",
       "Bash(timeout /t 5 /nobreak)",
       "Bash(powershell -Command:*)",
-      "Bash(del test_page.html)"
+      "Bash(del test_page.html)",
+      "Bash($null)"
     ],
     "deny": [],
     "ask": []

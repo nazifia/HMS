@@ -6567,3 +6567,130 @@ def transfer_medication_to_dispensary(request):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+# ============================================
+# MARKUP MANAGEMENT VIEWS
+# ============================================
+
+@login_required
+def bulk_apply_markup(request):
+    """Apply markup percentage to multiple items in bulk store"""
+    if request.method == 'POST':
+        try:
+            markup_percentage = Decimal(request.POST.get('markup_percentage', '2.5'))
+            bulk_store_id = request.POST.get('bulk_store_id')
+            item_ids = request.POST.getlist('item_ids[]')
+
+            # Validate markup percentage
+            if markup_percentage < 0 or markup_percentage > 100:
+                messages.error(request, "Markup percentage must be between 0 and 100")
+                return redirect('pharmacy:bulk_store_dashboard')
+
+            # Get items to update
+            if item_ids:
+                # Apply to selected items
+                items = BulkStoreInventory.objects.filter(id__in=item_ids)
+            elif bulk_store_id:
+                # Apply to all items in bulk store
+                items = BulkStoreInventory.objects.filter(bulk_store_id=bulk_store_id)
+            else:
+                # Apply to all items in all bulk stores
+                items = BulkStoreInventory.objects.all()
+
+            # Update markup for each item
+            updated_count = 0
+            for item in items:
+                item.markup_percentage = markup_percentage
+                item.save()  # save() will auto-calculate marked_up_cost
+                updated_count += 1
+
+            messages.success(request, f"Successfully applied {markup_percentage}% markup to {updated_count} items")
+
+            # Create audit log
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=request.user,
+                    action="BULK_MARKUP_APPLIED",
+                    details=f"Applied {markup_percentage}% markup to {updated_count} bulk store items"
+                )
+            except ImportError:
+                pass
+
+        except Exception as e:
+            messages.error(request, f"Error applying markup: {str(e)}")
+
+        return redirect('pharmacy:bulk_store_dashboard')
+
+    # GET request - show form
+    bulk_stores = BulkStore.objects.all()
+    context = {
+        'bulk_stores': bulk_stores,
+        'title': 'Apply Bulk Markup',
+        'active_nav': 'pharmacy',
+    }
+    return render(request, 'pharmacy/bulk_apply_markup.html', context)
+
+
+@login_required
+def update_item_markup(request, item_id):
+    """Update markup for a single bulk store item"""
+    item = get_object_or_404(BulkStoreInventory, id=item_id)
+
+    if request.method == 'POST':
+        try:
+            markup_percentage = Decimal(request.POST.get('markup_percentage', '2.5'))
+
+            # Validate markup percentage
+            if markup_percentage < 0 or markup_percentage > 100:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': 'Markup percentage must be between 0 and 100'})
+                messages.error(request, "Markup percentage must be between 0 and 100")
+                return redirect('pharmacy:bulk_store_dashboard')
+
+            # Update item
+            old_markup = item.markup_percentage
+            item.markup_percentage = markup_percentage
+            item.save()  # save() will auto-calculate marked_up_cost
+
+            # Create audit log
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=request.user,
+                    action="ITEM_MARKUP_UPDATED",
+                    details=f"Updated markup for {item.medication.name} (Batch: {item.batch_number}) from {old_markup}% to {markup_percentage}%"
+                )
+            except ImportError:
+                pass
+
+            # Return JSON response for AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Markup updated to {markup_percentage}%',
+                    'marked_up_cost': float(item.marked_up_cost)
+                })
+
+            messages.success(request, f"Successfully updated markup to {markup_percentage}%")
+            return redirect('pharmacy:bulk_store_dashboard')
+
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)})
+            messages.error(request, f"Error updating markup: {str(e)}")
+            return redirect('pharmacy:bulk_store_dashboard')
+
+    # GET request - return item details for AJAX
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'id': item.id,
+            'medication_name': item.medication.name,
+            'batch_number': item.batch_number,
+            'unit_cost': float(item.unit_cost),
+            'markup_percentage': float(item.markup_percentage),
+            'marked_up_cost': float(item.marked_up_cost)
+        })
+
+    return redirect('pharmacy:bulk_store_dashboard')
