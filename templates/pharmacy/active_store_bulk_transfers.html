@@ -161,12 +161,35 @@
                                     <small class="text-muted" id="medicationListHint">(Select bulk store above to view available medications)</small>
                                     {% if available_bulk_medications %}
                                         <span class="badge bg-success ms-2" id="debugMedicationCount">
-                                            Debug: {{ available_bulk_medications|length }} bulk store(s) loaded
+                                            {{ available_bulk_medications|length }} bulk store(s) loaded
                                         </span>
                                     {% else %}
-                                        <span class="badge bg-danger ms-2">Debug: No medications loaded from backend</span>
+                                        <span class="badge bg-danger ms-2">No medications loaded from backend</span>
                                     {% endif %}
                                 </h6>
+
+                                <!-- Medication Search -->
+                                <div class="row mb-3" id="medicationSearchContainer" style="display: none;">
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-search"></i>
+                                            </span>
+                                            <input type="text"
+                                                   id="medicationSearchInput"
+                                                   class="form-control"
+                                                   placeholder="Search medications by name or generic name..."
+                                                   autocomplete="off">
+                                            <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn">
+                                                <i class="fas fa-times"></i> Clear
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">
+                                            <span id="searchResultCount"></span>
+                                        </small>
+                                    </div>
+                                </div>
+
                                 <div class="table-responsive">
                                     <table class="table table-sm table-hover" id="bulkMedicationsTable">
                                         <thead class="table-light">
@@ -419,6 +442,18 @@
         }
     }
 
+    // Function to update select all checkbox state based on visible items
+    function updateSelectAllState() {
+        const selectedBulkStore = $('#id_bulk_store').val();
+        if (selectedBulkStore) {
+            const $visibleCheckboxes = $('.medication-row[data-bulk-store="' + selectedBulkStore + '"].show:visible .medication-checkbox');
+            const totalVisible = $visibleCheckboxes.length;
+            const totalChecked = $visibleCheckboxes.filter(':checked').length;
+
+            $('#selectAllMedications').prop('checked', totalVisible > 0 && totalVisible === totalChecked);
+        }
+    }
+
     // Medication checkbox handler using EVENT DELEGATION
     $(document).on('change', '.medication-checkbox', function() {
         const $checkbox = $(this);
@@ -439,6 +474,8 @@
             $row.removeClass('table-info');
         }
 
+        // Update the "Select All" checkbox state based on individual checkbox states
+        updateSelectAllState();
         updateSubmitButton();
     });
 
@@ -463,20 +500,121 @@
             if ($medicationRows.length > 0) {
                 $('#medicationListHint').html('(' + $medicationRows.length + ' medications available - select items to transfer)').removeClass('text-muted').addClass('text-success');
                 $('#selectAllMedications').prop('disabled', false);
+                // Show search container
+                $('#medicationSearchContainer').show();
             } else {
                 $('#medicationListHint').html('(No medications found for selected bulk store)').removeClass('text-success').addClass('text-warning');
+                // Hide search container if no medications
+                $('#medicationSearchContainer').hide();
             }
         } else {
             // Reset hint message
             $('#medicationListHint').html('(Select bulk store above to view available medications)').removeClass('text-success').addClass('text-muted');
             $('#selectAllMedications').prop('disabled', true);
+            // Hide search container
+            $('#medicationSearchContainer').hide();
         }
+
+        // Clear and reset search
+        $('#medicationSearchInput').val('');
+        $('#searchResultCount').text('');
 
         // Reset selections
         $('.medication-checkbox').prop('checked', false);
         $('.quantity-input').val(0).prop('disabled', true);
         $('.medication-row').removeClass('table-info');
+        $('#selectAllMedications').prop('checked', false); // Reset select all checkbox
         updateSubmitButton();
+    });
+
+    // Handle "Select All Medications" checkbox
+    $('#selectAllMedications').on('change', function() {
+        const isChecked = $(this).is(':checked');
+        const selectedBulkStore = $('#id_bulk_store').val();
+
+        if (selectedBulkStore) {
+            // Get all VISIBLE and NOT FILTERED medication checkboxes
+            const $visibleCheckboxes = $('.medication-row[data-bulk-store="' + selectedBulkStore + '"].show')
+                .filter(':visible')
+                .find('.medication-checkbox');
+
+            $visibleCheckboxes.each(function() {
+                const $checkbox = $(this);
+                // Only change if different from current state
+                if ($checkbox.is(':checked') !== isChecked) {
+                    $checkbox.prop('checked', isChecked).trigger('change');
+                }
+            });
+        }
+    });
+
+    // ============================================
+    // MEDICATION SEARCH FUNCTIONALITY
+    // ============================================
+
+    // Function to filter medications based on search term
+    function filterMedications(searchTerm) {
+        const selectedBulkStore = $('#id_bulk_store').val();
+        if (!selectedBulkStore) return;
+
+        searchTerm = searchTerm.toLowerCase().trim();
+        let visibleCount = 0;
+        let totalCount = 0;
+
+        // Get all medication rows for the selected bulk store
+        const $medicationRows = $('.medication-row[data-bulk-store="' + selectedBulkStore + '"].show');
+        totalCount = $medicationRows.length;
+
+        if (searchTerm === '') {
+            // Show all medications if search is empty
+            $medicationRows.show();
+            visibleCount = totalCount;
+            $('#searchResultCount').text('');
+        } else {
+            // Filter medications based on search term
+            $medicationRows.each(function() {
+                const $row = $(this);
+                const $checkbox = $row.find('.medication-checkbox');
+                const medName = ($checkbox.data('med-name') || '').toLowerCase();
+                const $medCell = $row.find('td:nth-child(2)');
+                const genericName = ($medCell.find('small').text() || '').toLowerCase();
+
+                // Check if search term matches medication name or generic name
+                if (medName.includes(searchTerm) || genericName.includes(searchTerm)) {
+                    $row.show();
+                    visibleCount++;
+                } else {
+                    $row.hide();
+                    // Uncheck hidden medications
+                    if ($checkbox.is(':checked')) {
+                        $checkbox.prop('checked', false).trigger('change');
+                    }
+                }
+            });
+
+            // Update search result count
+            $('#searchResultCount').html(
+                '<i class="fas fa-filter me-1"></i>Showing <strong>' + visibleCount +
+                '</strong> of <strong>' + totalCount + '</strong> medications'
+            );
+        }
+
+        // Update select all checkbox state
+        updateSelectAllState();
+        updateSubmitButton();
+    }
+
+    // Handle medication search input
+    $('#medicationSearchInput').on('input', function() {
+        const searchTerm = $(this).val();
+        filterMedications(searchTerm);
+    });
+
+    // Handle clear search button
+    $('#clearSearchBtn').on('click', function() {
+        $('#medicationSearchInput').val('');
+        filterMedications('');
+        $('#medicationSearchInput').focus();
     });
 
     // Handle quantity input changes

@@ -408,21 +408,33 @@ class PrescriptionCartItem(models.Model):
         # Use substitute medication if present, otherwise use prescribed medication
         medication = self.get_effective_medication()
         dispensary = self.cart.dispensary
-        
+
         # Check ActiveStoreInventory first
         total_stock = 0
         try:
-            active_store = getattr(dispensary, 'active_store', None)
-            if active_store:
-                inventory_items = ActiveStoreInventory.objects.filter(
-                    medication=medication,
-                    active_store=active_store,
-                    stock_quantity__gt=0
-                )
-                total_stock = sum(item.stock_quantity for item in inventory_items)
-        except Exception:
-            pass
-        
+            # Check if dispensary has an active_store (OneToOne relationship)
+            # Using hasattr is safer for OneToOne fields to avoid DoesNotExist exceptions
+            if hasattr(dispensary, 'active_store'):
+                try:
+                    active_store = dispensary.active_store
+                    if active_store:
+                        inventory_items = ActiveStoreInventory.objects.filter(
+                            medication=medication,
+                            active_store=active_store,
+                            stock_quantity__gt=0
+                        )
+                        total_stock = sum(item.stock_quantity for item in inventory_items)
+                except Exception as e:
+                    # Log the error but continue to check legacy inventory
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Error accessing active_store for dispensary {dispensary.id}: {e}")
+        except Exception as e:
+            # Catch any unexpected errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error in update_available_stock for dispensary {dispensary.id}: {e}")
+
         # Check legacy inventory if no stock found
         if total_stock == 0:
             try:
@@ -431,12 +443,14 @@ class PrescriptionCartItem(models.Model):
                     dispensary=dispensary,
                     stock_quantity__gt=0
                 ).first()
-                
+
                 if legacy_inv:
                     total_stock = legacy_inv.stock_quantity
-            except Exception:
-                pass
-        
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Error checking legacy inventory: {e}")
+
         self.available_stock = total_stock
     
     def get_remaining_quantity(self):

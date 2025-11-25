@@ -994,75 +994,92 @@ function showUpdateFeedback(row, success) {
 }
 
 function updateDispensary() {
-    // Use setTimeout to ensure the select value has been updated
-    setTimeout(function() {
-        const form = document.getElementById('dispensary-form');
-        const select = document.getElementById('dispensary_id');
+    const form = document.getElementById('dispensary-form');
+    const select = document.getElementById('dispensary_id');
 
-        console.log('updateDispensary called, select.value:', select.value);
+    console.log('updateDispensary called, select.value:', select.value);
 
-        // Only submit if a valid dispensary is selected (not empty option)
-        if (select.value && select.value !== '') {
-            console.log('Valid dispensary selected, submitting via fetch');
+    // Only submit if a valid dispensary is selected (not empty option)
+    if (!select.value || select.value === '') {
+        console.log('Empty dispensary selected, not submitting');
+        return false;
+    }
 
-            // Show loading indicator
-            const loadingHTML = `
-                <div class="d-flex align-items-center">
-                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <span>Updating dispensary and checking stock availability...</span>
-                </div>
-            `;
+    console.log('Valid dispensary selected, submitting form');
 
-            // Create a temporary div to show loading
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'alert alert-info mt-2 mb-0';
-            loadingDiv.innerHTML = loadingHTML;
-            select.parentElement.appendChild(loadingDiv);
-            select.disabled = true;
+    // Show loading indicator
+    const loadingHTML = `
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span>Updating dispensary and checking stock availability...</span>
+        </div>
+    `;
 
-            // Use FormData to capture the current form state
-            const formData = new FormData(form);
+    // Create a temporary div to show loading
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'alert alert-info mt-2 mb-0';
+    loadingDiv.id = 'dispensary-loading-indicator';
+    loadingDiv.innerHTML = loadingHTML;
 
-            // Manually ensure the dispensary_id is included (in case FormData doesn't pick it up)
-            formData.set('dispensary_id', select.value);
+    // Remove any existing loading indicator
+    const existingLoading = document.getElementById('dispensary-loading-indicator');
+    if (existingLoading) {
+        existingLoading.remove();
+    }
 
-            // Log the form data for debugging
-            console.log('Form data being sent:');
-            for (let [key, value] of formData.entries()) {
-                console.log(`  ${key}: ${value}`);
-            }
+    select.parentElement.appendChild(loadingDiv);
+    select.disabled = true;
 
-            // Submit using fetch to ensure the current form data is sent
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => {
-                if (response.redirected) {
-                    // Follow the redirect
-                    window.location.href = response.url;
-                } else {
-                    // Reload the page
-                    window.location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error submitting form:', error);
-                alert('Failed to update dispensary. Please try again.');
-                window.location.reload();
-            });
+    // Get CSRF token from the form
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // Use FormData to capture the current form state
+    const formData = new FormData(form);
+
+    // Ensure the dispensary_id is set to current select value
+    formData.set('dispensary_id', select.value);
+
+    // Log the form data for debugging
+    console.log('Form data being sent:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value}`);
+    }
+
+    // Submit using fetch
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (response.ok) {
+            // Success - reload the page to show updated stock
+            console.log('Dispensary updated successfully, reloading page...');
+            window.location.reload();
         } else {
-            console.log('Empty dispensary selected, not submitting');
-            // User selected the empty "-- Select Dispensary --" option
-            // Don't submit the form, just ignore
-            return false;
+            console.error('Failed to update dispensary, status:', response.status);
+            return response.text().then(text => {
+                console.error('Response:', text);
+                throw new Error(`Server returned ${response.status}`);
+            });
         }
-    }, 10); // Small delay to ensure value is updated
+    })
+    .catch(error => {
+        console.error('Error submitting form:', error);
+        alert('Failed to update dispensary. Please try again.\n\nError: ' + error.message);
+        // Re-enable the select and remove loading indicator
+        select.disabled = false;
+        if (loadingDiv.parentElement) {
+            loadingDiv.remove();
+        }
+    });
 }
 
 function prepareDispenseForm(cartId) {

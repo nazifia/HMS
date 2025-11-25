@@ -1117,16 +1117,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle "Select All" checkbox
     const selectAllCheckbox = document.getElementById('selectAll');
-    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
     const selectedCountSpan = document.getElementById('selected-count');
 
     function updateSelectedCount() {
         const checked = document.querySelectorAll('.item-checkbox:checked').length;
-        selectedCountSpan.textContent = checked;
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = checked;
+        }
     }
 
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
+            // Query checkboxes each time (works with DataTables pagination)
+            const itemCheckboxes = document.querySelectorAll('.item-checkbox');
             itemCheckboxes.forEach(checkbox => {
                 checkbox.checked = this.checked;
             });
@@ -1134,8 +1137,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    itemCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateSelectedCount);
+    // Use event delegation for individual checkboxes (handles dynamically loaded content)
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('item-checkbox')) {
+            updateSelectedCount();
+
+            // Update select all checkbox state
+            const allCheckboxes = document.querySelectorAll('.item-checkbox');
+            const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length;
+            }
+        }
     });
 
     // Handle bulk markup form submission

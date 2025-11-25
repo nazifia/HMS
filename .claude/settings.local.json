@@ -30,7 +30,9 @@
       "Bash(del test_page.html)",
       "Bash($null)",
       "Bash(update_results.txt)",
-      "Bash(del update_currency_formatting.py)"
+      "Bash(del update_currency_formatting.py)",
+      "Bash(curl:*)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []
