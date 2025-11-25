@@ -8,6 +8,24 @@
 {% block content %}
 <div class="row">
     <div class="col-md-8 mx-auto">
+        <!-- Display Form Errors -->
+        {% if form.errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong><i class="fas fa-exclamation-triangle me-2"></i>Please correct the following errors:</strong>
+                <ul class="mb-0 mt-2">
+                    {% for field in form %}
+                        {% if field.errors %}
+                            <li><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if form.non_field_errors %}
+                        <li>{{ form.non_field_errors|join:", " }}</li>
+                    {% endif %}
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endif %}
+
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">{{ title }}</h4>
@@ -138,8 +156,14 @@
                         <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-secondary me-md-2">
                             <i class="fas fa-times me-1"></i> Cancel
                         </a>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-money-bill me-1"></i> Record Payment
+                        <button type="submit" class="btn btn-success" id="submitPaymentBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-money-bill me-1"></i> Record Payment
+                            </span>
+                            <span class="btn-spinner d-none">
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Processing...
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -154,10 +178,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const paymentSourceRadios = document.querySelectorAll('input[name="payment_source"]');
     const paymentMethodField = document.getElementById('payment-method-field');
     const paymentMethodSelect = document.querySelector('select[name="payment_method"]');
-    
+    const paymentForm = document.getElementById('payment-form');
+    const submitBtn = document.getElementById('submitPaymentBtn');
+
     function updatePaymentMethod() {
         const selectedSource = document.querySelector('input[name="payment_source"]:checked');
-        
+
         if (selectedSource && selectedSource.value === 'patient_wallet') {
             // Hide payment method field for wallet payments
             if (paymentMethodField) {
@@ -165,25 +191,65 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (paymentMethodSelect) {
                 paymentMethodSelect.value = 'wallet';
+                // Make sure the field is not disabled so it submits
+                paymentMethodSelect.disabled = false;
+                // Remove required attribute since we're setting it programmatically
+                paymentMethodSelect.removeAttribute('required');
             }
         } else {
             // Show payment method field for direct billing
             if (paymentMethodField) {
                 paymentMethodField.style.display = 'block';
             }
-            if (paymentMethodSelect && paymentMethodSelect.value === 'wallet') {
-                paymentMethodSelect.value = 'cash';
+            if (paymentMethodSelect) {
+                if (paymentMethodSelect.value === 'wallet') {
+                    paymentMethodSelect.value = 'cash';
+                }
+                // Re-add required attribute for direct billing
+                paymentMethodSelect.setAttribute('required', 'required');
             }
         }
     }
-    
+
     if (paymentSourceRadios.length > 0) {
         paymentSourceRadios.forEach(radio => {
             radio.addEventListener('change', updatePaymentMethod);
         });
-        
+
         // Initialize on page load
         updatePaymentMethod();
+    }
+
+    // Handle form submission
+    if (paymentForm && submitBtn) {
+        paymentForm.addEventListener('submit', function(e) {
+            console.log('Form submitting...');
+
+            // Ensure payment_method is set based on payment_source
+            const selectedSource = document.querySelector('input[name="payment_source"]:checked');
+            if (selectedSource && selectedSource.value === 'patient_wallet') {
+                if (paymentMethodSelect) {
+                    paymentMethodSelect.value = 'wallet';
+                    console.log('Payment method set to wallet');
+                }
+            }
+
+            // Show loading state
+            const btnText = submitBtn.querySelector('.btn-text');
+            const btnSpinner = submitBtn.querySelector('.btn-spinner');
+            if (btnText && btnSpinner) {
+                btnText.classList.add('d-none');
+                btnSpinner.classList.remove('d-none');
+            }
+            submitBtn.disabled = true;
+
+            // Log form data for debugging
+            const formData = new FormData(paymentForm);
+            console.log('Form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+        });
     }
 });
 </script>

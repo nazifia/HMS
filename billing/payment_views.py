@@ -17,7 +17,10 @@ def record_payment(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     patient = invoice.patient
     patient_wallet = getattr(patient, 'wallet', None)
-    
+
+    # Calculate remaining amount
+    remaining_amount = invoice.get_balance()
+
     if request.method == 'POST':
         form = PaymentForm(request.POST, invoice=invoice, patient_wallet=patient_wallet)
         if form.is_valid():
@@ -33,20 +36,24 @@ def record_payment(request, invoice_id):
                 notes=payment_data.get('notes', ''),
                 module_name='Billing'
             )
-            
+
             if success:
                 messages.success(request, message)
                 return redirect('billing:detail', invoice_id=invoice.id)
             else:
                 messages.error(request, message)
     else:
-        form = PaymentForm(invoice=invoice, patient_wallet=patient_wallet)
-    
+        # Set initial amount to remaining balance
+        initial_data = {'amount': remaining_amount}
+        form = PaymentForm(initial=initial_data, invoice=invoice, patient_wallet=patient_wallet)
+
     context = {
+        'title': f'Record Payment - Invoice #{invoice.invoice_number}',
         'invoice': invoice,
         'patient': patient,
         'patient_wallet': patient_wallet,
+        'remaining_amount': remaining_amount,
         'form': form,
     }
-    
+
     return render(request, 'billing/payment_form.html', context)

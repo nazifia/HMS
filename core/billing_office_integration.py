@@ -253,7 +253,7 @@ class BillingOfficeFormMixin:
         self.invoice = kwargs.pop('invoice', None)
         self.patient_wallet = kwargs.pop('patient_wallet', None)
         super().__init__(*args, **kwargs)
-        
+
         # Add payment_source field if not already present
         if 'payment_source' not in self.fields:
             self.fields['payment_source'] = forms.ChoiceField(
@@ -262,7 +262,11 @@ class BillingOfficeFormMixin:
                 initial='billing_office',
                 help_text="Select where the payment is being processed from"
             )
-        
+
+        # Make payment_method not required initially since we set it programmatically
+        if 'payment_method' in self.fields:
+            self.fields['payment_method'].required = False
+
         # Set payment method choices based on payment source
         self._update_payment_method_choices()
     
@@ -280,6 +284,7 @@ class BillingOfficeFormMixin:
                     ('card', 'Card/POS'),
                     ('bank_transfer', 'Bank Transfer'),
                     ('cheque', 'Cheque'),
+                    ('wallet', 'Wallet'),  # Include wallet as an option
                 ]
     
     def clean(self):
@@ -287,11 +292,14 @@ class BillingOfficeFormMixin:
         payment_source = cleaned_data.get('payment_source')
         payment_method = cleaned_data.get('payment_method')
         amount = cleaned_data.get('amount')
-        
+
         # Force wallet payment method for wallet payments
         if payment_source == 'patient_wallet':
             cleaned_data['payment_method'] = 'wallet'
-        
+        elif not payment_method:
+            # For non-wallet payments, payment_method is required
+            raise forms.ValidationError("Payment method is required for direct billing.")
+
         # Validate payment data
         if self.invoice and amount:
             is_valid, error_message = BillingOfficePaymentProcessor.validate_payment_data(
@@ -299,7 +307,7 @@ class BillingOfficeFormMixin:
             )
             if not is_valid:
                 raise forms.ValidationError(error_message)
-        
+
         return cleaned_data
 
 

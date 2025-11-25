@@ -292,16 +292,76 @@
     </div>
 </div>
 
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addItemModalLabel">Add Item to Invoice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" name="add_item" value="1">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="{{ item_form.service.id_for_label }}" class="form-label">Service (Optional)</label>
+                        {{ item_form.service }}
+                        <small class="form-text text-muted">Select a service to auto-fill description and price</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ item_form.description.id_for_label }}" class="form-label">Description</label>
+                        {{ item_form.description }}
+                        {% if item_form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ item_form.description.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ item_form.quantity.id_for_label }}" class="form-label">Quantity</label>
+                        {{ item_form.quantity }}
+                        {% if item_form.quantity.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ item_form.quantity.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ item_form.unit_price.id_for_label }}" class="form-label">Unit Price (₦)</label>
+                        {{ item_form.unit_price }}
+                        {% if item_form.unit_price.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ item_form.unit_price.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if item_form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ item_form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Select2 initialization
-        $('.select2-modal').select2({
+        // Select2 initialization for service dropdown in modal
+        $('#{{ item_form.service.id_for_label }}').select2({
             theme: 'bootstrap-5',
             width: '100%',
-            dropdownParent: $('#addItemModal')
+            dropdownParent: $('#addItemModal'),
+            placeholder: 'Select a service (optional)'
         });
 
         // Update description and unit price when service is selected
@@ -309,30 +369,19 @@
             var serviceId = $(this).val();
             if (serviceId) {
                 $.ajax({
-                    url: '/billing/api/services/' + serviceId + '/',
+                    url: '/billing/services/api/' + serviceId + '/',
                     type: 'GET',
                     dataType: 'json',
                     success: function(data) {
                         $('#{{ item_form.description.id_for_label }}').val(data.name);
                         $('#{{ item_form.unit_price.id_for_label }}').val(data.price);
+                    },
+                    error: function() {
+                        console.log('Could not fetch service details');
                     }
                 });
             }
         });
-
-        // Explicitly initialize and show the modal when the button is clicked
-        var addItemModalElement = document.getElementById('addItemModal');
-        var addItemButton = document.getElementById('addItemModalButton');
-
-        if (addItemModalElement && addItemButton) {
-            var addItemModal = new bootstrap.Modal(addItemModalElement);
-            addItemButton.addEventListener('click', function() {
-                console.log("Add Item button clicked. Attempting to show modal.");
-                addItemModal.show();
-            });
-        } else {
-            console.error("Could not find modal element or button element.");
-        }
     });
 </script>
 {% endblock %}
