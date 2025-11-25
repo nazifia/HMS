@@ -86,6 +86,8 @@ class BillingOfficePaymentProcessor:
                     payment_method = 'wallet'
                 
                 # Create payment record
+                # NOTE: Payment.save() automatically handles wallet debit and invoice update when payment_method='wallet'
+                # Do NOT manually debit wallet or update invoice here to avoid double-deduction
                 payment = Payment.objects.create(
                     invoice=invoice,
                     amount=amount,
@@ -95,32 +97,11 @@ class BillingOfficePaymentProcessor:
                     notes=f"{notes} ({BillingOfficePaymentProcessor.PAYMENT_SOURCES.get(payment_source, payment_source)})",
                     received_by=request.user
                 )
-                
-                # Handle wallet payment
-                if payment_source == 'patient_wallet':
-                    try:
-                        # Use wallet's debit method to ensure proper transaction creation
-                        patient_wallet.debit(
-                            amount=amount,
-                            description=f'{module_name} payment for invoice #{invoice.invoice_number}',
-                            transaction_type=f'{module_name.lower()}_payment',
-                            user=request.user,
-                            invoice=invoice,
-                            payment_instance=payment
-                        )
-                    except ValueError as e:
-                        return False, f"Wallet payment failed: {str(e)}", None
-                
-                # Update invoice
-                invoice.amount_paid += amount
-                if invoice.amount_paid >= invoice.total_amount:
-                    invoice.status = 'paid'
-                    # Mark that this is a manual payment processed by billing staff
+
+                # Mark that this is a manual payment processed by billing staff
+                if invoice.status == 'paid':
                     invoice._manual_payment_processed = True
-                elif invoice.amount_paid > 0:
-                    invoice.status = 'partially_paid'
-                
-                invoice.save()
+                    invoice.save()
                 
                 # Log audit action
                 log_audit_action(
