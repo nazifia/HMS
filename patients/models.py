@@ -1140,3 +1140,7 @@ class PhysiotherapyRequest(models.Model):
         """Cancel the physiotherapy request"""
         self.status = 'cancelled'
         self.save()
+
+
+class VaccinationRecord(models.Model):
+    """Model to track patient vaccinations"""

@@ -1274,6 +1274,61 @@ def register_retainership_patient(request, patient_id):
 
 
 @login_required
+def add_vaccination(request, patient_id):
+    """View for adding vaccination record to patient"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    if request.method == 'POST':
+        # Extract form data
+        vaccine_type = request.POST.get('vaccine_type')
+        vaccine_name = request.POST.get('vaccine_name')
+        manufacturer = request.POST.get('manufacturer')
+        lot_number = request.POST.get('lot_number')
+        expiration_date = request.POST.get('expiration_date')
+        dose_number = request.POST.get('dose_number')
+        vaccination_date = request.POST.get('vaccination_date')
+        admin_by = request.POST.get('administered_by')
+        site = request.POST.get('site')
+        notes = request.POST.get('notes')
+        
+        # Basic validation
+        if not all([vaccine_type, vaccine_name, vaccination_date, admin_by]):
+            messages.error(request, 'Please fill in all required vaccination fields.')
+            return redirect('patients:detail', patient_id=patient.id)
+        
+        try:
+            # Create vaccination record (model needs to be created if it doesn't exist)
+            from patients.models import VaccinationRecord
+            vaccination = VaccinationRecord.objects.create(
+                patient=patient,
+                vaccine_type=vaccine_type,
+                vaccine_name=vaccine_name,
+                manufacturer=manufacturer,
+                lot_number=lot_number,
+                expiration_date=expiration_date,
+                dose_number=dose_number,
+                vaccination_date=vaccination_date,
+                admin_by=request.user if admin_by else None,
+                site=site,
+                notes=notes
+            )
+            
+            messages.success(request, f'Vaccination record added successfully for {patient.get_full_name()}.')
+            return redirect('patients:detail', patient_id=patient.id)
+            
+        except Exception as e:
+            messages.error(request, f'Error adding vaccination record: {str(e)}')
+            return redirect('patients:detail', patient_id=patient.id)
+    
+    # For GET request, show confirmation form
+    context = {
+        'patient': patient,
+        'title': f'Add Vaccination for {patient.get_full_name()}'
+    }
+    return render(request, 'patients/vaccination_form.html', context)
+
+
+@login_required
 def edit_retainership_patient(request, patient_id):
     """View for editing retainership patient"""
     from retainership.models import RetainershipPatient
