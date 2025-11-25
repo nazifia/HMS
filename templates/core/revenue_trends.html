@@ -439,46 +439,76 @@ function initializeCharts() {
         return label;
     });
     console.log('Labels:', labels);
+
+    // Parse and log all data values
+    const totalRevenueData = trendsData.map(trend => parseFloat(trend.total_revenue));
+    const pharmacyData = trendsData.map(trend => parseFloat(trend.pharmacy));
+    const laboratoryData = trendsData.map(trend => parseFloat(trend.laboratory));
+    const consultationsData = trendsData.map(trend => parseFloat(trend.consultations));
+    const walletData = trendsData.map(trend => parseFloat(trend.wallet));
+
+    console.log('Parsed data values:');
+    console.log('Total Revenue:', totalRevenueData);
+    console.log('Pharmacy:', pharmacyData);
+    console.log('Laboratory:', laboratoryData);
+    console.log('Consultations:', consultationsData);
+    console.log('Wallet:', walletData);
+
     const datasets = [
         {
             label: 'Total Revenue',
-            data: trendsData.map(trend => parseFloat(trend.total_revenue)),
+            data: totalRevenueData,
             borderColor: '#4e73df',
-            backgroundColor: 'rgba(78, 115, 223, 0.1)',
-            borderWidth: 2,
-            tension: 0.3
+            backgroundColor: '#4e73df',
+            borderWidth: 3,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 5,
+            pointHoverRadius: 7
         },
         {
             label: 'Pharmacy',
-            data: trendsData.map(trend => parseFloat(trend.pharmacy)),
+            data: pharmacyData,
             borderColor: '#1cc88a',
-            backgroundColor: 'rgba(28, 200, 138, 0.1)',
-            borderWidth: 1,
-            tension: 0.3
+            backgroundColor: '#1cc88a',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
         },
         {
             label: 'Laboratory',
-            data: trendsData.map(trend => parseFloat(trend.laboratory)),
+            data: laboratoryData,
             borderColor: '#36b9cc',
-            backgroundColor: 'rgba(54, 185, 204, 0.1)',
-            borderWidth: 1,
-            tension: 0.3
+            backgroundColor: '#36b9cc',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
         },
         {
             label: 'Consultations',
-            data: trendsData.map(trend => parseFloat(trend.consultations)),
+            data: consultationsData,
             borderColor: '#f6c23e',
-            backgroundColor: 'rgba(246, 194, 62, 0.1)',
-            borderWidth: 1,
-            tension: 0.3
+            backgroundColor: '#f6c23e',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
         },
         {
             label: 'Wallet',
-            data: trendsData.map(trend => parseFloat(trend.wallet)),
+            data: walletData,
             borderColor: '#e74a3b',
-            backgroundColor: 'rgba(231, 74, 59, 0.1)',
-            borderWidth: 1,
-            tension: 0.3
+            backgroundColor: '#e74a3b',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
         }
     ];
 
