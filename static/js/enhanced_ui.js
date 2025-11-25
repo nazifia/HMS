@@ -41,16 +41,16 @@ const HMSUI = {
         checkSession() {
             const now = new Date().getTime();
             const inactiveTime = now - this.lastActivity;
-            
-            if (inactiveTime > this.config.sessionLogoutTime) {
+
+            if (inactiveTime > HMSUI.config.sessionLogoutTime) {
                 // Auto logout
                 window.location.href = '/logout/';
-            } else if (inactiveTime > this.config.sessionWarningTime && !this.warningShown) {
+            } else if (inactiveTime > HMSUI.config.sessionWarningTime && !this.warningShown) {
                 // Show warning
                 this.showSessionWarning();
                 this.warningShown = true;
             }
-            
+
             this.startTimer();
         },
         
@@ -365,7 +365,6 @@ const HMSUI = {
     forms: {
         init() {
             this.addGlobalEventListeners();
-            this.initValidation();
             this.initFileUploads();
         },
 
