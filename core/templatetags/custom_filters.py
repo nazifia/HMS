@@ -172,11 +172,16 @@ def split(value, separator):
 def sum(queryset, field):
     """
     Sum values of a specific field in a list of dictionaries.
-    
+
     Usage: {{ trends|sum:'total_revenue' }}
     """
     try:
-        return sum(float(item.get(field, 0)) for item in queryset if item)
+        # Use built-in sum with explicit reference to avoid recursion
+        total = 0
+        for item in queryset:
+            if item:
+                total += float(item.get(field, 0))
+        return total
     except (ValueError, TypeError):
         return 0
 
@@ -185,16 +190,21 @@ def filter(value, condition):
     """
     Filter list based on a simple condition.
     Currently supports field>value format.
-    
+
     Usage: {{ trends|filter:'total_revenue>0' }}
     """
     try:
-        field, operator, val = condition.split(' ')
-        return [item for item in value 
-                if item and 
-                operator == '>' and 
-                float(item.get(field, 0)) > float(val)]
-    except (ValueError, AttributeError):
+        # Handle both 'field>value' and 'field > value' formats
+        if '>' in condition:
+            parts = condition.split('>')
+            field = parts[0].strip()
+            val = parts[1].strip()
+            return [item for item in value
+                    if item and
+                    float(item.get(field, 0)) > float(val)]
+        else:
+            return value
+    except (ValueError, AttributeError, IndexError):
         return value
 
 @register.filter

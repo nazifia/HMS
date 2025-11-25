@@ -84,17 +84,57 @@
 <!-- Filter Panel -->
 <div class="filter-panel">
     <form method="GET" id="filter-form" class="row">
-        <div class="col-md-3">
-            <label for="months" class="form-label">Period (Months)</label>
-            <select name="months" id="months" class="form-control" onchange="submitForm()">
-                {% for m in '3,6,9,12,18,24'|split:',' %}
-                    <option value="{{ m }}" {% if m == months|stringformat:"s" %}selected{% endif %}>
-                        Last {{ m }} Months
-                    </option>
+        <div class="col-md-2">
+            <label for="start_month" class="form-label">Start Month</label>
+            <select name="start_month" id="start_month" class="form-control" onchange="submitForm()">
+                <option value="1" {% if start_month == '1' or start_month == 1 %}selected{% endif %}>January</option>
+                <option value="2" {% if start_month == '2' or start_month == 2 %}selected{% endif %}>February</option>
+                <option value="3" {% if start_month == '3' or start_month == 3 %}selected{% endif %}>March</option>
+                <option value="4" {% if start_month == '4' or start_month == 4 %}selected{% endif %}>April</option>
+                <option value="5" {% if start_month == '5' or start_month == 5 %}selected{% endif %}>May</option>
+                <option value="6" {% if start_month == '6' or start_month == 6 %}selected{% endif %}>June</option>
+                <option value="7" {% if start_month == '7' or start_month == 7 %}selected{% endif %}>July</option>
+                <option value="8" {% if start_month == '8' or start_month == 8 %}selected{% endif %}>August</option>
+                <option value="9" {% if start_month == '9' or start_month == 9 %}selected{% endif %}>September</option>
+                <option value="10" {% if start_month == '10' or start_month == 10 %}selected{% endif %}>October</option>
+                <option value="11" {% if start_month == '11' or start_month == 11 %}selected{% endif %}>November</option>
+                <option value="12" {% if start_month == '12' or start_month == 12 %}selected{% endif %}>December</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="start_year" class="form-label">Start Year</label>
+            <select name="start_year" id="start_year" class="form-control" onchange="submitForm()">
+                {% for year in '2020,2021,2022,2023,2024,2025,2026'|split:',' %}
+                    <option value="{{ year }}" {% if year == start_year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <label for="end_month" class="form-label">End Month</label>
+            <select name="end_month" id="end_month" class="form-control" onchange="submitForm()">
+                <option value="1" {% if end_month == '1' or end_month == 1 %}selected{% endif %}>January</option>
+                <option value="2" {% if end_month == '2' or end_month == 2 %}selected{% endif %}>February</option>
+                <option value="3" {% if end_month == '3' or end_month == 3 %}selected{% endif %}>March</option>
+                <option value="4" {% if end_month == '4' or end_month == 4 %}selected{% endif %}>April</option>
+                <option value="5" {% if end_month == '5' or end_month == 5 %}selected{% endif %}>May</option>
+                <option value="6" {% if end_month == '6' or end_month == 6 %}selected{% endif %}>June</option>
+                <option value="7" {% if end_month == '7' or end_month == 7 %}selected{% endif %}>July</option>
+                <option value="8" {% if end_month == '8' or end_month == 8 %}selected{% endif %}>August</option>
+                <option value="9" {% if end_month == '9' or end_month == 9 %}selected{% endif %}>September</option>
+                <option value="10" {% if end_month == '10' or end_month == 10 %}selected{% endif %}>October</option>
+                <option value="11" {% if end_month == '11' or end_month == 11 %}selected{% endif %}>November</option>
+                <option value="12" {% if end_month == '12' or end_month == 12 %}selected{% endif %}>December</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="end_year" class="form-label">End Year</label>
+            <select name="end_year" id="end_year" class="form-control" onchange="submitForm()">
+                {% for year in '2020,2021,2022,2023,2024,2025,2026'|split:',' %}
+                    <option value="{{ year }}" {% if year == end_year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
             <label for="department" class="form-label">Department</label>
             <select name="department" id="department" class="form-control" onchange="submitForm()">
                 <option value="all" {% if department == 'all' %}selected{% endif %}>All Departments</option>
@@ -110,11 +150,6 @@
         <div class="col-md-2 d-flex align-items-end">
             <button type="button" class="btn btn-primary btn-block" onclick="refreshData()">
                 <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <button type="button" class="btn btn-secondary btn-block" onclick="resetFilters()">
-                <i class="fas fa-undo"></i> Reset
             </button>
         </div>
     </form>
@@ -156,7 +191,7 @@
                                 Average Monthly
                             </div>
                             <div class="revenue-amount text-success">
-                                {% calculate_average trends 'total_revenue' %}|currency
+                                ₦ {% calculate_average trends 'total_revenue' %}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -235,7 +270,7 @@
             </div>
             <div class="card-body">
                 <div class="chart-container">
-                    <canvas id="revenueTrendsChart"></canvas>
+                    <canvas id="revenueTrendsChart" style="width: 100%; height: 400px;"></canvas>
                     <div id="chart-loading" class="loading-overlay" style="display: none;">
                         <div class="spinner-border text-primary" role="status">
                             <span class="sr-only">Loading...</span>
@@ -325,24 +360,85 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+console.log('Revenue trends JavaScript loaded');
+
 // Global variables
 let revenueTrendsChart;
 const trendsData = {{ trends_json|safe }};
 
-$(document).ready(function() {
+console.log('trendsData defined:', trendsData);
+
+// Initialize when page is fully loaded
+function initializeAll() {
+    console.log('initializeAll called');
     initializeCharts();
-    initializeDataTable();
+    if (typeof $ !== 'undefined' && $.fn.DataTable) {
+        initializeDataTable();
+    } else {
+        console.log('jQuery or DataTables not available');
+    }
+}
+
+// Try multiple initialization methods
+if (typeof $ !== 'undefined') {
+    console.log('jQuery is available');
+    $(document).ready(function() {
+        console.log('jQuery document.ready fired');
+        initializeAll();
+    });
+} else {
+    console.log('jQuery not available, using DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded fired');
+        initializeAll();
+    });
+}
+
+// Also try window.onload as fallback
+window.addEventListener('load', function() {
+    console.log('window.load fired');
+    if (!revenueTrendsChart) {
+        console.log('Chart not created yet, initializing now');
+        initializeAll();
+    }
 });
 
 function initializeCharts() {
+    console.log('initializeCharts called');
+    console.log('trendsData:', trendsData);
+    console.log('trendsData type:', typeof trendsData);
+    console.log('trendsData length:', trendsData ? trendsData.length : 'undefined');
+
     if (!trendsData || !trendsData.length) {
+        console.error('No trends data available for chart');
+        // Show a message in the chart area
+        const chartContainer = document.getElementById('revenueTrendsChart');
+        if (chartContainer) {
+            const parent = chartContainer.parentElement;
+            parent.innerHTML = '<div class="alert alert-warning">No trend data available for the selected period.</div>';
+        }
         return;
     }
 
-    const ctx = document.getElementById('revenueTrendsChart').getContext('2d');
-    
+    const ctx = document.getElementById('revenueTrendsChart');
+    if (!ctx) {
+        console.error('Chart canvas element not found');
+        return;
+    }
+
+    const chartContext = ctx.getContext('2d');
+
     // Prepare data for chart
-    const labels = trendsData.map(trend => trend.month);
+    // Format date labels (convert 2025-11-01 to Nov 2025)
+    console.log('Preparing chart labels...');
+    const labels = trendsData.map(trend => {
+        console.log('Processing trend:', trend);
+        const date = new Date(trend.month);
+        const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        console.log('Created label:', label);
+        return label;
+    });
+    console.log('Labels:', labels);
     const datasets = [
         {
             label: 'Total Revenue',
@@ -386,44 +482,52 @@ function initializeCharts() {
         }
     ];
 
-    revenueTrendsChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: datasets
-        },
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '₦' + new Intl.NumberFormat().format(value);
+    console.log('Creating chart with labels:', labels);
+    console.log('Datasets:', datasets);
+
+    try {
+        revenueTrendsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₦' + new Intl.NumberFormat().format(value);
+                            }
                         }
                     }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom'
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ₦' + new Intl.NumberFormat().format(context.parsed.y);
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ₦' + new Intl.NumberFormat().format(context.parsed.y);
+                                }
+                                return label;
                             }
-                            return label;
                         }
                     }
                 }
             }
-        }
-    });
+        });
+        console.log('Chart created successfully:', revenueTrendsChart);
+    } catch (error) {
+        console.error('Error creating chart:', error);
+    }
 }
 
 function initializeDataTable() {
