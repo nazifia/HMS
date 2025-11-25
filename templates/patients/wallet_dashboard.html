@@ -137,13 +137,32 @@
                                                 Total Outstanding: {{ total_outstanding|currency }}
                                             </div>
                                             <div class="text-xs text-muted">
-                                                Adding funds can be automatically applied to these outstanding charges
+                                                {% if wallet_stats.total_transactions == 0 %}
+                                                    <strong>Note:</strong> These are outstanding charges that haven't been recorded in wallet transactions yet.
+                                                    {% if total_outstanding > 0 %}
+                                                        {% if outstanding_invoices %}
+                                                            These include <strong>{{ outstanding_invoices|length }} outstanding invoice(s)</strong> totaling ₦{{ total_invoice_outstanding|default:"0.00"|currency }}.
+                                                        {% elif current_admission %}
+                                                            These include calculated <strong>admission charges</strong>.
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    <br>Consider settling these charges to maintain accurate records.
+                                                {% else %}
+                                                    Adding funds can be automatically applied to these outstanding charges
+                                                {% endif %}
                                             </div>
                                         </div>
                                         <div class="col-auto">
-                                            <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-warning btn-sm">
-                                                <i class="fas fa-plus-circle"></i> Add Funds to Settle
-                                            </a>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-warning btn-sm">
+                                                    <i class="fas fa-plus-circle"></i> Add Funds
+                                                </a>
+                                                {% if wallet_stats.total_transactions == 0 and current_admission %}
+                                                <a href="{% url 'patients:sync_admission_charges' patient.id %}" class="btn btn-info btn-sm">
+                                                    <i class="fas fa-sync"></i> Sync Charges
+                                                </a>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

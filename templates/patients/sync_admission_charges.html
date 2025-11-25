@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Sync Admission Charges - {{ patient.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Sync Admission Charges</h1>
+        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Wallet
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Admission Charge Details</h6>
+                </div>
+                <div class="card-body">
+                    {% if wallet %}
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> About Syncing Admission Charges</h5>
+                        <p>This will create wallet transactions for any admission charges that haven't been recorded yet.</p>
+                        <ul>
+                            <li>Admission fees (if applicable)</li>
+                            <li>Daily charges for each day of stay</li>
+                            <li>These charges will be deducted from the patient's wallet balance</li>
+                        </ul>
+                    </div>
+
+                    {% if current_admission %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Admission Details</th>
+                                    <th>Calculated Charges</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <strong>Admission Date:</strong> {{ current_admission.admission_date|date:"Y-m-d" }}<br>
+                                        <strong>Duration:</strong> {{ current_admission.get_duration }} days<br>
+                                        <strong>Ward:</strong> 
+                                        {% if current_admission.bed and current_admission.bed.ward %}
+                                            {{ current_admission.bed.ward.name }}
+                                        {% else %}
+                                            Not assigned
+                                        {% endif %}<br>
+                                        <strong>Bed:</strong>
+                                        {% if current_admission.bed %}
+                                            {{ current_admission.bed }}
+                                        {% else %}
+                                            Not assigned
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="text-right">
+                                            {% if current_admission.bed and current_admission.bed.ward %}
+                                                {% comment %}
+                                                Check if patient is NHIA - NHIA patients are exempt from admission fees
+                                                {% endcomment %}
+                                                {% try %}
+                                                    {% if patient.nhia_info and patient.nhia_info.is_active %}
+                                                        <div class="text-muted">
+                                                            Admission Fee: <strong>₦0.00</strong> (NHIA Exempt)<br>
+                                                            Daily Charge: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
+                                                            <hr>
+                                                            Total for {{ current_admission.get_duration }} days: 
+                                                            <strong>₦{{ current_admission.bed.ward.charge_per_day|mul:current_admission.get_duration }}</strong>
+                                                        </div>
+                                                    {% else %}
+                                                        <div>
+                                                            Admission Fee: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
+                                                            Daily Charge: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
+                                                            <hr>
+                                                            Total for {{ current_admission.get_duration }} days: 
+                                                            <strong>₦{{ current_admission.bed.ward.charge_per_day|mul:current_admission.get_duration }}</strong>
+                                                        </div>
+                                                    {% endif %}
+                                                {% except %}
+                                                    <div>
+                                                        Admission Fee: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
+                                                        Daily Charge: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
+                                                        <hr>
+                                                        Total for {{ current_admission.get_duration }} days: 
+                                                        <strong>₦{{ current_admission.bed.ward.charge_per_day|mul:current_admission.get_duration }}</strong>
+                                                    </div>
+                                                {% endtry %}
+                                            {% else %}
+                                                <div class="text-muted">
+                                                    Ward/Bed not assigned - Cannot calculate charges
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>No Active Admission Found</strong>
+                        <p>This patient does not currently have an active admission. Only active admissions can be synced.</p>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>No Wallet Found</strong>
+                        <p>This patient does not have a wallet. Please create a wallet first.</p>
+                        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Wallet
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if wallet and current_admission %}
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Sync Actions</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Warning:</strong> This action will:
+                            <ul class="mb-0">
+                                <li>Create wallet transactions for admission charges</li>
+                                <li>Deduct amounts from patient's wallet balance</li>
+                                <li>Cannot be undone (requires manual adjustment)</li>
+                            </ul>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning btn-block">
+                            <i class="fas fa-sync"></i> Sync Admission Charges
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

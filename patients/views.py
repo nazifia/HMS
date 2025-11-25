@@ -596,6 +596,7 @@ def wallet_dashboard(request, patient_id):
         'current_admission': current_admission,
         'outstanding_invoices': outstanding_invoices,
         'total_outstanding': total_outstanding,
+        'total_invoice_outstanding': total_outstanding,  # Alias for clarity in template
         'admission_outstanding': admission_outstanding,
         'wallet': wallet,
         'page_title': f'Wallet - {patient.get_full_name()}',
@@ -686,28 +687,28 @@ def wallet_transactions(request, patient_id):
     """View for displaying patient wallet transactions"""
     patient = get_object_or_404(Patient, id=patient_id)
     
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    if created:
+        messages.info(request, f'A wallet has been automatically created for {patient.get_full_name()}.')
+    
     # Get wallet transactions
-    try:
-        transactions = patient.wallet.transactions.all().order_by('-created_at')
-        
-        # Filter by admission if specified
-        admission_id = request.GET.get('admission')
-        if admission_id:
-            try:
-                from inpatient.models import Admission
-                admission = Admission.objects.get(id=admission_id, patient=patient)
-                transactions = transactions.filter(admission=admission)
-            except:
-                pass
-        
-        # Filter by transaction type if specified
-        transaction_type = request.GET.get('type')
-        if transaction_type:
-            transactions = transactions.filter(transaction_type=transaction_type)
-                
-    except AttributeError:
-        # If patient doesn't have a wallet yet
-        transactions = []
+    transactions = wallet.transactions.all().order_by('-created_at')
+    
+    # Filter by admission if specified
+    admission_id = request.GET.get('admission')
+    if admission_id:
+        try:
+            from inpatient.models import Admission
+            admission = Admission.objects.get(id=admission_id, patient=patient)
+            transactions = transactions.filter(admission=admission)
+        except:
+            pass
+    
+    # Filter by transaction type if specified
+    transaction_type = request.GET.get('type')
+    if transaction_type:
+        transactions = transactions.filter(transaction_type=transaction_type)
     
     # Get current admission if any
     current_admission = None
@@ -722,6 +723,7 @@ def wallet_transactions(request, patient_id):
 
     context = {
         'patient': patient,
+        'wallet': wallet,
         'transactions': transactions,
         'current_admission': current_admission,
         'page_title': f'Wallet Transactions - {patient.get_full_name()}',
@@ -1571,3 +1573,110 @@ def update_physiotherapy_status(request, request_id, status):
     
     messages.success(request, f'Physiotherapy request marked as {status}.')
     return redirect('patients:detail', patient_id=physiotherapy_request.patient.id)
+
+
+@login_required
+def sync_admission_charges(request, patient_id):
+    """View to sync admission charges with wallet transactions"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get or create wallet for patient
+    wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+    
+    if request.method == 'POST':
+        try:
+            from inpatient.models import Admission
+            from django.db import transaction
+            from decimal import Decimal
+            
+            with transaction.atomic():
+                # Get current admission
+                current_admission = Admission.objects.filter(
+                    patient=patient,
+                    status='admitted'
+                ).first()
+                
+                if not current_admission:
+                    messages.warning(request, 'No active admission found to sync.')
+                    return redirect('patients:wallet_dashboard', patient_id=patient.id)
+                
+                # Get outstanding admission cost
+                outstanding_cost = current_admission.get_outstanding_admission_cost()
+                
+                if outstanding_cost <= 0:
+                    messages.info(request, 'No outstanding admission charges to sync.')
+                    return redirect('patients:wallet_dashboard', patient_id=patient.id)
+                
+                # Create wallet transaction for admission fee
+                admission_fee = 0
+                try:
+                    # Check if patient is NHIA
+                    is_nhia_patient = (hasattr(patient, 'nhia_info') and
+                                     patient.nhia_info and
+                                     patient.nhia_info.is_active)
+                    if not is_nhia_patient and current_admission.get_duration() >= 1:
+                        # Calculate admission fee based on bed charges
+                        if current_admission.bed and current_admission.bed.ward:
+                            admission_fee = current_admission.bed.ward.charge_per_day
+                except:
+                    pass
+                
+                # Create admission fee transaction if applicable
+                if admission_fee > 0:
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        transaction_type='admission_fee',
+                        amount=admission_fee,
+                        balance_after=wallet.balance - admission_fee,
+                        description=f'Admission fee synced for Admission #{current_admission.id}',
+                        admission=current_admission,
+                        created_by=request.user
+                    )
+                    # Update wallet balance
+                    wallet.balance -= admission_fee
+                    wallet.save(update_fields=['balance'])
+                
+                # Create daily admission charge transactions
+                duration = current_admission.get_duration()
+                daily_charge = 0
+                if current_admission.bed and current_admission.bed.ward:
+                    daily_charge = current_admission.bed.ward.charge_per_day
+                
+                # Create charges for days already stayed (exclude today if just admitted)
+                days_to_charge = max(0, duration - 1)
+                if daily_charge > 0 and days_to_charge > 0:
+                    for day in range(days_to_charge):
+                        WalletTransaction.objects.create(
+                            wallet=wallet,
+                            transaction_type='daily_admission_charge',
+                            amount=daily_charge,
+                            balance_after=wallet.balance - daily_charge,
+                            description=f'Daily charge synced - Day {day + 1} for Admission #{current_admission.id}',
+                            admission=current_admission,
+                            created_by=request.user
+                        )
+                        # Update wallet balance
+                        wallet.balance -= daily_charge
+                        wallet.save(update_fields=['balance'])
+                
+                total_synced = admission_fee + (daily_charge * days_to_charge)
+                messages.success(
+                    request, 
+                    f'Successfully synced ₦{total_synced} in admission charges for {patient.get_full_name()}. '
+                    f'Created {1 if admission_fee > 0 else 0} admission fee transaction and {days_to_charge} daily charge transactions.'
+                )
+                
+            return redirect('patients:wallet_dashboard', patient_id=patient.id)
+            
+        except Exception as e:
+            messages.error(request, f'Error syncing admission charges: {str(e)}')
+            return redirect('patients:wallet_dashboard', patient_id=patient.id)
+    
+    # For GET request, show confirmation page
+    context = {
+        'patient': patient,
+        'wallet': wallet,
+        'page_title': f'Sync Admission Charges - {patient.get_full_name()}',
+        'active_nav': 'patients',
+    }
+    return render(request, 'patients/sync_admission_charges.html', context)

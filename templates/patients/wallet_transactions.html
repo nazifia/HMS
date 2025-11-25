@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load custom_filters %}
+{% load custom_filters core_tags %}
 
 {% block title %}Wallet Transactions - {{ patient.get_full_name }}{% endblock %}
 
@@ -110,6 +110,21 @@
                 </div>
             </div>
         </div>
+    </div>
+    {% else %}
+    <!-- No Wallet Alert -->
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>No Wallet Found:</strong> This patient does not have a wallet created yet.
+        <br>
+        <small class="text-muted">A wallet is required to track financial transactions. Create one using the button below.</small>
+        <hr>
+        <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-sm btn-warning">
+            <i class="fas fa-plus-circle"></i> Create Wallet
+        </a>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
     </div>
     {% endif %}
     

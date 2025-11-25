@@ -399,6 +399,14 @@ def currency(value):
         return '₦ 0.00'
 
 @register.filter
+def mul(value, arg):
+    """Multiply value by argument"""
+    try:
+        return float(value) * float(arg)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
 def currency_no_symbol(value):
     """
     Format a monetary value with thousand separators but without currency symbol.
