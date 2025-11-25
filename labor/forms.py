@@ -1,5 +1,5 @@
 from django import forms
-from .models import LaborRecord
+from .models import LaborRecord, LaborClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 
 class LaborRecordForm(forms.ModelForm):
@@ -40,3 +40,38 @@ class LaborRecordForm(forms.ModelForm):
 class LaborRecordSearchForm(MedicalRecordSearchForm):
     """Search form for Labor records"""
     pass
+
+class LaborClinicalNoteForm(forms.ModelForm):
+    """Form for creating and editing labor clinical notes (SOAP format)"""
+
+    class Meta:
+        model = LaborClinicalNote
+        fields = ['subjective', 'objective', 'assessment', 'plan']
+        widgets = {
+            'subjective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': "Patient's description of symptoms, concerns, and history..."
+            }),
+            'objective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observable findings, examination results, measurements...'
+            }),
+            'assessment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
+            }),
+            'plan': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Treatment plan, interventions, follow-up...'
+            }),
+        }
+        labels = {
+            'subjective': 'Subjective (S)',
+            'objective': 'Objective (O)',
+            'assessment': 'Assessment (A)',
+            'plan': 'Plan (P)',
+        }

@@ -6,8 +6,8 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
 from decimal import Decimal
-from .models import LaborRecord
-from .forms import LaborRecordForm, LaborRecordSearchForm
+from .models import LaborRecord, LaborClinicalNote
+from .forms import LaborRecordForm, LaborRecordSearchForm, LaborClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -543,3 +543,82 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='general'):
     invoice.save()
     
     return invoice_item
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a labor record"""
+    record = get_object_or_404(LaborRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = LaborClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.labor_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('labor:record_detail', record_id=record.pk)
+    else:
+        form = LaborClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'labor/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(LaborClinicalNote, id=note_id)
+    record = note.labor_record
+
+    if request.method == 'POST':
+        form = LaborClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('labor:record_detail', record_id=record.pk)
+    else:
+        form = LaborClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'labor/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(LaborClinicalNote, id=note_id)
+    record_id = note.labor_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('labor:record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'labor/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(LaborClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.labor_record
+    }
+    return render(request, 'labor/clinical_note_detail.html', context)

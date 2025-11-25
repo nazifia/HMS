@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
-from .models import EntRecord
-from .forms import EntRecordForm, EntRecordSearchForm
+from .models import EntRecord, EntClinicalNote
+from .forms import EntRecordForm, EntRecordSearchForm, EntClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -394,3 +394,83 @@ def delete_ent_record(request, record_id):
         'record': record
     }
     return render(request, 'ent/ent_record_confirm_delete.html', context)
+
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a ent record"""
+    record = get_object_or_404(EntRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = EntClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.ent_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('ent:record_detail', record_id=record.pk)
+    else:
+        form = EntClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'ent/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(EntClinicalNote, id=note_id)
+    record = note.ent_record
+
+    if request.method == 'POST':
+        form = EntClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('ent:record_detail', record_id=record.pk)
+    else:
+        form = EntClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'ent/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(EntClinicalNote, id=note_id)
+    record_id = note.ent_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('ent:record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'ent/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(EntClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.ent_record
+    }
+    return render(request, 'ent/clinical_note_detail.html', context)

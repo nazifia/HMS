@@ -6,7 +6,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
 from .models import Family_planningRecord
-from .forms import Family_planningRecordForm, FamilyPlanningRecordSearchForm
+from .forms import Family_planningRecordForm, FamilyPlanningRecordSearchForm, FamilyPlanningClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -374,3 +374,82 @@ def create_prescription_for_family_planning(request, record_id):
         'title': 'Create Prescription'
     }
     return render(request, 'family_planning/create_prescription.html', context)
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a family_planning record"""
+    record = get_object_or_404(FamilyPlanningRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = FamilyPlanningClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.family_planning_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('family_planning:record_detail', record_id=record.pk)
+    else:
+        form = FamilyPlanningClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'family_planning/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(FamilyPlanningClinicalNote, id=note_id)
+    record = note.family_planning_record
+
+    if request.method == 'POST':
+        form = FamilyPlanningClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('family_planning:record_detail', record_id=record.pk)
+    else:
+        form = FamilyPlanningClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'family_planning/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(FamilyPlanningClinicalNote, id=note_id)
+    record_id = note.family_planning_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('family_planning:record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'family_planning/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(FamilyPlanningClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.family_planning_record
+    }
+    return render(request, 'family_planning/clinical_note_detail.html', context)

@@ -1,0 +1,46 @@
+{% extends 'dental/base.html' %}
+
+{% block page_title %}Delete Clinical Note{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'dental:dental_record_detail' note.dental_record.id %}" class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-arrow-left"></i> Back to Record
+</a>
+{% endblock %}
+
+{% block dental_content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0"><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Warning</h6>
+                    <p class="mb-0">
+                        Are you sure you want to delete this clinical note? This action cannot be undone.
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Clinical Note Details:</h6>
+                    <p><strong>Patient:</strong> {{ note.dental_record.patient.get_full_name }}</p>
+                    <p><strong>Created by:</strong> {{ note.created_by.get_full_name }}</p>
+                    <p><strong>Created on:</strong> {{ note.created_at|date:"M d, Y H:i" }}</p>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Yes, Delete Clinical Note
+                    </button>
+                    <a href="{% url 'dental:dental_record_detail' note.dental_record.id %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

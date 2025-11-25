@@ -7,8 +7,8 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
-from .models import DentalRecord, DentalService, DentalXRay
-from .forms import DentalRecordForm, DentalRecordSearchForm, DentalServiceForm, DentalXRayForm
+from .models import DentalRecord, DentalService, DentalXRay, DentalClinicalNote
+from .forms import DentalRecordForm, DentalRecordSearchForm, DentalServiceForm, DentalXRayForm, DentalClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -255,6 +255,9 @@ def dental_record_detail(request, record_id):
     # Get X-rays for this record
     xrays = DentalXRay.objects.filter(dental_record=record).order_by('-taken_at')
 
+    # Get clinical notes for this record
+    clinical_notes = DentalClinicalNote.objects.filter(dental_record=record).select_related('created_by').order_by('-created_at')
+
     # **NHIA AUTHORIZATION CHECK**
     from core.models import InternalNotification
     
@@ -294,6 +297,7 @@ def dental_record_detail(request, record_id):
         'record': record,
         'prescriptions': prescriptions,
         'xrays': xrays,
+        'clinical_notes': clinical_notes,
         'is_nhia_patient': is_nhia_patient,
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,
@@ -617,3 +621,83 @@ def generate_invoice_for_dental(request, record_id):
         'title': 'Generate Invoice'
     }
     return render(request, 'dental/generate_invoice.html', context)
+
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a dental record"""
+    record = get_object_or_404(DentalRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = DentalClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.dental_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('dental:dental_record_detail', record_id=record.pk)
+    else:
+        form = DentalClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'dental/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(DentalClinicalNote, id=note_id)
+    record = note.dental_record
+
+    if request.method == 'POST':
+        form = DentalClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('dental:dental_record_detail', record_id=record.pk)
+    else:
+        form = DentalClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'dental/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(DentalClinicalNote, id=note_id)
+    record_id = note.dental_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('dental:dental_record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'dental/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(DentalClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.dental_record
+    }
+    return render(request, 'dental/clinical_note_detail.html', context)

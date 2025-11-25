@@ -1,6 +1,6 @@
 from django import forms
 from patients.models import Patient
-from .models import EntRecord
+from .models import EntRecord, EntClinicalNote
 from django.utils import timezone
 from core.medical_forms import MedicalRecordSearchForm
 from core.patient_search_forms import PatientSearchForm
@@ -97,3 +97,39 @@ class EntRecordSearchForm(MedicalRecordSearchForm):
 class EntPatientSearchForm(PatientSearchForm):
     """Patient search form specifically for ENT module"""
     pass
+
+
+class EntClinicalNoteForm(forms.ModelForm):
+    """Form for creating and editing ent clinical notes (SOAP format)"""
+
+    class Meta:
+        model = EntClinicalNote
+        fields = ['subjective', 'objective', 'assessment', 'plan']
+        widgets = {
+            'subjective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': "Patient's description of symptoms, concerns, and history..."
+            }),
+            'objective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observable findings, examination results, measurements...'
+            }),
+            'assessment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
+            }),
+            'plan': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Treatment plan, interventions, follow-up...'
+            }),
+        }
+        labels = {
+            'subjective': 'Subjective (S)',
+            'objective': 'Objective (O)',
+            'assessment': 'Assessment (A)',
+            'plan': 'Plan (P)',
+        }

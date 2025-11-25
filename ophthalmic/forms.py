@@ -1,5 +1,5 @@
 from django import forms
-from .models import OphthalmicRecord
+from .models import OphthalmicRecord, OphthalmicClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 
 
@@ -45,3 +45,38 @@ class OphthalmicRecordForm(forms.ModelForm):
 class OphthalmicRecordSearchForm(MedicalRecordSearchForm):
     """Search form for Ophthalmic records"""
     pass
+
+class OphthalmicClinicalNoteForm(forms.ModelForm):
+    """Form for creating and editing ophthalmic clinical notes (SOAP format)"""
+
+    class Meta:
+        model = OphthalmicClinicalNote
+        fields = ['subjective', 'objective', 'assessment', 'plan']
+        widgets = {
+            'subjective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': "Patient's description of symptoms, concerns, and history..."
+            }),
+            'objective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observable findings, examination results, measurements...'
+            }),
+            'assessment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
+            }),
+            'plan': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Treatment plan, interventions, follow-up...'
+            }),
+        }
+        labels = {
+            'subjective': 'Subjective (S)',
+            'objective': 'Objective (O)',
+            'assessment': 'Assessment (A)',
+            'plan': 'Plan (P)',
+        }

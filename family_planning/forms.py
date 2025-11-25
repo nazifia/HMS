@@ -1,5 +1,5 @@
 from django import forms
-from .models import Family_planningRecord
+from .models import Family_planningRecord, FamilyPlanningClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 
 class Family_planningRecordForm(forms.ModelForm):
@@ -42,3 +42,38 @@ class Family_planningRecordForm(forms.ModelForm):
 class FamilyPlanningRecordSearchForm(MedicalRecordSearchForm):
     """Search form for Family Planning records"""
     pass
+
+class FamilyPlanningClinicalNoteForm(forms.ModelForm):
+    """Form for creating and editing family_planning clinical notes (SOAP format)"""
+
+    class Meta:
+        model = FamilyPlanningClinicalNote
+        fields = ['subjective', 'objective', 'assessment', 'plan']
+        widgets = {
+            'subjective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': "Patient's description of symptoms, concerns, and history..."
+            }),
+            'objective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observable findings, examination results, measurements...'
+            }),
+            'assessment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
+            }),
+            'plan': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Treatment plan, interventions, follow-up...'
+            }),
+        }
+        labels = {
+            'subjective': 'Subjective (S)',
+            'objective': 'Objective (O)',
+            'assessment': 'Assessment (A)',
+            'plan': 'Plan (P)',
+        }

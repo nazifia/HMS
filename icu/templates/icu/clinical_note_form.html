@@ -1,0 +1,20 @@
+{%extends 'icu/base.html' %}
+{%load crispy_forms_tags %}
+
+{%block page_title %}{{title}}{%endblock%}
+
+{%block icu_content %}
+<div class="card">
+    <div class="card-header">
+        <h5>{{title}}</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {%csrf_token%}
+            {{form|crispy}}
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="{{back_url}}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{%endblock%}

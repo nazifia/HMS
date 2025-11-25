@@ -32,7 +32,14 @@
       "Bash(update_results.txt)",
       "Bash(del update_currency_formatting.py)",
       "Bash(curl:*)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(for mod in dental ophthalmic ent oncology scbu anc labor icu family_planning gynae_emergency)",
+      "Bash(do echo '=== $mod ===')",
+      "Bash(if [ -d ./$mod ])",
+      "Bash(then ls -la ./$mod)",
+      "Bash(else echo \"Directory not found\")",
+      "Bash(fi)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
