@@ -1383,6 +1383,14 @@ def active_store_detail(request, dispensary_id):
         active_store=active_store
     ).select_related('medication', 'active_store')
 
+    # Calculate total stock value
+    from decimal import Decimal
+    total_stock_value = sum(
+        (item.stock_quantity * item.unit_cost)
+        for item in inventory_items
+        if item.unit_cost is not None
+    ) or Decimal('0.00')
+
     # Get bulk stores for transfer
     bulk_stores = BulkStore.objects.filter(is_active=True)
 
@@ -1577,6 +1585,7 @@ def active_store_detail(request, dispensary_id):
         'active_store': active_store,
         'dispensary': dispensary,
         'inventory_items': inventory_items,
+        'total_stock_value': total_stock_value,
         'bulk_stores': bulk_stores,
         'available_bulk_medications': available_bulk_medications,
         'available_bulk_medications_json': json.dumps(available_bulk_medications_json),

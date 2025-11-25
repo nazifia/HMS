@@ -196,6 +196,16 @@
         </div>
     </div>
 
+    <!-- Total Stock Value Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="stat-number" style="color: white;">{{ total_stock_value|currency }}</div>
+                <div class="stat-label" style="color: rgba(255, 255, 255, 0.9); font-weight: 600;">Total Stock Value</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Current Inventory -->
     <div class="inventory-card">
         <div class="card-header bg-primary text-white">
@@ -216,6 +226,7 @@
                                 <th>Stock Quantity</th>
                                 <th>Reorder Level</th>
                                 <th>Unit Cost</th>
+                                <th>Total Value</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -244,6 +255,9 @@
                                     <td>{{ item.reorder_level }}</td>
                                     <td>{{ item.unit_cost|currency }}</td>
                                     <td>
+                                        <strong>{{ item.unit_cost|multiply:item.stock_quantity|currency }}</strong>
+                                    </td>
+                                    <td>
                                         {% if item.stock_quantity == 0 %}
                                             <span class="stock-indicator stock-out"></span>
                                             Out of Stock
@@ -261,6 +275,13 @@
                                 </tr>
                             {% endfor %}
                         </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="6" class="text-end">Total Stock Value:</th>
+                                <th><strong>{{ total_stock_value|currency }}</strong></th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             {% else %}
