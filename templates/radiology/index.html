@@ -13,11 +13,30 @@
             <a href="{% url 'radiology:result_search' %}" class="d-none d-sm-inline-block btn btn-sm btn-info shadow-sm me-2">
                 <i class="fas fa-search fa-sm text-white-50"></i> Search Results
             </a>
-            <a href="{% if patients and patients|length > 0 %}{% url 'radiology:order' patients.0.id %}{% else %}#{% endif %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <a href="{% url 'radiology:order_general' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
                 <i class="fas fa-plus fa-sm text-white-50"></i> New Radiology Order
             </a>
         </div>
     </div>
+
+    <!-- Orders Needing Results Alert -->
+    {% if orders_needing_results %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning shadow-sm" role="alert">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="alert-heading mb-1"><i class="fas fa-clipboard-check me-2"></i>Action Required</h5>
+                        <p class="mb-0">There are <strong>{{ orders_needing_results|length }}</strong> completed order{{ orders_needing_results|length|pluralize }} waiting for results to be added.</p>
+                    </div>
+                    <a href="?status=completed" class="btn btn-warning">
+                        <i class="fas fa-list me-1"></i> View All
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Patient List with Results Link -->
     <div class="row mb-4">
@@ -86,14 +105,14 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="#" class="btn btn-outline-success w-100">
-                                <i class="fas fa-file-medical me-2"></i>Report Templates
-                            </a>
+                            <button class="btn btn-outline-secondary w-100" disabled title="Coming Soon">
+                                <i class="fas fa-file-medical me-2"></i>Report Templates <small class="text-muted">(Coming Soon)</small>
+                            </button>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="#" class="btn btn-outline-warning w-100">
-                                <i class="fas fa-chart-bar me-2"></i>Quality Metrics
-                            </a>
+                            <button class="btn btn-outline-secondary w-100" disabled title="Coming Soon">
+                                <i class="fas fa-chart-bar me-2"></i>Quality Metrics <small class="text-muted">(Coming Soon)</small>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -199,6 +218,9 @@
         <div class="col-md-4 offset-md-8">
             <form method="get" class="d-flex align-items-center" action="">
                 <input type="text" name="patient_id" class="form-control me-2" placeholder="Filter by Patient ID" value="{{ request.GET.patient_id|default:'' }}">
+                {% if request.GET.status %}
+                <input type="hidden" name="status" value="{{ request.GET.status }}">
+                {% endif %}
                 <button type="submit" class="btn btn-outline-primary">Filter</button>
             </form>
         </div>
@@ -240,26 +262,49 @@
                             </thead>
                             <tbody>
                                 {% for order in recent_orders %}
-                                    {% if not request.GET.patient_id or order.patient.patient_id|stringformat:'s' == request.GET.patient_id|stringformat:'s' %}
-                                    <tr class="{% if order.order_date|date:'Y-m-d' == 'now'|date:'Y-m-d' %}table-info{% endif %}">
+                                    <tr class="{% if order.order_date|date:'Y-m-d' == today|date:'Y-m-d' %}table-info{% endif %}">
                                         <td>RAD-{{ order.id|stringformat:'03d' }}</td>
                                         <td>{{ order.patient.get_full_name }}<br><small class="text-muted">ID: {{ order.patient.patient_id }}</small></td>
                                         <td>{{ order.test.name }}</td>
                                         <td>
                                             {{ order.order_date|date:'Y-m-d H:i' }}
-                                            {% if order.order_date|date:'Y-m-d' == 'now'|date:'Y-m-d' %}
+                                            {% if order.order_date|date:'Y-m-d' == today|date:'Y-m-d' %}
                                                 <span class="badge bg-primary ms-2">Today</span>
                                             {% endif %}
                                         </td>
                                         <td>{{ order.status|radiology_status_badge }}</td>
                                         <td>{{ order.priority|priority_badge }}</td>
                                         <td>
-                                            <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-info btn-sm">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-info" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if order.status == 'completed' %}
+                                                    {% if not order.result %}
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Add Result">
+                                                                <i class="fas fa-plus"></i> Result
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a class="dropdown-item" href="{% url 'radiology:enhanced_add_result' order.id %}"><i class="fas fa-star me-1"></i> Enhanced Entry</a></li>
+                                                                <li><a class="dropdown-item" href="{% url 'radiology:quick_result_entry' order.id %}"><i class="fas fa-bolt me-1"></i> Quick Entry</a></li>
+                                                                <li><hr class="dropdown-divider"></li>
+                                                                <li><a class="dropdown-item" href="{% url 'radiology:add_result' order.id %}"><i class="fas fa-file-alt me-1"></i> Basic Entry</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    {% else %}
+                                                        <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-outline-success" title="View Result">
+                                                            <i class="fas fa-file-medical-alt"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                {% elif order.status == 'pending' or order.status == 'awaiting_payment' or order.status == 'payment_confirmed' or order.status == 'scheduled' %}
+                                                    <a href="{% url 'radiology:mark_completed' order.id %}" class="btn btn-warning" title="Mark Completed" onclick="return confirm('Mark this order as completed?');">
+                                                        <i class="fas fa-check"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
-                                    {% endif %}
                                 {% empty %}
                                 <tr>
                                     <td colspan="7" class="text-center text-muted">No recent radiology orders found.</td>

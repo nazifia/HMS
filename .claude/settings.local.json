@@ -39,7 +39,8 @@
       "Bash(then ls -la ./$mod)",
       "Bash(else echo \"Directory not found\")",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

@@ -147,6 +147,26 @@ class RadiologyOrder(models.Model):
 
         return True, 'Radiology order can be processed'
 
+    def can_add_result(self):
+        """Check if a result can be added to this radiology order"""
+        # Check if order is cancelled
+        if self.status == 'cancelled':
+            return False, 'Cannot add results to a cancelled order.'
+
+        # Check authorization requirement for NHIA patients from non-NHIA consultations
+        if self.requires_authorization:
+            if not self.authorization_code:
+                return False, 'Desk office authorization required for NHIA patient from non-NHIA unit. Please obtain authorization code before adding results.'
+            elif not self.authorization_code.is_valid():
+                return False, f'Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.'
+
+        # Order must be completed to add results (or allow other statuses if needed)
+        # Allowing result entry for completed orders and payment_confirmed orders
+        if self.status not in ['completed', 'payment_confirmed', 'scheduled']:
+            return False, f'Order must be completed before adding results. Current status: {self.get_status_display()}'
+
+        return True, 'Result can be added to this order'
+
     def save(self, *args, **kwargs):
         """Override save to auto-check authorization requirement"""
         # Auto-check authorization requirement on save
