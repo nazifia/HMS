@@ -735,6 +735,8 @@
                     {% load url_helpers %}
                     {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
                     <a class="collapse-item {% if '/pharmacy/revenue/statistics/' in request.path %}active{% endif %}" href="{{ revenue_url }}">Pharmacy Revenue Statistics</a>
+                    {% safe_url_or_default 'pharmacy:pharmacy_dispensary_revenue' '#' as dispensary_revenue_url %}
+                    <a class="collapse-item {% if '/pharmacy/revenue/dispensary/' in request.path %}active{% endif %}" href="{{ dispensary_revenue_url }}"><i class="fas fa-store-alt fa-sm fa-fw mr-1"></i>Dispensary Revenue</a>
                     {% endif %}
                     <a class="collapse-item {% if '/core/revenue/dashboard/' in request.path %}active{% endif %}" href="{% url 'core:revenue_point_dashboard' %}">Revenue Dashboard</a>
                     <a class="collapse-item {% if '/core/revenue/trends/' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_view' %}">Revenue Trends</a>

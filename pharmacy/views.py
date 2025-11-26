@@ -1249,6 +1249,222 @@ def simple_revenue_statistics(request):
 
     return render(request, 'pharmacy/simple_revenue_statistics.html', context)
 
+
+@login_required
+def pharmacy_dispensary_revenue(request):
+    """
+    Pharmacy-specific revenue statistics with breakdown by dispensary
+    Shows revenue generated from each dispensary/active store
+    """
+    from datetime import datetime
+    from django.utils import timezone
+    from django.db.models import Sum, Count, Q, F
+    import json
+    from collections import defaultdict
+    from datetime import timedelta
+
+    # Handle date range parameters
+    start_date_str = request.GET.get('start_date', '')
+    end_date_str = request.GET.get('end_date', '')
+    search_query = request.GET.get('search', '').strip().lower()
+
+    # Parse dates if provided, otherwise use current month
+    try:
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        else:
+            # Get first day of current month
+            today = timezone.now().date()
+            start_date = today.replace(day=1)
+    except ValueError:
+        # Fallback to current month if invalid date
+        today = timezone.now().date()
+        start_date = today.replace(day=1)
+
+    try:
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        else:
+            # Get last day of current month
+            today = timezone.now().date()
+            if today.month == 12:
+                end_date = today.replace(day=31, month=12)
+            else:
+                # Get the last day of the current month
+                next_month = today.replace(day=28) + timezone.timedelta(days=4)
+                end_date = next_month - timezone.timedelta(days=next_month.day)
+    except ValueError:
+        # Fallback to last day of current month if invalid date
+        today = timezone.now().date()
+        if today.month == 12:
+            end_date = today.replace(day=31, month=12)
+        else:
+            next_month = today.replace(day=28) + timezone.timedelta(days=4)
+            end_date = next_month - timezone.timedelta(days=next_month.day)
+
+    # Ensure start_date is not after end_date
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    # Get all active dispensaries
+    all_dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
+
+    # Calculate revenue per dispensary from DispensingLog
+    dispensary_data = []
+    total_pharmacy_revenue = Decimal('0.00')
+    total_transactions = 0
+    total_medications_dispensed = 0
+
+    for dispensary in all_dispensaries:
+        # Get dispensing logs for this dispensary in the date range
+        logs = DispensingLog.objects.filter(
+            dispensary=dispensary,
+            dispensed_date__date__range=[start_date, end_date]
+        ).aggregate(
+            total_revenue=Sum('total_price_for_this_log'),
+            total_logs=Count('id'),
+            total_quantity=Sum('dispensed_quantity')
+        )
+
+        revenue = logs['total_revenue'] or Decimal('0.00')
+        transactions = logs['total_logs'] or 0
+        quantity_dispensed = logs['total_quantity'] or 0
+
+        # Get unique prescriptions count
+        prescriptions_count = DispensingLog.objects.filter(
+            dispensary=dispensary,
+            dispensed_date__date__range=[start_date, end_date]
+        ).values('prescription_item__prescription').distinct().count()
+
+        # Only add to list if there's revenue or if no search filter
+        if not search_query or search_query in dispensary.name.lower():
+            dispensary_data.append({
+                'dispensary': dispensary,
+                'revenue': revenue,
+                'transactions': transactions,
+                'quantity_dispensed': quantity_dispensed,
+                'prescriptions_count': prescriptions_count,
+            })
+
+            total_pharmacy_revenue += revenue
+            total_transactions += transactions
+            total_medications_dispensed += quantity_dispensed
+
+    # Handle dispensing logs without dispensary assigned (legacy data)
+    unassigned_logs = DispensingLog.objects.filter(
+        dispensary__isnull=True,
+        dispensed_date__date__range=[start_date, end_date]
+    ).aggregate(
+        total_revenue=Sum('total_price_for_this_log'),
+        total_logs=Count('id'),
+        total_quantity=Sum('dispensed_quantity')
+    )
+
+    if unassigned_logs['total_revenue']:
+        unassigned_prescriptions = DispensingLog.objects.filter(
+            dispensary__isnull=True,
+            dispensed_date__date__range=[start_date, end_date]
+        ).values('prescription_item__prescription').distinct().count()
+
+        dispensary_data.append({
+            'dispensary': None,
+            'revenue': unassigned_logs['total_revenue'] or Decimal('0.00'),
+            'transactions': unassigned_logs['total_logs'] or 0,
+            'quantity_dispensed': unassigned_logs['total_quantity'] or 0,
+            'prescriptions_count': unassigned_prescriptions,
+        })
+
+        total_pharmacy_revenue += unassigned_logs['total_revenue'] or Decimal('0.00')
+        total_transactions += unassigned_logs['total_logs'] or 0
+        total_medications_dispensed += unassigned_logs['total_quantity'] or 0
+
+    # Sort by revenue (highest first)
+    dispensary_data.sort(key=lambda x: x['revenue'], reverse=True)
+
+    # Calculate monthly trends per dispensary (last 6 months for better visualization)
+    monthly_trends = []
+    dispensary_monthly_data = defaultdict(list)
+
+    # Calculate start date for trends (6 months back)
+    trend_end_date = timezone.now().date()
+    trend_start_date = trend_end_date - timedelta(days=180)  # Approximately 6 months
+
+    current_date = trend_start_date.replace(day=1)  # Start from first of the month
+    months_list = []
+
+    while current_date <= trend_end_date:
+        # Calculate next month
+        if current_date.month == 12:
+            next_month = current_date.replace(year=current_date.year + 1, month=1, day=1)
+        else:
+            next_month = current_date.replace(month=current_date.month + 1, day=1)
+
+        month_end = min(next_month - timedelta(days=1), trend_end_date)
+        month_label = current_date.strftime('%b %Y')
+        months_list.append(month_label)
+
+        month_total = Decimal('0.00')
+
+        # Get revenue for each dispensary in this month
+        for dispensary in all_dispensaries:
+            monthly_logs = DispensingLog.objects.filter(
+                dispensary=dispensary,
+                dispensed_date__date__range=[current_date, month_end]
+            ).aggregate(
+                total_revenue=Sum('total_price_for_this_log')
+            )
+
+            revenue = monthly_logs['total_revenue'] or Decimal('0.00')
+            dispensary_monthly_data[dispensary.name].append(float(revenue))
+            month_total += revenue
+
+        monthly_trends.append({
+            'month': month_label,
+            'total': float(month_total)
+        })
+
+        current_date = next_month
+
+    # Prepare chart data
+    chart_data = {
+        'months': json.dumps(months_list),
+        'dispensaries': {}
+    }
+
+    # Add each dispensary's monthly data to chart
+    for dispensary_name, revenues in dispensary_monthly_data.items():
+        chart_data['dispensaries'][dispensary_name] = json.dumps(revenues)
+
+    # Total monthly revenue
+    chart_data['total'] = json.dumps([trend['total'] for trend in monthly_trends])
+
+    # Performance metrics
+    performance_metrics = {
+        'total_transactions': total_transactions,
+        'total_medications_dispensed': total_medications_dispensed,
+        'average_transaction_value': total_pharmacy_revenue / max(1, total_transactions),
+        'days_in_period': (end_date - start_date).days + 1,
+        'daily_average': total_pharmacy_revenue / max(1, (end_date - start_date).days + 1),
+        'dispensaries_count': len([d for d in dispensary_data if d['dispensary'] is not None])
+    }
+
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'start_date_str': start_date_str,
+        'end_date_str': end_date_str,
+        'search_query': search_query,
+        'total_pharmacy_revenue': total_pharmacy_revenue,
+        'dispensary_data': dispensary_data,
+        'chart_data': chart_data,
+        'performance_metrics': performance_metrics,
+        'page_title': 'Pharmacy Dispensary Revenue',
+        'active_nav': 'pharmacy',
+    }
+
+    return render(request, 'pharmacy/pharmacy_dispensary_revenue.html', context)
+
+
 def comprehensive_revenue_analysis_debug(request):
     """Legacy debug route - redirect to the canonical simple revenue statistics view."""
     from django.shortcuts import redirect

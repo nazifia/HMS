@@ -117,6 +117,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'compressor',  # Django Compressor for CSS/JS minification
+    'django_extensions',  # SSL support for runserver
     # 'django_celery_beat',  # Temporarily disabled due to Python 3.13 timezone compatibility issue
 
     # HMS Apps

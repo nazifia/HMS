@@ -43,6 +43,7 @@ urlpatterns = [
     path('revenue/comprehensive/', RedirectView.as_view(pattern_name='pharmacy:simple_revenue_statistics', query_string=True, permanent=False), name='revenue_comprehensive_redirect'),
     path('revenue/test-charts/', views.simple_revenue_statistics, name='test_revenue_charts_public'),
     path('revenue/statistics/', views.simple_revenue_statistics, name='simple_revenue_statistics'),
+    path('revenue/dispensary/', views.pharmacy_dispensary_revenue, name='pharmacy_dispensary_revenue'),
     path('expense/analysis/', views.expense_analysis, name='expense_analysis'),
     path('medications/<int:medication_id>/procure/', views.create_procurement_request, name='create_procurement_request'),
     path('api/suppliers/', views.api_suppliers, name='api_suppliers'),
