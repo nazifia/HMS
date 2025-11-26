@@ -741,32 +741,19 @@
 
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Department Revenue:</h6>
-                    <a class="collapse-item {% if '/pharmacy/revenue/analysis/' in request.path %}active{% endif %}" href="{% url 'pharmacy:revenue_analysis' %}">
-                        <i class="fas fa-pills fa-sm fa-fw mr-1"></i>Pharmacy Revenue Analysis
-                    </a>
                     {% if user.is_authenticated %}
                     {% safe_url_or_default 'pharmacy:pharmacy_dispensary_revenue' '#' as dispensary_revenue_url %}
                     <a class="collapse-item {% if '/pharmacy/revenue/dispensary/' in request.path %}active{% endif %}" href="{{ dispensary_revenue_url }}">
                         <i class="fas fa-store-alt fa-sm fa-fw mr-1"></i>Pharmacy Dispensary Breakdown
                     </a>
                     {% endif %}
-                    <a class="collapse-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}" href="{% url 'radiology:sales_report' %}">
-                        <i class="fas fa-x-ray fa-sm fa-fw mr-1"></i>Radiology Revenue Report
-                    </a>
+
                 </div>
             </div>
         </li>
         {% endif %}
 
-        <!-- Nav Item - Radiology Report Dashboard (Available to radiology staff, admins, and accountants) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_radiology' %}
-        <li class="nav-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}">
-            <a class="nav-link" href="{% url 'radiology:sales_report' %}">
-                <i class="fas fa-fw fa-chart-bar text-white"></i>
-                <span class="text-white">Radiology Report Dashboard</span>
-            </a>
-        </li>
-        {% endif %}
+
 
         <!-- Nav Item - Reports (Available to admins only) - Temporarily disabled -->
         <!-- {% if user.is_superuser or user.profile and user.profile.role == 'admin' %}
