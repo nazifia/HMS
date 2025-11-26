@@ -734,7 +734,7 @@
                     {% if user.is_authenticated %}
                     {% load url_helpers %}
                     {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
-                    <a class="collapse-item {% if '/pharmacy/revenue/statistics/' in request.path %}active{% endif %}" href="{{ revenue_url }}">Pharmacy Revenue Statistics</a>
+                    <a class="collapse-item {% if '/pharmacy/revenue/statistics/' in request.path %}active{% endif %}" href="{{ revenue_url }}">General Revenue Statistics</a>
                     {% safe_url_or_default 'pharmacy:pharmacy_dispensary_revenue' '#' as dispensary_revenue_url %}
                     <a class="collapse-item {% if '/pharmacy/revenue/dispensary/' in request.path %}active{% endif %}" href="{{ dispensary_revenue_url }}"><i class="fas fa-store-alt fa-sm fa-fw mr-1"></i>Dispensary Revenue</a>
                     {% endif %}
@@ -744,7 +744,7 @@
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Department Reports:</h6>
                     <a class="collapse-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}" href="{% url 'radiology:sales_report' %}">Radiology Report Dashboard</a>
-                    <a class="collapse-item {% if '/pharmacy/revenue/analysis/' in request.path %}active{% endif %}" href="{% url 'pharmacy:revenue_analysis' %}">Pharmacy Revenue Analysis</a>
+                    <a class="collapse-item {% if '/pharmacy/revenue/analysis/' in request.path %}active{% endif %}" href="{% url 'pharmacy:revenue_analysis' %}">General Revenue Analysis</a>
                 </div>
             </div>
         </li>
