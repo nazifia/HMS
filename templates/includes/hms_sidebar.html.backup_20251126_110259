@@ -274,7 +274,7 @@
                     {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' %}
                     <a class="collapse-item {% if request.path == '/pharmacy/inventory/' %}active{% endif %}" href="{% url 'pharmacy:inventory' %}">Inventory</a>
                     <a class="collapse-item {% if '/pharmacy/alerts/' in request.path %}active{% endif %}" href="{% url 'pharmacy:alerts' %}">Stock Alerts</a>
-                    
+
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Medical Packs:</h6>
                     <a class="collapse-item {% if '/pharmacy/packs/' in request.path %}active{% endif %}" href="{% url 'pharmacy:medical_pack_list' %}">All Medical Packs</a>
@@ -298,6 +298,7 @@
                     <h6 class="collapse-header">Reports:</h6>
                     <a class="collapse-item {% if request.path == '/pharmacy/expiring-medications/' %}active{% endif %}" href="{% url 'pharmacy:expiring_medications_report' %}">Expiring Medications</a>
                     <a class="collapse-item {% if request.path == '/pharmacy/low-stock/' %}active{% endif %}" href="{% url 'pharmacy:low_stock_medications_report' %}">Low Stock Report</a>
+                    <a class="collapse-item {% if '/pharmacy/revenue/analysis/' in request.path %}active{% endif %}" href="{% url 'pharmacy:revenue_analysis' %}">Revenue Analysis</a>
                     {% endif %}
                 </div>
             </div>
@@ -477,7 +478,7 @@
         {% endif %}
 
         <!-- Include Theatre Module Sidebar -->
-        {% if user.is_authenticated and (user.is_superuser or user|can_show_ui:'menu_theatre') %}
+        {% if user.is_superuser or user|can_show_ui:'menu_theatre' %}
         <li class="nav-item {% if '/theatre/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/theatre/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTheatre" aria-expanded="{% if '/theatre/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseTheatre">
                 <i class="fas fa-fw fa-hospital-symbol text-white"></i>
@@ -506,7 +507,7 @@
         {% endif %}
 
         <!-- Divider -->
-        <hr class="sidebar-divider"> 
+        <hr class="sidebar-divider">
 
         <!-- Heading -->
         <div class="sidebar-heading">
@@ -526,9 +527,9 @@
                     <a class="collapse-item {% if 'universal_authorization_dashboard' in request.path %}active{% endif %}" href="{% url 'core:universal_authorization_dashboard' %}">
                         <i class="fas fa-globe me-1"></i> Universal Dashboard <span class="badge badge-success"></span>
                     </a>
-                    <a class="collapse-item {% if 'authorization-dashboard' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_dashboard' %}">
+                    {% comment %} <a class="collapse-item {% if 'authorization-dashboard' in request.path %}active{% endif %}" href="{% url 'desk_office:authorization_dashboard' %}">
                         <i class="fas fa-tachometer-alt me-1"></i> Dashboard
-                    </a>
+                    </a> {% endcomment %}
                     <a class="collapse-item {% if 'pending-consultations' in request.path %}active{% endif %}" href="{% url 'desk_office:pending_consultations' %}">
                         <i class="fas fa-stethoscope me-1"></i> Pending Consultations
                     </a>
@@ -615,20 +616,25 @@
 
         <!-- Nav Item - Core Features & Administration (Available to admins and authorized users) -->
         {% if user.is_superuser or user|has_role:'admin' %}
-        <li class="nav-item {% if '/core/' in request.path or 'transactions' in request.path or 'authorization' in request.path %}active{% endif %}">
-            <a class="nav-link {% if not '/core/' in request.path and not 'transactions' in request.path and not 'authorization' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseCoreFeatures" aria-expanded="{% if '/core/' in request.path or 'transactions' in request.path or 'authorization' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseCoreFeatures">
+        <li class="nav-item {% if '/core/' in request.path or 'revenue' in request.path or 'transactions' in request.path or 'authorization' in request.path %}active{% endif %}">
+            <a class="nav-link {% if not '/core/' in request.path and not 'revenue' in request.path and not 'transactions' in request.path and not 'authorization' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseCoreFeatures" aria-expanded="{% if '/core/' in request.path or 'revenue' in request.path or 'transactions' in request.path or 'authorization' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseCoreFeatures">
                 <i class="fas fa-fw fa-cogs text-white"></i>
                 <span class="text-white">Core Features</span>
             </a>
-            <div id="collapseCoreFeatures" class="collapse {% if '/core/' in request.path or 'transactions' in request.path or 'authorization' in request.path %}show{% endif %}" aria-labelledby="headingCoreFeatures" data-parent="#accordionSidebar">
+            <div id="collapseCoreFeatures" class="collapse {% if '/core/' in request.path or 'revenue' in request.path or 'transactions' in request.path or 'authorization' in request.path %}show{% endif %}" aria-labelledby="headingCoreFeatures" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Revenue & Analytics:</h6>
+                    <a class="collapse-item {% if 'revenue/dashboard' in request.path %}active{% endif %}" href="{% url 'core:revenue_point_dashboard' %}">Revenue Dashboard</a>
+                    <a class="collapse-item {% if 'revenue/trends' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_view' %}">Revenue Trends</a>
+
+                    <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Transaction Management:</h6>
                     <a class="collapse-item {% if 'transactions' in request.path %}active{% endif %}" href="{% url 'core:comprehensive_transaction_history' %}">Transaction History</a>
-                    
+
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Authorization System:</h6>
                     <a class="collapse-item {% if 'authorization/dashboard' in request.path %}active{% endif %}" href="{% url 'core:universal_authorization_dashboard' %}">Universal Authorization</a>
-                    
+
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Admin Tools:</h6>
                     <a class="collapse-item {% if 'admin' in request.path %}active{% endif %}" href="{% url 'core:admin_dashboard' %}">Admin Dashboard</a>
@@ -686,14 +692,14 @@
                     <a class="collapse-item {% if 'user_password_reset' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_password_reset' %}">Reset User Passwords</a>
                     <a class="collapse-item {% if 'user_bulk_operations' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_bulk_operations' %}">Bulk User Operations</a>
                     <a class="collapse-item {% if 'user_permissions' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_user_permissions' %}">Manage Permissions</a>
-                    
+
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">System Administration:</h6>
                     <a class="collapse-item {% if 'system_config' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_system_config' %}">System Configuration</a>
                     <a class="collapse-item {% if 'database_management' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_database_management' %}">Database Management</a>
                     <a class="collapse-item {% if 'security_audit' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_security_audit' %}">Security Audit</a>
                     <a class="collapse-item {% if 'backup_restore' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_backup_restore' %}">Backup & Restore</a>
-                    
+
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Advanced Tools:</h6>
                     <a class="collapse-item {% if 'system_diagnostics' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_system_diagnostics' %}">System Diagnostics</a>
@@ -717,42 +723,27 @@
 
         <!-- Nav Item - Financial Reports (Available to admins and accountants) -->
         {% if user.is_superuser or user|can_show_ui:'menu_reports' %}
-        <li class="nav-item {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}active{% endif %}">
-            <a class="nav-link {% if not '/billing/reports/' in request.path and not '/pharmacy/revenue/' in request.path and not '/core/revenue/' in request.path and not '/radiology/sales-report/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseFinancialReports" aria-expanded="{% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseFinancialReports">
+        <li class="nav-item {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path %}active{% endif %}">
+            <a class="nav-link {% if not '/billing/reports/' in request.path and not '/pharmacy/revenue/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseFinancialReports" aria-expanded="{% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseFinancialReports">
                 <i class="fas fa-fw fa-chart-bar text-white"></i>
                 <span class="text-white">Financial Reports</span>
             </a>
-            <div id="collapseFinancialReports" class="collapse {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}show{% endif %}" aria-labelledby="headingFinancialReports" data-parent="#accordionSidebar">
+            <div id="collapseFinancialReports" class="collapse {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path %}show{% endif %}" aria-labelledby="headingFinancialReports" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
-                    <h6 class="collapse-header">Hospital-Wide Revenue:</h6>
-                    <a class="collapse-item {% if '/core/revenue/dashboard/' in request.path %}active{% endif %}" href="{% url 'core:revenue_point_dashboard' %}">
-                        <i class="fas fa-tachometer-alt fa-sm fa-fw mr-1"></i>Revenue Dashboard
-                    </a>
-                    <a class="collapse-item {% if '/core/revenue/trends/' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_view' %}">
-                        <i class="fas fa-chart-line fa-sm fa-fw mr-1"></i>Revenue Trends
-                    </a>
+                    <h6 class="collapse-header">Revenue Reports:</h6>
                     {% if user.is_authenticated %}
                     {% load url_helpers %}
                     {% safe_url_or_default 'pharmacy:simple_revenue_statistics' '#' as revenue_url %}
-                    <a class="collapse-item {% if '/pharmacy/revenue/statistics/' in request.path %}active{% endif %}" href="{{ revenue_url }}">
-                        <i class="fas fa-hospital fa-sm fa-fw mr-1"></i>All Departments Revenue
-                    </a>
+                    <a class="collapse-item {% if '/pharmacy/revenue/statistics/' in request.path %}active{% endif %}" href="{{ revenue_url }}">Pharmacy Revenue Statistics</a>
+                    {% safe_url_or_default 'pharmacy:pharmacy_dispensary_revenue' '#' as dispensary_revenue_url %}
+                    <a class="collapse-item {% if '/pharmacy/revenue/dispensary/' in request.path %}active{% endif %}" href="{{ dispensary_revenue_url }}"><i class="fas fa-store-alt fa-sm fa-fw mr-1"></i>Dispensary Revenue</a>
                     {% endif %}
+                    <a class="collapse-item {% if '/core/revenue/dashboard/' in request.path %}active{% endif %}" href="{% url 'core:revenue_point_dashboard' %}">Revenue Dashboard</a>
+                    <a class="collapse-item {% if '/core/revenue/trends/' in request.path %}active{% endif %}" href="{% url 'core:revenue_trends_view' %}">Revenue Trends</a>
 
                     <div class="collapse-divider"></div>
-                    <h6 class="collapse-header">Department Revenue:</h6>
-                    <a class="collapse-item {% if '/pharmacy/revenue/analysis/' in request.path %}active{% endif %}" href="{% url 'pharmacy:revenue_analysis' %}">
-                        <i class="fas fa-pills fa-sm fa-fw mr-1"></i>Pharmacy Revenue Analysis
-                    </a>
-                    {% if user.is_authenticated %}
-                    {% safe_url_or_default 'pharmacy:pharmacy_dispensary_revenue' '#' as dispensary_revenue_url %}
-                    <a class="collapse-item {% if '/pharmacy/revenue/dispensary/' in request.path %}active{% endif %}" href="{{ dispensary_revenue_url }}">
-                        <i class="fas fa-store-alt fa-sm fa-fw mr-1"></i>Pharmacy Dispensary Breakdown
-                    </a>
-                    {% endif %}
-                    <a class="collapse-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}" href="{% url 'radiology:sales_report' %}">
-                        <i class="fas fa-x-ray fa-sm fa-fw mr-1"></i>Radiology Revenue Report
-                    </a>
+                    <h6 class="collapse-header">Department Reports:</h6>
+                    <a class="collapse-item {% if '/radiology/sales-report/' in request.path %}active{% endif %}" href="{% url 'radiology:sales_report' %}">Radiology Report Dashboard</a>
                 </div>
             </div>
         </li>
@@ -999,7 +990,7 @@ body.sidebar-toggled #content-wrapper {
     .sidebar.sidebar-open, #sidebar-container.sidebar-open {
         left: 0 !important;
     }
-    
+
     .sidebar-overlay {
         position: fixed;
         top: 0;
@@ -1012,18 +1003,18 @@ body.sidebar-toggled #content-wrapper {
         opacity: 0;
         transition: opacity 0.3s ease;
     }
-    
+
     .sidebar-overlay.active {
         display: block;
         opacity: 1;
     }
-    
+
     .mobile-sidebar-header {
         position: sticky;
         top: 0;
         z-index: 1060;
     }
-    
+
     body.sidebar-open {
         overflow: hidden;
     }
