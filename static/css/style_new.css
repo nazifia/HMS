@@ -43,18 +43,19 @@ body {
     scroll-behavior: auto !important;
 }
 
+/* Container fluid styles - allow natural padding for content spacing */
 .container-fluid {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
     max-width: 100vw;
-    margin: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
 }
 
-.container-fluid, .container-fluid.px-0 {
-    padding-left: 0 !important;
-    margin-left: 0 !important;
+/* Remove left margin/padding only on mobile where sidebar is hidden */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+        margin-left: 0;
+        margin-right: 0;
+    }
 }
 
 /* Navbar Styles */
@@ -337,20 +338,7 @@ thead th {
         margin-bottom: 15px;
     }
 
-    .container-fluid {
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-    }
-
-    /* Sidebar width rules disabled to allow mobile sidebar overlay */
-    /* .sidebar {
-        width: 0 !important;
-    }
-
-    .sidebar.toggled {
-        width: 14rem !important;
-    } */
-
+    /* Content takes full width on mobile - sidebar slides out */
     .content {
         margin-left: 0;
     }
@@ -455,12 +443,10 @@ html, body {
     padding: 0;
 }
 
-/* Remove container padding if any */
-.container-fluid, .container {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+/* Container styles for old layout system (if used) */
+.container {
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
 /* Topbar and footer full width */
@@ -470,12 +456,14 @@ html, body {
     padding: 0 !important;
 }
 
-/* Prevent extra space from Bootstrap gutters */
-.row, [class*="col-"] {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+/* Bootstrap grid gutters - allow proper spacing */
+.row {
+    margin-left: -15px;
+    margin-right: -15px;
+}
+[class*="col-"] {
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
 /* === HMS Standalone Layout CSS (Context7 MCP Best Practice) === */
@@ -539,19 +527,14 @@ html, body {
     right: 0;
 }
 
-/* 6. Remove Bootstrap Gutters and Container Padding */
-.container-fluid, .container {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    width: 100% !important;
+/* 6. Bootstrap Grid System - Allow natural spacing */
+.row {
+    margin-left: -15px;
+    margin-right: -15px;
 }
-.row, [class*="col-"] {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+[class*="col-"] {
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
 /* 7. Sidebar Navigation Links */
@@ -929,18 +912,13 @@ body.modal-open {
     border-radius: 0 0 8px 8px;
 }
 
-.container-fluid, .container {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    width: 100% !important;
+/* Containers and grid - allow proper spacing for content */
+.container-fluid {
+    width: 100%;
 }
-.row, [class*="col-"] {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+.container {
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
 .alert {

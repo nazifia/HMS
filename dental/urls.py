@@ -30,6 +30,12 @@ urlpatterns = [
     path('<int:record_id>/add-xray/', views.add_xray_to_dental_record, name='add_xray_to_dental_record'),
     path('xray/<int:xray_id>/delete/', views.delete_xray, name='delete_xray'),
 
+    # Clinical Notes
+    path('record/<int:record_id>/add-clinical-note/', views.add_clinical_note, name='add_clinical_note'),
+    path('clinical-note/<int:note_id>/', views.view_clinical_note, name='view_clinical_note'),
+    path('clinical-note/<int:note_id>/edit/', views.edit_clinical_note, name='edit_clinical_note'),
+    path('clinical-note/<int:note_id>/delete/', views.delete_clinical_note, name='delete_clinical_note'),
+
     # Billing
     path('<int:record_id>/generate-invoice/', views.generate_invoice_for_dental, name='generate_invoice_for_dental'),
 ]

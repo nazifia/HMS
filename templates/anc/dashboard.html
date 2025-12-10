@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}ANC Dashboard{% endblock %}
 
@@ -20,62 +21,62 @@
 
     <!-- Statistics Cards Row -->
     <div class="row">
-        <!-- Total Records Card -->
+        <!-- Appointments Today Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Records
+                                Appointments Today
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ appointments_today|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-day"></i> Today: {{ records_today|default:0 }}
+                                <i class="fas fa-calendar-check"></i> Follow-ups Due: {{ followups_due|default:0 }}
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-notes-medical fa-2x text-gray-300"></i>
+                            <i class="fas fa-user-nurse fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Week Card -->
+        <!-- High Risk Pregnancies -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-1">
+            <div class="card border-left-danger shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                This Week
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                High Risk Cases
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_week|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ high_risk_pregnancies|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-week"></i> Since {{ week_start|date:"M d" }}
+                                <i class="fas fa-exclamation-triangle"></i> Hypertension/Proteinuria
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                            <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Month Card -->
+        <!-- Due Soon Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-1">
+            <div class="card border-left-warning shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                This Month
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Due Within 4 Weeks
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_month|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ due_soon|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-alt"></i> Since {{ month_start|date:"M d" }}
+                                <i class="fas fa-baby"></i> Expected Deliveries
                             </div>
                         </div>
                         <div class="col-auto">
@@ -86,22 +87,80 @@
             </div>
         </div>
 
-        <!-- Pending Referrals Card -->
+        <!-- Total Patients Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-1">
+            <div class="card border-left-success shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pending Referrals
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Patients
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals_count|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_patients|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-lock text-danger"></i> Need Auth: {{ pending_authorizations|default:0 }}
+                                <i class="fas fa-female"></i> Avg Gravida: {{ avg_gravida|default:"0.0" }}
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Top Diagnoses Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie"></i> Top 5 ANC Diagnoses
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="diagnosisChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Maternal Health Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calendar-day text-primary"></i> Appointments Today</span>
+                            <span class="badge bg-primary rounded-pill">{{ appointments_today|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calendar-week text-success"></i> Follow-ups Due This Week</span>
+                            <span class="badge bg-success rounded-pill">{{ followups_due|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-exclamation-triangle text-danger"></i> High Risk Pregnancies</span>
+                            <span class="badge bg-danger rounded-pill">{{ high_risk_pregnancies|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-baby text-warning"></i> Due Within 4 Weeks</span>
+                            <span class="badge bg-warning rounded-pill">{{ due_soon|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-users text-info"></i> Total Patients</span>
+                            <span class="badge bg-info rounded-pill">{{ total_patients|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-female text-secondary"></i> Average Gravida</span>
+                            <span class="badge bg-secondary rounded-pill">{{ avg_gravida|default:"0.0" }}</span>
                         </div>
                     </div>
                 </div>
@@ -155,7 +214,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-info">
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>
@@ -258,4 +317,66 @@
 </div>
 {% endblock %}
 
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Top Diagnoses Chart
+    const diagnosisLabels = {{ diagnosis_labels|safe }};
+    const diagnosisCounts = {{ diagnosis_counts|safe }};
+
+    if (diagnosisLabels && diagnosisLabels.length > 0) {
+        const ctx = document.getElementById('diagnosisChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: diagnosisLabels,
+                    datasets: [{
+                        label: 'Number of Cases',
+                        data: diagnosisCounts,
+                        backgroundColor: [
+                            'rgba(78, 115, 223, 0.8)',
+                            'rgba(28, 200, 138, 0.8)',
+                            'rgba(246, 194, 62, 0.8)',
+                            'rgba(231, 74, 59, 0.8)',
+                            'rgba(133, 135, 150, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(78, 115, 223, 1)',
+                            'rgba(28, 200, 138, 1)',
+                            'rgba(246, 194, 62, 1)',
+                            'rgba(231, 74, 59, 1)',
+                            'rgba(133, 135, 150, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+});
+</script>
 {% endblock %}

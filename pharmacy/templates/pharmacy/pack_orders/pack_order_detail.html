@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
@@ -110,7 +111,7 @@
                         </span>
                     {% endif %}
                 </div>
-                <div class="h4 mb-0">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</div>
+                <div class="h4 mb-0">{{ pack_order.pack.get_total_cost|currency }}</div>
                 <small>Total Cost</small>
             </div>
         </div>
@@ -247,8 +248,8 @@
                                     </td>
                                     <td>{{ item.get_item_type_display }}</td>
                                     <td class="text-center">{{ item.quantity }}</td>
-                                    <td class="text-end">₦{{ item.medication.price|floatformat:2 }}</td>
-                                    <td class="text-end">₦{{ item.get_total_cost|floatformat:2 }}</td>
+                                    <td class="text-end">{{ item.medication.price|currency }}</td>
+                                    <td class="text-end">{{ item.get_total_cost|currency }}</td>
                                     <td class="text-center">
                                         {% if pack_order.status == 'dispensed' %}
                                             <span class="badge bg-success">Dispensed</span>
@@ -264,7 +265,7 @@
                             <tfoot class="table-light">
                                 <tr>
                                     <th colspan="4" class="text-end">Total Cost:</th>
-                                    <th class="text-end">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</th>
+                                    <th class="text-end">{{ pack_order.pack.get_total_cost|currency }}</th>
                                     <th></th>
                                 </tr>
                             </tfoot>

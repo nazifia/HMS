@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -85,7 +86,7 @@
                             </td>
                             <td>{{ purchase.supplier.name|default:"N/A" }}</td>
                             <td>{{ purchase.purchase_date|date:"Y-m-d"|default:"N/A" }}</td>
-                            <td class="text-end fw-bold">₦{{ purchase.total_amount|floatformat:2|default:"0.00" }}</td>
+                            <td class="text-end fw-bold">{{ purchase.total_amount|default:0|currency }}</td>
                             <td>
                                 {% if purchase.approval_status == 'draft' %}
                                     <span class="badge bg-secondary">Draft</span>

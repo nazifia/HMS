@@ -117,6 +117,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'compressor',  # Django Compressor for CSS/JS minification
+    'django_extensions',  # SSL support for runserver
     # 'django_celery_beat',  # Temporarily disabled due to Python 3.13 timezone compatibility issue
 
     # HMS Apps
@@ -156,6 +157,7 @@ MIDDLEWARE = [
     # Disable SSL in development middleware (must be first to intercept HTTPS headers)
     'core.middleware.disable_ssl_in_dev.DisableSSLInDevMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.disable_ssl_in_dev.DisableSSLInDevMiddleware',  # Disable SSL in development
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -163,6 +165,8 @@ MIDDLEWARE = [
     # User Activity Monitoring Middleware
     'accounts.middleware.UserActivityMiddleware',
     'accounts.middleware.LoginTrackingMiddleware',
+    # Activity Logging Middleware
+    'core.activity_log.ActivityLogMiddleware',
     # Other middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     # Module Access Control Middleware (must be after MessageMiddleware)

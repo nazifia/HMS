@@ -11,6 +11,7 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_http_methods
+from django.db.models import Sum
 from datetime import datetime, timedelta
 from decimal import Decimal
 import json
@@ -18,6 +19,10 @@ import csv
 
 from .revenue_point_analyzer import RevenuePointBreakdownAnalyzer, RevenuePointFilterHelper
 from .department_revenue_utils import DepartmentRevenueCalculator, RevenueComparisonAnalyzer
+
+# Import models for revenue calculation
+from billing.models import Invoice
+from patients.models import WalletTransaction
 
 # Import existing reporting components for compatibility
 from reporting.models import Report
@@ -190,43 +195,74 @@ def revenue_trends_view(request):
     """
     Revenue trends page with charts and data visualization
     """
-    months = int(request.GET.get('months', 12))
     department = request.GET.get('department', 'all')
-    
+
+    # Get date range parameters (defaults to last 12 months)
+    current_date = timezone.now().date()
+
+    # Get start month/year (default to 12 months ago)
+    default_start = current_date - timedelta(days=365)
+    start_month = int(request.GET.get('start_month', default_start.month))
+    start_year = int(request.GET.get('start_year', default_start.year))
+
+    # Get end month/year (default to current month)
+    end_month = int(request.GET.get('end_month', current_date.month))
+    end_year = int(request.GET.get('end_year', current_date.year))
+
     try:
-        # Get current date for trend calculation
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=30 * months)
-        
+        # Calculate start and end dates
+        start_date = datetime(start_year, start_month, 1).date()
+
+        # Get last day of end month
+        if end_month == 12:
+            end_date = datetime(end_year + 1, 1, 1).date() - timedelta(days=1)
+        else:
+            end_date = datetime(end_year, end_month + 1, 1).date() - timedelta(days=1)
+
+        # Calculate number of months between start and end
+        months = (end_year - start_year) * 12 + (end_month - start_month) + 1
+
         analyzer = RevenuePointBreakdownAnalyzer(start_date, end_date)
-        
+
         if department == 'all':
             # Get monthly trends for all departments
             trends = analyzer.get_monthly_trends(months)
         else:
             # Get trends for specific department
             trends = _get_department_trends(department, months)
-        
+
         # Convert for JSON
         trends_json = _convert_decimals_for_json(trends)
-        
+
         context = {
             'trends': trends,
             'trends_json': json.dumps(trends_json),
             'months': months,
+            'start_month': start_month,
+            'start_year': start_year,
+            'end_month': end_month,
+            'end_year': end_year,
             'department': department,
             'start_date': start_date,
             'end_date': end_date,
             'page_title': 'Revenue Trends Analysis',
             'breadcrumb': 'Revenue Trends'
         }
-        
+
         return render(request, 'core/revenue_trends.html', context)
-        
+
     except Exception as e:
         messages.error(request, f"Error loading revenue trends: {str(e)}")
+        # Include empty trends data to prevent JavaScript errors
         context = {
             'error': str(e),
+            'trends': [],
+            'trends_json': json.dumps([]),
+            'start_month': start_month,
+            'start_year': start_year,
+            'end_month': end_month,
+            'end_year': end_year,
+            'department': department,
             'page_title': 'Revenue Trends Analysis',
             'breadcrumb': 'Revenue Trends'
         }
@@ -240,33 +276,56 @@ def revenue_trends_api(request):
     API endpoint for revenue trend data
     Returns JSON data for charts
     """
-    months = int(request.GET.get('months', 12))
     department = request.GET.get('department', 'all')
-    
+
+    # Get date range parameters (defaults to last 12 months)
+    current_date = timezone.now().date()
+
+    # Get start month/year (default to 12 months ago)
+    default_start = current_date - timedelta(days=365)
+    start_month = int(request.GET.get('start_month', default_start.month))
+    start_year = int(request.GET.get('start_year', default_start.year))
+
+    # Get end month/year (default to current month)
+    end_month = int(request.GET.get('end_month', current_date.month))
+    end_year = int(request.GET.get('end_year', current_date.year))
+
     try:
-        # Get current date for trend calculation
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=30 * months)
-        
+        # Calculate start and end dates
+        start_date = datetime(start_year, start_month, 1).date()
+
+        # Get last day of end month
+        if end_month == 12:
+            end_date = datetime(end_year + 1, 1, 1).date() - timedelta(days=1)
+        else:
+            end_date = datetime(end_year, end_month + 1, 1).date() - timedelta(days=1)
+
+        # Calculate number of months between start and end
+        months = (end_year - start_year) * 12 + (end_month - start_month) + 1
+
         analyzer = RevenuePointBreakdownAnalyzer(start_date, end_date)
-        
+
         if department == 'all':
             # Get monthly trends for all departments
             trends = analyzer.get_monthly_trends(months)
         else:
             # Get trends for specific department
             trends = _get_department_trends(department, months)
-        
+
         # Convert for JSON
         trends = _convert_decimals_for_json(trends)
-        
+
         return JsonResponse({
             'success': True,
             'trends': trends,
             'months': months,
+            'start_month': start_month,
+            'start_year': start_year,
+            'end_month': end_month,
+            'end_year': end_year,
             'department': department
         })
-        
+
     except Exception as e:
         return JsonResponse({
             'success': False,
@@ -463,41 +522,122 @@ def _convert_decimals_for_json(data):
 
 
 def _get_department_trends(department, months):
-    """Get trend data for specific department"""
+    """
+    Get trend data for specific department.
+    Returns data in format expected by revenue_trends template.
+    """
     trends = []
     end_date = timezone.now().date()
-    
+
     for i in range(months):
-        # Calculate month date range
-        month_end = end_date.replace(day=1) - timedelta(days=30*i)
-        month_start = month_end.replace(day=1)
-        if month_end.month == 12:
-            month_end = month_end.replace(year=month_end.year + 1, month=1, day=1) - timedelta(days=1)
+        # Calculate month date range (going backwards from current date)
+        year = end_date.year
+        month = end_date.month - i
+
+        # Handle year rollover
+        while month <= 0:
+            month += 12
+            year -= 1
+
+        # Get first day of the month
+        month_start = datetime(year, month, 1).date()
+
+        # Get last day of the month
+        if month == 12:
+            month_end = datetime(year + 1, 1, 1).date() - timedelta(days=1)
         else:
-            month_end = month_end.replace(month=month_end.month + 1, day=1) - timedelta(days=1)
-        
+            month_end = datetime(year, month + 1, 1).date() - timedelta(days=1)
+
         # Get department data for month
         calc = DepartmentRevenueCalculator(month_start, month_end)
-        
-        if department == 'pharmacy':
-            month_data = calc.get_pharmacy_detailed_revenue()
-        elif department == 'laboratory':
-            month_data = calc.get_laboratory_detailed_revenue()
-        elif department == 'consultation':
-            month_data = calc.get_consultation_detailed_revenue()
-        elif department == 'theatre':
-            month_data = calc.get_theatre_detailed_revenue()
-        elif department == 'inpatient':
-            month_data = calc.get_inpatient_detailed_revenue()
-        else:
-            month_data = calc.get_specialty_department_detailed_revenue(department)
-        
+
+        # Initialize all departments to zero
+        pharmacy_revenue = Decimal('0.00')
+        lab_revenue = Decimal('0.00')
+        consultation_revenue = Decimal('0.00')
+        theatre_revenue = Decimal('0.00')
+        admissions_revenue = Decimal('0.00')
+        general_revenue = Decimal('0.00')
+        wallet_revenue = Decimal('0.00')
+
+        # Get specific department data
+        try:
+            if department == 'pharmacy':
+                month_data = calc.get_pharmacy_detailed_revenue()
+                pharmacy_revenue = month_data.get('total_revenue', Decimal('0.00'))
+            elif department == 'laboratory':
+                month_data = calc.get_laboratory_detailed_revenue()
+                lab_revenue = month_data.get('total_revenue', Decimal('0.00'))
+            elif department == 'consultation':
+                month_data = calc.get_consultation_detailed_revenue()
+                consultation_revenue = month_data.get('total_revenue', Decimal('0.00'))
+            elif department == 'theatre':
+                month_data = calc.get_theatre_detailed_revenue()
+                theatre_revenue = month_data.get('total_revenue', Decimal('0.00'))
+            elif department == 'inpatient' or department == 'admissions':
+                month_data = calc.get_inpatient_detailed_revenue()
+                admissions_revenue = month_data.get('total_revenue', Decimal('0.00'))
+            elif department == 'general':
+                # Get general billing revenue
+                general_revenue = Invoice.objects.filter(
+                    created_at__date__gte=month_start,
+                    created_at__date__lte=month_end,
+                    status='paid'
+                ).exclude(
+                    items__service__name__icontains='pharmacy'
+                ).exclude(
+                    items__service__name__icontains='lab'
+                ).exclude(
+                    items__service__name__icontains='consultation'
+                ).exclude(
+                    items__service__name__icontains='theatre'
+                ).exclude(
+                    items__service__name__icontains='admission'
+                ).aggregate(
+                    total=Sum('total_amount')
+                )['total'] or Decimal('0.00')
+            elif department == 'wallet':
+                # Get wallet transactions
+                wallet_revenue = WalletTransaction.objects.filter(
+                    created_at__date__gte=month_start,
+                    created_at__date__lte=month_end,
+                    transaction_type='credit'
+                ).aggregate(
+                    total=Sum('amount')
+                )['total'] or Decimal('0.00')
+            else:
+                # Handle specialty departments
+                month_data = calc.get_specialty_department_detailed_revenue(department)
+                general_revenue = month_data.get('total_revenue', Decimal('0.00'))
+        except Exception as e:
+            # Log error but continue with zero values
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error getting {department} revenue for {month_start}: {e}")
+
+        # Calculate total revenue
+        total_revenue = (
+            pharmacy_revenue +
+            lab_revenue +
+            consultation_revenue +
+            theatre_revenue +
+            admissions_revenue +
+            general_revenue +
+            wallet_revenue
+        )
+
         trends.append({
-            'month': month_start.strftime('%b %Y'),
-            'month_date': month_start,
-            'revenue': month_data.get('total_revenue', Decimal('0.00'))
+            'month': month_start,
+            'total_revenue': total_revenue,
+            'pharmacy': pharmacy_revenue,
+            'laboratory': lab_revenue,
+            'consultations': consultation_revenue,
+            'theatre': theatre_revenue,
+            'admissions': admissions_revenue,
+            'general': general_revenue,
+            'wallet': wallet_revenue
         })
-    
+
     return list(reversed(trends))  # Return chronological order
 
 

@@ -1,3 +1,4 @@
+{% load custom_filters %}
 {% if medical_module_requests %}
 {% for notification in medical_module_requests %}
 <tr id="request-{{ notification.id }}">

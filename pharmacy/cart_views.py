@@ -132,42 +132,50 @@ def view_cart(request, cart_id):
     if cart.dispensary and cart.status == 'active':
         from pharmacy.models import ActiveStoreInventory, Medication
 
-        active_store = getattr(cart.dispensary, 'active_store', None)
-        if active_store:
-            # Get all medications with stock in this dispensary
-            med_stock = ActiveStoreInventory.objects.filter(
-                active_store=active_store,
-                stock_quantity__gt=0
-            ).select_related('medication').values(
-                'medication__id',
-                'medication__name',
-                'medication__strength',
-                'medication__dosage_form',
-                'medication__generic_name',
-                'medication__price'
-            ).annotate(
-                total_stock=Sum('stock_quantity')
-            ).order_by('medication__name')
+        # Check if dispensary has an active_store (OneToOne relationship)
+        # Using hasattr is safer for OneToOne fields to avoid DoesNotExist exceptions
+        if hasattr(cart.dispensary, 'active_store'):
+            try:
+                active_store = cart.dispensary.active_store
+                # Get all medications with stock in this dispensary
+                med_stock = ActiveStoreInventory.objects.filter(
+                    active_store=active_store,
+                    stock_quantity__gt=0
+                ).select_related('medication').values(
+                    'medication__id',
+                    'medication__name',
+                    'medication__strength',
+                    'medication__dosage_form',
+                    'medication__generic_name',
+                    'medication__price'
+                ).annotate(
+                    total_stock=Sum('stock_quantity')
+                ).order_by('medication__name')
 
-            for med in med_stock:
-                # Build full medication name
-                name_parts = [med['medication__name']]
-                if med['medication__strength']:
-                    name_parts.append(med['medication__strength'])
-                if med['medication__dosage_form']:
-                    name_parts.append(med['medication__dosage_form'])
-                full_name = ' '.join(name_parts)
+                for med in med_stock:
+                    # Build full medication name
+                    name_parts = [med['medication__name']]
+                    if med['medication__strength']:
+                        name_parts.append(med['medication__strength'])
+                    if med['medication__dosage_form']:
+                        name_parts.append(med['medication__dosage_form'])
+                    full_name = ' '.join(name_parts)
 
-                available_medications.append({
-                    'id': med['medication__id'],
-                    'name': med['medication__name'],
-                    'full_name': full_name,
-                    'strength': med['medication__strength'] or '',
-                    'dosage_form': med['medication__dosage_form'] or '',
-                    'generic_name': med['medication__generic_name'] or '',
-                    'stock': med['total_stock'],
-                    'price': float(med['medication__price']) if med['medication__price'] else 0
-                })
+                    available_medications.append({
+                        'id': med['medication__id'],
+                        'name': med['medication__name'],
+                        'full_name': full_name,
+                        'strength': med['medication__strength'] or '',
+                        'dosage_form': med['medication__dosage_form'] or '',
+                        'generic_name': med['medication__generic_name'] or '',
+                        'stock': med['total_stock'],
+                        'price': float(med['medication__price']) if med['medication__price'] else 0
+                    })
+            except Exception as e:
+                # Log error but continue - cart will work without substitution feature
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Error loading available medications for cart {cart.id}: {e}")
 
     context = {
         'cart': cart,
@@ -428,20 +436,26 @@ def complete_dispensing_from_cart(request, cart_id):
 
                 # Update inventory
                 # Try ActiveStoreInventory first
-                active_store = getattr(dispensary, 'active_store', None)
                 inventory_updated = False
 
-                if active_store:
-                    inventory_items = ActiveStoreInventory.objects.filter(
-                        medication=medication,
-                        active_store=active_store,
-                        stock_quantity__gte=quantity_to_dispense
-                    ).first()
+                if hasattr(dispensary, 'active_store'):
+                    try:
+                        active_store = dispensary.active_store
+                        inventory_items = ActiveStoreInventory.objects.filter(
+                            medication=medication,
+                            active_store=active_store,
+                            stock_quantity__gte=quantity_to_dispense
+                        ).first()
 
-                    if inventory_items:
-                        inventory_items.stock_quantity -= quantity_to_dispense
-                        inventory_items.save()
-                        inventory_updated = True
+                        if inventory_items:
+                            inventory_items.stock_quantity -= quantity_to_dispense
+                            inventory_items.save()
+                            inventory_updated = True
+                    except Exception as e:
+                        # Log error but continue to try legacy inventory
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Error updating active store inventory: {e}")
 
                 # Try legacy inventory if not updated
                 if not inventory_updated:

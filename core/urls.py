@@ -15,6 +15,7 @@ urlpatterns = [
     path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
 
     # NHIA Authorization Request
+    path('request-authorization/<str:model_type>/<int:object_id>/', views.request_nhia_authorization_form, name='request_authorization_form'),
     path('request-nhia-authorization/', views.request_nhia_authorization, name='request_nhia_authorization'),
 
     # Transaction History URLs
@@ -48,7 +49,7 @@ urlpatterns = [
     path('authorization/request/<str:model_type>/<int:object_id>/', authorization_views.request_authorization, name='request_authorization'),
     path('authorization/generate/<str:model_type>/<int:object_id>/', authorization_views.generate_authorization, name='generate_authorization'),
     path('authorization/dashboard/', authorization_views.universal_authorization_dashboard, name='universal_authorization_dashboard'),
-    path('authorization/check-status/', authorization_views.check_authorization_status_ajax, name='check_authorization_status'),
+    path('authorization/check-status/', authorization_views.check_authorization_status_ajax, name='check_authorization_status_ajax'),
     path('authorization/bulk-generate/', authorization_views.bulk_generate_authorization, name='bulk_generate_authorization'),
     path('authorization/history/<str:model_type>/<int:object_id>/', authorization_views.authorization_history, name='authorization_history'),
 

@@ -1,3 +1,4 @@
+{% load custom_filters %}
 {% load core_tags %}
 <!-- Enhanced Sidebar Navigation -->
 <div class="sidebar-wrapper">
@@ -809,20 +810,22 @@
 @media (max-width: 768px) {
     .sidebar-wrapper {
         transform: translateX(-100%);
+        z-index: 2000; /* Higher than content to overlay on top */
     }
-    
+
     .sidebar-wrapper.show {
         transform: translateX(0);
+        box-shadow: 4px 0 12px rgba(0,0,0,0.3); /* Add shadow when shown */
     }
-    
+
     .sidebar {
         width: 280px;
     }
-    
+
     .sidebar.collapsed {
         width: 280px;
     }
-    
+
     .sidebar.collapsed .sidebar-text,
     .sidebar.collapsed .sidebar-arrow,
     .sidebar.collapsed .user-info,
@@ -833,7 +836,7 @@
         opacity: 1 !important;
         visibility: visible !important;
     }
-    
+
     .sidebar.collapsed .nav-link-sidebar {
         justify-content: flex-start;
         padding: 0.75rem 1rem;

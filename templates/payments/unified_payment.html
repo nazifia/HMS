@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 
 {% block title %}{{ title|default:"Payment Processing" }} - Hospital Management System{% endblock %}
@@ -39,9 +40,9 @@
                                 <strong>Date:</strong> {{ service_info.date }}
                             </div>
                             <div class="col-md-6">
-                                <strong>Total Amount:</strong> <span class="text-primary">₦{{ service_info.total_amount|floatformat:2 }}</span><br>
-                                <strong>Amount Paid:</strong> <span class="text-success">₦{{ service_info.amount_paid|floatformat:2 }}</span><br>
-                                <strong>Balance:</strong> <span class="text-danger">₦{{ service_info.balance|floatformat:2 }}</span>
+                                <strong>Total Amount:</strong> <span class="text-primary">{{ service_info.total_amount|currency }}</span><br>
+                                <strong>Amount Paid:</strong> <span class="text-success">{{ service_info.amount_paid|currency }}</span><br>
+                                <strong>Balance:</strong> <span class="text-danger">{{ service_info.balance|currency }}</span>
                             </div>
                         </div>
                     </div>
@@ -141,16 +142,16 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-6"><strong>Total Amount:</strong></div>
-                        <div class="col-6">₦{{ invoice.total_amount|floatformat:2 }}</div>
+                        <div class="col-6">{{ invoice.total_amount|currency }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6"><strong>Amount Paid:</strong></div>
-                        <div class="col-6 text-success">₦{{ invoice.amount_paid|floatformat:2 }}</div>
+                        <div class="col-6 text-success">{{ invoice.amount_paid|currency }}</div>
                     </div>
                     <hr>
                     <div class="row mb-3">
                         <div class="col-6"><strong>Balance Due:</strong></div>
-                        <div class="col-6 text-danger">₦{{ remaining_balance|floatformat:2 }}</div>
+                        <div class="col-6 text-danger">{{ remaining_balance|currency }}</div>
                     </div>
                     {% endif %}
 
@@ -159,7 +160,7 @@
                     <div class="row mb-3">
                         <div class="col-6"><strong>Wallet Balance:</strong></div>
                         <div class="col-6 {% if patient_wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            ₦{{ patient_wallet.balance|floatformat:2 }}
+                            {{ patient_wallet.balance|currency }}
                         </div>
                     </div>
                     {% endif %}
@@ -174,17 +175,17 @@
                     {% endif %}
                     <div class="row mb-2">
                         <div class="col-8">Original Amount:</div>
-                        <div class="col-4">₦{{ pricing_breakdown.original_amount|floatformat:2 }}</div>
+                        <div class="col-4">{{ pricing_breakdown.original_amount|currency }}</div>
                     </div>
                     {% if pricing_breakdown.discount_amount %}
                     <div class="row mb-2">
                         <div class="col-8">Discount:</div>
-                        <div class="col-4 text-success">-₦{{ pricing_breakdown.discount_amount|floatformat:2 }}</div>
+                        <div class="col-4 text-success">-{{ pricing_breakdown.discount_amount|currency }}</div>
                     </div>
                     {% endif %}
                     <div class="row mb-2">
                         <div class="col-8"><strong>Final Amount:</strong></div>
-                        <div class="col-4"><strong>₦{{ pricing_breakdown.final_amount|floatformat:2 }}</strong></div>
+                        <div class="col-4"><strong>{{ pricing_breakdown.final_amount|currency }}</strong></div>
                     </div>
                     {% endif %}
                 </div>
@@ -206,7 +207,7 @@
                             <span class="badge bg-success">{{ payment.get_payment_method_display }}</span>
                         </div>
                         <div class="text-end">
-                            <strong>₦{{ payment.amount|floatformat:2 }}</strong>
+                            <strong>{{ payment.amount|currency }}</strong>
                         </div>
                     </div>
                     {% if not forloop.last %}<hr>{% endif %}

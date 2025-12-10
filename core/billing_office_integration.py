@@ -86,6 +86,8 @@ class BillingOfficePaymentProcessor:
                     payment_method = 'wallet'
                 
                 # Create payment record
+                # NOTE: Payment.save() automatically handles wallet debit and invoice update when payment_method='wallet'
+                # Do NOT manually debit wallet or update invoice here to avoid double-deduction
                 payment = Payment.objects.create(
                     invoice=invoice,
                     amount=amount,
@@ -95,32 +97,11 @@ class BillingOfficePaymentProcessor:
                     notes=f"{notes} ({BillingOfficePaymentProcessor.PAYMENT_SOURCES.get(payment_source, payment_source)})",
                     received_by=request.user
                 )
-                
-                # Handle wallet payment
-                if payment_source == 'patient_wallet':
-                    try:
-                        # Use wallet's debit method to ensure proper transaction creation
-                        patient_wallet.debit(
-                            amount=amount,
-                            description=f'{module_name} payment for invoice #{invoice.invoice_number}',
-                            transaction_type=f'{module_name.lower()}_payment',
-                            user=request.user,
-                            invoice=invoice,
-                            payment_instance=payment
-                        )
-                    except ValueError as e:
-                        return False, f"Wallet payment failed: {str(e)}", None
-                
-                # Update invoice
-                invoice.amount_paid += amount
-                if invoice.amount_paid >= invoice.total_amount:
-                    invoice.status = 'paid'
-                    # Mark that this is a manual payment processed by billing staff
+
+                # Mark that this is a manual payment processed by billing staff
+                if invoice.status == 'paid':
                     invoice._manual_payment_processed = True
-                elif invoice.amount_paid > 0:
-                    invoice.status = 'partially_paid'
-                
-                invoice.save()
+                    invoice.save()
                 
                 # Log audit action
                 log_audit_action(
@@ -272,7 +253,7 @@ class BillingOfficeFormMixin:
         self.invoice = kwargs.pop('invoice', None)
         self.patient_wallet = kwargs.pop('patient_wallet', None)
         super().__init__(*args, **kwargs)
-        
+
         # Add payment_source field if not already present
         if 'payment_source' not in self.fields:
             self.fields['payment_source'] = forms.ChoiceField(
@@ -281,7 +262,11 @@ class BillingOfficeFormMixin:
                 initial='billing_office',
                 help_text="Select where the payment is being processed from"
             )
-        
+
+        # Make payment_method not required initially since we set it programmatically
+        if 'payment_method' in self.fields:
+            self.fields['payment_method'].required = False
+
         # Set payment method choices based on payment source
         self._update_payment_method_choices()
     
@@ -299,6 +284,7 @@ class BillingOfficeFormMixin:
                     ('card', 'Card/POS'),
                     ('bank_transfer', 'Bank Transfer'),
                     ('cheque', 'Cheque'),
+                    ('wallet', 'Wallet'),  # Include wallet as an option
                 ]
     
     def clean(self):
@@ -306,11 +292,14 @@ class BillingOfficeFormMixin:
         payment_source = cleaned_data.get('payment_source')
         payment_method = cleaned_data.get('payment_method')
         amount = cleaned_data.get('amount')
-        
+
         # Force wallet payment method for wallet payments
         if payment_source == 'patient_wallet':
             cleaned_data['payment_method'] = 'wallet'
-        
+        elif not payment_method:
+            # For non-wallet payments, payment_method is required
+            raise forms.ValidationError("Payment method is required for direct billing.")
+
         # Validate payment data
         if self.invoice and amount:
             is_valid, error_message = BillingOfficePaymentProcessor.validate_payment_data(
@@ -318,7 +307,7 @@ class BillingOfficeFormMixin:
             )
             if not is_valid:
                 raise forms.ValidationError(error_message)
-        
+
         return cleaned_data
 
 

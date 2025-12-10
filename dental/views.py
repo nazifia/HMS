@@ -6,8 +6,9 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
-from .models import DentalRecord, DentalService, DentalXRay
-from .forms import DentalRecordForm, DentalRecordSearchForm, DentalServiceForm, DentalXRayForm
+from decimal import Decimal
+from .models import DentalRecord, DentalService, DentalXRay, DentalClinicalNote
+from .forms import DentalRecordForm, DentalRecordSearchForm, DentalServiceForm, DentalXRayForm, DentalClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -36,11 +37,13 @@ def dental_dashboard(request):
 
     user_department = get_user_department(request.user)
 
-    if not user_department:
+    # Superusers can access all departments without assignment
+    if not user_department and not request.user.is_superuser:
         messages.error(request, "You must be assigned to a department.")
         return redirect('dashboard:dashboard')
 
     # Build enhanced context with charts and trends
+    # For superusers without department, pass None (function should handle it)
     context = build_enhanced_dashboard_context(
         department=user_department,
         record_model=DentalRecord,
@@ -252,6 +255,9 @@ def dental_record_detail(request, record_id):
     # Get X-rays for this record
     xrays = DentalXRay.objects.filter(dental_record=record).order_by('-taken_at')
 
+    # Get clinical notes for this record
+    clinical_notes = DentalClinicalNote.objects.filter(dental_record=record).select_related('created_by').order_by('-created_at')
+
     # **NHIA AUTHORIZATION CHECK**
     from core.models import InternalNotification
     
@@ -291,6 +297,7 @@ def dental_record_detail(request, record_id):
         'record': record,
         'prescriptions': prescriptions,
         'xrays': xrays,
+        'clinical_notes': clinical_notes,
         'is_nhia_patient': is_nhia_patient,
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,
@@ -304,7 +311,7 @@ def dental_record_detail(request, record_id):
 def edit_dental_record(request, record_id):
     """View to edit an existing dental record"""
     record = get_object_or_404(DentalRecord, id=record_id)
-    
+
     if request.method == 'POST':
         form = DentalRecordForm(request.POST, instance=record)
         if form.is_valid():
@@ -313,11 +320,45 @@ def edit_dental_record(request, record_id):
             return redirect('dental:dental_record_detail', record_id=record.id)
     else:
         form = DentalRecordForm(instance=record)
-    
+
+    # **NHIA AUTHORIZATION CHECK**
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+    authorization_request_pending = False
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+        else:
+            authorization_message = "NHIA Authorization Required"
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="Dental"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for dental services."
+                )
+
     context = {
         'form': form,
         'record': record,
-        'title': 'Edit Dental Record'
+        'title': 'Edit Dental Record',
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'dental/dental_record_form.html', context)
 
@@ -542,31 +583,36 @@ def generate_invoice_for_dental(request, record_id):
     if request.method == 'POST':
         try:
             with transaction.atomic():
+                # Calculate amounts
+                service_price = record.get_service_price()
+                subtotal = service_price
+                tax_amount = Decimal('0.00')  # No tax for dental services
+                discount_amount = Decimal('0.00')
+                total_amount = subtotal + tax_amount - discount_amount
+
+                # Set due date (7 days from now)
+                due_date = timezone.now().date() + timezone.timedelta(days=7)
+
                 # Create the invoice
                 invoice = Invoice.objects.create(
                     patient=record.patient,
-                    issued_by=request.user,
-                    total_amount=record.get_service_price(),
-                    status='pending'
+                    created_by=request.user,
+                    subtotal=subtotal,
+                    tax_amount=tax_amount,
+                    discount_amount=discount_amount,
+                    total_amount=total_amount,
+                    due_date=due_date,
+                    status='pending',
+                    source_app='other'  # Dental doesn't have a specific source_app choice
                 )
-                
-                # Create invoice item
-                if record.service:
-                    InvoiceItem.objects.create(
-                        invoice=invoice,
-                        item_name=record.service.name,
-                        quantity=1,
-                        unit_price=record.service.price,
-                        total_price=record.service.price
-                    )
-                
+
                 # Link invoice to dental record
                 record.invoice = invoice  # type: ignore
                 record.save()
-                
-                messages.success(request, 'Invoice generated successfully.')
+
+                messages.success(request, f'Invoice #{invoice.invoice_number} generated successfully.')
                 return redirect('dental:dental_record_detail', record_id=record.pk)
-                
+
         except Exception as e:
             messages.error(request, f'Error generating invoice: {str(e)}')
     
@@ -575,3 +621,83 @@ def generate_invoice_for_dental(request, record_id):
         'title': 'Generate Invoice'
     }
     return render(request, 'dental/generate_invoice.html', context)
+
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a dental record"""
+    record = get_object_or_404(DentalRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = DentalClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.dental_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('dental:dental_record_detail', record_id=record.pk)
+    else:
+        form = DentalClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'dental/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(DentalClinicalNote, id=note_id)
+    record = note.dental_record
+
+    if request.method == 'POST':
+        form = DentalClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('dental:dental_record_detail', record_id=record.pk)
+    else:
+        form = DentalClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'dental/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(DentalClinicalNote, id=note_id)
+    record_id = note.dental_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('dental:dental_record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'dental/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(DentalClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.dental_record
+    }
+    return render(request, 'dental/clinical_note_detail.html', context)

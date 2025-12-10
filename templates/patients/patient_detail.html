@@ -1,5 +1,6 @@
 {% extends 'enhanced_base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load core_tags %}
 
 {% block title %}{{ patient.get_full_name }} - Patient Details{% endblock %}
@@ -332,9 +333,9 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             {% if user|has_permission:'create_prescription' or user.is_superuser %}
-                                <button type="button" class="btn btn-warning btn-block" data-bs-toggle="modal" data-bs-target="#prescriptionModal">
+                                <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-warning btn-block">
                                     <i class="fas fa-pills"></i> Prescribe Medication
-                                </button>
+                                </a>
                             {% else %}
                                 <button class="btn btn-warning btn-block disabled" title="Permission required">
                                     <i class="fas fa-pills me-2"></i>Prescribe Medication
@@ -881,7 +882,7 @@
                     <h5 class="modal-title" id="prescriptionModalLabel">Prescribe Medication</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="post" action="{% url 'pharmacy:create_prescription' patient.id %}">
+                <form method="post" action="{% url 'pharmacy:pharmacy_create_prescription' %}">
                     {% csrf_token %}
                     <input type="hidden" name="patient" value="{{ patient.id }}">
                     <input type="hidden" name="prescribing_doctor" value="{{ request.user.id }}">
@@ -1655,7 +1656,7 @@
                 <h5 class="modal-title" id="physiotherapyModalLabel">Physiotherapy Request for {{ patient.get_full_name }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" action="#">
+            <form method="post" action="{% url 'patients:create_physiotherapy_request' patient.id %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="row mb-3">
@@ -1727,7 +1728,7 @@
                 <h5 class="modal-title" id="vaccinationModalLabel">Vaccination Record for {{ patient.get_full_name }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" action="#">
+            <form method="post" action="{% url 'patients:add_vaccination' patient.id %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="row mb-3">

@@ -30,6 +30,15 @@ class AuthorizationCode(models.Model):
     
     code = models.CharField(max_length=50, unique=True, help_text="Unique authorization code")
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='authorization_codes')
+    # Link to billing service (optional - allows both service-based and manual amount entry)
+    service = models.ForeignKey(
+        'billing.Service',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='authorization_codes',
+        help_text="Service this authorization is for (optional)"
+    )
     # Services that can use this authorization code
     service_type = models.CharField(
         max_length=50,

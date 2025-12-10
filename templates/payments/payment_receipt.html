@@ -1,5 +1,6 @@
 {% extends 'base_print.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Payment Receipt - {{ receipt_number|default:payment.id }}{% endblock %}
 
@@ -243,8 +244,8 @@
                 <tr>
                     <td>{{ item.description }}</td>
                     <td>{{ item.quantity }}</td>
-                    <td>₦{{ item.unit_price|floatformat:2 }}</td>
-                    <td>₦{{ item.total|floatformat:2 }}</td>
+                    <td>{{ item.unit_price|currency }}</td>
+                    <td>{{ item.total|currency }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -272,33 +273,33 @@
         {% if invoice %}
         <div class="amount-row">
             <span>Subtotal:</span>
-            <span>₦{{ invoice.subtotal|floatformat:2 }}</span>
+            <span>{{ invoice.subtotal|currency }}</span>
         </div>
         {% if invoice.tax_amount > 0 %}
         <div class="amount-row">
             <span>Tax:</span>
-            <span>₦{{ invoice.tax_amount|floatformat:2 }}</span>
+            <span>{{ invoice.tax_amount|currency }}</span>
         </div>
         {% endif %}
         {% if invoice.discount_amount > 0 %}
         <div class="amount-row">
             <span>Discount:</span>
-            <span>-₦{{ invoice.discount_amount|floatformat:2 }}</span>
+            <span>-{{ invoice.discount_amount|currency }}</span>
         </div>
         {% endif %}
         <div class="amount-row">
             <span>Total Amount:</span>
-            <span>₦{{ invoice.total_amount|floatformat:2 }}</span>
+            <span>{{ invoice.total_amount|currency }}</span>
         </div>
         {% endif %}
         <div class="amount-row total-amount">
             <span>Amount Paid:</span>
-            <span>₦{{ payment.amount|floatformat:2 }}</span>
+            <span>{{ payment.amount|currency }}</span>
         </div>
         {% if invoice %}
         <div class="amount-row">
             <span>Balance:</span>
-            <span>₦{{ invoice.get_balance|floatformat:2 }}</span>
+            <span>{{ invoice.get_balance|currency }}</span>
         </div>
         {% endif %}
     </div>

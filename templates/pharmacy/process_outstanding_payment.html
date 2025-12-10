@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -55,7 +56,7 @@
                 </div>
                 <div class="card-body">
                     <div class="text-center">
-                        <h4 class="text-success">₦{{ patient_wallet.balance|floatformat:2 }}</h4>
+                        <h4 class="text-success">{{ patient_wallet.balance|currency }}</h4>
                         <small class="text-muted">Available Balance</small>
                         {% if patient_wallet.balance >= remaining_amount %}
                             <div class="mt-2">
@@ -65,7 +66,7 @@
                             <div class="mt-2">
                                 <span class="badge bg-warning">Insufficient Funds</span>
                                 <small class="d-block text-muted mt-1">
-                                    Short by ₦{{ remaining_amount|floatformat:2|add:patient_wallet.balance|floatformat:2 }}
+                                    Short by {{ remaining_amount|floatformat:2|add:patient_wallet.balance|currency }}
                                 </small>
                             </div>
                         {% endif %}
@@ -111,7 +112,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="text-center">
-                                    <h3 class="text-primary">₦{{ remaining_amount|floatformat:2 }}</h3>
+                                    <h3 class="text-primary">{{ remaining_amount|currency }}</h3>
                                     <small class="text-muted">Outstanding Amount</small>
                                 </div>
                             </div>
@@ -126,14 +127,14 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p>You are about to process an outstanding payment of <strong>₦{{ remaining_amount|floatformat:2 }}</strong> from the patient's wallet.</p>
+                            <p>You are about to process an outstanding payment of <strong>{{ remaining_amount|currency }}</strong> from the patient's wallet.</p>
                             
                             <div class="alert alert-info">
                                 <h6 class="alert-heading">
                                     <i class="fas fa-info-circle"></i> Important Information
                                 </h6>
                                 <ul class="mb-0">
-                                    <li>This action will debit the patient's wallet by ₦{{ remaining_amount|floatformat:2 }}</li>
+                                    <li>This action will debit the patient's wallet by {{ remaining_amount|currency }}</li>
                                     <li>The prescription payment status will be updated to "Paid"</li>
                                     <li>A wallet transaction record will be created for this payment</li>
                                     <li>This action cannot be undone</li>
@@ -157,7 +158,7 @@
                                             <i class="fas fa-times"></i> Cancel
                                         </a>
                                         <button type="submit" class="btn btn-warning btn-lg" 
-                                                {% if patient_wallet.balance < remaining_amount %}onclick="return confirm('Wallet balance is insufficient. This will create a negative balance. Are you sure you want to proceed?')"{% else %}onclick="return confirm('Are you sure you want to process this payment of ₦{{ remaining_amount|floatformat:2 }} from the patient\'s wallet?')"{% endif %}>
+                                                {% if patient_wallet.balance < remaining_amount %}onclick="return confirm('Wallet balance is insufficient. This will create a negative balance. Are you sure you want to proceed?')"{% else %}onclick="return confirm('Are you sure you want to process this payment of {{ remaining_amount|currency }} from the patient\'s wallet?')"{% endif %}>
                                             <i class="fas fa-wallet"></i> Process Payment
                                         </button>
                                     </div>

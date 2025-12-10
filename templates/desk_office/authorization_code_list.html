@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Authorization Codes - NHIA Authorization{% endblock %}
 
@@ -241,10 +242,10 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <strong>₦{{ code.amount|floatformat:2 }}</strong><br>
+                                    <strong>{{ code.amount|currency }}</strong><br>
                                     <small class="text-muted">
                                         {% if code.used_amount and code.status == 'used' %}
-                                            Used: ₦{{ code.used_amount|floatformat:2 }}
+                                            Used: {{ code.used_amount|currency }}
                                         {% endif %}
                                     </small>
                                 </td>
@@ -306,7 +307,7 @@
                                         {% endif %}
                                         
                                         <a href="#" class="btn btn-outline-secondary" title="Print Code"
-                                           onclick="printCode('{{ code.code }}', '{{ code.patient.get_full_name }}', '₦{{ code.amount|floatformat:2 }}')">
+                                           onclick="printCode('{{ code.code }}', '{{ code.patient.get_full_name }}', '{{ code.amount|currency }}')">
                                             <i class="fas fa-print"></i>
                                         </a>
                                     </div>
@@ -378,7 +379,7 @@
                                        placeholder="Type patient name or ID..."
                                        hx-get="{% url 'core:patient_search_ajax' %}"
                                        hx-target="#modalPatientResults"
-                                       hx-trigger="keyup changed delay:300ms"
+                                       hx-trigger="keyup changed delay:150ms"
                                        hx-include="[name='q']"
                                        hx-vals='{"patient_type": "nhia", "quick": "true"}'
                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>

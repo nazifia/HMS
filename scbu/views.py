@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
-from .models import ScbuRecord
-from .forms import ScbuRecordForm, ScbuRecordSearchForm
+from .models import ScbuRecord, ScbuClinicalNote
+from .forms import ScbuRecordForm, ScbuRecordSearchForm, ScbuClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -35,7 +35,8 @@ def scbu_dashboard(request):
 
     user_department = get_user_department(request.user)
 
-    if not user_department:
+    # Superusers can access all departments without assignment
+    if not user_department and not request.user.is_superuser:
         messages.error(request, "You must be assigned to a department.")
         return redirect('dashboard:dashboard')
 
@@ -45,20 +46,30 @@ def scbu_dashboard(request):
         record_model=ScbuRecord,
         record_queryset=ScbuRecord.objects.all(),
         priority_field=None,
-        status_field='status',
-        completed_status='discharged'
+        status_field=None,
+        completed_status=None
     )
 
     # SCBU-specific statistics
     today = timezone.now().date()
+    week_end = today + timedelta(days=7)
 
     # Total admissions
     total_admissions = ScbuRecord.objects.count()
 
-    # Admissions this week
-    week_start = today - timedelta(days=today.weekday())
-    admissions_this_week = ScbuRecord.objects.filter(
-        visit_date__gte=week_start
+    # Current admissions (all records since no discharge status field exists)
+    current_admissions = ScbuRecord.objects.count()
+
+    # Admissions today
+    admissions_today = ScbuRecord.objects.filter(
+        visit_date__date=today
+    ).count()
+
+    # Follow-ups due this week
+    followups_due = ScbuRecord.objects.filter(
+        follow_up_required=True,
+        follow_up_date__gte=today,
+        follow_up_date__lte=week_end
     ).count()
 
     # Average birth weight
@@ -70,6 +81,35 @@ def scbu_dashboard(request):
         gestational_age__lt=37
     ).count()
 
+    # Low birth weight babies (<2.5kg)
+    low_birth_weight = ScbuRecord.objects.filter(
+        birth_weight__lt=2.5
+    ).count()
+
+    # Babies on respiratory support
+    respiratory_support_count = ScbuRecord.objects.filter(
+        respiratory_support=True
+    ).count()
+
+    # Babies with infection
+    infection_count = ScbuRecord.objects.filter(
+        infection_status=True
+    ).count()
+
+    # Average APGAR scores
+    avg_apgar_1min = ScbuRecord.objects.aggregate(avg=Avg('apgar_score_1min'))['avg']
+    avg_apgar_1min = round(avg_apgar_1min, 1) if avg_apgar_1min else 0
+
+    avg_apgar_5min = ScbuRecord.objects.aggregate(avg=Avg('apgar_score_5min'))['avg']
+    avg_apgar_5min = round(avg_apgar_5min, 1) if avg_apgar_5min else 0
+
+    # Common diagnoses (top 5)
+    diagnosis_data = ScbuRecord.objects.filter(
+        diagnosis__isnull=False
+    ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
+    diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]
+    diagnosis_counts = [item['count'] for item in diagnosis_data]
+
     # Get recent records with patient info
     recent_records = ScbuRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
 
@@ -79,9 +119,18 @@ def scbu_dashboard(request):
     # Add to context
     context.update({
         'total_admissions': total_admissions,
-        'admissions_this_week': admissions_this_week,
+        'current_admissions': current_admissions,
+        'admissions_today': admissions_today,
+        'followups_due': followups_due,
         'avg_birth_weight': avg_birth_weight,
         'premature_babies': premature_babies,
+        'low_birth_weight': low_birth_weight,
+        'respiratory_support_count': respiratory_support_count,
+        'infection_count': infection_count,
+        'avg_apgar_1min': avg_apgar_1min,
+        'avg_apgar_5min': avg_apgar_5min,
+        'diagnosis_labels': json.dumps(diagnosis_labels),
+        'diagnosis_counts': json.dumps(diagnosis_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })
@@ -161,22 +210,34 @@ def scbu_record_detail(request, record_id):
         id=record_id
     )
 
-    # NHIA AUTHORIZATION CHECK
+    # **NHIA AUTHORIZATION CHECK**
     is_nhia_patient = record.patient.patient_type == 'nhia'
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
+    authorization_request_pending = False
 
     if is_nhia_patient:
         if record.authorization_code:
             authorization_message = f"Authorized - Code: {record.authorization_code}"
         else:
             authorization_message = "NHIA Authorization Required"
-            messages.warning(
-                request,
-                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
-                f"Please contact the desk office to obtain authorization for SCBU services."
-            )
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="SCBU"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for SCBU services."
+                )
 
     context = {
         'record': record,
@@ -184,6 +245,7 @@ def scbu_record_detail(request, record_id):
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'scbu/scbu_record_detail.html', context)
 
@@ -191,7 +253,7 @@ def scbu_record_detail(request, record_id):
 def edit_scbu_record(request, record_id):
     """View to edit an existing scbu record"""
     record = get_object_or_404(ScbuRecord, id=record_id)
-    
+
     if request.method == 'POST':
         form = ScbuRecordForm(request.POST, instance=record)
         if form.is_valid():
@@ -200,11 +262,45 @@ def edit_scbu_record(request, record_id):
             return redirect('scbu:scbu_record_detail', record_id=record.id)
     else:
         form = ScbuRecordForm(instance=record)
-    
+
+    # **NHIA AUTHORIZATION CHECK**
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+    authorization_request_pending = False
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+        else:
+            authorization_message = "NHIA Authorization Required"
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="SCBU"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for SCBU services."
+                )
+
     context = {
         'form': form,
         'record': record,
-        'title': 'Edit SCBU Record'
+        'title': 'Edit SCBU Record',
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'scbu/scbu_record_form.html', context)
 
@@ -300,3 +396,82 @@ def create_prescription_for_scbu(request, record_id):
         'title': 'Create Prescription'
     }
     return render(request, 'scbu/create_prescription.html', context)
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a scbu record"""
+    record = get_object_or_404(ScbuRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = ScbuClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.scbu_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('scbu:record_detail', record_id=record.pk)
+    else:
+        form = ScbuClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'scbu/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(ScbuClinicalNote, id=note_id)
+    record = note.scbu_record
+
+    if request.method == 'POST':
+        form = ScbuClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('scbu:record_detail', record_id=record.pk)
+    else:
+        form = ScbuClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'scbu/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(ScbuClinicalNote, id=note_id)
+    record_id = note.scbu_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('scbu:record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'scbu/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(ScbuClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.scbu_record
+    }
+    return render(request, 'scbu/clinical_note_detail.html', context)

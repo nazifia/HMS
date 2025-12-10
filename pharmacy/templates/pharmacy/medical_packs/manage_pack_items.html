@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
 
@@ -72,7 +73,7 @@
             </div>
             <div class="col-md-4 text-center">
                 <div class="h4 mb-1">{{ pack_items.count }} Items</div>
-                <div class="h5 mb-0">₦{{ pack.get_total_cost|floatformat:2 }}</div>
+                <div class="h5 mb-0">{{ pack.get_total_cost|currency }}</div>
                 <small>Total Cost</small>
             </div>
         </div>
@@ -219,8 +220,8 @@
                                             <small class="text-muted">Quantity</small>
                                         </div>
                                         <div class="col-2 text-center">
-                                            <div class="fw-bold text-success">₦{{ item.get_total_cost|floatformat:2 }}</div>
-                                            <small class="text-muted">₦{{ item.medication.price|floatformat:2 }} each</small>
+                                            <div class="fw-bold text-success">{{ item.get_total_cost|currency }}</div>
+                                            <small class="text-muted">{{ item.medication.price|currency }} each</small>
                                         </div>
                                         <div class="col-2 text-end">
                                             <div class="btn-group" role="group">
@@ -290,7 +291,7 @@
                                                 </div>
                                                 <div class="col-6">
                                                     <strong>Total Cost:</strong><br>
-                                                    <span class="badge bg-success">₦{{ item.get_total_cost|floatformat:2 }}</span>
+                                                    <span class="badge bg-success">{{ item.get_total_cost|currency }}</span>
                                                 </div>
                                             </div>
                                             {% if item.usage_instructions %}

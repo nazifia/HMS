@@ -20,6 +20,7 @@
     
     <!-- Custom CSS -->
     {% load static %}
+{% load custom_filters %}
     {% load core_tags %}
     {% load compress %}
     {% compress css %}
@@ -293,9 +294,12 @@
             cursor: pointer;
         }
 
+        /* Mobile Responsive - Content takes full width, sidebar overlays */
         @media (max-width: 768px) {
+            /* Remove margin so content takes full width */
             .main-content {
-                margin-left: 0;
+                margin-left: 0 !important;
+                width: 100vw !important;
             }
 
             .mobile-menu-btn {
@@ -314,11 +318,13 @@
                 padding: 1rem;
             }
 
+            /* Sidebar hidden off-screen by default on mobile */
             .sidebar-wrapper {
                 transform: translateX(-100%);
                 transition: transform 0.3s ease;
             }
 
+            /* Sidebar slides in when shown */
             .sidebar-wrapper.show {
                 transform: translateX(0);
             }
@@ -537,7 +543,6 @@
 
     <!-- Custom JS -->
     {% compress js %}
-    <script src="{% static 'js/app.js' %}"></script>
     <script src="{% static 'js/enhanced_ui.js' %}"></script>
     {% endcompress %}
 
@@ -555,7 +560,7 @@
                         alert.classList.remove('show');
                         setTimeout(() => alert.remove(), 150);
                     }
-                }, 5000);
+                }, 3000);
             });
 
             // Enhance form controls
@@ -661,15 +666,6 @@
             console.error('Global error:', e.error);
             // You could send this to an error tracking service
         });
-
-        // Service Worker registration (for PWA capabilities)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/js/sw.js').then(function(registration) {
-                console.log('Service Worker registered');
-            }).catch(function(error) {
-                console.log('Service Worker registration failed:', error);
-            });
-        }
 
         // Activity Log Modal Functions
         function showActivityLog() {

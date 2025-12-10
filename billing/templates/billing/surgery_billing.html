@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ title }} - {{ block.super }}{% endblock %}
 
@@ -82,11 +83,11 @@
                                             <small class="text-muted">{{ pack_cost.pack_order.pack.get_pack_type_display }}</small>
                                         </td>
                                         <td>{{ pack_cost.pack_order.pack.get_items_count }} items</td>
-                                        <td class="text-right">₦{{ pack_cost.original_cost|floatformat:2 }}</td>
+                                        <td class="text-right">{{ pack_cost.original_cost|currency }}</td>
                                         {% if is_nhia_patient %}
-                                        <td class="text-right">₦{{ pack_cost.cost|floatformat:2 }}</td>
+                                        <td class="text-right">{{ pack_cost.cost|currency }}</td>
                                         {% else %}
-                                        <td class="text-right">₦{{ pack_cost.cost|floatformat:2 }}</td>
+                                        <td class="text-right">{{ pack_cost.cost|currency }}</td>
                                         {% endif %}
                                         <td>
                                             <span class="badge badge-{{ pack_cost.pack_order.get_status_display|lower }}">
@@ -99,21 +100,21 @@
                                 <tfoot class="thead-light">
                                     <tr>
                                         <th colspan="3" class="text-right">Total:</th>
-                                        <th class="text-right">₦{{ total_original_cost|floatformat:2 }}</th>
+                                        <th class="text-right">{{ total_original_cost|currency }}</th>
                                         {% if is_nhia_patient %}
-                                        <th class="text-right">₦{{ total_pack_cost|floatformat:2 }}</th>
+                                        <th class="text-right">{{ total_pack_cost|currency }}</th>
                                         {% else %}
-                                        <th class="text-right">₦{{ total_pack_cost|floatformat:2 }}</th>
+                                        <th class="text-right">{{ total_pack_cost|currency }}</th>
                                         {% endif %}
                                     </tr>
                                     {% if is_nhia_patient %}
                                     <tr>
                                         <th colspan="4" class="text-right">NHIA Discount (90%):</th>
-                                        <th class="text-right text-success">-₦{{ nhia_discount_amount|floatformat:2 }}</th>
+                                        <th class="text-right text-success">-{{ nhia_discount_amount|currency }}</th>
                                     </tr>
                                     <tr class="table-success font-weight-bold">
                                         <th colspan="4" class="text-right">Patient to Pay:</th>
-                                        <th class="text-right">₦{{ total_pack_cost|floatformat:2 }}</th>
+                                        <th class="text-right">{{ total_pack_cost|currency }}</th>
                                     </tr>
                                     {% endif %}
                                 </tfoot>
@@ -152,7 +153,7 @@
                                     {% for payment in payments %}
                                     <tr>
                                         <td>{{ payment.payment_date|date:"M d, Y" }}</td>
-                                        <td>₦{{ payment.amount|floatformat:2 }}</td>
+                                        <td>{{ payment.amount|currency }}</td>
                                         <td>{{ payment.get_payment_method_display }}</td>
                                         <td>{{ payment.received_by.get_full_name }}</td>
                                     </tr>
@@ -199,16 +200,16 @@
                             </tr>
                             <tr class="border-top">
                                 <td><strong>Total Amount:</strong></td>
-                                <td class="text-right">₦{{ invoice.total_amount|floatformat:2 }}</td>
+                                <td class="text-right">{{ invoice.total_amount|currency }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Amount Paid:</strong></td>
-                                <td class="text-right text-success">₦{{ invoice.amount_paid|floatformat:2 }}</td>
+                                <td class="text-right text-success">{{ invoice.amount_paid|currency }}</td>
                             </tr>
                             <tr class="border-top">
                                 <td><strong>Balance Due:</strong></td>
                                 <td class="text-right {% if invoice.get_balance > 0 %}text-danger font-weight-bold{% else %}text-success{% endif %}">
-                                    ₦{{ invoice.get_balance|floatformat:2 }}
+                                    {{ invoice.get_balance|currency }}
                                 </td>
                             </tr>
                         </table>
@@ -234,7 +235,7 @@
                             {% if form.amount.errors %}
                                 <div class="text-danger">{{ form.amount.errors }}</div>
                             {% endif %}
-                            <small class="text-muted">Remaining balance: ₦{{ invoice.get_balance|floatformat:2 }}</small>
+                            <small class="text-muted">Remaining balance: {{ invoice.get_balance|currency }}</small>
                         </div>
 
                         <div class="mb-3">
@@ -257,7 +258,7 @@
                         <div class="mb-3">
                             <label class="form-label">Patient Wallet Balance</label>
                             <div class="alert alert-{% if patient_wallet.balance >= invoice.get_balance %}success{% else %}warning{% endif %}">
-                                <strong>₦{{ patient_wallet.balance|floatformat:2 }}</strong>
+                                <strong>{{ patient_wallet.balance|currency }}</strong>
                                 {% if patient_wallet.balance < invoice.get_balance %}
                                     <small class="d-block">Insufficient balance for full payment</small>
                                 {% endif %}

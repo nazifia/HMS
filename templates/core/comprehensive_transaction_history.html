@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load widget_tweaks %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
@@ -43,7 +44,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Amount</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_amount|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_amount|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -114,7 +115,7 @@
                                         <br><small class="text-muted">Source: {{ data.source }}</small>
                                     </td>
                                     <td>{{ data.count }}</td>
-                                    <td>₦{{ data.amount|floatformat:2 }}</td>
+                                    <td>{{ data.amount|currency }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
@@ -217,9 +218,9 @@
                             </td>
                             <td>{{ transaction.description }}</td>
                             <td>
-                                <strong>₦{{ transaction.amount|floatformat:2 }}</strong>
+                                <strong>{{ transaction.amount|currency }}</strong>
                                 {% if transaction.balance_after is not None %}
-                                <br><small class="text-muted">Balance: ₦{{ transaction.balance_after|floatformat:2 }}</small>
+                                <br><small class="text-muted">Balance: {{ transaction.balance_after|currency }}</small>
                                 {% endif %}
                             </td>
                             <td>

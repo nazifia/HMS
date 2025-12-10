@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -25,11 +26,11 @@
                         </tr>
                         <tr>
                             <th>Unit Price</th>
-                            <td>₦{{ log_entry.unit_price_at_dispense }}</td>
+                            <td>{{ log_entry.unit_price_at_dispense |currency }}</td>
                         </tr>
                         <tr>
                             <th>Total Price</th>
-                            <td>₦{{ log_entry.total_price_for_this_log }}</td>
+                            <td>{{ log_entry.total_price_for_this_log |currency }}</td>
                         </tr>
                         <tr>
                             <th>Dispensed By</th>

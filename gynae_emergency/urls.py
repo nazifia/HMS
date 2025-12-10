@@ -15,4 +15,11 @@ urlpatterns = [
     path('<int:record_id>/delete/', views.delete_gynae_emergency_record, name='delete_gynae_emergency_record'),
     path('search-patients/', views.search_gynae_emergency_patients, name='search_gynae_emergency_patients'),
     path('<int:record_id>/create-prescription/', views.create_prescription_for_gynae_emergency, name='create_prescription_for_gynae_emergency'),
+
+    # Clinical Notes
+    path('record/<int:record_id>/add-clinical-note/', views.add_clinical_note, name='add_clinical_note'),
+    path('clinical-note/<int:note_id>/', views.view_clinical_note, name='view_clinical_note'),
+    path('clinical-note/<int:note_id>/edit/', views.edit_clinical_note, name='edit_clinical_note'),
+    path('clinical-note/<int:note_id>/delete/', views.delete_clinical_note, name='delete_clinical_note'),
+
 ]

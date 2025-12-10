@@ -1,4 +1,8 @@
 from django import forms
+from django.utils import timezone
+from datetime import timedelta
+import string
+import random
 from nhia.models import AuthorizationCode
 from patients.models import Patient
 
@@ -9,8 +13,8 @@ class PatientSearchForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Search by patient name or NHIA number...',
-            'id': 'patient-search',
+            'placeholder': 'Search by patient name, patient ID, or NHIA number...',
+            'id': 'nhia-patient-search-input',
             'autocomplete': 'off',
             'data-bs-toggle': 'tooltip',
             'title': 'Search by name, patient ID, NHIA number, or phone'
@@ -94,9 +98,37 @@ class AuthorizationCodeForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         patient = kwargs.pop('patient', None)
+        self.user = kwargs.pop('user', None)  # Get the current user for generated_by field
         super().__init__(*args, **kwargs)
         # Custom label_from_instance to show patient ID and type for better identification
         self.fields['patient'].label_from_instance = self._format_patient_label
         if patient:
             self.fields['patient'].queryset = Patient.objects.filter(id=patient.id)
             self.fields['patient'].initial = patient
+
+    def save(self, commit=True):
+        """Custom save method to generate authorization code and set metadata"""
+        instance = super().save(commit=False)
+
+        # Generate unique authorization code if not already set
+        if not instance.code:
+            while True:
+                date_str = timezone.now().strftime('%Y%m%d')
+                random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                code_str = f"AUTH-{date_str}-{random_str}"
+                if not AuthorizationCode.objects.filter(code=code_str).exists():
+                    instance.code = code_str
+                    break
+
+        # Set generated_by user if provided
+        if self.user and not instance.generated_by:
+            instance.generated_by = self.user
+
+        # Ensure status is active
+        if not instance.status:
+            instance.status = 'active'
+
+        if commit:
+            instance.save()
+
+        return instance

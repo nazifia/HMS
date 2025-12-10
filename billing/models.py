@@ -204,7 +204,7 @@ class Invoice(models.Model):
 
 class InvoiceItem(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items')
-    service = models.ForeignKey(Service, on_delete=models.CASCADE)
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, null=True, blank=True)
     description = models.CharField(max_length=200, blank=True, null=True)
     quantity = models.IntegerField(default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -215,7 +215,9 @@ class InvoiceItem(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return f"{self.service.name} - {self.quantity} x ₦{self.unit_price}"
+        if self.service:
+            return f"{self.service.name} - {self.quantity} x ₦{self.unit_price}"
+        return f"{self.description or 'Item'} - {self.quantity} x ₦{self.unit_price}"
 
     def save(self, *args, **kwargs):
         # Calculate tax amount

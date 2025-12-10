@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -134,7 +135,7 @@
                     </div>
                     <div>
                         <strong>Total Cost:</strong><br>
-                        <span class="h6 text-success">₦{{ pack_order.pack.get_total_cost|floatformat:2 }}</span>
+                        <span class="h6 text-success">{{ pack_order.pack.get_total_cost|currency }}</span>
                     </div>
                 </div>
                 
@@ -279,8 +280,8 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ item.quantity }}</td>
-                                        <td>₦{{ item.medication.price|floatformat:2 }}</td>
-                                        <td>₦{{ item.get_total_cost|floatformat:2 }}</td>
+                                        <td>{{ item.medication.price|currency }}</td>
+                                        <td>{{ item.get_total_cost|currency }}</td>
                                         <td>{{ item.usage_instructions|default:"As needed" }}</td>
                                     </tr>
                                     {% endfor %}
@@ -373,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const confirmMessage = `Are you sure you want to approve Pack Order #{{ pack_order.id }}?\n\n` +
                               `Pack: {{ pack_order.pack.name }}\n` +
                               `Patient: {{ pack_order.patient.get_full_name }}\n` +
-                              `Total Cost: ₦{{ pack_order.pack.get_total_cost|floatformat:2 }}\n\n` +
+                              `Total Cost: {{ pack_order.pack.get_total_cost|currency }}\n\n` +
                               `This action cannot be undone.`;
         
         if (!confirm(confirmMessage)) {

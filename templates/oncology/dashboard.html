@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Oncology Dashboard{% endblock %}
 
@@ -20,88 +21,88 @@
 
     <!-- Statistics Cards Row -->
     <div class="row">
-        <!-- Total Records Card -->
+        <!-- Active Patients Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Records
+                                Active Patients
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_patients|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-day"></i> Today: {{ records_today|default:0 }}
+                                <i class="fas fa-user-md"></i> Under Treatment
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-notes-medical fa-2x text-gray-300"></i>
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Week Card -->
+        <!-- Chemotherapy Sessions Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-success shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                This Week
+                                Chemo Sessions (Month)
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_week|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ chemo_sessions_month|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-week"></i> Since {{ week_start|date:"M d" }}
+                                <i class="fas fa-syringe"></i> This Month
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                            <i class="fas fa-syringe fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Month Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-1">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                This Month
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_month|default:0 }}</div>
-                            <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-alt"></i> Since {{ month_start|date:"M d" }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pending Referrals Card -->
+        <!-- Radiation Treatments Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-warning shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pending Referrals
+                                Radiation (Month)
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals_count|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ radiation_treatments_month|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-lock text-danger"></i> Need Auth: {{ pending_authorizations|default:0 }}
+                                <i class="fas fa-radiation"></i> This Month
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                            <i class="fas fa-radiation fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metastasis Patients Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-1">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Metastasis Patients
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ metastasis_patients|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-exclamation-triangle"></i> Advanced Cases
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -112,6 +113,56 @@
 
     <!-- Charts Row -->
     <div class="row mb-4">
+        <!-- Top Cancer Types Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie"></i> Top 5 Cancer Types
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="diagnosisChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Oncology Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-users text-primary"></i> Active Patients</span>
+                            <span class="badge bg-primary rounded-pill">{{ active_patients|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-syringe text-success"></i> Chemo Sessions (Month)</span>
+                            <span class="badge bg-success rounded-pill">{{ chemo_sessions_month|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-radiation text-warning"></i> Radiation Treatments</span>
+                            <span class="badge bg-warning rounded-pill">{{ radiation_treatments_month|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-heartbeat text-danger"></i> Metastasis Patients</span>
+                            <span class="badge bg-danger rounded-pill">{{ metastasis_patients|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-ruler text-info"></i> Avg Tumor Size (cm)</span>
+                            <span class="badge bg-info rounded-pill">{{ avg_tumor_size|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 <div class="row">
@@ -160,7 +211,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-info">
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>
@@ -241,7 +292,7 @@
                                         <td>{{ record.doctor.name|default:"N/A" }}</td>
                                         <td>{{ record.created_at|timesince }} ago</td>
                                         <td>
-                                            <a href="{% url 'oncology:oncology_record_detail' record.id %}" class="btn btn-sm btn-primary">
+                                            <a href="{% url 'oncology:oncology_record_detail' record.id %}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>
@@ -268,6 +319,61 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-// Charts removed for performance optimization
+document.addEventListener('DOMContentLoaded', function() {
+    // Top Cancer Types Chart
+    const cancerTypeLabels = {{ cancer_type_labels|safe }};
+    const cancerTypeCounts = {{ cancer_type_counts|safe }};
+
+    if (cancerTypeLabels && cancerTypeLabels.length > 0) {
+        const ctx = document.getElementById('diagnosisChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: cancerTypeLabels,
+                    datasets: [{
+                        label: 'Number of Patients',
+                        data: cancerTypeCounts,
+                        backgroundColor: [
+                            'rgba(78, 115, 223, 0.8)',
+                            'rgba(28, 200, 138, 0.8)',
+                            'rgba(246, 194, 62, 0.8)',
+                            'rgba(231, 74, 59, 0.8)',
+                            'rgba(133, 135, 150, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(78, 115, 223, 1)',
+                            'rgba(28, 200, 138, 1)',
+                            'rgba(246, 194, 62, 1)',
+                            'rgba(231, 74, 59, 1)',
+                            'rgba(133, 135, 150, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+});
 </script>
 {% endblock %}

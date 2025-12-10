@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load core_form_tags %}
 {% load consultation_tags %}
 
@@ -32,7 +33,9 @@
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            {% if request.user.profile and request.user.profile.role == 'doctor' %}
+            {% if request.user.is_superuser %}
+                All Consultations
+            {% elif request.user.profile and request.user.profile.role == 'doctor' %}
                 My Consultations
             {% else %}
                 All Consultations
@@ -42,7 +45,11 @@
             <a href="{% url 'consultations:unified_dashboard' %}" class="d-none d-sm-inline-block btn btn-sm btn-info shadow-sm me-2">
                 <i class="fas fa-th-large fa-sm text-white-50"></i> Dashboard
             </a>
-            {% if request.user.profile and request.user.profile.role == 'doctor' %}
+            {% if request.user.is_superuser %}
+                <a href="{% url 'consultations:doctor_waiting_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm me-2">
+                    <i class="fas fa-clock fa-sm text-white-50"></i> Waiting List
+                </a>
+            {% elif request.user.profile and request.user.profile.role == 'doctor' %}
                 <a href="{% url 'consultations:doctor_waiting_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm me-2">
                     <i class="fas fa-clock fa-sm text-white-50"></i> Waiting List
                 </a>
@@ -337,7 +344,16 @@
                                     </td>
                                     <td>
                                         <div class="status-container">
-                                            <span id="status-badge-{{ consultation.id }}" class="badge {% if consultation.status == 'pending' %}bg-warning{% elif consultation.status == 'in_progress' %}bg-info{% elif consultation.status == 'completed' %}bg-success{% elif consultation.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %} status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
+                                            {% if consultation.status == 'pending' %}
+                                                <span id="status-badge-{{ consultation.id }}" class="badge bg-warning status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
+                                            {% elif consultation.status == 'in_progress' %}
+                                                <span id="status-badge-{{ consultation.id }}" class="badge bg-info status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
+                                            {% elif consultation.status == 'completed' %}
+                                                <span id="status-badge-{{ consultation.id }}" class="badge bg-success status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
+                                            {% elif consultation.status == 'cancelled' %}
+                                                <span id="status-badge-{{ consultation.id }}" class="badge bg-danger status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
+                                            {% else %}
+                                                <span id="status-badge-{{ consultation.id }}" class="badge bg-secondary status-badge {% if request.user.profile and request.user.profile.role == 'doctor' and consultation.doctor == request.user %}status-clickable{% endif %}" onclick="showStatusUpdate({{ consultation.id }}, '{{ consultation.status|default:'' }}')" title="Click to update status">
                                                 {% if consultation.status == 'pending' %}
                                                     <i class="fas fa-clock"></i> 
                                                 {% elif consultation.status == 'in_progress' %}
@@ -349,6 +365,7 @@
                                                 {% endif %}
                                                 {{ consultation.get_status_display|default:consultation.status|title }}
                                             </span>
+                                        {% endif %}
                                             
                                             <!-- Status Update Dropdown (Initially Hidden) -->
                                             <div id="status-update-{{ consultation.id }}" class="status-update-dropdown" style="display: none;">

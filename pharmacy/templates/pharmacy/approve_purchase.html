@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ title|default:"Approve Purchase" }}{% endblock %}
 
@@ -33,7 +34,7 @@
                         </tr>
                         <tr>
                             <th>Total Amount:</th>
-                            <td>₦{{ purchase.total_amount|floatformat:2 }}</td>
+                            <td>{{ purchase.total_amount|currency }}</td>
                         </tr>
                         <tr>
                             <th>Approval Status:</th>

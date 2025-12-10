@@ -1249,6 +1249,222 @@ def simple_revenue_statistics(request):
 
     return render(request, 'pharmacy/simple_revenue_statistics.html', context)
 
+
+@login_required
+def pharmacy_dispensary_revenue(request):
+    """
+    Pharmacy-specific revenue statistics with breakdown by dispensary
+    Shows revenue generated from each dispensary/active store
+    """
+    from datetime import datetime
+    from django.utils import timezone
+    from django.db.models import Sum, Count, Q, F
+    import json
+    from collections import defaultdict
+    from datetime import timedelta
+
+    # Handle date range parameters
+    start_date_str = request.GET.get('start_date', '')
+    end_date_str = request.GET.get('end_date', '')
+    search_query = request.GET.get('search', '').strip().lower()
+
+    # Parse dates if provided, otherwise use current month
+    try:
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        else:
+            # Get first day of current month
+            today = timezone.now().date()
+            start_date = today.replace(day=1)
+    except ValueError:
+        # Fallback to current month if invalid date
+        today = timezone.now().date()
+        start_date = today.replace(day=1)
+
+    try:
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        else:
+            # Get last day of current month
+            today = timezone.now().date()
+            if today.month == 12:
+                end_date = today.replace(day=31, month=12)
+            else:
+                # Get the last day of the current month
+                next_month = today.replace(day=28) + timezone.timedelta(days=4)
+                end_date = next_month - timezone.timedelta(days=next_month.day)
+    except ValueError:
+        # Fallback to last day of current month if invalid date
+        today = timezone.now().date()
+        if today.month == 12:
+            end_date = today.replace(day=31, month=12)
+        else:
+            next_month = today.replace(day=28) + timezone.timedelta(days=4)
+            end_date = next_month - timezone.timedelta(days=next_month.day)
+
+    # Ensure start_date is not after end_date
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    # Get all active dispensaries
+    all_dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
+
+    # Calculate revenue per dispensary from DispensingLog
+    dispensary_data = []
+    total_pharmacy_revenue = Decimal('0.00')
+    total_transactions = 0
+    total_medications_dispensed = 0
+
+    for dispensary in all_dispensaries:
+        # Get dispensing logs for this dispensary in the date range
+        logs = DispensingLog.objects.filter(
+            dispensary=dispensary,
+            dispensed_date__date__range=[start_date, end_date]
+        ).aggregate(
+            total_revenue=Sum('total_price_for_this_log'),
+            total_logs=Count('id'),
+            total_quantity=Sum('dispensed_quantity')
+        )
+
+        revenue = logs['total_revenue'] or Decimal('0.00')
+        transactions = logs['total_logs'] or 0
+        quantity_dispensed = logs['total_quantity'] or 0
+
+        # Get unique prescriptions count
+        prescriptions_count = DispensingLog.objects.filter(
+            dispensary=dispensary,
+            dispensed_date__date__range=[start_date, end_date]
+        ).values('prescription_item__prescription').distinct().count()
+
+        # Only add to list if there's revenue or if no search filter
+        if not search_query or search_query in dispensary.name.lower():
+            dispensary_data.append({
+                'dispensary': dispensary,
+                'revenue': revenue,
+                'transactions': transactions,
+                'quantity_dispensed': quantity_dispensed,
+                'prescriptions_count': prescriptions_count,
+            })
+
+            total_pharmacy_revenue += revenue
+            total_transactions += transactions
+            total_medications_dispensed += quantity_dispensed
+
+    # Handle dispensing logs without dispensary assigned (legacy data)
+    unassigned_logs = DispensingLog.objects.filter(
+        dispensary__isnull=True,
+        dispensed_date__date__range=[start_date, end_date]
+    ).aggregate(
+        total_revenue=Sum('total_price_for_this_log'),
+        total_logs=Count('id'),
+        total_quantity=Sum('dispensed_quantity')
+    )
+
+    if unassigned_logs['total_revenue']:
+        unassigned_prescriptions = DispensingLog.objects.filter(
+            dispensary__isnull=True,
+            dispensed_date__date__range=[start_date, end_date]
+        ).values('prescription_item__prescription').distinct().count()
+
+        dispensary_data.append({
+            'dispensary': None,
+            'revenue': unassigned_logs['total_revenue'] or Decimal('0.00'),
+            'transactions': unassigned_logs['total_logs'] or 0,
+            'quantity_dispensed': unassigned_logs['total_quantity'] or 0,
+            'prescriptions_count': unassigned_prescriptions,
+        })
+
+        total_pharmacy_revenue += unassigned_logs['total_revenue'] or Decimal('0.00')
+        total_transactions += unassigned_logs['total_logs'] or 0
+        total_medications_dispensed += unassigned_logs['total_quantity'] or 0
+
+    # Sort by revenue (highest first)
+    dispensary_data.sort(key=lambda x: x['revenue'], reverse=True)
+
+    # Calculate monthly trends per dispensary (last 6 months for better visualization)
+    monthly_trends = []
+    dispensary_monthly_data = defaultdict(list)
+
+    # Calculate start date for trends (6 months back)
+    trend_end_date = timezone.now().date()
+    trend_start_date = trend_end_date - timedelta(days=180)  # Approximately 6 months
+
+    current_date = trend_start_date.replace(day=1)  # Start from first of the month
+    months_list = []
+
+    while current_date <= trend_end_date:
+        # Calculate next month
+        if current_date.month == 12:
+            next_month = current_date.replace(year=current_date.year + 1, month=1, day=1)
+        else:
+            next_month = current_date.replace(month=current_date.month + 1, day=1)
+
+        month_end = min(next_month - timedelta(days=1), trend_end_date)
+        month_label = current_date.strftime('%b %Y')
+        months_list.append(month_label)
+
+        month_total = Decimal('0.00')
+
+        # Get revenue for each dispensary in this month
+        for dispensary in all_dispensaries:
+            monthly_logs = DispensingLog.objects.filter(
+                dispensary=dispensary,
+                dispensed_date__date__range=[current_date, month_end]
+            ).aggregate(
+                total_revenue=Sum('total_price_for_this_log')
+            )
+
+            revenue = monthly_logs['total_revenue'] or Decimal('0.00')
+            dispensary_monthly_data[dispensary.name].append(float(revenue))
+            month_total += revenue
+
+        monthly_trends.append({
+            'month': month_label,
+            'total': float(month_total)
+        })
+
+        current_date = next_month
+
+    # Prepare chart data
+    chart_data = {
+        'months': json.dumps(months_list),
+        'dispensaries': {}
+    }
+
+    # Add each dispensary's monthly data to chart
+    for dispensary_name, revenues in dispensary_monthly_data.items():
+        chart_data['dispensaries'][dispensary_name] = json.dumps(revenues)
+
+    # Total monthly revenue
+    chart_data['total'] = json.dumps([trend['total'] for trend in monthly_trends])
+
+    # Performance metrics
+    performance_metrics = {
+        'total_transactions': total_transactions,
+        'total_medications_dispensed': total_medications_dispensed,
+        'average_transaction_value': total_pharmacy_revenue / max(1, total_transactions),
+        'days_in_period': (end_date - start_date).days + 1,
+        'daily_average': total_pharmacy_revenue / max(1, (end_date - start_date).days + 1),
+        'dispensaries_count': len([d for d in dispensary_data if d['dispensary'] is not None])
+    }
+
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'start_date_str': start_date_str,
+        'end_date_str': end_date_str,
+        'search_query': search_query,
+        'total_pharmacy_revenue': total_pharmacy_revenue,
+        'dispensary_data': dispensary_data,
+        'chart_data': chart_data,
+        'performance_metrics': performance_metrics,
+        'page_title': 'Pharmacy Dispensary Revenue',
+        'active_nav': 'pharmacy',
+    }
+
+    return render(request, 'pharmacy/pharmacy_dispensary_revenue.html', context)
+
+
 def comprehensive_revenue_analysis_debug(request):
     """Legacy debug route - redirect to the canonical simple revenue statistics view."""
     from django.shortcuts import redirect
@@ -1383,6 +1599,14 @@ def active_store_detail(request, dispensary_id):
         active_store=active_store
     ).select_related('medication', 'active_store')
 
+    # Calculate total stock value
+    from decimal import Decimal
+    total_stock_value = sum(
+        (item.stock_quantity * item.unit_cost)
+        for item in inventory_items
+        if item.unit_cost is not None
+    ) or Decimal('0.00')
+
     # Get bulk stores for transfer
     bulk_stores = BulkStore.objects.filter(is_active=True)
 
@@ -1398,6 +1622,32 @@ def active_store_detail(request, dispensary_id):
                 'bulk_store': bulk_store,
                 'medications': medications
             })
+    
+    # Create JSON-serializable version for JavaScript
+    import json
+    available_bulk_medications_json = []
+    for bulk_store_data in available_bulk_medications:
+        bulk_store = bulk_store_data['bulk_store']
+        medications_data = []
+        
+        for med_inventory in bulk_store_data['medications']:
+            medications_data.append({
+                'medication': {
+                    'id': med_inventory.medication.id,
+                    'name': med_inventory.medication.name
+                },
+                'batch_number': med_inventory.batch_number or '',
+                'stock_quantity': med_inventory.stock_quantity,
+                'unit_cost': float(med_inventory.unit_cost) if med_inventory.unit_cost else 0.00
+            })
+        
+        available_bulk_medications_json.append({
+            'bulk_store': {
+                'id': bulk_store.id,
+                'name': bulk_store.name
+            },
+            'medications': medications_data
+        })
 
     # Handle active store to dispensary transfer
     dispensary_transfer_form = None
@@ -1443,7 +1693,6 @@ def active_store_detail(request, dispensary_id):
                 # Process bulk transfer
                 bulk_store = bulk_transfer_form.cleaned_data['bulk_store']
                 transfer_medications = request.POST.getlist('transfer_medications')
-                transfer_quantities = request.POST.getlist('transfer_quantities')
 
                 # Validate that we have medications to transfer
                 if not transfer_medications:
@@ -1454,47 +1703,58 @@ def active_store_detail(request, dispensary_id):
                 errors = []
 
                 with transaction.atomic():
-                    for i, medication_id in enumerate(transfer_medications):
-                        if medication_id and i < len(transfer_quantities):
+                    for medication_id in transfer_medications:
+                        if medication_id:
                             try:
-                                quantity = int(transfer_quantities[i])
-                                if quantity > 0:
-                                    # Get bulk inventory with validation
-                                    bulk_inventory = BulkStoreInventory.objects.filter(
-                                        bulk_store=bulk_store,
-                                        medication_id=medication_id
-                                    ).first()
+                                # Get quantity from medication-specific field
+                                quantity_field_name = f'transfer_quantity_{medication_id}'
+                                quantity_value = request.POST.get(quantity_field_name, '')
 
-                                    if not bulk_inventory:
-                                        errors.append(f'Medication ID {medication_id} not found in bulk store')
-                                        continue
+                                if not quantity_value:
+                                    errors.append(f'No quantity specified for medication ID {medication_id}')
+                                    continue
 
-                                    # Check if medication is expired
-                                    from datetime import date
-                                    if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
-                                        errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
-                                        continue
+                                quantity = int(quantity_value)
+                                if quantity <= 0:
+                                    errors.append(f'Invalid quantity for medication ID {medication_id}')
+                                    continue
 
-                                    # Check if sufficient stock
-                                    if bulk_inventory.stock_quantity < quantity:
-                                        errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
-                                        continue
+                                # Get bulk inventory with validation
+                                bulk_inventory = BulkStoreInventory.objects.filter(
+                                    bulk_store=bulk_store,
+                                    medication_id=medication_id
+                                ).first()
 
-                                    # Create transfer
-                                    transfer = MedicationTransfer.objects.create(
-                                        medication=bulk_inventory.medication,
-                                        from_bulk_store=bulk_store,
-                                        to_active_store=active_store,
-                                        quantity=quantity,
-                                        batch_number=bulk_inventory.batch_number,
-                                        expiry_date=bulk_inventory.expiry_date,
-                                        unit_cost=bulk_inventory.unit_cost,
-                                        requested_by=request.user,
-                                        status='pending'
-                                    )
-                                    transfers_created += 1
+                                if not bulk_inventory:
+                                    errors.append(f'Medication ID {medication_id} not found in bulk store')
+                                    continue
+
+                                # Check if medication is expired
+                                from datetime import date
+                                if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
+                                    errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
+                                    continue
+
+                                # Check if sufficient stock
+                                if bulk_inventory.stock_quantity < quantity:
+                                    errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
+                                    continue
+
+                                # Create transfer
+                                transfer = MedicationTransfer.objects.create(
+                                    medication=bulk_inventory.medication,
+                                    from_bulk_store=bulk_store,
+                                    to_active_store=active_store,
+                                    quantity=quantity,
+                                    batch_number=bulk_inventory.batch_number,
+                                    expiry_date=bulk_inventory.expiry_date,
+                                    unit_cost=bulk_inventory.unit_cost,
+                                    requested_by=request.user,
+                                    status='pending'
+                                )
+                                transfers_created += 1
                             except ValueError as e:
-                                errors.append(f'Invalid quantity for medication ID {medication_id}')
+                                errors.append(f'Invalid quantity for medication ID {medication_id}: {str(e)}')
                             except Exception as e:
                                 errors.append(f'Error processing medication ID {medication_id}: {str(e)}')
 
@@ -1531,20 +1791,274 @@ def active_store_detail(request, dispensary_id):
         status='pending'
     ).select_related('medication', 'to_dispensary', 'requested_by')
 
+    # Get pending bulk store transfers (medication transfers) for this active store
+    pending_medication_transfers = MedicationTransfer.objects.filter(
+        to_active_store=active_store,
+        status='pending'
+    ).select_related('medication', 'from_bulk_store', 'requested_by').order_by('-created_at')
+
     context = {
         'active_store': active_store,
         'dispensary': dispensary,
         'inventory_items': inventory_items,
+        'total_stock_value': total_stock_value,
         'bulk_stores': bulk_stores,
         'available_bulk_medications': available_bulk_medications,
+        'available_bulk_medications_json': json.dumps(available_bulk_medications_json),
         'bulk_transfer_form': bulk_transfer_form,
         'dispensary_transfer_form': dispensary_transfer_form,
         'pending_dispensary_transfers': pending_dispensary_transfers,
+        'pending_medication_transfers': pending_medication_transfers,
         'page_title': f'Active Store - {active_store.name}',
         'active_nav': 'pharmacy',
     }
 
     return render(request, 'pharmacy/active_store_detail.html', context)
+
+
+@login_required
+def active_store_bulk_transfers(request, dispensary_id):
+    """View for managing bulk store to active store transfers"""
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    active_store = getattr(dispensary, 'active_store', None)
+
+    if not active_store:
+        messages.error(request, f'No active store found for {dispensary.name}.')
+        return redirect('pharmacy:dispensary_list')
+
+    # Get bulk stores for transfer
+    bulk_stores = BulkStore.objects.filter(is_active=True)
+
+    # Get medications available in bulk stores for transfer
+    available_bulk_medications = []
+    for bulk_store in bulk_stores:
+        medications = BulkStoreInventory.objects.filter(
+            bulk_store=bulk_store,
+            stock_quantity__gt=0
+        ).select_related('medication').order_by('medication__name')
+        if medications:
+            available_bulk_medications.append({
+                'bulk_store': bulk_store,
+                'medications': medications
+            })
+
+    # Debug logging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"=== BULK TRANSFER DEBUG ===")
+    logger.info(f"Bulk stores count: {bulk_stores.count()}")
+    logger.info(f"Available bulk medications groups: {len(available_bulk_medications)}")
+    for item in available_bulk_medications:
+        logger.info(f"  - {item['bulk_store'].name}: {item['medications'].count()} medications")
+
+    # Handle bulk transfer form submission
+    if request.method == 'POST' and 'bulk_transfer' in request.POST:
+        from .forms import BulkStoreTransferForm
+        bulk_transfer_form = BulkStoreTransferForm(request.POST)
+        if bulk_transfer_form.is_valid():
+            try:
+                # Process bulk transfer
+                bulk_store = bulk_transfer_form.cleaned_data['bulk_store']
+                transfer_medications = request.POST.getlist('transfer_medications')
+
+                if not transfer_medications:
+                    messages.error(request, 'Please select at least one medication to transfer.')
+                    return redirect('pharmacy:active_store_bulk_transfers', dispensary_id=dispensary_id)
+
+                transfers_created = 0
+                errors = []
+
+                for medication_id in transfer_medications:
+                    quantity_key = f'transfer_quantity_{medication_id}'
+                    quantity_value = request.POST.get(quantity_key)
+
+                    if quantity_value:
+                        try:
+                            quantity = int(quantity_value)
+                            if quantity <= 0:
+                                errors.append(f'Invalid quantity for medication ID {medication_id}')
+                                continue
+
+                            # Get bulk inventory with validation
+                            bulk_inventory = BulkStoreInventory.objects.filter(
+                                bulk_store=bulk_store,
+                                medication_id=medication_id
+                            ).first()
+
+                            if not bulk_inventory:
+                                errors.append(f'Medication ID {medication_id} not found in bulk store')
+                                continue
+
+                            # Check if medication is expired
+                            from datetime import date
+                            if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
+                                errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
+                                continue
+
+                            # Check if sufficient stock
+                            if bulk_inventory.stock_quantity < quantity:
+                                errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
+                                continue
+
+                            # Create transfer
+                            transfer = MedicationTransfer.objects.create(
+                                medication=bulk_inventory.medication,
+                                from_bulk_store=bulk_store,
+                                to_active_store=active_store,
+                                quantity=quantity,
+                                batch_number=bulk_inventory.batch_number,
+                                expiry_date=bulk_inventory.expiry_date,
+                                unit_cost=bulk_inventory.unit_cost,
+                                requested_by=request.user,
+                                status='pending'
+                            )
+                            transfers_created += 1
+                        except ValueError as e:
+                            errors.append(f'Invalid quantity for medication ID {medication_id}: {str(e)}')
+                        except Exception as e:
+                            errors.append(f'Error processing medication ID {medication_id}: {str(e)}')
+
+                # Show results
+                if transfers_created > 0:
+                    messages.success(request, f'Successfully created {transfers_created} transfer request(s).')
+
+                if errors:
+                    for error in errors:
+                        messages.warning(request, error)
+
+                if transfers_created == 0 and not errors:
+                    messages.error(request, 'No transfers were created. Please check your selections.')
+
+                return redirect('pharmacy:active_store_bulk_transfers', dispensary_id=dispensary_id)
+            except Exception as e:
+                messages.error(request, f'Error creating transfers: {str(e)}')
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Bulk transfer error: {str(e)}', exc_info=True)
+        else:
+            messages.error(request, 'Invalid form data. Please check your selections.')
+
+    # Create bulk transfer form for GET requests
+    from .forms import BulkStoreTransferForm
+    bulk_transfer_form = BulkStoreTransferForm()
+
+    # Get pending transfers
+    pending_transfers = MedicationTransfer.objects.filter(
+        to_active_store=active_store,
+        status='pending'
+    ).select_related('medication', 'from_bulk_store', 'requested_by').order_by('-created_at')
+
+    # Get recent transfers
+    recent_transfers = MedicationTransfer.objects.filter(
+        to_active_store=active_store,
+        status='delivered'
+    ).select_related('medication', 'from_bulk_store', 'requested_by').order_by('-delivered_at')[:10]
+
+    # Get transfer statistics
+    pending_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='pending').count()
+    in_transit_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='in_transit').count()
+    delivered_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='delivered').count()
+    cancelled_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='cancelled').count()
+
+    context = {
+        'active_store': active_store,
+        'dispensary': dispensary,
+        'bulk_stores': bulk_stores,
+        'available_bulk_medications': available_bulk_medications,
+        'bulk_transfer_form': bulk_transfer_form,
+        'pending_transfers': pending_transfers,
+        'recent_transfers': recent_transfers,
+        'pending_count': pending_count,
+        'in_transit_count': in_transit_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'page_title': f'Bulk Store Transfers - {active_store.name}',
+        'active_nav': 'pharmacy',
+    }
+
+    return render(request, 'pharmacy/active_store_bulk_transfers.html', context)
+
+
+@login_required
+def active_store_dispensary_transfers(request, dispensary_id):
+    """View for managing active store to dispensary transfers"""
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    active_store = getattr(dispensary, 'active_store', None)
+
+    if not active_store:
+        messages.error(request, f'No active store found for {dispensary.name}.')
+        return redirect('pharmacy:dispensary_list')
+
+    # Handle dispensary transfer form submission
+    if request.method == 'POST' and 'dispensary_transfer' in request.POST:
+        from .dispensary_transfer_forms import DispensaryTransferForm
+        dispensary_transfer_form = DispensaryTransferForm(active_store=active_store, data=request.POST)
+        if dispensary_transfer_form.is_valid():
+            try:
+                # Process dispensary transfer
+                medication_id = request.POST.get('medication')
+                quantity = int(request.POST.get('quantity'))
+                notes = request.POST.get('notes', '')
+
+                medication = get_object_or_404(Medication, id=medication_id)
+
+                # Create transfer from active store to dispensary
+                transfer = DispensaryTransfer.create_transfer(
+                    medication=medication,
+                    from_active_store=active_store,
+                    to_dispensary=dispensary,
+                    quantity=quantity,
+                    requested_by=request.user,
+                    notes=notes
+                )
+
+                messages.success(request, f'Successfully created dispensary transfer request for {quantity} units of {medication.name}.')
+                return redirect('pharmacy:active_store_dispensary_transfers', dispensary_id=dispensary_id)
+
+            except ValueError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f'Error creating dispensary transfer: {str(e)}')
+        else:
+            messages.error(request, 'Invalid form data. Please check your selections.')
+
+    # Create dispensary transfer form for GET requests
+    from .dispensary_transfer_forms import DispensaryTransferForm
+    dispensary_transfer_form = DispensaryTransferForm(active_store=active_store)
+
+    # Get pending transfers
+    pending_dispensary_transfers = DispensaryTransfer.objects.filter(
+        from_active_store=active_store,
+        status='pending'
+    ).select_related('medication', 'to_dispensary', 'requested_by').order_by('-created_at')
+
+    # Get completed transfers
+    completed_transfers = DispensaryTransfer.objects.filter(
+        from_active_store=active_store,
+        status='completed'
+    ).select_related('medication', 'to_dispensary', 'requested_by', 'approved_by').order_by('-transferred_at')[:10]
+
+    # Get transfer statistics
+    pending_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='pending').count()
+    in_transit_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='in_transit').count()
+    completed_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='completed').count()
+    cancelled_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='cancelled').count()
+
+    context = {
+        'active_store': active_store,
+        'dispensary': dispensary,
+        'dispensary_transfer_form': dispensary_transfer_form,
+        'pending_dispensary_transfers': pending_dispensary_transfers,
+        'completed_transfers': completed_transfers,
+        'pending_count': pending_count,
+        'in_transit_count': in_transit_count,
+        'completed_count': completed_count,
+        'cancelled_count': cancelled_count,
+        'page_title': f'Dispensary Transfers - {active_store.name}',
+        'active_nav': 'pharmacy',
+    }
+
+    return render(request, 'pharmacy/active_store_dispensary_transfers.html', context)
 
 
 @login_required
@@ -2186,7 +2700,7 @@ def add_purchase(request):
                 with transaction.atomic():
                     purchase.save()
                     # If save succeeded
-                    messages.success(request, f'Purchase #{purchase.invoice_number} created successfully.')
+                    messages.success(request, f'Purchase #{purchase.invoice_number or "No Invoice"} created successfully.')
                     return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
             except IntegrityError:
                 # Likely duplicate invoice_number (unique constraint). Add a form error and re-render.
@@ -4942,22 +5456,11 @@ def add_dispensary(request):
     if request.method == 'POST':
         form = DispensaryForm(request.POST)
         if form.is_valid():
-            with transaction.atomic():
-                # Save dispensary
-                dispensary = form.save()
+            # Save dispensary - ActiveStore will be created automatically by signal
+            dispensary = form.save()
 
-                # Automatically create associated active store
-                active_store = ActiveStore.objects.create(
-                    dispensary=dispensary,
-                    name=f"Active Store - {dispensary.name}",
-                    location=dispensary.location or "Same as dispensary",
-                    description=f"Active storage area for {dispensary.name}",
-                    capacity=1000,  # Default capacity
-                    is_active=dispensary.is_active
-                )
-
-                messages.success(request, f'Dispensary {dispensary.name} created successfully with active store.')
-                return redirect('pharmacy:dispensary_list')
+            messages.success(request, f'Dispensary {dispensary.name} created successfully with active store.')
+            return redirect('pharmacy:dispensary_list')
     else:
         form = DispensaryForm()
 
@@ -5101,6 +5604,7 @@ def dispensary_inventory(request, dispensary_id):
     context = {
         'dispensary': dispensary,
         'inventory_items': inventory_items,
+        'title': f'{dispensary.name} Inventory',
         'page_title': f'{dispensary.name} Inventory',
         'active_nav': 'pharmacy',
         'can_edit_inventory': can_edit_inventory,
@@ -5658,6 +6162,52 @@ def create_pack_order(request, pack_id=None):
             pack_order.ordered_by = request.user
             if pack:
                 pack_order.pack = pack
+
+            # Validate NHIA authorization before saving
+            selected_patient = pack_order.patient
+            selected_pack = pack_order.pack
+
+            # Check if patient is NHIA
+            is_nhia = hasattr(selected_patient, 'patient_type') and selected_patient.patient_type == 'nhia'
+            if is_nhia:
+                # NHIA patients require authorization code
+                if not pack_order.authorization_code:
+                    messages.error(
+                        request,
+                        'NHIA authorization code is required for NHIA patients. '
+                        'Please obtain authorization from desk office before creating this pack order.'
+                    )
+                    # Re-render form with error
+                    context = {
+                        'form': form,
+                        'pack': pack,
+                        'surgery': surgery,
+                        'labor_record': labor_record,
+                        'patient': patient,
+                        'page_title': 'Create Pack Order',
+                        'active_nav': 'pharmacy',
+                    }
+                    return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+
+                # Validate authorization code
+                if hasattr(pack_order.authorization_code, 'is_valid'):
+                    if not pack_order.authorization_code.is_valid():
+                        messages.error(
+                            request,
+                            f'Authorization code is {pack_order.authorization_code.status}. '
+                            'Please provide a valid authorization code.'
+                        )
+                        context = {
+                            'form': form,
+                            'pack': pack,
+                            'surgery': surgery,
+                            'labor_record': labor_record,
+                            'patient': patient,
+                            'page_title': 'Create Pack Order',
+                            'active_nav': 'pharmacy',
+                        }
+                        return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+
             pack_order.save()
 
             # Automatically create prescription from pack items
@@ -6243,3 +6793,130 @@ def transfer_medication_to_dispensary(request):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+# ============================================
+# MARKUP MANAGEMENT VIEWS
+# ============================================
+
+@login_required
+def bulk_apply_markup(request):
+    """Apply markup percentage to multiple items in bulk store"""
+    if request.method == 'POST':
+        try:
+            markup_percentage = Decimal(request.POST.get('markup_percentage', '20'))
+            bulk_store_id = request.POST.get('bulk_store_id')
+            item_ids = request.POST.getlist('item_ids[]')
+
+            # Validate markup percentage
+            if markup_percentage < 0 or markup_percentage > 100:
+                messages.error(request, "Markup percentage must be between 0 and 100")
+                return redirect('pharmacy:bulk_store_dashboard')
+
+            # Get items to update
+            if item_ids:
+                # Apply to selected items
+                items = BulkStoreInventory.objects.filter(id__in=item_ids)
+            elif bulk_store_id:
+                # Apply to all items in bulk store
+                items = BulkStoreInventory.objects.filter(bulk_store_id=bulk_store_id)
+            else:
+                # Apply to all items in all bulk stores
+                items = BulkStoreInventory.objects.all()
+
+            # Update markup for each item
+            updated_count = 0
+            for item in items:
+                item.markup_percentage = markup_percentage
+                item.save()  # save() will auto-calculate marked_up_cost
+                updated_count += 1
+
+            messages.success(request, f"Successfully applied {markup_percentage}% markup to {updated_count} items")
+
+            # Create audit log
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=request.user,
+                    action="BULK_MARKUP_APPLIED",
+                    details=f"Applied {markup_percentage}% markup to {updated_count} bulk store items"
+                )
+            except ImportError:
+                pass
+
+        except Exception as e:
+            messages.error(request, f"Error applying markup: {str(e)}")
+
+        return redirect('pharmacy:bulk_store_dashboard')
+
+    # GET request - show form
+    bulk_stores = BulkStore.objects.all()
+    context = {
+        'bulk_stores': bulk_stores,
+        'title': 'Apply Bulk Markup',
+        'active_nav': 'pharmacy',
+    }
+    return render(request, 'pharmacy/bulk_apply_markup.html', context)
+
+
+@login_required
+def update_item_markup(request, item_id):
+    """Update markup for a single bulk store item"""
+    item = get_object_or_404(BulkStoreInventory, id=item_id)
+
+    if request.method == 'POST':
+        try:
+            markup_percentage = Decimal(request.POST.get('markup_percentage', '20'))
+
+            # Validate markup percentage
+            if markup_percentage < 0 or markup_percentage > 100:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': 'Markup percentage must be between 0 and 100'})
+                messages.error(request, "Markup percentage must be between 0 and 100")
+                return redirect('pharmacy:bulk_store_dashboard')
+
+            # Update item
+            old_markup = item.markup_percentage
+            item.markup_percentage = markup_percentage
+            item.save()  # save() will auto-calculate marked_up_cost
+
+            # Create audit log
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=request.user,
+                    action="ITEM_MARKUP_UPDATED",
+                    details=f"Updated markup for {item.medication.name} (Batch: {item.batch_number}) from {old_markup}% to {markup_percentage}%"
+                )
+            except ImportError:
+                pass
+
+            # Return JSON response for AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Markup updated to {markup_percentage}%',
+                    'marked_up_cost': float(item.marked_up_cost)
+                })
+
+            messages.success(request, f"Successfully updated markup to {markup_percentage}%")
+            return redirect('pharmacy:bulk_store_dashboard')
+
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)})
+            messages.error(request, f"Error updating markup: {str(e)}")
+            return redirect('pharmacy:bulk_store_dashboard')
+
+    # GET request - return item details for AJAX
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'id': item.id,
+            'medication_name': item.medication.name,
+            'batch_number': item.batch_number,
+            'unit_cost': float(item.unit_cost),
+            'markup_percentage': float(item.markup_percentage),
+            'marked_up_cost': float(item.marked_up_cost)
+        })
+
+    return redirect('pharmacy:bulk_store_dashboard')

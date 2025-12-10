@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }} - {{ block.super }}{% endblock %}
 
@@ -202,7 +203,7 @@
                 </div>
                 
                 <div class="text-center">
-                    <div class="h4 mb-0 text-success">₦{{ pack.get_total_cost|floatformat:2 }}</div>
+                    <div class="h4 mb-0 text-success">{{ pack.get_total_cost|currency }}</div>
                     <small>Total Cost</small>
                 </div>
                 
@@ -236,7 +237,7 @@
                             </div>
                             <div class="text-end">
                                 <div>Qty: <strong>{{ item.quantity }}</strong></div>
-                                <small class="text-success">₦{{ item.get_total_cost|floatformat:2 }}</small>
+                                <small class="text-success">{{ item.get_total_cost|currency }}</small>
                             </div>
                         </div>
                     </div>
@@ -257,7 +258,7 @@
                         <div class="mb-2">
                             <a href="?pack_id={{ available_pack.id }}" class="btn btn-outline-primary btn-sm w-100">
                                 {{ available_pack.name }}
-                                <span class="badge bg-success ms-2">₦{{ available_pack.get_total_cost|floatformat:2 }}</span>
+                                <span class="badge bg-success ms-2">{{ available_pack.get_total_cost|currency }}</span>
                             </a>
                         </div>
                         {% endfor %}

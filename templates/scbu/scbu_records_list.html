@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 
 {% block title %}SCBU Records - Hospital Management System{% endblock %}
@@ -79,13 +80,13 @@
                                     <td>{{ record.diagnosis|truncatewords:5 }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{% url 'scbu:scbu_record_detail' record.id %}" class="btn btn-info" title="View">
+                                            <a href="{% url 'scbu:scbu_record_detail' record.id %}" class="btn btn-outline-info" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{% url 'scbu:edit_scbu_record' record.id %}" class="btn btn-primary" title="Edit">
+                                            <a href="{% url 'scbu:edit_scbu_record' record.id %}" class="btn btn-outline-primary" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="{% url 'scbu:delete_scbu_record' record.id %}" class="btn btn-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this SCBU record?');">
+                                            <a href="{% url 'scbu:delete_scbu_record' record.id %}" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this SCBU record?');">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>

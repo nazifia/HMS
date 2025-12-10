@@ -150,7 +150,7 @@ def generate_authorization_code(request):
                 except (ValueError, TypeError):
                     pass
             
-            authorization_form = AuthorizationCodeForm(patient=selected_patient, initial=initial_data)
+            authorization_form = AuthorizationCodeForm(patient=selected_patient, user=request.user, initial=initial_data)
             
         except Patient.DoesNotExist:
             messages.error(request, 'Selected patient not found or is not an NHIA patient.')
@@ -160,7 +160,7 @@ def generate_authorization_code(request):
         try:
             patient_id = request.POST.get('patient_id')
             selected_patient = Patient.objects.get(id=patient_id, patient_type='nhia')
-            authorization_form = AuthorizationCodeForm(request.POST, patient=selected_patient)
+            authorization_form = AuthorizationCodeForm(request.POST, patient=selected_patient, user=request.user)
             if authorization_form.is_valid():
                 authorization_code = authorization_form.save()
                 messages.success(request, f'Authorization code {authorization_code.code} generated successfully.')
@@ -170,7 +170,7 @@ def generate_authorization_code(request):
                 pass
         except Patient.DoesNotExist:
             messages.error(request, 'Selected patient not found or is not an NHIA patient.')
-            authorization_form = AuthorizationCodeForm()
+            authorization_form = AuthorizationCodeForm(user=request.user)
     
     # Fetch active services for the dropdown
     from billing.models import Service

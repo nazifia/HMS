@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Generate Authorization Code - NHIA Authorization{% endblock %}
 
@@ -106,7 +107,7 @@
                                        value="{{ search_query|default:'' }}"
                                        hx-get="{% url 'core:patient_search_ajax' %}"
                                        hx-target="#patientResults"
-                                       hx-trigger="keyup changed delay:300ms"
+                                       hx-trigger="keyup changed delay:150ms"
                                        hx-include="[name='q']"
                                        hx-vals='{"patient_type": "nhia"}'
                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
@@ -361,7 +362,7 @@
                             <div>
                                 <code class="text-primary">{{ code.code }}</code><br>
                                 <small class="text-muted">{{ code.patient.get_full_name }}</small><br>
-                                <small>₦{{ code.amount|floatformat:2 }}</small>
+                                <small>{{ code.amount|currency }}</small>
                             </div>
                             <span class="badge 
                                 {% if code.status == 'active' %}bg-success

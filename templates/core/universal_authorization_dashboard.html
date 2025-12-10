@@ -1,7 +1,99 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Universal Authorization Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Make status column more readable in both tables */
+    .table th:nth-child(5),
+    .table td:nth-child(5),
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
+        min-width: 150px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* Status badge improvements */
+    .badge {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .badge i {
+        font-size: 0.9rem;
+    }
+
+    /* Table hover effect */
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transition: background-color 0.2s ease;
+    }
+
+    /* Accordion button styling */
+    .accordion .btn-link {
+        text-decoration: none;
+        color: #4e73df;
+        font-weight: 600;
+    }
+
+    .accordion .btn-link:hover {
+        text-decoration: none;
+        color: #2e59d9;
+    }
+
+    /* Table header improvements */
+    .table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .table thead th {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        padding: 1rem 0.75rem;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    /* Action buttons in tables */
+    .table td .btn {
+        white-space: nowrap;
+    }
+
+    /* Search highlight styling */
+    mark {
+        background-color: #fff3cd;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-weight: 600;
+    }
+
+    /* Search input focus effect */
+    #searchInput:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+
+    /* Clear search button styling */
+    #clearSearch {
+        border-left: 0;
+    }
+
+    #clearSearch:hover {
+        background-color: #f8f9fc;
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -14,6 +106,51 @@
             <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-arrow-left"></i> Back to Desk Office Dashboard
             </a>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="GET" action="{% url 'core:universal_authorization_dashboard' %}" id="searchForm">
+                <div class="row">
+                    <div class="col-md-10">
+                        <div class="input-group">
+                            <span class="input-group-text bg-primary text-white">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control form-control-lg"
+                                   id="searchInput"
+                                   name="search"
+                                   placeholder="Search by Patient Name or Patient ID..."
+                                   value="{{ search_query|default:'' }}"
+                                   autocomplete="off">
+                            {% if search_query %}
+                            <button type="button" class="btn btn-outline-secondary" id="clearSearch" title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                {% if search_query %}
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Showing results for: <strong>"{{ search_query }}"</strong>
+                        <a href="{% url 'core:universal_authorization_dashboard' %}" class="ms-2 text-primary">
+                            <i class="fas fa-redo"></i> Show All
+                        </a>
+                    </small>
+                </div>
+                {% endif %}
+            </form>
         </div>
     </div>
 
@@ -94,6 +231,9 @@
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">
                 <i class="fas fa-list"></i> Pending Authorization Requests
+                {% if search_query %}
+                <span class="badge badge-info">Filtered</span>
+                {% endif %}
             </h6>
         </div>
         <div class="card-body">
@@ -120,14 +260,16 @@
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
-                                    <thead>
+                                    <thead class="bg-light">
                                         <tr>
                                             <th>ID</th>
                                             <th>Patient</th>
                                             <th>Patient ID</th>
                                             <th>Date</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
+                                            <th class="text-center">
+                                                <i class="fas fa-shield-alt"></i> Authorization Status
+                                            </th>
+                                            <th class="text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -137,7 +279,9 @@
                                             <td>{{ item.patient.get_full_name }}</td>
                                             <td>{{ item.patient.patient_id }}</td>
                                             <td>
-                                                {% if item.visit_date %}
+                                                {% if item.appointment_date %}
+                                                    {{ item.appointment_date|date:"Y-m-d" }}
+                                                {% elif item.visit_date %}
                                                     {{ item.visit_date|date:"Y-m-d" }}
                                                 {% elif item.consultation_date %}
                                                     {{ item.consultation_date|date:"Y-m-d" }}
@@ -149,17 +293,30 @@
                                                     {{ item.prescription_date|date:"Y-m-d" }}
                                                 {% elif item.referral_date %}
                                                     {{ item.referral_date|date:"Y-m-d" }}
+                                                {% elif item.surgery_date %}
+                                                    {{ item.surgery_date|date:"Y-m-d" }}
+                                                {% elif item.admission_date %}
+                                                    {{ item.admission_date|date:"Y-m-d" }}
+                                                {% elif item.created_at %}
+                                                    <span class="text-muted" title="Created Date">{{ item.created_at|date:"Y-m-d" }}</span>
                                                 {% else %}
-                                                    N/A
+                                                    <span class="text-muted">N/A</span>
                                                 {% endif %}
                                             </td>
                                             <td>
                                                 {% if item.authorization_status %}
-                                                    <span class="badge badge-{% if item.authorization_status == 'pending' %}warning{% elif item.authorization_status == 'required' %}danger{% else %}secondary{% endif %}">
+                                                    <span class="badge bg-{% if item.authorization_status == 'pending' %}warning{% elif item.authorization_status == 'required' %}danger{% elif item.authorization_status == 'authorized' %}success{% else %}secondary{% endif %} text-white px-3 py-2" style="font-size: 0.875rem;">
+                                                        <i class="fas fa-{% if item.authorization_status == 'pending' %}clock{% elif item.authorization_status == 'required' %}exclamation-triangle{% elif item.authorization_status == 'authorized' %}check-circle{% else %}question-circle{% endif %}"></i>
                                                         {{ item.authorization_status|title }}
                                                     </span>
+                                                {% elif item.authorization_code %}
+                                                    <span class="badge bg-success text-white px-3 py-2" style="font-size: 0.875rem;">
+                                                        <i class="fas fa-check-circle"></i> Authorized
+                                                    </span>
                                                 {% else %}
-                                                    <span class="badge badge-warning">Required</span>
+                                                    <span class="badge bg-danger text-white px-3 py-2" style="font-size: 0.875rem;">
+                                                        <i class="fas fa-exclamation-triangle"></i> Required
+                                                    </span>
                                                 {% endif %}
                                             </td>
                                             <td>
@@ -182,7 +339,13 @@
     </div>
     {% else %}
     <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i> No pending authorization requests at this time.
+        <i class="fas fa-info-circle"></i>
+        {% if search_query %}
+            No pending authorization requests match your search "{{ search_query }}".
+            <a href="{% url 'core:universal_authorization_dashboard' %}" class="alert-link">Show all requests</a>
+        {% else %}
+            No pending authorization requests at this time.
+        {% endif %}
     </div>
     {% endif %}
 
@@ -191,12 +354,15 @@
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">
                 <i class="fas fa-history"></i> Recent Authorization Codes
+                {% if search_query %}
+                <span class="badge badge-info">Filtered</span>
+                {% endif %}
             </h6>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-bordered table-hover">
-                    <thead>
+                    <thead class="bg-light">
                         <tr>
                             <th>Code</th>
                             <th>Patient</th>
@@ -204,7 +370,9 @@
                             <th>Service Type</th>
                             <th>Amount</th>
                             <th>Expiry Date</th>
-                            <th>Status</th>
+                            <th class="text-center">
+                                <i class="fas fa-info-circle"></i> Status
+                            </th>
                             <th>Generated By</th>
                             <th>Generated At</th>
                         </tr>
@@ -216,7 +384,7 @@
                             <td>{{ code.patient.get_full_name }}</td>
                             <td><code>{{ code.patient.patient_id }}</code></td>
                             <td>{{ code.get_service_type_display }}</td>
-                            <td>₦ {{ code.amount|floatformat:2 }}</td>
+                            <td>{{ code.amount|currency }}</td>
                             <td>
                                 {{ code.expiry_date|date:"Y-m-d" }}
                                 {% if code.expiry_date < today %}
@@ -224,7 +392,8 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge badge-{% if code.status == 'active' %}success{% elif code.status == 'used' %}info{% elif code.status == 'expired' %}danger{% else %}secondary{% endif %}">
+                                <span class="badge bg-{% if code.status == 'active' %}success{% elif code.status == 'used' %}info{% elif code.status == 'expired' %}danger{% elif code.status == 'cancelled' %}secondary{% else %}warning{% endif %} text-white px-3 py-2" style="font-size: 0.875rem;">
+                                    <i class="fas fa-{% if code.status == 'active' %}check-circle{% elif code.status == 'used' %}arrow-circle-right{% elif code.status == 'expired' %}times-circle{% elif code.status == 'cancelled' %}ban{% else %}question-circle{% endif %}"></i>
                                     {{ code.get_status_display }}
                                 </span>
                             </td>
@@ -233,7 +402,14 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center">No authorization codes generated yet.</td>
+                            <td colspan="9" class="text-center">
+                                {% if search_query %}
+                                    No authorization codes match your search "{{ search_query }}".
+                                    <a href="{% url 'core:universal_authorization_dashboard' %}">Show all codes</a>
+                                {% else %}
+                                    No authorization codes generated yet.
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -242,5 +418,77 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Focus on search input if empty
+    const searchInput = $('#searchInput');
+    if (searchInput.val() === '') {
+        searchInput.focus();
+    }
+
+    // Clear search functionality
+    $('#clearSearch').on('click', function() {
+        window.location.href = '{% url "core:universal_authorization_dashboard" %}';
+    });
+
+    // Optional: Submit form on Enter key
+    searchInput.on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#searchForm').submit();
+        }
+    });
+
+    // Optional: Real-time client-side filtering (commented out for now)
+    /*
+    let searchTimeout;
+    searchInput.on('input', function() {
+        clearTimeout(searchTimeout);
+        const query = $(this).val().toLowerCase().trim();
+
+        if (query.length === 0) {
+            // Show all rows
+            $('.table tbody tr').show();
+            return;
+        }
+
+        searchTimeout = setTimeout(function() {
+            // Filter table rows
+            $('.table tbody tr').each(function() {
+                const rowText = $(this).text().toLowerCase();
+                if (rowText.includes(query)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        }, 300); // Debounce for 300ms
+    });
+    */
+
+    // Highlight search terms in results
+    {% if search_query %}
+    const searchTerm = "{{ search_query|escapejs }}";
+    if (searchTerm) {
+        highlightSearchTerm(searchTerm);
+    }
+    {% endif %}
+
+    function highlightSearchTerm(term) {
+        const regex = new RegExp('(' + term + ')', 'gi');
+        $('.table tbody td').each(function() {
+            const $td = $(this);
+            const text = $td.text();
+            if (regex.test(text)) {
+                const highlightedText = text.replace(regex, '<mark>$1</mark>');
+                $td.html(highlightedText);
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
 

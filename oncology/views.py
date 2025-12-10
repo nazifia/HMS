@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
-from .models import OncologyRecord
-from .forms import OncologyRecordForm, OncologyRecordSearchForm
+from .models import OncologyRecord, OncologyClinicalNote
+from .forms import OncologyRecordForm, OncologyRecordSearchForm, OncologyClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -35,7 +35,8 @@ def oncology_dashboard(request):
 
     user_department = get_user_department(request.user)
 
-    if not user_department:
+    # Superusers can access all departments without assignment
+    if not user_department and not request.user.is_superuser:
         messages.error(request, "You must be assigned to a department.")
         return redirect('dashboard:dashboard')
 
@@ -202,22 +203,34 @@ def oncology_record_detail(request, record_id):
         id=record_id
     )
 
-    # NHIA AUTHORIZATION CHECK
+    # **NHIA AUTHORIZATION CHECK**
     is_nhia_patient = record.patient.patient_type == 'nhia'
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
+    authorization_request_pending = False
 
     if is_nhia_patient:
         if record.authorization_code:
             authorization_message = f"Authorized - Code: {record.authorization_code}"
         else:
             authorization_message = "NHIA Authorization Required"
-            messages.warning(
-                request,
-                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
-                f"Please contact the desk office to obtain authorization for oncology services."
-            )
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="Oncology"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for oncology services."
+                )
 
     context = {
         'record': record,
@@ -225,6 +238,7 @@ def oncology_record_detail(request, record_id):
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'oncology/oncology_record_detail.html', context)
 
@@ -232,7 +246,7 @@ def oncology_record_detail(request, record_id):
 def edit_oncology_record(request, record_id):
     """View to edit an existing oncology record"""
     record = get_object_or_404(OncologyRecord, id=record_id)
-    
+
     if request.method == 'POST':
         form = OncologyRecordForm(request.POST, instance=record)
         if form.is_valid():
@@ -241,11 +255,45 @@ def edit_oncology_record(request, record_id):
             return redirect('oncology:oncology_record_detail', record_id=record.id)
     else:
         form = OncologyRecordForm(instance=record)
-    
+
+    # **NHIA AUTHORIZATION CHECK**
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+    authorization_request_pending = False
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+        else:
+            authorization_message = "NHIA Authorization Required"
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="Oncology"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for oncology services."
+                )
+
     context = {
         'form': form,
         'record': record,
-        'title': 'Edit Oncology Record'
+        'title': 'Edit Oncology Record',
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'oncology/oncology_record_form.html', context)
 
@@ -341,3 +389,82 @@ def create_prescription_for_oncology(request, record_id):
         'title': 'Create Prescription'
     }
     return render(request, 'oncology/create_prescription.html', context)
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a oncology record"""
+    record = get_object_or_404(OncologyRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = OncologyClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.oncology_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('oncology:record_detail', record_id=record.pk)
+    else:
+        form = OncologyClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'oncology/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(OncologyClinicalNote, id=note_id)
+    record = note.oncology_record
+
+    if request.method == 'POST':
+        form = OncologyClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('oncology:record_detail', record_id=record.pk)
+    else:
+        form = OncologyClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'oncology/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(OncologyClinicalNote, id=note_id)
+    record_id = note.oncology_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('oncology:record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'oncology/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(OncologyClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.oncology_record
+    }
+    return render(request, 'oncology/clinical_note_detail.html', context)

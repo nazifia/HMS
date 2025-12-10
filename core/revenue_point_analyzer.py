@@ -633,7 +633,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         Get revenue trends by point over specified months
         """
         trends = {}
-        
+
         for i in range(months):
             # Calculate date range for each month
             end_date = timezone.now().date().replace(day=1) - timedelta(days=30*i)
@@ -642,11 +642,11 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
                 end_date = end_date.replace(year=end_date.year + 1, month=1, day=1) - timedelta(days=1)
             else:
                 end_date = end_date.replace(month=end_date.month + 1, day=1) - timedelta(days=1)
-            
+
             # Create analyzer for this month
             month_analyzer = RevenuePointBreakdownAnalyzer(start_date, end_date)
             monthly_data = month_analyzer.get_revenue_point_breakdown(include_trends=False)
-            
+
             month_key = start_date.strftime('%Y-%m')
             trends[month_key] = {
                 'date': start_date,
@@ -656,8 +656,137 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
                 'specialty_total': sum([s['revenue'] for s in monthly_data['specialty_departments'].values()]),
                 'grand_total': monthly_data['total_revenue']
             }
-        
+
         return OrderedDict(sorted(trends.items()))
+
+    def get_monthly_trends(self, months=12):
+        """
+        Get monthly revenue trends with individual department breakdown.
+        Returns data in format expected by revenue_trends template.
+
+        Args:
+            months: Number of months to analyze (default 12)
+
+        Returns:
+            list: List of dictionaries with monthly revenue data by department
+        """
+        trends = []
+
+        for i in range(months):
+            # Calculate date range for each month (going backwards from current date)
+            end_date = timezone.now().date()
+            # Calculate the month start by going back i months
+            year = end_date.year
+            month = end_date.month - i
+
+            # Handle year rollover
+            while month <= 0:
+                month += 12
+                year -= 1
+
+            # Get first day of the month
+            month_start = datetime(year, month, 1).date()
+
+            # Get last day of the month
+            if month == 12:
+                month_end = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                month_end = datetime(year, month + 1, 1).date() - timedelta(days=1)
+
+            # Create analyzer for this month
+            from .department_revenue_utils import DepartmentRevenueCalculator
+            month_calculator = DepartmentRevenueCalculator(month_start, month_end)
+
+            # Get revenue for each department
+            try:
+                pharmacy_data = month_calculator.get_pharmacy_detailed_revenue()
+                pharmacy_revenue = pharmacy_data.get('total_revenue', Decimal('0.00'))
+            except:
+                pharmacy_revenue = Decimal('0.00')
+
+            try:
+                lab_data = month_calculator.get_laboratory_detailed_revenue()
+                lab_revenue = lab_data.get('total_revenue', Decimal('0.00'))
+            except:
+                lab_revenue = Decimal('0.00')
+
+            try:
+                consultation_data = month_calculator.get_consultation_detailed_revenue()
+                consultation_revenue = consultation_data.get('total_revenue', Decimal('0.00'))
+            except:
+                consultation_revenue = Decimal('0.00')
+
+            try:
+                theatre_data = month_calculator.get_theatre_detailed_revenue()
+                theatre_revenue = theatre_data.get('total_revenue', Decimal('0.00'))
+            except:
+                theatre_revenue = Decimal('0.00')
+
+            try:
+                inpatient_data = month_calculator.get_inpatient_detailed_revenue()
+                admissions_revenue = inpatient_data.get('total_revenue', Decimal('0.00'))
+            except:
+                admissions_revenue = Decimal('0.00')
+
+            # Get general billing revenue (invoices not in specific categories)
+            try:
+                general_revenue = Invoice.objects.filter(
+                    created_at__date__gte=month_start,
+                    created_at__date__lte=month_end,
+                    status='paid'
+                ).exclude(
+                    items__service__name__icontains='pharmacy'
+                ).exclude(
+                    items__service__name__icontains='lab'
+                ).exclude(
+                    items__service__name__icontains='consultation'
+                ).exclude(
+                    items__service__name__icontains='theatre'
+                ).exclude(
+                    items__service__name__icontains='admission'
+                ).aggregate(
+                    total=Sum('total_amount')
+                )['total'] or Decimal('0.00')
+            except:
+                general_revenue = Decimal('0.00')
+
+            # Get wallet transactions revenue
+            try:
+                wallet_revenue = WalletTransaction.objects.filter(
+                    created_at__date__gte=month_start,
+                    created_at__date__lte=month_end,
+                    transaction_type='credit'
+                ).aggregate(
+                    total=Sum('amount')
+                )['total'] or Decimal('0.00')
+            except:
+                wallet_revenue = Decimal('0.00')
+
+            # Calculate total revenue
+            total_revenue = (
+                pharmacy_revenue +
+                lab_revenue +
+                consultation_revenue +
+                theatre_revenue +
+                admissions_revenue +
+                general_revenue +
+                wallet_revenue
+            )
+
+            trends.append({
+                'month': month_start,
+                'total_revenue': total_revenue,
+                'pharmacy': pharmacy_revenue,
+                'laboratory': lab_revenue,
+                'consultations': consultation_revenue,
+                'theatre': theatre_revenue,
+                'admissions': admissions_revenue,
+                'general': general_revenue,
+                'wallet': wallet_revenue
+            })
+
+        # Return in chronological order (oldest first)
+        return list(reversed(trends))
     
     def _calculate_average(self, total, count):
         """

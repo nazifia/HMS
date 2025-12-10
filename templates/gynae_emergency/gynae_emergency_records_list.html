@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 
 {% block title %}Gynae Emergency Records - Hospital Management System{% endblock %}
@@ -109,16 +110,16 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'gynae_emergency:gynae_emergency_record_detail' record.id %}" class="btn btn-info" title="View">
+                                        <a href="{% url 'gynae_emergency:gynae_emergency_record_detail' record.id %}" class="btn btn-outline-info" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{% url 'gynae_emergency:edit_gynae_emergency_record' record.id %}" class="btn btn-primary" title="Edit">
+                                        <a href="{% url 'gynae_emergency:edit_gynae_emergency_record' record.id %}" class="btn btn-outline-primary" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="{% url 'gynae_emergency:create_prescription_for_gynae_emergency' record.id %}" class="btn btn-success" title="Prescribe">
+                                        <a href="{% url 'gynae_emergency:create_prescription_for_gynae_emergency' record.id %}" class="btn btn-outline-success" title="Prescribe">
                                             <i class="fas fa-prescription"></i>
                                         </a>
-                                        <a href="{% url 'gynae_emergency:delete_gynae_emergency_record' record.id %}" class="btn btn-danger" title="Delete">
+                                        <a href="{% url 'gynae_emergency:delete_gynae_emergency_record' record.id %}" class="btn btn-outline-danger" title="Delete">
                                             <i class="fas fa-trash"></i>
                                         </a>
                                     </div>

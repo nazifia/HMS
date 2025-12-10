@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Laboratory Sales Report - Hospital Management System{% endblock %}
 
@@ -19,7 +20,7 @@
                         <div class="card bg-info text-white">
                             <div class="card-body">
                                 <h5 class="card-title">Monthly Revenue</h5>
-                                <h2 class="mb-0">₦{{ monthly_revenue|floatformat:2 }}</h2>
+                                <h2 class="mb-0">{{ monthly_revenue|currency }}</h2>
                                 <small>{{ month_start|date:"F Y" }}</small>
                             </div>
                         </div>
@@ -64,10 +65,10 @@
                                                 <td>
                                                     <span class="badge bg-primary">{{ test.total_tests }}</span>
                                                 </td>
-                                                <td>₦{{ test.total_revenue|floatformat:2 }}</td>
+                                                <td>{{ test.total_revenue|currency }}</td>
                                                 <td>
                                                     {% if test.total_tests > 0 %}
-                                                        ₦{{ test.total_revenue|div:test.total_tests|floatformat:2 }}
+                                                        {{ test.total_revenue|div:test.total_tests|currency }}
                                                     {% else %}
                                                         ₦0.00
                                                     {% endif %}
@@ -79,7 +80,7 @@
                                         <tr>
                                             <th>Total</th>
                                             <th>{{ daily_tests|aggregate:total_tests|default:0 }}</th>
-                                            <th>₦{{ daily_tests|aggregate:total_revenue|floatformat:2 }}</th>
+                                            <th>{{ daily_tests|aggregate:total_revenue|currency }}</th>
                                             <th>-</th>
                                         </tr>
                                     </tfoot>

@@ -14,9 +14,9 @@ def enhanced_add_result(request, order_id):
     """Enhanced view for adding/editing radiology test results"""
     order = get_object_or_404(RadiologyOrder, pk=order_id)
 
-    # Check authorization requirement BEFORE allowing result entry
-    can_process, message = order.can_be_processed()
-    if not can_process:
+    # Check if result can be added to this order
+    can_add, message = order.can_add_result()
+    if not can_add:
         messages.error(request, message)
         return redirect('radiology:order_detail', order_id=order.id)
 
@@ -245,9 +245,15 @@ def result_search(request):
 def quick_result_entry(request, order_id):
     """Quick result entry for simple cases"""
     from .enhanced_forms import QuickRadiologyResultForm
-    
+
     order = get_object_or_404(RadiologyOrder, pk=order_id)
-    
+
+    # Check if result can be added to this order
+    can_add, message = order.can_add_result()
+    if not can_add:
+        messages.error(request, message)
+        return redirect('radiology:order_detail', order_id=order.id)
+
     if request.method == 'POST':
         form = QuickRadiologyResultForm(request.POST)
         if form.is_valid():

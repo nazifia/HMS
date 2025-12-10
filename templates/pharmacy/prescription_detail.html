@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 {% load pharmacy_tags %}
 
@@ -141,7 +142,7 @@
                                         <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border: none; padding: 20px;">
                                             <i class="fas fa-credit-card fa-2x mb-2"></i>
                                             <div style="font-size: 1.1rem; font-weight: 600;">Process Payment</div>
-                                            <small style="opacity: 0.9;">₦{{ active_cart.get_patient_payable|floatformat:2 }}</small>
+                                            <small style="opacity: 0.9;">{{ active_cart.get_patient_payable|currency }}</small>
                                         </a>
                                     {% elif active_cart.status == 'active' %}
                                         {# Cart active - show view cart button #}
@@ -167,7 +168,7 @@
                                 <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning btn-lg w-100" style="padding: 20px;">
                                     <i class="fas fa-credit-card fa-2x mb-2"></i>
                                     <div style="font-size: 1.1rem; font-weight: 600;">Process Payment</div>
-                                    <small>₦{{ total_patient_pays|floatformat:2 }}</small>
+                                    <small>{{ total_patient_pays|currency }}</small>
                                 </a>
                                 {% elif pharmacy_invoice and pharmacy_invoice.status == 'paid' %}
                                 <div class="btn btn-success btn-lg w-100" style="padding: 20px; cursor: default;">
@@ -333,7 +334,7 @@
                                     <div class="col-md-4">
                                         <div class="text-center p-3 bg-light rounded">
                                             <small class="text-muted d-block mb-1">Total Medication Cost</small>
-                                            <h4 class="text-primary mb-0">₦{{ total_medication_cost|floatformat:2 }}</h4>
+                                            <h4 class="text-primary mb-0">{{ total_medication_cost|currency }}</h4>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
@@ -341,7 +342,7 @@
                                             <small class="text-muted d-block mb-1">
                                                 <i class="fas fa-user me-1"></i>Patient Pays (10%)
                                             </small>
-                                            <h3 class="text-warning mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                            <h3 class="text-warning mb-0 fw-bold">{{ total_patient_pays|currency }}</h3>
                                             <small class="text-success mt-1 d-block">
                                                 <i class="fas fa-info-circle"></i> Only 10% required
                                             </small>
@@ -352,7 +353,7 @@
                                             <small class="text-muted d-block mb-1">
                                                 <i class="fas fa-shield-alt me-1"></i>NHIA Covers (90%)
                                             </small>
-                                            <h4 class="text-success mb-0">₦{{ total_nhia_covers|floatformat:2 }}</h4>
+                                            <h4 class="text-success mb-0">{{ total_nhia_covers|currency }}</h4>
                                             <small class="text-muted mt-1 d-block">
                                                 <i class="fas fa-check-circle"></i> Covered by insurance
                                             </small>
@@ -361,8 +362,8 @@
                                 </div>
                                 <div class="alert alert-info mt-3 mb-0">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>₦{{ total_nhia_covers|floatformat:2 }}</strong> (90% of total cost).
-                                    You only need to pay <strong>₦{{ total_patient_pays|floatformat:2 }}</strong> for all medications.
+                                    <strong>NHIA Benefit:</strong> As an NHIA patient, you save <strong>{{ total_nhia_covers|currency }}</strong> (90% of total cost).
+                                    You only need to pay <strong>{{ total_patient_pays|currency }}</strong> for all medications.
                                 </div>
                             </div>
                         </div>
@@ -382,7 +383,7 @@
                                     <div class="col-md-6 offset-md-3">
                                         <div class="text-center p-3 bg-primary bg-opacity-10 rounded border border-primary">
                                             <small class="text-muted d-block mb-1">Total Amount Due</small>
-                                            <h3 class="text-primary mb-0 fw-bold">₦{{ total_patient_pays|floatformat:2 }}</h3>
+                                            <h3 class="text-primary mb-0 fw-bold">{{ total_patient_pays|currency }}</h3>
                                             <small class="text-muted mt-1 d-block">Full payment required</small>
                                         </div>
                                     </div>
@@ -440,19 +441,19 @@
                                                 <td>{{ item_data.item.duration }}</td>
                                                 {% if is_nhia_patient %}
                                                 <td class="text-end">
-                                                    <strong>₦{{ item_data.total_cost|floatformat:2 }}</strong>
+                                                    <strong>{{ item_data.total_cost|currency }}</strong>
                                                 </td>
                                                 <td class="text-end bg-warning bg-opacity-10">
-                                                    <strong class="text-warning">₦{{ item_data.patient_pays|floatformat:2 }}</strong>
+                                                    <strong class="text-warning">{{ item_data.patient_pays|currency }}</strong>
                                                     <div class="small text-muted">10%</div>
                                                 </td>
                                                 <td class="text-end bg-success bg-opacity-10">
-                                                    <strong class="text-success">₦{{ item_data.nhia_covers|floatformat:2 }}</strong>
+                                                    <strong class="text-success">{{ item_data.nhia_covers|currency }}</strong>
                                                     <div class="small text-muted">90%</div>
                                                 </td>
                                                 {% else %}
                                                 <td class="text-end">
-                                                    <strong>₦{{ item_data.total_cost|floatformat:2 }}</strong>
+                                                    <strong>{{ item_data.total_cost|currency }}</strong>
                                                 </td>
                                                 {% endif %}
                                                 <td>{{ item_data.item.instructions }}</td>
@@ -478,12 +479,12 @@
                                     <tfoot class="table-light">
                                         <tr class="fw-bold">
                                             <td colspan="5" class="text-end">TOTAL:</td>
-                                            <td class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td class="text-end">{{ total_medication_cost|currency }}</td>
                                             <td class="text-end bg-warning bg-opacity-10">
-                                                <span class="text-warning">₦{{ total_patient_pays|floatformat:2 }}</span>
+                                                <span class="text-warning">{{ total_patient_pays|currency }}</span>
                                             </td>
                                             <td class="text-end bg-success bg-opacity-10">
-                                                <span class="text-success">₦{{ total_nhia_covers|floatformat:2 }}</span>
+                                                <span class="text-success">{{ total_nhia_covers|currency }}</span>
                                             </td>
                                             <td colspan="3"></td>
                                         </tr>
@@ -492,7 +493,7 @@
                                     <tfoot class="table-light">
                                         <tr class="fw-bold">
                                             <td colspan="5" class="text-end">TOTAL:</td>
-                                            <td class="text-end">₦{{ total_medication_cost|floatformat:2 }}</td>
+                                            <td class="text-end">{{ total_medication_cost|currency }}</td>
                                             <td colspan="3"></td>
                                         </tr>
                                     </tfoot>
@@ -667,14 +668,26 @@
 
 {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize select2 for medication dropdown
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            width: '100%',
-            dropdownParent: $('#addMedicationModal')
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize select2 for medication dropdown
+    $('.select2').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        dropdownParent: $('#addMedicationModal')
     });
+    
+    // Handle modal shown event to reinitialize select2
+    const addMedicationModal = document.getElementById('addMedicationModal');
+    if (addMedicationModal) {
+        addMedicationModal.addEventListener('shown.bs.modal', function () {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                dropdownParent: $('#addMedicationModal')
+            });
+        });
+    }
+});
 </script>
 
 <!-- Add Medication Modal -->

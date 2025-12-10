@@ -156,6 +156,19 @@ def activity_log_view(request):
         except ValueError:
             pass
     
+    # Get statistics for filtered logs
+    total_logs = logs.count()
+    success_logs = logs.filter(success=True).count()
+    failed_logs = logs.filter(success=False).count()
+    warning_logs = logs.filter(level='warning').count()
+    error_logs = logs.filter(level='error').count()
+    permission_denied_logs = logs.filter(action_type='permission_denied').count()
+    
+    # Calculate success rate
+    success_rate = 0
+    if total_logs > 0:
+        success_rate = round((success_logs / total_logs) * 100, 1)
+    
     # Pagination
     from django.core.paginator import Paginator
     page = request.GET.get('page', 1)
@@ -174,6 +187,13 @@ def activity_log_view(request):
             'level': level,
             'date_from': date_from,
             'date_to': date_to,
+        },
+        'statistics': {
+            'total_activities': total_logs,
+            'success_rate': success_rate,
+            'warning_count': warning_logs,
+            'denied_count': permission_denied_logs,
+            'error_count': error_logs,
         },
         'page_title': 'Activity Log',
     }

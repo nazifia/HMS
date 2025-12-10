@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% block title %}Billing Reports - Hospital Management System{% endblock %}
 {% block content %}
 <div class="container">
@@ -8,7 +9,7 @@
             <div class="card text-bg-success mb-3">
                 <div class="card-body">
                     <h5 class="card-title">Outstanding Balances</h5>
-                    <p class="card-text display-6">₦{{ outstanding|floatformat:2 }}</p>
+                    <p class="card-text display-6">{{ outstanding|currency }}</p>
                 </div>
             </div>
         </div>
@@ -43,7 +44,7 @@
                         <thead><tr><th>Department</th><th>Total</th></tr></thead>
                         <tbody>
                         {% for row in dept_revenue %}
-                            <tr><td>{{ row.service__category__name|default:'Uncategorized' }}</td><td>₦{{ row.total|floatformat:2 }}</td></tr>
+                            <tr><td>{{ row.service__category__name|default:'Uncategorized' }}</td><td>{{ row.total|currency }}</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>
@@ -56,7 +57,7 @@
                         <thead><tr><th>Service</th><th>Total</th></tr></thead>
                         <tbody>
                         {% for row in service_revenue %}
-                            <tr><td>{{ row.service__name|default:'Custom/Other' }}</td><td>₦{{ row.total|floatformat:2 }}</td></tr>
+                            <tr><td>{{ row.service__name|default:'Custom/Other' }}</td><td>{{ row.total|currency }}</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>
@@ -69,7 +70,7 @@
                         <thead><tr><th>Provider</th><th>Total</th></tr></thead>
                         <tbody>
                         {% for row in provider_revenue %}
-                            <tr><td>{{ row.created_by__username|default:'Unknown' }}</td><td>₦{{ row.total|floatformat:2 }}</td></tr>
+                            <tr><td>{{ row.created_by__username|default:'Unknown' }}</td><td>{{ row.total|currency }}</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>

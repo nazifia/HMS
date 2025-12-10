@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Delete Purchase Item - Hospital Management System{% endblock %}
 
@@ -25,10 +26,10 @@
                         <strong>Quantity:</strong> {{ item.quantity }} units
                     </p>
                     <p class="text-muted">
-                        <strong>Unit Price:</strong> ₦{{ item.unit_price }}
+                        <strong>Unit Price:</strong> {{ item.unit_price |currency }}
                     </p>
                     <p class="text-muted">
-                        <strong>Total Price:</strong> ₦{{ item.total_price }}
+                        <strong>Total Price:</strong> {{ item.total_price |currency }}
                     </p>
                 </div>
                 

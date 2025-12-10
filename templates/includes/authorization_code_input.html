@@ -1,3 +1,4 @@
+{% load custom_filters %}
 {% comment %}
 Reusable template partial for authorization code input field.
 
@@ -17,7 +18,7 @@ Parameters:
         <div class="mb-3" id="authorization-code-section">
             <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">
                 Authorization Code
-                <span class="text-muted">(if required)</span>
+                <span class="text-danger">(Required for NHIA)</span>
             </label>
             
             <div class="input-group">
@@ -38,9 +39,8 @@ Parameters:
                     <i class="fas fa-info-circle me-1"></i>
                     <strong>When is authorization required?</strong>
                     <ul class="mb-0 mt-1 small">
-                        <li>NHIA patients seen in non-NHIA consulting rooms</li>
-                        <li>NHIA patients referred from NHIA to non-NHIA units</li>
-                        <li>Services (prescriptions, lab tests, radiology) from such consultations</li>
+                        <li>All NHIA patients require authorization before dispensing medications</li>
+                        <li>Authorization ensures proper NHIA coverage and billing</li>
                     </ul>
                     <div class="mt-2">
                         <strong>How to obtain authorization:</strong><br>
@@ -89,7 +89,7 @@ Parameters:
         {% if show_help|default:True %}
             <div class="form-text">
                 <i class="fas fa-info-circle me-1"></i>
-                Required for NHIA patients from non-NHIA consultations or referrals.
+                Required for all NHIA patients before dispensing medications.
             </div>
         {% endif %}
     </div>

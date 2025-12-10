@@ -4,7 +4,7 @@
 const HMSUI = {
     config: {
         animationDuration: 300,
-        notificationTimeout: 5000,
+        notificationTimeout: 3000,
         autoRefreshInterval: 0, // Disabled for manual operation
         sessionWarningTime: 600000, // 10 minutes
         sessionLogoutTime: 1200000 // 20 minutes
@@ -41,16 +41,16 @@ const HMSUI = {
         checkSession() {
             const now = new Date().getTime();
             const inactiveTime = now - this.lastActivity;
-            
-            if (inactiveTime > this.config.sessionLogoutTime) {
+
+            if (inactiveTime > HMSUI.config.sessionLogoutTime) {
                 // Auto logout
                 window.location.href = '/logout/';
-            } else if (inactiveTime > this.config.sessionWarningTime && !this.warningShown) {
+            } else if (inactiveTime > HMSUI.config.sessionWarningTime && !this.warningShown) {
                 // Show warning
                 this.showSessionWarning();
                 this.warningShown = true;
             }
-            
+
             this.startTimer();
         },
         
@@ -217,8 +217,8 @@ const HMSUI = {
                 };
                 
                 ws.onclose = () => {
-                    // Reconnect after 5 seconds
-                    setTimeout(() => this.setupWebSocket(), 5000);
+                    // Reconnect after 3 seconds
+                    setTimeout(() => this.setupWebSocket(), 3000);
                 };
             }
         }
@@ -365,7 +365,6 @@ const HMSUI = {
     forms: {
         init() {
             this.addGlobalEventListeners();
-            this.initValidation();
             this.initFileUploads();
         },
 
@@ -379,7 +378,7 @@ const HMSUI = {
                 let timeout;
                 form.addEventListener('input', () => {
                     clearTimeout(timeout);
-                    timeout = setTimeout(() => this.autoSave(form), 1000);
+                    timeout = setTimeout(() => this.autoSave(form), 500);
                 });
             });
             

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}
   {{ page_title }} | {{ block.super }}
@@ -37,7 +38,7 @@
                     <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
                     <p class="mb-0"><strong>Current Wallet Balance:</strong> 
                         <span class="{% if wallet.balance < 0 %}text-danger{% else %}text-success{% endif %} font-weight-bold">
-                            ₦{{ wallet.balance|floatformat:2 }}
+                            {{ wallet.balance|currency }}
                         </span>
                     </p>
                 </div>
@@ -46,7 +47,7 @@
                 {% if wallet.balance < 0 %}
                 <div class="alert alert-danger">
                     <h6><i class="fas fa-exclamation-circle"></i> Outstanding Balance</h6>
-                    <p class="mb-0">This patient has an outstanding negative balance of <strong>₦{{ outstanding_balance|floatformat:2 }}</strong> in their wallet.</p>
+                    <p class="mb-0">This patient has an outstanding negative balance of <strong>{{ outstanding_balance|currency }}</strong> in their wallet.</p>
                 </div>
                 
                 <div class="card border-left-warning shadow mb-4">
@@ -54,8 +55,8 @@
                         <h6 class="text-warning font-weight-bold">Settlement Details</h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <p><strong>Current Balance:</strong> <span class="text-danger">₦{{ wallet.balance|floatformat:2 }}</span></p>
-                                <p><strong>Outstanding Amount:</strong> <span class="text-danger">₦{{ outstanding_balance|floatformat:2 }}</span></p>
+                                <p><strong>Current Balance:</strong> <span class="text-danger">{{ wallet.balance|currency }}</span></p>
+                                <p><strong>Outstanding Amount:</strong> <span class="text-danger">{{ outstanding_balance|currency }}</span></p>
                             </div>
                             <div class="col-md-6">
                                 <p><strong>Action:</strong> Convert negative balance to zero</p>
@@ -79,7 +80,7 @@
                     
                     <div class="alert alert-warning">
                         <h6><i class="fas fa-exclamation-triangle"></i> Confirm Settlement</h6>
-                        <p>Are you sure you want to settle the outstanding balance of ₦{{ outstanding_balance|floatformat:2 }}? This action cannot be undone.</p>
+                        <p>Are you sure you want to settle the outstanding balance of {{ outstanding_balance|currency }}? This action cannot be undone.</p>
                     </div>
                     
                     <!-- Action Buttons -->
@@ -95,7 +96,7 @@
                 {% else %}
                 <div class="alert alert-success">
                     <h6><i class="fas fa-check-circle"></i> No Outstanding Balance</h6>
-                    <p class="mb-0">This patient does not have an outstanding negative balance. Current wallet balance is <strong>₦{{ wallet.balance|floatformat:2 }}</strong>.</p>
+                    <p class="mb-0">This patient does not have an outstanding negative balance. Current wallet balance is <strong>{{ wallet.balance|currency }}</strong>.</p>
                 </div>
                 
                 <div class="form-group mt-4">
@@ -117,7 +118,7 @@
             <div class="card-body">
                 <div class="text-center">
                     <i class="fas fa-wallet fa-3x text-gray-300 mb-3"></i>
-                    <h4 class="{% if wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">₦{{ wallet.balance|floatformat:2 }}</h4>
+                    <h4 class="{% if wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">{{ wallet.balance|currency }}</h4>
                     <p class="text-muted">Current Balance</p>
                 </div>
                 <hr>
@@ -125,14 +126,14 @@
                     <div class="col-6">
                         <div class="text-success">
                             <i class="fas fa-arrow-up"></i>
-                            <div class="font-weight-bold">₦{{ wallet.get_total_credits|floatformat:2 }}</div>
+                            <div class="font-weight-bold">{{ wallet.get_total_credits|currency }}</div>
                             <small>Total Credits</small>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="text-danger">
                             <i class="fas fa-arrow-down"></i>
-                            <div class="font-weight-bold">₦{{ wallet.get_total_debits|floatformat:2 }}</div>
+                            <div class="font-weight-bold">{{ wallet.get_total_debits|currency }}</div>
                             <small>Total Debits</small>
                         </div>
                     </div>

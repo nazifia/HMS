@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Authorize Consultation - NHIA Authorization{% endblock %}
 
@@ -293,7 +294,7 @@
                                         <option value="">Select an existing code...</option>
                                         {% for code in existing_codes %}
                                         <option value="{{ code.id }}">
-                                            {{ code.code }} - {{ code.amount|floatformat:2 }} ({{ code.get_status_display }})
+                                            {{ code.code }} - {{ code.amount|currency }} ({{ code.get_status_display }})
                                         </option>
                                         {% endfor %}
                                     </select>

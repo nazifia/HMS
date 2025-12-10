@@ -1,6 +1,6 @@
 from django import forms
 from patients.models import Patient
-from .models import DentalRecord, DentalService, DentalXRay
+from .models import DentalRecord, DentalService, DentalXRay, DentalClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 from core.patient_search_forms import PatientSearchForm
 from django.conf import settings
@@ -143,7 +143,7 @@ class DentalServiceForm(forms.ModelForm):
 
 class DentalXRayForm(forms.ModelForm):
     """Form for adding dental X-rays"""
-    
+
     class Meta:
         model = DentalXRay
         fields = ['xray_type', 'image', 'notes']
@@ -151,4 +151,40 @@ class DentalXRayForm(forms.ModelForm):
             'xray_type': forms.Select(attrs={'class': 'form-select'}),
             'image': forms.FileInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+        }
+
+
+class DentalClinicalNoteForm(forms.ModelForm):
+    """Form for creating and editing dental clinical notes (SOAP format)"""
+
+    class Meta:
+        model = DentalClinicalNote
+        fields = ['subjective', 'objective', 'assessment', 'plan']
+        widgets = {
+            'subjective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': "Patient's description of symptoms, concerns, and dental history..."
+            }),
+            'objective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observable findings, examination results, tooth conditions...'
+            }),
+            'assessment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
+            }),
+            'plan': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Treatment plan, interventions, follow-up appointments...'
+            }),
+        }
+        labels = {
+            'subjective': 'Subjective (S)',
+            'objective': 'Objective (O)',
+            'assessment': 'Assessment (A)',
+            'plan': 'Plan (P)',
         }

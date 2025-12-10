@@ -1,4 +1,5 @@
 {% extends 'enhanced_base.html' %}
+{% load custom_filters %}
 
 {% block title %}Inter-Dispensary Transfers{% endblock %}
 
@@ -289,7 +290,7 @@ function showAlert(message, type) {
     setTimeout(() => {
         alertDiv.classList.remove('show');
         setTimeout(() => alertDiv.remove(), 150);
-    }, 5000);
+    }, 3000);
 }
 </script>
 {% endblock %}

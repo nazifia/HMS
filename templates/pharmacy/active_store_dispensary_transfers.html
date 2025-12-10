@@ -1,5 +1,6 @@
 {% extends 'pharmacy/layouts/base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 {% load pharmacy_form_filters %}
 {# Template Version: 2025.11.05.002 - Dispensary Transfers Separated #}
@@ -493,7 +494,7 @@ $(document).ready(function() {
                     if (modal) modal.hide();
                 });
                 // Reload page to show updated transfers
-                setTimeout(() => location.reload(), 500);
+                setTimeout(() => location.reload(), 200);
             },
             error: function(xhr, status, error) {
                 console.error('Error approving transfer:', error);
@@ -520,7 +521,7 @@ $(document).ready(function() {
                     const modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();
                 });
-                setTimeout(() => location.reload(), 500);
+                setTimeout(() => location.reload(), 200);
             },
             error: function(xhr, status, error) {
                 console.error('Error cancelling transfer:', error);

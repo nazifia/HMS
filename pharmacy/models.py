@@ -70,7 +70,7 @@ class Supplier(models.Model):
 class Purchase(models.Model):
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='purchases')
     purchase_date = models.DateField()
-    invoice_number = models.CharField(max_length=50, unique=True)
+    invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_status = models.CharField(max_length=20, choices=(
         ('pending', 'Pending'),
@@ -364,6 +364,10 @@ class BulkStoreInventory(models.Model):
     stock_quantity = models.IntegerField(default=0)
     expiry_date = models.DateField()
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=20.00,
+                                           help_text="Markup percentage (0-100)")
+    marked_up_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,
+                                        help_text="Cost after markup applied")
     supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True)
     purchase_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -378,27 +382,105 @@ class BulkStoreInventory(models.Model):
     def is_low_stock(self):
         return self.stock_quantity <= self.medication.reorder_level
 
+    def calculate_marked_up_cost(self):
+        """Calculate cost after applying markup percentage"""
+        if self.unit_cost and self.markup_percentage is not None:
+            markup_multiplier = 1 + (self.markup_percentage / 100)
+            return self.unit_cost * markup_multiplier
+        return self.unit_cost
+
+    def apply_markup(self):
+        """Apply the markup and save the marked up cost"""
+        self.marked_up_cost = self.calculate_marked_up_cost()
+        self.save()
+
+    def save(self, *args, **kwargs):
+        """Override save to automatically calculate marked_up_cost"""
+        if self.unit_cost:
+            self.marked_up_cost = self.calculate_marked_up_cost()
+        super().save(*args, **kwargs)
+
 class ActiveStoreInventory(models.Model):
-    """Model for tracking medication inventory in active stores"""
+    """Model for tracking medication inventory in active stores (consolidated view)"""
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='active_inventories')
     active_store = models.ForeignKey(ActiveStore, on_delete=models.CASCADE, related_name='inventories')
-    batch_number = models.CharField(max_length=50)
-    stock_quantity = models.IntegerField(default=0)
+    batch_number = models.CharField(max_length=50, blank=True, null=True,
+                                   help_text="Latest batch number (for display only)")
+    stock_quantity = models.IntegerField(default=0, help_text="Total quantity across all batches")
     reorder_level = models.IntegerField(default=10, help_text="Minimum stock level before reorder is needed")
-    expiry_date = models.DateField()
-    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    expiry_date = models.DateField(blank=True, null=True,
+                                  help_text="Earliest expiry date (from FIFO)")
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,
+                                   help_text="Weighted average cost")
     last_restock_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['medication', 'active_store']
 
     def __str__(self):
         return f"{self.medication.name} in {self.active_store.name}"
 
     def is_expired(self):
-        return self.expiry_date < timezone.now().date()
+        """Check if the earliest batch is expired"""
+        if self.expiry_date:
+            return self.expiry_date < timezone.now().date()
+        return False
 
     def is_low_stock(self):
         return self.stock_quantity <= self.reorder_level
+
+    def get_total_quantity(self):
+        """Get total quantity from all batches"""
+        return self.batches.aggregate(total=models.Sum('quantity'))['total'] or 0
+
+    def get_earliest_expiry(self):
+        """Get earliest expiry date from all batches"""
+        earliest_batch = self.batches.filter(quantity__gt=0).order_by('expiry_date').first()
+        return earliest_batch.expiry_date if earliest_batch else None
+
+    def update_summary_fields(self):
+        """Update summary fields from batch data"""
+        batches = self.batches.filter(quantity__gt=0)
+
+        # Update total quantity
+        self.stock_quantity = batches.aggregate(total=models.Sum('quantity'))['total'] or 0
+
+        # Update earliest expiry
+        earliest_batch = batches.order_by('expiry_date').first()
+        if earliest_batch:
+            self.expiry_date = earliest_batch.expiry_date
+            self.batch_number = earliest_batch.batch_number
+
+        # Update weighted average cost
+        total_value = sum(b.quantity * b.unit_cost for b in batches)
+        if self.stock_quantity > 0:
+            self.unit_cost = total_value / self.stock_quantity
+
+        self.save()
+
+
+class ActiveStoreBatch(models.Model):
+    """Model for tracking individual batches within active stores (FIFO)"""
+    active_inventory = models.ForeignKey(ActiveStoreInventory, on_delete=models.CASCADE, related_name='batches')
+    batch_number = models.CharField(max_length=50)
+    quantity = models.IntegerField(default=0)
+    expiry_date = models.DateField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    received_date = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['expiry_date', 'received_date']  # FIFO: oldest expiry first, then oldest received
+        unique_together = ['active_inventory', 'batch_number']
+
+    def __str__(self):
+        return f"Batch {self.batch_number} - {self.quantity} units"
+
+    def is_expired(self):
+        return self.expiry_date < timezone.now().date()
 
 class MedicationTransfer(models.Model):
     """Model to track transfers of medications from bulk store to active store"""
@@ -446,7 +528,7 @@ class MedicationTransfer(models.Model):
         return self.status == 'completed'
 
     def execute_transfer(self, user):
-        """Execute the transfer by moving stock from bulk store to active store"""
+        """Execute the transfer by moving stock from bulk store to active store with FIFO tracking"""
         if not self.can_execute():
             raise ValueError("Transfer cannot be executed in current status")
 
@@ -470,8 +552,7 @@ class MedicationTransfer(models.Model):
             bulk_inventory.stock_quantity -= self.quantity
             bulk_inventory.save()
 
-            # Add to active store inventory
-            # Consolidate by medication only (not batch_number) to avoid duplicates
+            # Get or create consolidated active store inventory
             active_inventory, created = ActiveStoreInventory.objects.get_or_create(
                 medication=self.medication,
                 active_store=self.to_active_store,
@@ -480,33 +561,47 @@ class MedicationTransfer(models.Model):
                     'reorder_level': self.medication.reorder_level if hasattr(self.medication, 'reorder_level') else 10,
                     'batch_number': self.batch_number,
                     'expiry_date': self.expiry_date or bulk_inventory.expiry_date,
-                    'unit_cost': self.unit_cost or bulk_inventory.unit_cost,
-                    'last_restock_date': timezone.now().date()
+                    'unit_cost': bulk_inventory.marked_up_cost or bulk_inventory.unit_cost,
+                    'last_restock_date': timezone.now()
                 }
             )
 
-            # Update stock quantity and related fields
-            if created:
-                active_inventory.stock_quantity = self.quantity
-            else:
-                active_inventory.stock_quantity += self.quantity
-                active_inventory.last_restock_date = timezone.now().date()
-                # Update to latest batch info if transferring newer batch
-                if self.batch_number:
-                    active_inventory.batch_number = self.batch_number
-                if self.expiry_date or bulk_inventory.expiry_date:
-                    # Keep the later expiry date (better for the medication)
-                    new_expiry = self.expiry_date or bulk_inventory.expiry_date
-                    if not active_inventory.expiry_date or new_expiry > active_inventory.expiry_date:
-                        active_inventory.expiry_date = new_expiry
+            # Create or update batch record for FIFO tracking
+            batch_record, batch_created = ActiveStoreBatch.objects.get_or_create(
+                active_inventory=active_inventory,
+                batch_number=self.batch_number,
+                defaults={
+                    'quantity': self.quantity,
+                    'expiry_date': self.expiry_date or bulk_inventory.expiry_date,
+                    'unit_cost': bulk_inventory.marked_up_cost or bulk_inventory.unit_cost,
+                }
+            )
 
-            active_inventory.save()
+            if not batch_created:
+                # Update existing batch
+                batch_record.quantity += self.quantity
+                batch_record.save()
+
+            # Update consolidated inventory summary
+            active_inventory.last_restock_date = timezone.now()
+            active_inventory.update_summary_fields()
 
             # Update transfer status
             self.status = 'completed'
             self.transferred_by = user
             self.transferred_at = timezone.now()
             self.save()
+
+            # Create audit log
+            try:
+                from core.models import AuditLog
+                AuditLog.objects.create(
+                    user=user,
+                    action="MEDICATION_TRANSFER_EXECUTED",
+                    details=f"Transferred {self.quantity} units of {self.medication.name} (Batch: {self.batch_number}) from {self.from_bulk_store.name} to {self.to_active_store.name}"
+                )
+            except ImportError:
+                pass
 
 class DispensingLog(models.Model):
     """Model to track when medications are dispensed to patients"""
@@ -635,34 +730,18 @@ class Prescription(models.Model):
     def check_authorization_requirement(self):
         """
         Check if this prescription requires authorization.
-        NHIA patients with prescriptions from non-NHIA units require authorization.
+        All NHIA patients require authorization for dispensing medications.
 
         Authorization is required if:
-        1. Patient is NHIA patient, AND
-        2. Either:
-           a. Prescription is linked to a consultation that requires authorization, OR
-           b. Prescription is created by a doctor NOT in NHIA department
+        - Patient is an NHIA patient
         """
         if self.is_nhia_patient():
-            # Check if linked to a consultation that requires authorization
-            if self.consultation and self.consultation.requires_authorization:
-                self.requires_authorization = True
-                if not self.authorization_code:
-                    self.authorization_status = 'required'
-                return True
-
-            # Check if prescribing doctor is from non-NHIA department
-            if self.doctor:
-                # Check if doctor is in NHIA department
-                if hasattr(self.doctor, 'profile') and self.doctor.profile:
-                    doctor_profile = self.doctor.profile
-                    if doctor_profile.department:
-                        # If doctor is NOT in NHIA department, authorization required
-                        if doctor_profile.department.name.upper() != 'NHIA':
-                            self.requires_authorization = True
-                            if not self.authorization_code:
-                                self.authorization_status = 'required'
-                            return True
+            self.requires_authorization = True
+            if not self.authorization_code:
+                self.authorization_status = 'required'
+            elif self.authorization_code.is_valid():
+                self.authorization_status = 'authorized'
+            return True
 
         self.requires_authorization = False
         self.authorization_status = 'not_required'
@@ -733,10 +812,10 @@ class Prescription(models.Model):
         if self.status in ['cancelled', 'dispensed']:
             return False, f'Cannot dispense prescription with status: {self.get_status_display()}'
 
-        # Check authorization requirement for NHIA patients from non-NHIA consultations
+        # Check authorization requirement for NHIA patients
         if self.requires_authorization:
             if not self.authorization_code:
-                return False, 'Desk office authorization required for NHIA patient from non-NHIA unit. Please obtain authorization code before dispensing.'
+                return False, 'Authorization code required for NHIA patient. Please obtain authorization code before dispensing.'
             elif not self.authorization_code.is_valid():
                 return False, f'Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.'
 
@@ -1024,40 +1103,45 @@ class DispensaryTransfer(models.Model):
         return self.status in ['pending', 'in_transit'] and self.approved_by is not None
 
     def execute_transfer(self, user):
-        """Execute the transfer by moving stock from active store to dispensary"""
+        """Execute the transfer by moving stock from active store to dispensary using FIFO"""
         if not self.can_execute():
             raise ValueError("Transfer cannot be executed in current status")
 
         with transaction.atomic():
             # Import models here to avoid circular imports
-            from .models import ActiveStoreInventory, MedicationInventory
-            
+            from .models import ActiveStoreInventory, ActiveStoreBatch, MedicationInventory
+
             # Find active store inventory
             active_inventory = ActiveStoreInventory.objects.filter(
                 medication=self.medication,
-                active_store=self.from_active_store,
-                batch_number=self.batch_number,
-                stock_quantity__gte=self.quantity
+                active_store=self.from_active_store
             ).first()
 
-            if not active_inventory:
+            if not active_inventory or active_inventory.stock_quantity < self.quantity:
                 raise ValueError("Insufficient stock in active store")
 
-            # Reduce active store inventory
-            active_inventory.stock_quantity -= self.quantity
+            # Use FIFO: deduct from oldest batches first
+            remaining_qty = self.quantity
+            batches = active_inventory.batches.filter(quantity__gt=0).order_by('expiry_date', 'received_date')
 
-            # If quantity reaches zero, handle according to business logic
-            if active_inventory.stock_quantity == 0:
-                # Option 1: Keep record with zero stock for audit trail
-                active_inventory.save()
-                # Log that item is now out of stock
-                print(f"Item {self.medication.name} is now out of stock in {self.from_active_store.name}")
+            for batch in batches:
+                if remaining_qty <= 0:
+                    break
 
-                # Option 2: Remove the record entirely (uncomment if preferred)
-                # active_inventory.delete()
-                # print(f"Removed {self.medication.name} from {self.from_active_store.name} (quantity reached zero)")
-            else:
-                active_inventory.save()
+                deduct_qty = min(batch.quantity, remaining_qty)
+                batch.quantity -= deduct_qty
+                remaining_qty -= deduct_qty
+
+                if batch.quantity == 0:
+                    batch.delete()  # Remove empty batches
+                else:
+                    batch.save()
+
+            if remaining_qty > 0:
+                raise ValueError(f"Could not fulfill transfer. Short by {remaining_qty} units.")
+
+            # Update consolidated active store inventory
+            active_inventory.update_summary_fields()
 
             # Add to dispensary inventory (legacy model for backward compatibility)
             dispensary_inventory, created = MedicationInventory.objects.get_or_create(
@@ -1085,7 +1169,7 @@ class DispensaryTransfer(models.Model):
                 AuditLog.objects.create(
                     user=user,
                     action="DISPENSARY_TRANSFER_EXECUTED",
-                    details=f"Transferred {self.quantity} units of {self.medication.name} from {self.from_active_store.name} to {self.to_dispensary.name}"
+                    details=f"Transferred {self.quantity} units of {self.medication.name} from {self.from_active_store.name} to {self.to_dispensary.name} (FIFO)"
                 )
             except ImportError:
                 # AuditLog not available, skip logging
@@ -1147,11 +1231,51 @@ class PackOrder(models.Model):
     surgery = models.ForeignKey('theatre.Surgery', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
     labor_record = models.ForeignKey('labor.LaborRecord', on_delete=models.CASCADE, null=True, blank=True, related_name='pack_orders')
 
+    # NHIA Authorization fields
+    authorization_code = models.ForeignKey(
+        'nhia.AuthorizationCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pack_orders',
+        help_text="Authorization code for NHIA patients"
+    )
+
     def __str__(self):
         return f"Pack Order #{self.id} - {self.pack.name}"
 
+    def is_nhia_patient(self):
+        """Check if the patient is an NHIA patient"""
+        return hasattr(self.patient, 'patient_type') and self.patient.patient_type == 'nhia'
+
+    def requires_authorization(self):
+        """Check if this pack order requires NHIA authorization"""
+        return self.is_nhia_patient()
+
+    def has_valid_authorization(self):
+        """Check if pack order has valid authorization code"""
+        if not self.requires_authorization():
+            return True  # Not required, so considered valid
+
+        if not self.authorization_code:
+            return False
+
+        # Check if authorization code has is_valid method
+        if hasattr(self.authorization_code, 'is_valid'):
+            return self.authorization_code.is_valid()
+
+        return True
+
     def can_be_processed(self):
-        return self.status == 'pending'
+        """Check if pack order can be processed"""
+        if self.status != 'pending':
+            return False
+
+        # Check NHIA authorization requirement
+        if self.requires_authorization() and not self.has_valid_authorization():
+            return False
+
+        return True
 
     def process_order(self, user):
         """Process the pack order and create prescription"""
@@ -1363,7 +1487,8 @@ class PackOrder(models.Model):
         return prescription
 
     def create_prescription(self):
-        """Create a prescription from pack items"""
+        """Create a prescription from pack items with authorization if required"""
+        # Create prescription with authorization code if NHIA patient
         prescription = Prescription.objects.create(
             patient=self.patient,
             doctor=self.ordered_by,
@@ -1371,16 +1496,20 @@ class PackOrder(models.Model):
             status='approved',
             payment_status='unpaid',
             prescription_type='outpatient',
-            notes=f"Created from Pack Order #{self.id}"
+            notes=f"Created from Pack Order #{self.id}",
+            authorization_code=self.authorization_code  # Pass authorization code to prescription
         )
-        
+
+        # The prescription's save method will automatically set requires_authorization
+        # and authorization_status based on the patient type and authorization_code
+
         for pack_item in self.pack.items.all():
             PrescriptionItem.objects.create(
                 prescription=prescription,
                 medication=pack_item.medication,
                 quantity=pack_item.quantity
             )
-        
+
         return prescription
 
 class MedicalPack(models.Model):
@@ -1455,6 +1584,63 @@ class MedicalPack(models.Model):
             return self.items.count()
         except AttributeError:
             return 0
+
+    def can_be_ordered(self, patient=None, authorization_code=None):
+        """
+        Check if this pack can be ordered for a specific patient.
+        Returns a tuple: (can_order: bool, message: str)
+
+        Args:
+            patient: Optional Patient instance to check NHIA authorization requirements
+            authorization_code: Optional AuthorizationCode instance for NHIA patients
+        """
+        # Check if pack is active
+        if not self.is_active:
+            return False, "This pack is not currently active"
+
+        # Check if pack has items
+        if not self.items.exists():
+            return False, "This pack has no items configured"
+
+        # Check NHIA authorization if patient is provided
+        if patient:
+            # Check if patient is NHIA
+            is_nhia = hasattr(patient, 'patient_type') and patient.patient_type == 'nhia'
+            if is_nhia:
+                # NHIA patients require authorization for pack orders
+                if not authorization_code:
+                    return False, "NHIA authorization code required. Please obtain authorization from desk office before ordering this pack."
+
+                # Check if authorization code is valid
+                if hasattr(authorization_code, 'is_valid'):
+                    if not authorization_code.is_valid():
+                        status = getattr(authorization_code, 'status', 'invalid')
+                        return False, f"Authorization code is {status}. Please obtain a valid authorization code."
+
+        # Check if all items are available in sufficient quantities
+        missing_items = []
+        for pack_item in self.items.all():
+            # Check total available stock across all active stores
+            total_available = ActiveStoreInventory.objects.filter(
+                medication=pack_item.medication
+            ).aggregate(total=models.Sum('stock_quantity'))['total'] or 0
+
+            if total_available < pack_item.quantity:
+                missing_items.append({
+                    'medication': pack_item.medication.name,
+                    'required': pack_item.quantity,
+                    'available': total_available,
+                    'shortage': pack_item.quantity - total_available
+                })
+
+        if missing_items:
+            shortage_details = ", ".join([
+                f"{item['medication']} (need {item['shortage']} more)"
+                for item in missing_items
+            ])
+            return False, f"Insufficient stock for: {shortage_details}"
+
+        return True, "Pack is available for ordering"
 
 
 class MedicalPackItem(models.Model):

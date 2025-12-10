@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load widget_tweaks %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -33,11 +34,11 @@
                             <div class="card border-left-info">
                                 <div class="card-body">
                                     <h6 class="text-info font-weight-bold">Payment Information</h6>
-                                    <p><strong>Total Amount:</strong> ₦{{ invoice.total_amount|floatformat:2 }}</p>
-                                    <p><strong>Amount Paid:</strong> ₦{{ invoice.amount_paid|floatformat:2 }}</p>
-                                    <p><strong>Remaining Balance:</strong> <span class="text-danger font-weight-bold">₦{{ remaining_amount|floatformat:2 }}</span></p>
+                                    <p><strong>Total Amount:</strong> {{ invoice.total_amount|currency }}</p>
+                                    <p><strong>Amount Paid:</strong> {{ invoice.amount_paid|currency }}</p>
+                                    <p><strong>Remaining Balance:</strong> <span class="text-danger font-weight-bold">{{ remaining_amount|currency }}</span></p>
                                     {% if patient_wallet %}
-                                    <p><strong>Wallet Balance:</strong> <span class="{% if patient_wallet.balance >= remaining_amount %}text-success{% else %}text-warning{% endif %} font-weight-bold">₦{{ patient_wallet.balance|floatformat:2 }}</span></p>
+                                    <p><strong>Wallet Balance:</strong> <span class="{% if patient_wallet.balance >= remaining_amount %}text-success{% else %}text-warning{% endif %} font-weight-bold">{{ patient_wallet.balance|currency }}</span></p>
                                     {% endif %}
                                 </div>
                             </div>
@@ -87,7 +88,7 @@
                                     {% if form.amount.errors %}
                                     <div class="text-danger">{{ form.amount.errors }}</div>
                                     {% endif %}
-                                    <small class="form-text text-muted">Maximum amount: ₦{{ remaining_amount|floatformat:2 }}</small>
+                                    <small class="form-text text-muted">Maximum amount: {{ remaining_amount|currency }}</small>
                                 </div>
                             </div>
                             <div class="col-md-6">

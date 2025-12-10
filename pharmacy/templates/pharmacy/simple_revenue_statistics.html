@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}Revenue Statistics{% endblock %}
@@ -109,7 +110,7 @@
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Hospital Revenue
                             </div>
-                            <div class="h1 mb-0 font-weight-bold text-gray-800">₦{{ total_revenue|floatformat:2 }}</div>
+                            <div class="h1 mb-0 font-weight-bold text-gray-800">{{ total_revenue|currency }}</div>
                             <div class="mt-2">
                                 <span class="text-muted">{{ performance_metrics.total_transactions }} total transactions</span>
                             </div>
@@ -130,7 +131,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Average Transaction Value
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ performance_metrics.average_transaction_value|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ performance_metrics.average_transaction_value|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-coins fa-2x text-gray-300"></i>
@@ -147,7 +148,7 @@
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Daily Average
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ performance_metrics.daily_average|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ performance_metrics.daily_average|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
@@ -200,11 +201,11 @@
                                         <i class="{{ source.icon }} text-{{ source.color }} mr-2"></i>
                                         {{ source.name }}
                                     </td>
-                                    <td>₦{{ source.revenue|floatformat:2 }}</td>
+                                    <td>{{ source.revenue|currency }}</td>
                                     <td>{{ source.transactions|default:0 }}</td>
                                     <td>
                                         {% if total_revenue > 0 %}
-                                            {{ source.revenue|mul:100|div:total_revenue|floatformat:1 }}%
+                                            {{ source.revenue|mul:100|div:total_revenue|currency }}%
                                         {% else %}
                                             0%
                                         {% endif %}
@@ -215,7 +216,7 @@
                             <tfoot class="table-primary">
                                 <tr>
                                     <th>Total</th>
-                                    <th>₦{{ total_revenue|floatformat:2 }}</th>
+                                    <th>{{ total_revenue|currency }}</th>
                                     <th>{{ performance_metrics.total_transactions }}</th>
                                     <th>100%</th>
                                 </tr>

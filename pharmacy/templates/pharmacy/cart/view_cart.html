@@ -1,9 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
+<!-- Cart Table CSS Improvements - Updated: 2025-11-23 -->
 <style>
     .cart-container {
         max-width: 1400px;
@@ -12,85 +14,462 @@
     }
     
     .cart-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #667eea;
         color: white;
-        border-radius: 10px;
-        padding: 25px;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 5px solid #4CAF50; /* Visual indicator of updated CSS */
     }
     
     .cart-status-badge {
         font-size: 1rem;
-        padding: 8px 16px;
-        border-radius: 20px;
+        padding: 6px 12px;
+        border-radius: 6px;
     }
     
     .dispensary-section {
         background: white;
-        border-radius: 10px;
+        border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
     }
     
     .cart-items-table {
         background: white;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow-x: auto;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
     }
-    
+
     .cart-items-table table {
         margin-bottom: 0;
+        min-width: 1000px;
+        width: 100%;
     }
-    
-    .cart-items-table th {
+
+    .cart-items-table thead {
         background: #667eea;
+    }
+
+    .cart-items-table th {
         color: white;
         font-weight: 600;
-        border: none;
+        border-right: 1px solid rgba(255,255,255,0.2);
+        border-bottom: 2px solid #5568d3;
+        padding: 14px 12px;
+        font-size: 0.85rem;
+        text-align: center;
+        vertical-align: middle;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
     }
-    
+
+    .cart-items-table th:first-child {
+        text-align: left;
+        padding-left: 16px;
+    }
+
+    .cart-items-table th:last-child {
+        border-right: none;
+    }
+
+    .cart-items-table th i {
+        display: block;
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+        opacity: 0.9;
+    }
+
+    .cart-items-table th span {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        line-height: 1.2;
+    }
+
+    .cart-items-table tbody tr {
+        transition: background-color 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+
+    .cart-items-table td {
+        padding: 14px 12px;
+        vertical-align: middle;
+        border-bottom: 1px solid #e9ecef;
+        border-right: 1px solid #f0f0f0;
+        font-size: 0.9rem;
+        background-color: white;
+    }
+
+    .cart-items-table td:first-child {
+        padding-left: 16px;
+    }
+
+    .cart-items-table td:last-child {
+        border-right: none;
+    }
+
+    .cart-items-table tbody tr:nth-child(even):not([style*="background-color"]) {
+        background-color: #f8f9fa;
+    }
+
+    .cart-items-table tbody tr:hover:not([style*="background-color"]) {
+        background-color: #f0f6ff;
+        border-left-color: #667eea;
+    }
+
+    .cart-items-table tbody tr[style*="background-color: #d4edda"] {
+        border-left-color: #28a745;
+        background-color: #d4edda;
+    }
+
+    .cart-items-table tbody tr[style*="background-color: #d4edda"] td {
+        background-color: #d4edda;
+        font-weight: 600;
+        color: #155724;
+    }
+
+    .cart-items-table tbody tr[style*="background-color: #fff3cd"] {
+        border-left-color: #ffc107;
+        background-color: #fff3cd;
+    }
+
+    .cart-items-table tbody tr[style*="background-color: #fff3cd"] td {
+        background-color: #fff3cd;
+        font-weight: 600;
+        color: #856404;
+    }
+
+    .medication-cell {
+        min-width: 200px;
+        max-width: 300px;
+        position: relative;
+        padding-left: 40px;
+    }
+
+    .medication-cell::before {
+        content: "\f484";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.4rem;
+        color: #667eea;
+        opacity: 0.2;
+    }
+
+    .medication-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        display: block;
+        margin-bottom: 4px;
+        line-height: 1.3;
+        text-transform: capitalize;
+    }
+
+    .medication-strength {
+        font-size: 0.85rem;
+        color: #495057;
+        display: inline-block;
+        font-weight: 500;
+        background: #e9ecef;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border-left: 2px solid #667eea;
+        margin-bottom: 4px;
+    }
+
     .quantity-input {
-        width: 80px;
+        width: 70px;
+        text-align: center;
+        font-weight: 600;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 8px 6px;
+        font-size: 1rem;
+        color: #2c3e50;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .quantity-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    .quantity-input:hover {
+        border-color: #a0a0a0;
+    }
+
+    .quantity-input.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+    }
+
+    .quantity-input.is-invalid:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+    }
+
+    /* Quantity input wrapper with enhanced max stock indicator */
+    .numeric-cell small {
+        font-weight: 600;
+        color: #495057;
+        background: #f8f9fa;
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: inline-block;
+        margin-top: 4px;
+        font-size: 0.75rem;
+    }
+
+    .stock-badge {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        transition: all 0.2s ease;
+    }
+
+    .stock-badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .stock-badge i {
+        margin-right: 4px;
+    }
+
+    .price-cell {
+        font-weight: 600;
+        color: #2c3e50;
+        text-align: right;
+        white-space: nowrap;
+        font-size: 0.95rem;
+    }
+
+    .price-highlight {
+        font-size: 1rem;
+        color: #667eea;
+        font-weight: 700;
+    }
+
+    .numeric-cell {
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .status-badge-cell {
         text-align: center;
     }
-    
-    .stock-badge {
-        padding: 4px 10px;
-        border-radius: 15px;
-        font-size: 0.85rem;
-        font-weight: 500;
+
+    .badge {
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
     }
-    
+
+    .badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .btn-sm {
+        font-weight: 600;
+        padding: 6px 10px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-sm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    /* Stock Status Badge Colors */
+    .bg-success {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .bg-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .bg-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .bg-info {
+        background-color: #17a2b8;
+        color: white;
+    }
+
+    .bg-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    /* Enhanced stock badges with solid colors */
+    .stock-badge.bg-success {
+        background-color: #28a745;
+        box-shadow: 0 1px 3px rgba(40, 167, 69, 0.3);
+    }
+
+    .stock-badge.bg-success:hover {
+        background-color: #218838;
+        box-shadow: 0 2px 6px rgba(40, 167, 69, 0.4);
+    }
+
+    .stock-badge.bg-warning {
+        background-color: #ffc107;
+        box-shadow: 0 1px 3px rgba(255, 193, 7, 0.3);
+    }
+
+    .stock-badge.bg-warning:hover {
+        background-color: #e0a800;
+        box-shadow: 0 2px 6px rgba(255, 193, 7, 0.4);
+    }
+
+    .stock-badge.bg-danger {
+        background-color: #dc3545;
+        box-shadow: 0 1px 3px rgba(220, 53, 69, 0.3);
+    }
+
+    .stock-badge.bg-danger:hover {
+        background-color: #c82333;
+        box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);
+    }
+
+    .scroll-hint {
+        display: none;
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: center;
+        color: #667eea;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 1px dashed #667eea;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+
+    @media (max-width: 1400px) {
+        .scroll-hint {
+            display: block;
+        }
+    }
+
+    .table-header-label {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        border-radius: 8px 8px 0 0;
+        border: 1px solid #e0e0e0;
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    .table-header-label h4 {
+        margin: 0;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .table-header-label .item-count {
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .cart-items-table th {
+            font-size: 0.75rem;
+            padding: 8px 6px;
+        }
+
+        .cart-items-table td {
+            font-size: 0.8rem;
+            padding: 8px 6px;
+        }
+
+        .medication-name {
+            font-size: 0.9rem;
+        }
+
+        .quantity-input {
+            width: 60px;
+            font-size: 0.9rem;
+        }
+        
+        .cart-items-table table {
+            min-width: 800px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .cart-items-table table {
+            min-width: 700px;
+        }
+        
+        .cart-items-table th, .cart-items-table td {
+            padding: 6px 4px;
+            font-size: 0.75rem;
+        }
+        
+        .quantity-input {
+            width: 50px;
+            font-size: 0.8rem;
+            padding: 6px 4px;
+        }
+    }
+
     .cart-summary {
         background: white;
-        border-radius: 10px;
-        padding: 25px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
     }
     
     .summary-row {
         display: flex;
         justify-content: space-between;
-        padding: 10px 0;
-        border-bottom: 1px solid #e0e0e0;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
     }
     
     .summary-row:last-child {
         border-bottom: none;
-        font-size: 1.2rem;
-        font-weight: bold;
-        padding-top: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        padding-top: 12px;
     }
     
     .nhia-info {
         background: #e8f5e9;
         border-left: 4px solid #4caf50;
         padding: 15px;
-        border-radius: 5px;
+        border-radius: 6px;
         margin-bottom: 20px;
     }
     
@@ -101,16 +480,65 @@
     }
     
     .btn-checkout {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #667eea;
         border: none;
-        padding: 12px 30px;
-        font-size: 1.1rem;
+        padding: 10px 24px;
+        font-size: 1rem;
         font-weight: 600;
+        border-radius: 6px;
+        transition: all 0.2s ease;
     }
     
     .btn-checkout:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        background: #5a6fd8;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    
+    /* Focus styles for accessibility */
+    .quantity-input:focus,
+    .btn:focus,
+    .btn-sm:focus {
+        outline: 2px solid #667eea;
+        outline-offset: 2px;
+    }
+    
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+        .cart-items-table th {
+            background: #000;
+            color: #fff;
+            border-color: #fff;
+        }
+        
+        .quantity-input {
+            border-color: #000;
+        }
+        
+        .quantity-input:focus {
+            border-color: #000;
+            outline: 2px solid #000;
+        }
+    }
+    
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+        .quantity-input,
+        .badge,
+        .stock-badge,
+        .btn-sm,
+        .btn-checkout {
+            transition: none;
+        }
+        
+        .quantity-input:focus,
+        .quantity-input:hover,
+        .badge:hover,
+        .stock-badge:hover,
+        .btn-sm:hover,
+        .btn-checkout:hover {
+            transform: none;
+        }
     }
 </style>
 {% endblock %}
@@ -178,118 +606,175 @@
     {% endif %}
 
     <!-- Cart Items -->
+    <div class="scroll-hint">
+        <i class="fas fa-arrows-alt-h"></i> Scroll horizontally to see all columns
+    </div>
+
+    <div class="table-header-label">
+        <h4>
+            <i class="fas fa-pills"></i> Cart Items
+            <span class="item-count">({{ cart.items.count }} item{{ cart.items.count|pluralize }})</span>
+        </h4>
+    </div>
+
     <div class="cart-items-table">
-        <table class="table table-hover mb-0">
+        <table class="table mb-0">
             <thead>
                 <tr>
-                    <th>Medication</th>
-                    <th width="10%">Prescribed</th>
-                    <th width="10%">Quantity</th>
+                    <th>
+                        <i class="fas fa-capsules"></i>
+                        <span>Medication</span>
+                    </th>
+                    <th>
+                        <i class="fas fa-prescription"></i>
+                        <span>Prescribed</span>
+                    </th>
+                    <th>
+                        <i class="fas fa-calculator"></i>
+                        <span>Quantity</span>
+                    </th>
                     {% if cart.status in 'paid,partially_dispensed' %}
-                    <th width="10%">To Dispense</th>
+                    <th>
+                        <i class="fas fa-hand-holding-medical"></i>
+                        <span>To Dispense</span>
+                    </th>
                     {% endif %}
                     {% if cart.status in 'partially_dispensed,completed' %}
-                    <th width="10%">Dispensed</th>
-                    <th width="10%">Remaining</th>
+                    <th>
+                        <i class="fas fa-check"></i>
+                        <span>Dispensed</span>
+                    </th>
+                    <th>
+                        <i class="fas fa-hourglass-half"></i>
+                        <span>Remaining</span>
+                    </th>
                     {% endif %}
-                    <th width="10%">Unit Price</th>
-                    <th width="12%">Stock Status</th>
-                    <th width="10%">Subtotal</th>
+                    <th>
+                        <i class="fas fa-tag"></i>
+                        <span>Unit Price</span>
+                    </th>
+                    <th>
+                        <i class="fas fa-boxes"></i>
+                        <span>Stock</span>
+                    </th>
+                    <th>
+                        <i class="fas fa-dollar-sign"></i>
+                        <span>Subtotal</span>
+                    </th>
                     {% if is_nhia_patient %}
-                    <th width="10%">You Pay (10%)</th>
-                    <th width="10%">NHIA (90%)</th>
+                    <th>
+                        <i class="fas fa-user"></i>
+                        <span>You Pay</span>
+                    </th>
+                    <th>
+                        <i class="fas fa-hospital"></i>
+                        <span>NHIA</span>
+                    </th>
                     {% endif %}
                     {% if cart.status in 'active,invoiced' %}
-                    <th width="8%">Action</th>
+                    <th>
+                        <i class="fas fa-cog"></i>
+                        <span>Action</span>
+                    </th>
                     {% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for item in cart.items.all %}
                 {% with stock_status=item.get_stock_status %}
-                <tr id="cart-item-{{ item.id }}" {% if item.is_fully_dispensed %}class="table-success"{% elif item.is_partially_dispensed %}class="table-warning"{% endif %}>
-                    <td>
-                        <strong>{{ item.prescription_item.medication.name }}</strong><br>
-                        <small class="text-muted">{{ item.prescription_item.medication.strength }}</small>
+                <tr id="cart-item-{{ item.id }}" {% if item.is_fully_dispensed %}style="background-color: #d4edda;"{% elif item.is_partially_dispensed %}style="background-color: #fff3cd;"{% endif %}>
+                    <td class="medication-cell">
+                        <span class="medication-name">{{ item.prescription_item.medication.name }}</span>
+                        <span class="medication-strength">{{ item.prescription_item.medication.strength }}</span>
                         {% if item.is_fully_dispensed %}
-                        <br><span class="badge bg-success"><i class="fas fa-check-circle"></i> Fully Dispensed</span>
+                        <span class="badge bg-success mt-2"><i class="fas fa-check-circle"></i> Fully Dispensed</span>
                         {% elif item.is_partially_dispensed %}
-                        <br><span class="badge bg-warning"><i class="fas fa-exclamation-circle"></i> Partially Dispensed</span>
+                        <span class="badge bg-warning text-dark mt-2"><i class="fas fa-exclamation-circle"></i> Partially Dispensed</span>
                         {% endif %}
                     </td>
-                    <td>{{ item.prescription_item.quantity }}</td>
-                    <td>
+                    <td class="numeric-cell">
+                        <span class="badge bg-info text-white" style="font-size: 0.9rem; padding: 6px 12px;">
+                            {{ item.prescription_item.quantity }}
+                        </span>
+                    </td>
+                    <td class="numeric-cell">
                         {% if cart.status in 'active,invoiced' %}
-                        <input type="number"
-                               class="form-control quantity-input cart-quantity-input"
-                               value="{{ item.quantity }}"
-                               min="1"
-                               max="{{ item.available_stock }}"
-                               data-item-id="{{ item.id }}"
-                               data-unit-price="{{ item.unit_price }}"
-                               data-is-nhia="{{ is_nhia_patient|yesno:'true,false' }}"
-                               data-max-stock="{{ item.available_stock }}"
-                               oninput="updateQuantityLive({{ item.id }}, this.value)"
-                               onchange="updateQuantity({{ item.id }}, this.value)"
-                               title="Max available in stock: {{ item.available_stock }}">
-                        <small class="text-muted d-block">
-                            <i class="fas fa-box"></i> Stock: {{ item.available_stock }} available
-                        </small>
+                        <div class="d-flex flex-column align-items-center">
+                            <input type="number"
+                                   class="form-control quantity-input cart-quantity-input mb-1"
+                                   value="{{ item.quantity }}"
+                                   min="1"
+                                   max="{{ item.available_stock }}"
+                                   data-item-id="{{ item.id }}"
+                                   data-unit-price="{{ item.unit_price }}"
+                                   data-is-nhia="{{ is_nhia_patient|yesno:'true,false' }}"
+                                   data-max-stock="{{ item.available_stock }}"
+                                   oninput="updateQuantityLive({{ item.id }}, this.value)"
+                                   onchange="updateQuantity({{ item.id }}, this.value)"
+                                   title="Max available in stock: {{ item.available_stock }}">
+                            <small class="text-muted text-center" style="font-size: 0.75rem;">
+                                <i class="fas fa-box"></i> Max: {{ item.available_stock }}
+                            </small>
+                        </div>
                         {% else %}
-                        {{ item.quantity }}
+                        <span class="badge bg-secondary" style="font-size: 0.9rem; padding: 6px 12px;">
+                            {{ item.quantity }}
+                        </span>
                         {% endif %}
                     </td>
                     {% if cart.status in 'paid,partially_dispensed' %}
-                    <td>
+                    <td class="numeric-cell">
                         {% with remaining=item.get_remaining_quantity available=item.get_available_to_dispense_now %}
                         {% if remaining > 0 %}
-                        <input type="number"
-                               class="form-control quantity-input dispense-quantity-input"
-                               id="dispense-qty-{{ item.id }}"
-                               value="{{ available }}"
-                               min="0"
-                               max="{{ available }}"
-                               data-item-id="{{ item.id }}"
-                               data-max-available="{{ available }}"
-                               title="Max available: {{ available }}">
-                        <small class="text-muted d-block">Max: {{ available }}</small>
+                        <div class="d-flex flex-column align-items-center">
+                            <input type="number"
+                                   class="form-control quantity-input dispense-quantity-input mb-1"
+                                   id="dispense-qty-{{ item.id }}"
+                                   value="{{ available }}"
+                                   min="0"
+                                   max="{{ available }}"
+                                   data-item-id="{{ item.id }}"
+                                   data-max-available="{{ available }}"
+                                   title="Max available: {{ available }}">
+                            <small class="text-muted" style="font-size: 0.75rem;">Max: {{ available }}</small>
+                        </div>
                         {% else %}
-                        <span class="badge bg-success">Fully Dispensed</span>
+                        <span class="badge bg-success">Dispensed</span>
                         {% endif %}
                         {% endwith %}
                     </td>
                     {% endif %}
                     {% if cart.status in 'partially_dispensed,completed' %}
-                    <td>
-                        <strong class="text-success">{{ item.quantity_dispensed }}</strong>
+                    <td class="numeric-cell">
+                        <strong class="text-success" style="font-size: 1.1rem;">{{ item.quantity_dispensed }}</strong>
                         {% if item.quantity_dispensed > 0 %}
-                        <br><small class="text-muted">{{ item.get_dispensing_progress_percentage }}%</small>
+                        <br><span class="badge bg-success-subtle text-success mt-1" style="font-size: 0.75rem;">{{ item.get_dispensing_progress_percentage }}%</span>
                         {% endif %}
                     </td>
-                    <td>
-                        <strong class="{% if item.get_remaining_quantity > 0 %}text-danger{% else %}text-success{% endif %}">
+                    <td class="numeric-cell">
+                        <strong class="{% if item.get_remaining_quantity > 0 %}text-danger{% else %}text-success{% endif %}" style="font-size: 1.1rem;">
                             {{ item.get_remaining_quantity }}
                         </strong>
                     </td>
                     {% endif %}
-                    </td>
-                    <td>₦{{ item.unit_price|floatformat:2 }}</td>
-                    <td>
-                        <span class="stock-badge bg-{{ stock_status.css_class }}">
+                    <td class="price-cell">{{ item.unit_price|currency }}</td>
+                    <td class="status-badge-cell">
+                        <span class="stock-badge bg-{{ stock_status.css_class }} text-white">
                             <i class="fas fa-{{ stock_status.icon }}"></i>
                             {{ stock_status.message }}
                         </span>
                     </td>
-                    <td class="item-subtotal">₦{{ item.get_subtotal|floatformat:2 }}</td>
+                    <td class="price-cell price-highlight item-subtotal">{{ item.get_subtotal|currency }}</td>
                     {% if is_nhia_patient %}
-                    <td class="item-patient-pays">₦{{ item.get_patient_pays|floatformat:2 }}</td>
-                    <td class="item-nhia-covers">₦{{ item.get_nhia_covers|floatformat:2 }}</td>
+                    <td class="price-cell text-primary item-patient-pays">{{ item.get_patient_pays|currency }}</td>
+                    <td class="price-cell text-success item-nhia-covers">{{ item.get_nhia_covers|currency }}</td>
                     {% endif %}
                     {% if cart.status in 'active,invoiced' %}
-                    <td>
+                    <td class="text-center">
                         <a href="{% url 'pharmacy:remove_cart_item' item.id %}"
                            class="btn btn-sm btn-danger"
-                           onclick="return confirm('Remove this item from cart?')">
+                           onclick="return confirm('Remove this item from cart?')"
+                           title="Remove item">
                             <i class="fas fa-trash"></i>
                         </a>
                     </td>
@@ -298,9 +783,12 @@
                 {% endwith %}
                 {% empty %}
                 <tr>
-                    <td colspan="{% if is_nhia_patient %}9{% else %}7{% endif %}" class="text-center py-4">
-                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">Cart is empty</p>
+                    <td colspan="20" class="text-center py-5">
+                        <div class="d-flex flex-column align-items-center">
+                            <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">Cart is Empty</h5>
+                            <p class="text-muted mb-0">No items have been added to this cart yet.</p>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -506,75 +994,92 @@ function showUpdateFeedback(row, success) {
 }
 
 function updateDispensary() {
-    // Use setTimeout to ensure the select value has been updated
-    setTimeout(function() {
-        const form = document.getElementById('dispensary-form');
-        const select = document.getElementById('dispensary_id');
+    const form = document.getElementById('dispensary-form');
+    const select = document.getElementById('dispensary_id');
 
-        console.log('updateDispensary called, select.value:', select.value);
+    console.log('updateDispensary called, select.value:', select.value);
 
-        // Only submit if a valid dispensary is selected (not empty option)
-        if (select.value && select.value !== '') {
-            console.log('Valid dispensary selected, submitting via fetch');
+    // Only submit if a valid dispensary is selected (not empty option)
+    if (!select.value || select.value === '') {
+        console.log('Empty dispensary selected, not submitting');
+        return false;
+    }
 
-            // Show loading indicator
-            const loadingHTML = `
-                <div class="d-flex align-items-center">
-                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <span>Updating dispensary and checking stock availability...</span>
-                </div>
-            `;
+    console.log('Valid dispensary selected, submitting form');
 
-            // Create a temporary div to show loading
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'alert alert-info mt-2 mb-0';
-            loadingDiv.innerHTML = loadingHTML;
-            select.parentElement.appendChild(loadingDiv);
-            select.disabled = true;
+    // Show loading indicator
+    const loadingHTML = `
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span>Updating dispensary and checking stock availability...</span>
+        </div>
+    `;
 
-            // Use FormData to capture the current form state
-            const formData = new FormData(form);
+    // Create a temporary div to show loading
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'alert alert-info mt-2 mb-0';
+    loadingDiv.id = 'dispensary-loading-indicator';
+    loadingDiv.innerHTML = loadingHTML;
 
-            // Manually ensure the dispensary_id is included (in case FormData doesn't pick it up)
-            formData.set('dispensary_id', select.value);
+    // Remove any existing loading indicator
+    const existingLoading = document.getElementById('dispensary-loading-indicator');
+    if (existingLoading) {
+        existingLoading.remove();
+    }
 
-            // Log the form data for debugging
-            console.log('Form data being sent:');
-            for (let [key, value] of formData.entries()) {
-                console.log(`  ${key}: ${value}`);
-            }
+    select.parentElement.appendChild(loadingDiv);
+    select.disabled = true;
 
-            // Submit using fetch to ensure the current form data is sent
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => {
-                if (response.redirected) {
-                    // Follow the redirect
-                    window.location.href = response.url;
-                } else {
-                    // Reload the page
-                    window.location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error submitting form:', error);
-                alert('Failed to update dispensary. Please try again.');
-                window.location.reload();
-            });
+    // Get CSRF token from the form
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // Use FormData to capture the current form state
+    const formData = new FormData(form);
+
+    // Ensure the dispensary_id is set to current select value
+    formData.set('dispensary_id', select.value);
+
+    // Log the form data for debugging
+    console.log('Form data being sent:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value}`);
+    }
+
+    // Submit using fetch
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (response.ok) {
+            // Success - reload the page to show updated stock
+            console.log('Dispensary updated successfully, reloading page...');
+            window.location.reload();
         } else {
-            console.log('Empty dispensary selected, not submitting');
-            // User selected the empty "-- Select Dispensary --" option
-            // Don't submit the form, just ignore
-            return false;
+            console.error('Failed to update dispensary, status:', response.status);
+            return response.text().then(text => {
+                console.error('Response:', text);
+                throw new Error(`Server returned ${response.status}`);
+            });
         }
-    }, 10); // Small delay to ensure value is updated
+    })
+    .catch(error => {
+        console.error('Error submitting form:', error);
+        alert('Failed to update dispensary. Please try again.\n\nError: ' + error.message);
+        // Re-enable the select and remove loading indicator
+        select.disabled = false;
+        if (loadingDiv.parentElement) {
+            loadingDiv.remove();
+        }
+    });
 }
 
 function prepareDispenseForm(cartId) {

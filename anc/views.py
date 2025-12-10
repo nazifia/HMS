@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
-from .models import AncRecord
-from .forms import AncRecordForm, AncRecordSearchForm
+from .models import AncRecord, AncClinicalNote
+from .forms import AncRecordForm, AncRecordSearchForm, AncClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
@@ -36,7 +36,8 @@ def anc_dashboard(request):
 
     user_department = get_user_department(request.user)
 
-    if not user_department:
+    # Superusers can access all departments without assignment
+    if not user_department and not request.user.is_superuser:
         messages.error(request, "You must be assigned to a department.")
         return redirect('dashboard:dashboard')
 
@@ -46,17 +47,58 @@ def anc_dashboard(request):
         record_model=AncRecord,
         record_queryset=AncRecord.objects.all(),
         priority_field=None,
-        status_field='status',
-        completed_status='completed'
+        status_field=None,
+        completed_status=None
     )
 
     # ANC-specific statistics
     today = timezone.now().date()
+    week_end = today + timedelta(days=7)
 
     # Appointments today
     appointments_today = AncRecord.objects.filter(
         visit_date__date=today
     ).count()
+
+    # Follow-ups due this week
+    followups_due = AncRecord.objects.filter(
+        follow_up_required=True,
+        follow_up_date__gte=today,
+        follow_up_date__lte=week_end
+    ).count()
+
+    # High risk pregnancies (high blood pressure or protein in urine)
+    # Note: blood_pressure is stored as string like "120/80", so we can't easily filter numerically
+    # This is a simplified approach - in production, consider storing systolic/diastolic separately
+    high_risk_pregnancies = AncRecord.objects.filter(
+        Q(blood_pressure__icontains='140/') |
+        Q(blood_pressure__icontains='/90') |
+        Q(blood_pressure__icontains='150/') |
+        Q(blood_pressure__icontains='/100') |
+        Q(blood_pressure__icontains='160/') |
+        Q(blood_pressure__icontains='/110') |
+        Q(urine_protein__in=['+++', '++++', 'positive'])
+    ).values('patient').distinct().count()
+
+    # Due dates within next 4 weeks
+    four_weeks_later = today + timedelta(days=28)
+    due_soon = AncRecord.objects.filter(
+        edd__gte=today,
+        edd__lte=four_weeks_later
+    ).values('patient').distinct().count()
+
+    # Common diagnoses (top 5)
+    diagnosis_data = AncRecord.objects.filter(
+        diagnosis__isnull=False
+    ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
+    diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]
+    diagnosis_counts = [item['count'] for item in diagnosis_data]
+
+    # Total unique patients
+    total_patients = AncRecord.objects.values('patient').distinct().count()
+
+    # Average gravida (number of pregnancies)
+    avg_gravida = AncRecord.objects.aggregate(Avg('gravida'))['gravida__avg'] or 0
 
     # Get recent records with patient info
     recent_records = AncRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
@@ -67,6 +109,13 @@ def anc_dashboard(request):
     # Add to context
     context.update({
         'appointments_today': appointments_today,
+        'followups_due': followups_due,
+        'high_risk_pregnancies': high_risk_pregnancies,
+        'due_soon': due_soon,
+        'diagnosis_labels': json.dumps(diagnosis_labels),
+        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'total_patients': total_patients,
+        'avg_gravida': round(avg_gravida, 1),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })
@@ -153,22 +202,34 @@ def anc_record_detail(request, record_id):
     # Get prescriptions for this patient
     prescriptions = Prescription.objects.filter(patient=record.patient).order_by('-prescription_date')[:5]
 
-    # NHIA AUTHORIZATION CHECK
+    # **NHIA AUTHORIZATION CHECK**
     is_nhia_patient = record.patient.patient_type == 'nhia'
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
+    authorization_request_pending = False
 
     if is_nhia_patient:
         if record.authorization_code:
             authorization_message = f"Authorized - Code: {record.authorization_code}"
         else:
             authorization_message = "NHIA Authorization Required"
-            messages.warning(
-                request,
-                f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
-                f"Please contact the desk office to obtain authorization for ANC services."
-            )
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="ANC"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for ANC services."
+                )
 
     context = {
         'record': record,
@@ -177,6 +238,7 @@ def anc_record_detail(request, record_id):
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'anc/anc_record_detail.html', context)
 
@@ -184,7 +246,7 @@ def anc_record_detail(request, record_id):
 def edit_anc_record(request, record_id):
     """View to edit an existing anc record"""
     record = get_object_or_404(AncRecord, id=record_id)
-    
+
     if request.method == 'POST':
         form = AncRecordForm(request.POST, instance=record)
         if form.is_valid():
@@ -193,15 +255,49 @@ def edit_anc_record(request, record_id):
             return redirect('anc:anc_record_detail', record_id=record.id)
     else:
         form = AncRecordForm(instance=record)
-    
+
+    # **NHIA AUTHORIZATION CHECK**
+    is_nhia_patient = record.patient.patient_type == 'nhia'
+    requires_authorization = is_nhia_patient and not record.authorization_code
+    authorization_valid = is_nhia_patient and bool(record.authorization_code)
+    authorization_message = None
+    authorization_request_pending = False
+
+    if is_nhia_patient:
+        if record.authorization_code:
+            authorization_message = f"Authorized - Code: {record.authorization_code}"
+        else:
+            authorization_message = "NHIA Authorization Required"
+
+            # Check for pending authorization request
+            from core.models import InternalNotification
+            authorization_request_pending = InternalNotification.objects.filter(
+                message__contains=f"Record ID: {record.id}",
+                is_read=False
+            ).filter(
+                message__contains="ANC"
+            ).exists()
+
+            if not authorization_request_pending:
+                messages.warning(
+                    request,
+                    f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing. "
+                    f"Please contact the desk office to obtain authorization for ANC services."
+                )
+
     # Get all active patients for the dropdown
     all_patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-    
+
     context = {
         'form': form,
         'record': record,
         'title': 'Edit ANC Record',
         'all_patients': all_patients,
+        'is_nhia_patient': is_nhia_patient,
+        'requires_authorization': requires_authorization,
+        'authorization_valid': authorization_valid,
+        'authorization_message': authorization_message,
+        'authorization_request_pending': authorization_request_pending,
     }
     return render(request, 'anc/anc_record_form.html', context)
 
@@ -296,3 +392,82 @@ def create_prescription_for_anc(request, record_id):
         'title': 'Create Prescription'
     }
     return render(request, 'anc/create_prescription.html', context)
+
+# Clinical Notes Views
+
+@login_required
+def add_clinical_note(request, record_id):
+    """Add a clinical note (SOAP format) to a anc record"""
+    record = get_object_or_404(AncRecord, id=record_id)
+
+    if request.method == 'POST':
+        form = AncClinicalNoteForm(request.POST)
+        if form.is_valid():
+            clinical_note = form.save(commit=False)
+            clinical_note.anc_record = record
+            clinical_note.created_by = request.user
+            clinical_note.save()
+            messages.success(request, 'Clinical note added successfully.')
+            return redirect('anc:record_detail', record_id=record.pk)
+    else:
+        form = AncClinicalNoteForm()
+
+    context = {
+        'form': form,
+        'record': record,
+        'title': 'Add Clinical Note'
+    }
+    return render(request, 'anc/clinical_note_form.html', context)
+
+
+@login_required
+def edit_clinical_note(request, note_id):
+    """Edit an existing clinical note"""
+    note = get_object_or_404(AncClinicalNote, id=note_id)
+    record = note.anc_record
+
+    if request.method == 'POST':
+        form = AncClinicalNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Clinical note updated successfully.')
+            return redirect('anc:record_detail', record_id=record.pk)
+    else:
+        form = AncClinicalNoteForm(instance=note)
+
+    context = {
+        'form': form,
+        'note': note,
+        'record': record,
+        'title': 'Edit Clinical Note'
+    }
+    return render(request, 'anc/clinical_note_form.html', context)
+
+
+@login_required
+def delete_clinical_note(request, note_id):
+    """Delete a clinical note"""
+    note = get_object_or_404(AncClinicalNote, id=note_id)
+    record_id = note.anc_record.pk
+
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, 'Clinical note deleted successfully.')
+        return redirect('anc:record_detail', record_id=record_id)
+
+    context = {
+        'note': note
+    }
+    return render(request, 'anc/clinical_note_confirm_delete.html', context)
+
+
+@login_required
+def view_clinical_note(request, note_id):
+    """View a specific clinical note"""
+    note = get_object_or_404(AncClinicalNote, id=note_id)
+
+    context = {
+        'note': note,
+        'record': note.anc_record
+    }
+    return render(request, 'anc/clinical_note_detail.html', context)

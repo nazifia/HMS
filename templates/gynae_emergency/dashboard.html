@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Gynae Emergency Dashboard{% endblock %}
 
@@ -20,22 +21,22 @@
 
     <!-- Statistics Cards Row -->
     <div class="row">
-        <!-- Total Records Card -->
+        <!-- Emergencies Today Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-1">
+            <div class="card border-left-danger shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Records
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Emergencies Today
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ emergencies_today|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-day"></i> Today: {{ records_today|default:0 }}
+                                <i class="fas fa-ambulance"></i> Urgent Cases
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-notes-medical fa-2x text-gray-300"></i>
+                            <i class="fas fa-ambulance fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -44,42 +45,42 @@
 
         <!-- This Week Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-1">
+            <div class="card border-left-warning shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 This Week
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_week|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ emergencies_this_week|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-week"></i> Since {{ week_start|date:"M d" }}
+                                <i class="fas fa-calendar-week"></i> Emergency Cases
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- This Month Card -->
+        <!-- Total Emergencies Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-info shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                This Month
+                                Total Emergencies
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ records_this_month|default:0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_emergencies|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-alt"></i> Since {{ month_start|date:"M d" }}
+                                <i class="fas fa-chart-line"></i> All Time Cases
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                            <i class="fas fa-hospital fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -88,16 +89,16 @@
 
         <!-- Pending Referrals Card -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-1">
+            <div class="card border-left-primary shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Pending Referrals
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_referrals_count|default:0 }}</div>
                             <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-lock text-danger"></i> Need Auth: {{ pending_authorizations|default:0 }}
+                                <i class="fas fa-exchange-alt"></i> Need Review
                             </div>
                         </div>
                         <div class="col-auto">
@@ -112,6 +113,52 @@
 
     <!-- Charts Row -->
     <div class="row mb-4">
+        <!-- Top Emergency Types Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie"></i> Top 5 Emergency Types
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="diagnosisChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Gynae Emergency Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-ambulance text-danger"></i> Emergencies Today</span>
+                            <span class="badge bg-danger rounded-pill">{{ emergencies_today|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-exclamation-triangle text-warning"></i> This Week</span>
+                            <span class="badge bg-warning rounded-pill">{{ emergencies_this_week|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-hospital text-info"></i> Total Emergencies</span>
+                            <span class="badge bg-info rounded-pill">{{ total_emergencies|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-exchange-alt text-primary"></i> Pending Referrals</span>
+                            <span class="badge bg-primary rounded-pill">{{ pending_referrals_count|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 <div class="row">
@@ -160,7 +207,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-info">
+                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>
@@ -241,7 +288,7 @@
                                         <td>{{ record.doctor.name|default:"N/A" }}</td>
                                         <td>{{ record.created_at|timesince }} ago</td>
                                         <td>
-                                            <a href="{% url 'gynae_emergency:gynae_emergency_record_detail' record.id %}" class="btn btn-sm btn-primary">
+                                            <a href="{% url 'gynae_emergency:gynae_emergency_record_detail' record.id %}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>
@@ -268,6 +315,61 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-// Charts removed for performance optimization
+document.addEventListener('DOMContentLoaded', function() {
+    // Top Emergency Types Chart
+    const emergencyTypeLabels = {{ emergency_type_labels|safe }};
+    const emergencyTypeCounts = {{ emergency_type_counts|safe }};
+
+    if (emergencyTypeLabels && emergencyTypeLabels.length > 0) {
+        const ctx = document.getElementById('diagnosisChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: emergencyTypeLabels,
+                    datasets: [{
+                        label: 'Number of Cases',
+                        data: emergencyTypeCounts,
+                        backgroundColor: [
+                            'rgba(231, 74, 59, 0.8)',
+                            'rgba(246, 194, 62, 0.8)',
+                            'rgba(78, 115, 223, 0.8)',
+                            'rgba(28, 200, 138, 0.8)',
+                            'rgba(133, 135, 150, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(231, 74, 59, 1)',
+                            'rgba(246, 194, 62, 1)',
+                            'rgba(78, 115, 223, 1)',
+                            'rgba(28, 200, 138, 1)',
+                            'rgba(133, 135, 150, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+});
 </script>
 {% endblock %}

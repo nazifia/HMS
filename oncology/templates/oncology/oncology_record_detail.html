@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Oncology Record Details{% endblock %}
 
@@ -94,21 +95,21 @@
                             </small>
                         </p>
                         <div class="mt-3">
-                            <button type="button"
-                                    class="btn btn-primary btn-sm nhia-auth-request-btn"
-                                    data-patient-id="{{ record.patient.id }}"
-                                    data-module-name="Oncology"
-                                    data-record-id="{{ record.id }}"
-                                    onclick="requestNHIAAuthorization(this)">
+                            <a href="{% url 'core:request_authorization' model_type='oncology_record' object_id=record.id %}"
+                               class="btn btn-primary btn-sm">
                                 <i class="fas fa-paper-plane"></i> Request Authorization from Desk Office
-                            </button>
+                            </a>
+                            <a href="{% url 'desk_office:authorization_dashboard' %}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-shield-alt"></i> Go to Authorization Dashboard
+                            </a>
                         </div>
                         {% elif authorization_valid %}
                         <hr>
                         <p class="mb-0">
                             <small>
                                 <i class="fas fa-check-circle"></i>
-                                This record has been authorized for NHIA coverage.
+                                This Oncology record has been authorized for NHIA coverage.
                                 NHIA will cover 90% of approved costs.
                             </small>
                         </p>
@@ -291,57 +292,4 @@
         </div>
     </div>
 </div>
-
-<script>
-function requestNHIAAuthorization(button) {
-    // Get data from button
-    const patientId = button.getAttribute('data-patient-id');
-    const moduleName = button.getAttribute('data-module-name');
-    const recordId = button.getAttribute('data-record-id');
-
-    // Disable button and show loading
-    const originalHTML = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending Request...';
-
-    // Get CSRF token
-    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                     document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-
-    // Send AJAX request
-    fetch("{% url 'core:request_nhia_authorization' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': csrftoken
-        },
-        body: new URLSearchParams({
-            'patient_id': patientId,
-            'module_name': moduleName,
-            'record_id': recordId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message
-            alert('✓ ' + data.message);
-            button.innerHTML = '<i class="fas fa-check"></i> Request Sent';
-            button.classList.remove('btn-primary');
-            button.classList.add('btn-success');
-        } else {
-            // Show error message
-            alert('✗ ' + data.message);
-            button.disabled = false;
-            button.innerHTML = originalHTML;
-        }
-    })
-    .catch(error => {
-        alert('Error sending authorization request. Please try again.');
-        console.error('Error:', error);
-        button.disabled = false;
-        button.innerHTML = originalHTML;
-    });
-}
-</script>
 {% endblock %}

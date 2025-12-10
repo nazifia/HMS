@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load patient_tags %}
 
 {% block title %}NHIA Authorization Dashboard - HMS{% endblock %}
@@ -218,170 +219,9 @@
     </div>
     {% endif %}
 
-    <!-- Patient Search and Code Generation Section -->
+    <!-- Recent Authorization Codes -->
     <div class="row mb-4">
-        <div class="col-lg-6">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-search"></i> Patient Search & Code Generation
-                    </h6>
-                    {% if selected_patient %}
-                    <span class="badge bg-success">Selected: {{ selected_patient.get_full_name }}</span>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <!-- Patient Search Form with HTMX -->
-                    <form id="patientSearchForm" method="post" hx-post="{% url 'desk_office:authorization_dashboard' %}"
-                        hx-target="#searchResults" hx-include="[name='search_patients']" hx-indicator=".search-loading">
-                        {% csrf_token %}
-                        <div class="input-group mb-3">
-                            <input type="text" name="q" class="form-control"
-                                placeholder="Search NHIA patients by name, ID, NHIA number, or phone..."
-                                value="{{ search_query|default:'' }}" hx-get="{% url 'core:patient_search_ajax' %}"
-                                hx-target="#patientResults" hx-trigger="keyup changed delay:300ms"
-                                hx-include="[name='q']" hx-vals='{"patient_type": "nhia"}'
-                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-                            <button type="submit" name="search_patients" class="btn btn-primary">
-                                <i class="fas fa-search search-icon"></i>
-                                <span class="spinner-border spinner-border-sm search-loading" role="status"></span>
-                                Search
-                            </button>
-                            <input type="hidden" name="patient_type" value="nhia">
-                        </div>
-                    </form>
-
-                    <!-- Search Results Container -->
-                    <div id="patientResults" class="patient-search-results mb-3">
-                        <!-- HTMX will populate this with search results -->
-                    </div>
-
-                    <!-- Selected Patient and Authorization Form -->
-                    {% if selected_patient %}
-                    <div class="alert alert-success">
-                        <h6><i class="fas fa-user-check"></i> Selected Patient</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>Name:</strong> {{ selected_patient.get_full_name }}<br>
-                                <strong>Patient ID:</strong> {{ selected_patient.patient_id }}<br>
-                                <strong>Phone:</strong> {{ selected_patient.phone_number }}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>NHIA Number:</strong> {{
-                                selected_patient.nhia_info.nhia_reg_number|default:"N/A" }}<br>
-                                <strong>Age:</strong> {{ selected_patient.age }} years<br>
-                                <strong>Gender:</strong> {{ selected_patient.get_gender_display }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Authorization Code Generation Form -->
-                    <form method="post" id="authorizationForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
-                        <input type="hidden" name="generate_code" value="1">
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="amount" class="form-label">Amount</label>
-                                    <input type="number" class="form-control" id="amount" name="amount" value="0.00"
-                                        step="0.01" min="0" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="expiry_days" class="form-label">Expiry Days</label>
-                                    <select class="form-select" id="expiry_days" name="expiry_days" required>
-                                        <option value="7">7 days</option>
-                                        <option value="14">14 days</option>
-                                        <option value="30" selected>30 days</option>
-                                        <option value="60">60 days</option>
-                                        <option value="90">90 days</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="code_type" class="form-label">Code Type</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="code_type" id="auto_code"
-                                    value="auto" checked>
-                                <label class="form-check-label" for="auto_code">
-                                    Auto-generate (Recommended)
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="code_type" id="manual_code"
-                                    value="manual">
-                                <label class="form-check-label" for="manual_code">
-                                    Manual Code
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="mb-3" id="manual_code_field" style="display: none;">
-                            <label for="manual_code_input" class="form-label">Manual Authorization Code</label>
-                            <input type="text" class="form-control" id="manual_code_input" name="manual_code"
-                                placeholder="Enter authorization code..." maxlength="20">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="2"
-                                placeholder="Optional notes for this authorization..."></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-check-circle"></i> Generate Authorization Code
-                        </button>
-                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Clear
-                        </a>
-                    </form>
-                    {% endif %}
-
-                    <!-- Legacy Search Results (for POST-based search) -->
-                    {% if search_results %}
-                    <div id="searchResults" class="patient-search-results">
-                        <h6><i class="fas fa-users"></i> Found {{ search_results.paginator.count }} patient(s)</h6>
-                        {% if search_results %}
-                        {% for patient in search_results %}
-                        <div class="patient-result-item card mb-2 p-3"
-                            onclick="window.location.href='{% url 'desk_office:authorization_dashboard' %}?patient_id={{ patient.id }}'">
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <strong>{{ patient.get_full_name }}</strong><br>
-                                    <small class="text-muted">
-                                        ID: {{ patient.patient_id }} |
-                                        Phone: {{ patient.phone_number }} |
-                                        Age: {{ patient.age }}
-                                    </small>
-                                    {% if patient.nhia_info %}
-                                    <br><small class="text-info">NHIA: {{ patient.nhia_info.nhia_reg_number }}</small>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-4 text-end">
-                                    <span class="badge bg-primary">{{ patient.get_patient_type_display|title }}</span>
-                                    <span class="badge bg-secondary">{{ patient.get_gender_display }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        {% else %}
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> No NHIA patients found matching your search.
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Authorization Codes -->
-        <div class="col-lg-6">
+        <div class="col-lg-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
@@ -411,7 +251,7 @@
                                         <small>{{ code.patient.get_full_name }}</small><br>
                                         <small class="text-muted">{{ code.patient.patient_id }}</small>
                                     </td>
-                                    <td>₦{{ code.amount|floatformat:2 }}</td>
+                                    <td>{{ code.amount|currency }}</td>
                                     <td>
                                         <span class="badge 
                                                     {% if code.status == 'active' %}bg-success
@@ -736,7 +576,7 @@
                         <label for="quick_patient_search" class="form-label">Search Patient</label>
                         <input type="text" class="form-control" id="quick_patient_search" name="q"
                             placeholder="Type patient name or ID..." hx-get="{% url 'core:patient_search_ajax' %}"
-                            hx-target="#quickPatientResults" hx-trigger="keyup changed delay:300ms"
+                            hx-target="#quickPatientResults" hx-trigger="keyup changed delay:150ms"
                             hx-include="[name='q']" hx-vals='{"patient_type": "nhia", "quick": "true"}'
                             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
                         <div id="quickPatientResults" class="mt-2"></div>
@@ -777,23 +617,6 @@
 
 {% block extra_js %}
 <script>
-    // Toggle manual code field based on code type selection
-    document.querySelectorAll('input[name="code_type"]').forEach(function (radio) {
-        radio.addEventListener('change', function () {
-            const manualField = document.getElementById('manual_code_field');
-            const manualInput = document.getElementById('manual_code_input');
-
-            if (this.value === 'manual') {
-                manualField.style.display = 'block';
-                manualInput.required = true;
-            } else {
-                manualField.style.display = 'none';
-                manualInput.required = false;
-                manualInput.value = '';
-            }
-        });
-    });
-
     // Handle quick code generation
     document.getElementById('quickGenerateBtn').addEventListener('click', function () {
         const form = document.getElementById('quickCodeForm');
@@ -880,16 +703,9 @@
     htmx.on('htmx:responseError', function (evt) {
         console.error('HTMX error:', evt.detail);
         const target = evt.target;
-        if (target.id === 'patientResults' || target.id === 'quickPatientResults') {
+        if (target.id === 'quickPatientResults') {
             target.innerHTML = '<div class="alert alert-danger">Error loading patients. Please try again.</div>';
         }
-    });
-
-    // Clear search results on form submission
-    document.getElementById('patientSearchForm').addEventListener('submit', function () {
-        setTimeout(function () {
-            document.getElementById('patientResults').innerHTML = '';
-        }, 100);
     });
 
     // Reset quick code modal when opened
@@ -933,13 +749,16 @@
         let patientId = '';
 
         for (const line of lines) {
-            if (line.includes('patient:')) {
-                patientInfo = line.replace('Authorization request for NHIA patient:', '').trim();
+            // Case-insensitive check for 'Patient:' or 'patient:'
+            if (line.toLowerCase().includes('patient:')) {
+                // Extract patient info - handle both lowercase and uppercase variations
+                patientInfo = line.replace(/Authorization request for NHIA [Pp]atient:\s*/i, '').trim();
                 // Extract patient ID from format "Name (ID: XXX)"
                 const match = patientInfo.match(/\(ID:\s*([^)]+)\)/);
                 if (match) {
                     patientId = match[1].trim();
                 }
+                break; // Found the patient line, no need to continue
             }
         }
 

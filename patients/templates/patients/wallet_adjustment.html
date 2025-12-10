@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load crispy_forms_tags %}
 
 {% block title %}
@@ -36,7 +37,7 @@
                     <h6><i class="fas fa-user"></i> Patient Information</h6>
                     <p class="mb-1"><strong>Name:</strong> {{ patient.get_full_name }}</p>
                     <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
-                    <p class="mb-0"><strong>Current Wallet Balance:</strong> <span class="text-success font-weight-bold">₦{{ wallet.balance|floatformat:2 }}</span></p>
+                    <p class="mb-0"><strong>Current Wallet Balance:</strong> <span class="text-success font-weight-bold">{{ wallet.balance|currency }}</span></p>
                 </div>
 
                 <!-- Adjustment Form -->
@@ -72,7 +73,7 @@
                                     </div>
                                 {% endif %}
                                 <small class="form-text text-muted">
-                                    Available balance: ₦{{ wallet.balance|floatformat:2 }}
+                                    Available balance: {{ wallet.balance|currency }}
                                 </small>
                             </div>
                         </div>
@@ -108,7 +109,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <strong>Patient:</strong> {{ patient.get_full_name }}<br>
-                                <strong>Current Balance:</strong> ₦{{ wallet.balance|floatformat:2 }}<br>
+                                <strong>Current Balance:</strong> {{ wallet.balance|currency }}<br>
                                 <strong>Balance After Adjustment:</strong> <span id="balance-after">₦0.00</span>
                             </div>
                             <div class="col-md-6">
@@ -142,7 +143,7 @@
             <div class="card-body">
                 <div class="text-center">
                     <i class="fas fa-wallet fa-3x text-gray-300 mb-3"></i>
-                    <h4 class="text-primary">₦{{ wallet.balance|floatformat:2 }}</h4>
+                    <h4 class="text-primary">{{ wallet.balance|currency }}</h4>
                     <p class="text-muted">Current Balance</p>
                 </div>
                 <hr>
@@ -150,14 +151,14 @@
                     <div class="col-6">
                         <div class="text-success">
                             <i class="fas fa-arrow-up"></i>
-                            <div class="font-weight-bold">₦{{ wallet.get_total_credits|floatformat:2 }}</div>
+                            <div class="font-weight-bold">{{ wallet.get_total_credits|currency }}</div>
                             <small>Total Credits</small>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="text-danger">
                             <i class="fas fa-arrow-down"></i>
-                            <div class="font-weight-bold">₦{{ wallet.get_total_debits|floatformat:2 }}</div>
+                            <div class="font-weight-bold">{{ wallet.get_total_debits|currency }}</div>
                             <small>Total Debits</small>
                         </div>
                     </div>

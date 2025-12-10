@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load core_form_tags %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
@@ -38,7 +39,7 @@
                     <p><strong>Prescribed by:</strong> {{ prescription.doctor.get_full_name }}</p>
                     <p><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
                     <p><strong>Type:</strong> {{ prescription.get_prescription_type_display }}</p>
-                    <p><strong>Total Cost:</strong> ₦{{ prescription.get_total_prescribed_price|floatformat:2 }}</p>
+                    <p><strong>Total Cost:</strong> {{ prescription.get_total_prescribed_price|currency }}</p>
                     <p><strong>Status:</strong> 
                         <span class="badge badge-{{ prescription.status|yesno:'success,warning' }}">
                             {{ prescription.get_status_display }}
@@ -55,7 +56,7 @@
                 <div class="card-body">
                     <p><strong>Current Balance:</strong> 
                         <span class="{% if patient_wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
-                            ₦{{ patient_wallet.balance|floatformat:2 }}
+                            {{ patient_wallet.balance|currency }}
                         </span>
                     </p>
                     <p><strong>Status:</strong> 
@@ -77,9 +78,9 @@
                     <div class="alert alert-info mb-4" role="alert">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Invoice #{{ invoice.invoice_number }}</strong><br>
-                        Total Amount: ₦{{ invoice.total_amount|floatformat:2 }}<br>
-                        Amount Paid: ₦{{ invoice.amount_paid|floatformat:2 }}<br>
-                        <strong>Remaining Balance: ₦{{ remaining_amount|floatformat:2 }}</strong>
+                        Total Amount: {{ invoice.total_amount|currency }}<br>
+                        Amount Paid: {{ invoice.amount_paid|currency }}<br>
+                        <strong>Remaining Balance: {{ remaining_amount|currency }}</strong>
                     </div>
                     {% endif %}
 
@@ -122,7 +123,7 @@
                             <div class="col-md-6 mb-3">
                                 <label for="id_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
                                 {{ form.amount|add_class:"form-control" }}
-                                <div class="form-text">Enter the amount to pay (₦{{ remaining_amount|floatformat:2 }} remaining)</div>
+                                <div class="form-text">Enter the amount to pay ({{ remaining_amount|currency }} remaining)</div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="id_payment_method" class="form-label">Payment Method <span class="text-danger">*</span></label>

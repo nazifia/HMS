@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 {% load widget_tweaks %}
 
@@ -69,7 +70,7 @@
                             </div>
                             <div class="row mb-3">
                                 <div class="col-md-4 text-muted">Invoice Number:</div>
-                                <div class="col-md-8">{{ purchase.invoice_number }}</div>
+                                <div class="col-md-8">{{ purchase.invoice_number|default:"N/A" }}</div>
                             </div>
                             <div class="row mb-3">
                                 <div class="col-md-4 text-muted">Purchase Date:</div>
@@ -107,7 +108,7 @@
                         <div class="col-md-6">
                             <div class="row mb-3">
                                 <div class="col-md-4 text-muted">Total Amount:</div>
-                                <div class="col-md-8"><strong>₦{{ purchase.total_amount|floatformat:2 }}</strong></div>
+                                <div class="col-md-8"><strong>{{ purchase.total_amount|currency }}</strong></div>
                             </div>
                             <div class="row mb-3">
                                 <div class="col-md-4 text-muted">Items Count:</div>
@@ -248,7 +249,7 @@
                             </div>
                             <div class="flex-grow-1">
                                 <div class="small text-gray-500">{{ payment.payment_date|date:"M d, Y" }}</div>
-                                <div class="font-weight-bold">₦{{ payment.amount|floatformat:2 }}</div>
+                                <div class="font-weight-bold">{{ payment.amount|currency }}</div>
                                 <div class="small">{{ payment.get_payment_method_display }}</div>
                                 <div class="small">by {{ payment.received_by.get_full_name }}</div>
                                 {% if payment.transaction_id %}
@@ -269,7 +270,7 @@
     </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Total Amount:</div>
-                            <div class="col-md-8">₦{{ purchase.total_amount }}</div>
+                            <div class="col-md-8">{{ purchase.total_amount |currency }}</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Payment Status:</div>
@@ -360,8 +361,8 @@
                                                     <div class="small text-muted">{{ item.medication.strength }} - {{ item.medication.dosage_form }}</div>
                                                 </td>
                                                 <td>{{ item.quantity }}</td>
-                                                <td>₦{{ item.unit_price }}</td>
-                                                <td>₦{{ item.total_price }}</td>
+                                                <td>{{ item.unit_price |currency }}</td>
+                                                <td>{{ item.total_price |currency }}</td>
                                                 <td>{{ item.batch_number }}</td>
                                                 <td>
                                                     {{ item.expiry_date|date:"M d, Y" }}
@@ -377,7 +378,7 @@
                                     <tfoot>
                                         <tr class="table-primary">
                                             <th colspan="3" class="text-end">Total:</th>
-                                            <th>₦{{ purchase.total_amount }}</th>
+                                            <th>{{ purchase.total_amount |currency }}</th>
                                             <th colspan="3"></th>
                                         </tr>
                                     </tfoot>
@@ -499,7 +500,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Are you sure you want to submit Purchase #<strong>{{ purchase.invoice_number }}</strong> for approval?
+                        Are you sure you want to submit Purchase #<strong>{{ purchase.invoice_number|default:"No Invoice" }}</strong> for approval?
                     </div>
 
                     <div class="mb-3">
@@ -557,7 +558,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Are you sure you want to approve Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                        Are you sure you want to approve Purchase #<strong>{{ purchase.invoice_number|default:"No Invoice" }}</strong>?
                     </div>
 
                     <div class="mb-3">
@@ -596,7 +597,7 @@
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Are you sure you want to reject Purchase #<strong>{{ purchase.invoice_number }}</strong>?
+                        Are you sure you want to reject Purchase #<strong>{{ purchase.invoice_number|default:"No Invoice" }}</strong>?
                     </div>
 
                     <div class="mb-3">
@@ -640,7 +641,7 @@
                                     <input type="number" class="form-control" id="payment_amount" name="payment_amount"
                                            value="{{ purchase.total_amount }}" step="0.01" min="0.01" required>
                                 </div>
-                                <div class="form-text">Total Amount: ₦{{ purchase.total_amount|floatformat:2 }}</div>
+                                <div class="form-text">Total Amount: {{ purchase.total_amount|currency }}</div>
                             </div>
                         </div>
                         <div class="col-md-6">

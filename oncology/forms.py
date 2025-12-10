@@ -1,5 +1,5 @@
 from django import forms
-from .models import OncologyRecord
+from .models import OncologyRecord, OncologyClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 
 class OncologyRecordForm(forms.ModelForm):
@@ -41,3 +41,38 @@ class OncologyRecordForm(forms.ModelForm):
 class OncologyRecordSearchForm(MedicalRecordSearchForm):
     """Search form for Oncology records"""
     pass
+
+class OncologyClinicalNoteForm(forms.ModelForm):
+    """Form for creating and editing oncology clinical notes (SOAP format)"""
+
+    class Meta:
+        model = OncologyClinicalNote
+        fields = ['subjective', 'objective', 'assessment', 'plan']
+        widgets = {
+            'subjective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': "Patient's description of symptoms, concerns, and history..."
+            }),
+            'objective': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observable findings, examination results, measurements...'
+            }),
+            'assessment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
+            }),
+            'plan': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Treatment plan, interventions, follow-up...'
+            }),
+        }
+        labels = {
+            'subjective': 'Subjective (S)',
+            'objective': 'Objective (O)',
+            'assessment': 'Assessment (A)',
+            'plan': 'Plan (P)',
+        }

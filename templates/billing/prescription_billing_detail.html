@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load widget_tweaks %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
@@ -63,23 +64,23 @@
                         <div class="col-md-6">
                             <div class="alert alert-info">
                                 <h6><i class="fas fa-pills me-2"></i>Total Medication Cost</h6>
-                                <h4>₦{{ pricing_breakdown.total_medication_cost|floatformat:2 }}</h4>
+                                <h4>{{ pricing_breakdown.total_medication_cost|currency }}</h4>
                             </div>
                         </div>
                         <div class="col-md-6">
                             {% if pricing_breakdown.is_nhia_patient %}
                                 <div class="alert alert-success">
                                     <h6><i class="fas fa-user me-2"></i>Patient Pays (10%)</h6>
-                                    <h4>₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</h4>
+                                    <h4>{{ pricing_breakdown.patient_portion|currency }}</h4>
                                 </div>
                                 <div class="alert alert-warning">
                                     <h6><i class="fas fa-shield-alt me-2"></i>NHIA Covers (90%)</h6>
-                                    <h4>₦{{ pricing_breakdown.nhia_portion|floatformat:2 }}</h4>
+                                    <h4>{{ pricing_breakdown.nhia_portion|currency }}</h4>
                                 </div>
                             {% else %}
                                 <div class="alert alert-warning">
                                     <h6><i class="fas fa-user me-2"></i>Patient Pays (100%)</h6>
-                                    <h4>₦{{ pricing_breakdown.patient_portion|floatformat:2 }}</h4>
+                                    <h4>{{ pricing_breakdown.patient_portion|currency }}</h4>
                                 </div>
                             {% endif %}
                         </div>
@@ -117,11 +118,11 @@
                                         </div>
                                     </td>
                                     <td>{{ item_data.item.quantity }}</td>
-                                    <td>₦{{ item_data.item.medication.price|floatformat:2 }}</td>
-                                    <td>₦{{ item_data.total_cost|floatformat:2 }}</td>
-                                    <td class="text-success"><strong>₦{{ item_data.patient_pays|floatformat:2 }}</strong></td>
+                                    <td>{{ item_data.item.medication.price|currency }}</td>
+                                    <td>{{ item_data.total_cost|currency }}</td>
+                                    <td class="text-success"><strong>{{ item_data.patient_pays|currency }}</strong></td>
                                     {% if pricing_breakdown.is_nhia_patient %}
-                                    <td class="text-warning">₦{{ item_data.nhia_covers|floatformat:2 }}</td>
+                                    <td class="text-warning">{{ item_data.nhia_covers|currency }}</td>
                                     {% endif %}
                                 </tr>
                                 {% endfor %}
@@ -148,16 +149,16 @@
                         <div class="row">
                             <div class="col-6">
                                 <small class="text-muted d-block">Total Medication Cost:</small>
-                                <strong>₦{{ total_medication_cost|floatformat:2 }}</strong>
+                                <strong>{{ total_medication_cost|currency }}</strong>
                             </div>
                             <div class="col-6">
                                 <small class="text-warning d-block">Patient Pays (10%):</small>
-                                <strong class="text-warning">₦{{ patient_payment_amount|floatformat:2 }}</strong>
+                                <strong class="text-warning">{{ patient_payment_amount|currency }}</strong>
                             </div>
                         </div>
                         <div class="mt-2">
                             <small class="text-success">
-                                <i class="fas fa-check-circle"></i> NHIA covers 90% (₦{{ pricing_breakdown.nhia_portion|floatformat:2 }})
+                                <i class="fas fa-check-circle"></i> NHIA covers 90% ({{ pricing_breakdown.nhia_portion|currency }})
                             </small>
                         </div>
                     </div>
@@ -171,10 +172,10 @@
                     
                     {% if pharmacy_invoice %}
                         <p><strong>Invoice ID:</strong> #{{ pharmacy_invoice.id }}</p>
-                        <p><strong>Total Amount:</strong> ₦{{ pharmacy_invoice.total_amount|floatformat:2 }}</p>
-                        <p><strong>Amount Paid:</strong> ₦{{ pharmacy_invoice.amount_paid|floatformat:2 }}</p>
+                        <p><strong>Total Amount:</strong> {{ pharmacy_invoice.total_amount|currency }}</p>
+                        <p><strong>Amount Paid:</strong> {{ pharmacy_invoice.amount_paid|currency }}</p>
                         <p><strong>Balance:</strong> 
-                            <span class="text-danger"><strong>₦{{ pharmacy_invoice.get_balance|floatformat:2 }}</strong></span>
+                            <span class="text-danger"><strong>{{ pharmacy_invoice.get_balance|currency }}</strong></span>
                         </p>
                     {% else %}
                         <p class="text-muted">No invoice generated yet.</p>
@@ -200,7 +201,7 @@
                                        step="0.01" min="0.01" max="{{ pharmacy_invoice.get_balance }}"
                                        value="{{ pharmacy_invoice.get_balance }}" required>
                             </div>
-                            <small class="text-muted">Maximum: ₦{{ pharmacy_invoice.get_balance|floatformat:2 }}</small>
+                            <small class="text-muted">Maximum: {{ pharmacy_invoice.get_balance|currency }}</small>
                         </div>
 
                         <div class="mb-3">
@@ -248,7 +249,7 @@
                     {% for payment in payments %}
                     <div class="border-bottom pb-2 mb-2">
                         <div class="d-flex justify-content-between">
-                            <strong>₦{{ payment.amount|floatformat:2 }}</strong>
+                            <strong>{{ payment.amount|currency }}</strong>
                             <small class="text-muted">{{ payment.payment_date|date:"M d, Y" }}</small>
                         </div>
                         <div class="small text-muted">

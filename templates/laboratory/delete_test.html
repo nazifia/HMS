@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Delete Test - Hospital Management System{% endblock %}
 
@@ -22,7 +23,7 @@
                         {{ test.category.name }} - {{ test.sample_type }}
                     </p>
                     <p class="text-muted">
-                        <strong>Price:</strong> ₦{{ test.price }}
+                        <strong>Price:</strong> {{ test.price |currency }}
                     </p>
                 </div>
                 

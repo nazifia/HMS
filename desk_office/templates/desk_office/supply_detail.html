@@ -1,4 +1,5 @@
 {% extends 'desk_office/base.html' %}
+{% load custom_filters %}
 
 {% block title %}{{ supply.name }} - Office Supply{% endblock %}
 
@@ -33,7 +34,7 @@
                     </tr>
                     <tr>
                         <th>Unit Price:</th>
-                        <td>${{ supply.unit_price }}</td>
+                        <td>{{ supply.unit_price |currency }}</td>
                     </tr>
                     <tr>
                         <th>Supplier:</th>

@@ -1,4 +1,5 @@
 {% extends 'enhanced_base.html' %}
+{% load custom_filters %}
 
 {% block title %}Patient Details - {{ patient.get_full_name|default:patient.user.first_name|default:patient.user.username }}{% endblock %}
 
@@ -411,19 +412,19 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="text-center p-3 bg-light rounded">
-                        <div class="stats-number text-info">₦{{ patient.wallet.balance|default:0 }}</div>
+                        <div class="stats-number text-info">{{ patient.wallet.balance|default:0|currency }}</div>
                         <div class="stats-label">Current Balance</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="text-center p-3 bg-light rounded">
-                        <div class="stats-number text-success">₦{{ patient.wallet.credit_limit|default:0 }}</div>
+                        <div class="stats-number text-success">{{ patient.wallet.credit_limit|default:0|currency }}</div>
                         <div class="stats-label">Credit Limit</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="text-center p-3 bg-light rounded">
-                        <div class="stats-number text-warning">₦{{ patient.wallet.outstanding_balance|default:0 }}</div>
+                        <div class="stats-number text-warning">{{ patient.wallet.outstanding_balance|default:0|currency }}</div>
                         <div class="stats-label">Outstanding</div>
                     </div>
                 </div>
@@ -499,7 +500,7 @@ function processWalletTopUp() {
     
     HMSUI.loading.show(document.querySelector('#walletTopUpForm').parentNode);
     
-    fetch(`/patients/${{{ patient.id }}/wallet/topup/`, {
+    fetch(`/patients/{{ { patient.id |currency }}/wallet/topup/`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -515,7 +516,7 @@ function processWalletTopUp() {
             HMSUI.notifications.show('Wallet topped up successfully!', 'success');
             HMSUI.modals.close();
             // Reload page to show updated balance
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => location.reload(), 300);
         } else {
             HMSUI.notifications.show(data.error || 'Failed to top up wallet', 'error');
         }

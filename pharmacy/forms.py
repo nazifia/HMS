@@ -67,7 +67,8 @@ class PurchaseForm(forms.ModelForm):
     
     invoice_number = forms.CharField(
         max_length=50,
-        help_text="Enter a unique invoice number"
+        required=False,
+        help_text="Enter a unique invoice number (optional)"
     )
 
     class Meta:
@@ -82,7 +83,7 @@ class PurchaseForm(forms.ModelForm):
     
     def clean_invoice_number(self):
         invoice_number = self.cleaned_data.get('invoice_number')
-        if Purchase.objects.filter(invoice_number=invoice_number).exists():
+        if invoice_number and Purchase.objects.filter(invoice_number=invoice_number).exists():
             raise ValidationError('This invoice number already exists. Please enter a unique invoice number.')
         return invoice_number
 
@@ -162,7 +163,7 @@ class PrescriptionForm(forms.ModelForm):
             'class': 'form-control',
             'placeholder': 'Enter authorization code (if required)'
         }),
-        help_text="Required for NHIA patients from non-NHIA consultations"
+        help_text="Required for all NHIA patients before dispensing"
     )
     
     # Override model fields to make them optional
@@ -1329,10 +1330,18 @@ class PackOrderForm(forms.ModelForm):
         help_text='When the pack is needed (optional)'
     )
     
+    authorization_code = forms.ModelChoiceField(
+        queryset=None,  # Will be set dynamically
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Authorization Code",
+        help_text="Required for NHIA patients"
+    )
+
     class Meta:
         model = PackOrder
         fields = [
-            'pack', 'patient', 'scheduled_date', 'order_notes'
+            'pack', 'patient', 'authorization_code', 'scheduled_date', 'order_notes'
         ]
         widgets = {
             'order_notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
@@ -1405,18 +1414,55 @@ class PackOrderForm(forms.ModelForm):
                 is_active=True,
                 pack_type='labor'
             )
-    
+
+        # Setup authorization_code field
+        try:
+            from nhia.models import AuthorizationCode
+            # Filter authorization codes based on patient if available
+            patient = self.preselected_patient or self.instance.patient if self.instance.pk else None
+
+            if patient:
+                # Show only valid authorization codes for this patient
+                self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                    patient=patient,
+                    status='active'
+                ).order_by('-created_at')
+
+                # Make authorization code required for NHIA patients
+                is_nhia = hasattr(patient, 'patient_type') and patient.patient_type == 'nhia'
+                if is_nhia:
+                    self.fields['authorization_code'].required = True
+                    self.fields['authorization_code'].label = 'Authorization Code (Required for NHIA)'
+            else:
+                # No patient selected yet, show empty queryset
+                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
+        except ImportError:
+            # NHIA module not available, hide the field
+            self.fields['authorization_code'].queryset = []
+            self.fields['authorization_code'].widget = forms.HiddenInput()
+
     def clean(self):
         cleaned_data = super().clean()
-        
+
         # Handle patient field when disabled
         if 'patient_hidden' in self.fields:
             cleaned_data['patient'] = cleaned_data.get('patient_hidden')
-        
+
         # Validate scheduled date
         scheduled_date = cleaned_data.get('scheduled_date')
         if scheduled_date and scheduled_date < timezone.now():
             raise ValidationError('Scheduled date cannot be in the past.')
+
+        # Validate NHIA authorization requirement
+        patient = cleaned_data.get('patient')
+        authorization_code = cleaned_data.get('authorization_code')
+
+        if patient:
+            is_nhia = hasattr(patient, 'patient_type') and patient.patient_type == 'nhia'
+            if is_nhia and not authorization_code:
+                raise ValidationError({
+                    'authorization_code': 'Authorization code is required for NHIA patients. Please obtain authorization from desk office.'
+                })
             
         return cleaned_data
     

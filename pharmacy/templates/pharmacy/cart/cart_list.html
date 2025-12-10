@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Prescription Carts{% endblock %}
 
@@ -203,7 +204,7 @@
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Total Amount</span>
-                    <span class="detail-value text-primary">₦{{ cart.get_patient_payable|floatformat:2 }}</span>
+                    <span class="detail-value text-primary">{{ cart.get_patient_payable|currency }}</span>
                 </div>
             </div>
             

@@ -1,4 +1,5 @@
 {% extends 'dental/base.html' %}
+{% load custom_filters %}
 
 {% block page_title %}Dental Record Details{% endblock %}
 
@@ -82,7 +83,7 @@
                             </p>
                             {% if authorization_amount %}
                             <p class="mb-2">
-                                <strong>Authorization Amount:</strong> ₦{{ authorization_amount|floatformat:2 }}
+                                <strong>Authorization Amount:</strong> {{ authorization_amount|currency }}
                             </p>
                             {% endif %}
                             {% if requires_authorization %}
@@ -101,20 +102,21 @@
                             </div>
                             {% else %}
                             <div class="mt-2">
-                                <button class="btn btn-warning btn-sm" 
-                                    onclick="requestNHIAAuthorization(this)"
-                                    data-patient-id="{{ record.patient.id }}"
-                                    data-module-name="dental"
-                                    data-record-id="{{ record.id }}">
+                                <a href="{% url 'core:request_authorization' model_type='dental_record' object_id=record.id %}"
+                                   class="btn btn-warning btn-sm">
                                     <i class="fas fa-shield-alt"></i> Request NHIA Authorization
-                                </button>
+                                </a>
+                                <a href="{% url 'desk_office:authorization_dashboard' %}"
+                                   class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-shield-alt"></i> Go to Authorization Dashboard
+                                </a>
                             </div>
                             {% endif %}
                             {% elif authorization_valid %}
                             <hr>
                             <p class="mb-0">
                                 <i class="fas fa-check-circle"></i>
-                                This dental record has been authorized for NHIA coverage.
+                                This Dental record has been authorized for NHIA coverage.
                                 NHIA will cover 90% of approved costs.
                             </p>
                             {% endif %}
@@ -133,7 +135,7 @@
                     </div>
                     <div class="col-md-6">
                         <h6>Billing Information</h6>
-                        <p><strong>Price:</strong> ₦{{ record.get_service_price }}</p>
+                        <p><strong>Price:</strong> {{ record.get_service_price |currency }}</p>
                         <p><strong>Invoice:</strong>
                             {% if record.invoice %}
                             <a href="#" class="btn btn-sm btn-outline-primary">View Invoice</a>
@@ -151,6 +153,90 @@
                         <h6>Notes</h6>
                         <p>{{ record.notes|linebreaks }}</p>
                     </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Clinical Notes Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-medical-alt"></i> Clinical Notes (SOAP)
+                </h5>
+                <a href="{% url 'dental:add_clinical_note' record.id %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i> Add Clinical Note
+                </a>
+            </div>
+            <div class="card-body">
+                {% if clinical_notes %}
+                <div class="accordion" id="clinicalNotesAccordion">
+                    {% for note in clinical_notes %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ note.id }}">
+                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#collapse{{ note.id }}"
+                                    aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                                    aria-controls="collapse{{ note.id }}">
+                                <i class="fas fa-file-medical me-2"></i>
+                                {{ note.created_at|date:"M d, Y H:i" }} -
+                                <small class="text-muted ms-2">by {{ note.created_by.get_full_name }}</small>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ note.id }}"
+                             class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                             aria-labelledby="heading{{ note.id }}"
+                             data-bs-parent="#clinicalNotesAccordion">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="text-primary"><i class="fas fa-comment-dots"></i> Subjective</h6>
+                                        <div class="border rounded p-2 bg-light">
+                                            <small>{{ note.subjective|linebreaks }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="text-success"><i class="fas fa-stethoscope"></i> Objective</h6>
+                                        <div class="border rounded p-2 bg-light">
+                                            <small>{{ note.objective|linebreaks }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="text-warning"><i class="fas fa-diagnoses"></i> Assessment</h6>
+                                        <div class="border rounded p-2 bg-light">
+                                            <small>{{ note.assessment|linebreaks }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="text-info"><i class="fas fa-tasks"></i> Plan</h6>
+                                        <div class="border rounded p-2 bg-light">
+                                            <small>{{ note.plan|linebreaks }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{% url 'dental:view_clinical_note' note.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View Full
+                                    </a>
+                                    <a href="{% url 'dental:edit_clinical_note' note.id %}" class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <a href="{% url 'dental:delete_clinical_note' note.id %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-file-medical-alt fa-3x mb-3 opacity-50"></i>
+                    <p>No clinical notes available for this record.</p>
+                    <a href="{% url 'dental:add_clinical_note' record.id %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add First Clinical Note
+                    </a>
                 </div>
                 {% endif %}
             </div>
@@ -279,85 +365,4 @@
         </div>
     </div>
 </div>
-
-<script>
-    // Store if request is in progress to prevent multiple simultaneous requests
-    let requestInProgress = false;
-
-    function requestNHIAAuthorization(button) {
-        // Prevent multiple simultaneous requests
-        if (requestInProgress) {
-            alert('Request already in progress. Please wait...');
-            return;
-        }
-        
-        requestInProgress = true;
-        
-        // Get data from button
-        const patientId = button.getAttribute('data-patient-id');
-        const moduleName = button.getAttribute('data-module-name');
-        const recordId = button.getAttribute('data-record-id');
-
-        // Disable button and show loading
-        const originalHTML = button.innerHTML;
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending Request...';
-
-        // Get CSRF token
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-            document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-
-        // Send AJAX request
-        fetch("{% url 'core:request_nhia_authorization' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrftoken
-            },
-            body: new URLSearchParams({
-                'patient_id': patientId,
-                'module_name': moduleName,
-                'record_id': recordId
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                requestInProgress = false; // Reset flag
-                
-                if (data.success) {
-                    // Show success message
-                    alert('✓ ' + data.message);
-                    button.innerHTML = '<i class="fas fa-check"></i> Request Sent';
-                    button.classList.remove('btn-primary', 'btn-warning');
-                    button.classList.add('btn-success');
-                    button.disabled = true;  // Prevent multiple clicks
-                    
-                    // Auto-refresh page after 2 seconds to show updated authorization status
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    // Show error message
-                    alert('✗ ' + data.message);
-                    // If it's a duplicate request, keep button disabled
-                    if (data.message.includes('already pending') || data.message.includes('already been sent')) {
-                        button.innerHTML = '<i class="fas fa-clock"></i> Request Pending';
-                        button.classList.remove('btn-primary', 'btn-warning');
-                        button.classList.add('btn-secondary');
-                    } else {
-                        // Re-enable for other errors
-                        button.disabled = false;
-                        button.innerHTML = originalHTML;
-                    }
-                }
-            })
-            .catch(error => {
-                requestInProgress = false; // Reset flag
-                alert('Error sending authorization request. Please try again.');
-                console.error('Error:', error);
-                button.disabled = false;
-                button.innerHTML = originalHTML;
-            });
-    }
-</script>
 {% endblock %}

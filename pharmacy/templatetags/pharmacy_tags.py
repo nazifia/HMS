@@ -177,3 +177,31 @@ def commas(value):
         return f"{int(value):,}"
     except (ValueError, TypeError):
         return value
+
+@register.filter
+def filter_attr(queryset, filter_string):
+    """
+    Filter queryset by attribute condition.
+    Usage: {{ queryset|filter_attr:"stock_quantity__gt:0" }}
+    """
+    try:
+        field, operator, value = filter_string.split(':', 2)
+        field, operator = field.rsplit('__', 1)
+        
+        filtered = []
+        for item in queryset:
+            item_value = getattr(item, field, None)
+            if item_value is not None:
+                if operator == 'gt' and item_value > int(value):
+                    filtered.append(item)
+                elif operator == 'gte' and item_value >= int(value):
+                    filtered.append(item)
+                elif operator == 'lt' and item_value < int(value):
+                    filtered.append(item)
+                elif operator == 'lte' and item_value <= int(value):
+                    filtered.append(item)
+                elif operator == 'eq' and item_value == value:
+                    filtered.append(item)
+        return filtered
+    except (ValueError, AttributeError):
+        return queryset

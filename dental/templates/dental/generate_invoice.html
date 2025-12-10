@@ -1,4 +1,5 @@
 {% extends 'dental/base.html' %}
+{% load custom_filters %}
 
 {% block page_title %}{{ title }}{% endblock %}
 
@@ -21,7 +22,7 @@
                         {% if record.service %}
                         <p><strong>Name:</strong> {{ record.service.name }}</p>
                         <p><strong>Description:</strong> {{ record.service.description }}</p>
-                        <p><strong>Price:</strong> ${{ record.service.price }}</p>
+                        <p><strong>Price:</strong> {{ record.service.price |currency }}</p>
                         {% else %}
                         <p class="text-muted">No service specified for this record.</p>
                         {% endif %}
@@ -37,7 +38,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <div class="alert alert-info">
-                        <p>This will generate an invoice for the dental service with a total amount of <strong>${{ record.get_service_price }}</strong>.</p>
+                        <p>This will generate an invoice for the dental service with a total amount of <strong>{{ record.get_service_price |currency }}</strong>.</p>
                     </div>
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">

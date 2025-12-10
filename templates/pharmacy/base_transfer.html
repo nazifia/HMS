@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -240,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alert.style.transition = 'opacity 0.3s';
             alert.style.opacity = '0';
             setTimeout(() => alert.remove(), 300);
-        }, 5000);
+        }, 3000);
     });
 });
 </script>

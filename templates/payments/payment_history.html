@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 
 {% block title %}{{ title|default:"Payment History" }} - Hospital Management System{% endblock %}
@@ -70,7 +71,7 @@
                                 Total Amount
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ₦{{ invoice.total_amount|default:0|floatformat:2 }}
+                                {{ invoice.total_amount|default:0|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -90,7 +91,7 @@
                                 Amount Paid
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ₦{{ invoice.amount_paid|default:0|floatformat:2 }}
+                                {{ invoice.amount_paid|default:0|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -110,7 +111,7 @@
                                 Balance Due
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ₦{{ invoice.get_balance|default:0|floatformat:2 }}
+                                {{ invoice.get_balance|default:0|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -176,7 +177,7 @@
                                 <td>{{ payment.payment_date|date:"M d, Y" }}</td>
                                 <td>
                                     <span class="text-success font-weight-bold">
-                                        ₦{{ payment.amount|floatformat:2 }}
+                                        {{ payment.amount|currency }}
                                     </span>
                                 </td>
                                 <td>
@@ -259,18 +260,18 @@
                 <div class="col-md-6">
                     <div class="row mb-2">
                         <div class="col-4"><strong>Subtotal:</strong></div>
-                        <div class="col-8">₦{{ invoice.subtotal|floatformat:2 }}</div>
+                        <div class="col-8">{{ invoice.subtotal|currency }}</div>
                     </div>
                     {% if invoice.tax_amount %}
                     <div class="row mb-2">
                         <div class="col-4"><strong>Tax:</strong></div>
-                        <div class="col-8">₦{{ invoice.tax_amount|floatformat:2 }}</div>
+                        <div class="col-8">{{ invoice.tax_amount|currency }}</div>
                     </div>
                     {% endif %}
                     {% if invoice.discount_amount %}
                     <div class="row mb-2">
                         <div class="col-4"><strong>Discount:</strong></div>
-                        <div class="col-8 text-success">-₦{{ invoice.discount_amount|floatformat:2 }}</div>
+                        <div class="col-8 text-success">-{{ invoice.discount_amount|currency }}</div>
                     </div>
                     {% endif %}
                 </div>

@@ -34,7 +34,8 @@ def index(request):
     # Get user's department for referral integration
     user_department = get_user_department(request.user)
 
-    if not user_department:
+    # Superusers don't need department assignment warnings
+    if not user_department and not request.user.is_superuser:
         messages.warning(request, "You are not assigned to a department. Some features may be limited.")
         user_department = None
 
@@ -124,9 +125,15 @@ def index(request):
         verified_by__isnull=True
     ).select_related('order__patient').count()
 
+    # Get completed orders without results (for action alert)
+    orders_needing_results = RadiologyOrder.objects.filter(
+        status='completed',
+        result__isnull=True
+    ).select_related('patient', 'test').order_by('-order_date')[:10]
+
     # Build query with filters first
-    recent_orders_query = RadiologyOrder.objects.select_related('patient', 'test', 'referring_doctor')
-    
+    recent_orders_query = RadiologyOrder.objects.select_related('patient', 'test', 'referring_doctor', 'result')
+
     # Apply filters if provided
     status_filter = request.GET.get('status')
     if status_filter:
@@ -179,6 +186,7 @@ def index(request):
         'emergency_orders': emergency_orders,
         'avg_reporting_hours': avg_reporting_hours,
         'results_needing_verification': results_needing_verification,
+        'orders_needing_results': orders_needing_results,
         'modality_labels': json.dumps(modality_labels),
         'modality_counts': json.dumps(modality_counts),
         'recent_orders': recent_orders,
@@ -394,9 +402,9 @@ def cancel_order(request, order_id):
 def add_result(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
 
-    # Check authorization requirement BEFORE allowing result entry
-    can_process, message = order.can_be_processed()
-    if not can_process:
+    # Check if result can be added to this order
+    can_add, message = order.can_add_result()
+    if not can_add:
         messages.error(request, message)
         return redirect('radiology:order_detail', order_id=order.id)
 

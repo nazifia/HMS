@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Admission Net Impact - {{ admission.patient.get_full_name }}{% endblock %}
 
@@ -61,7 +62,7 @@
                                 Current Wallet Balance
                             </div>
                             <div class="h5 mb-0 font-weight-bold {% if admission.patient.wallet.balance < 0 %}text-danger{% else %}text-gray-800{% endif %}">
-                                ₦{{ admission.patient.wallet.balance|floatformat:2 }}
+                                {{ admission.patient.wallet.balance|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -81,7 +82,7 @@
                                 Admission Net Impact
                             </div>
                             <div class="h5 mb-0 font-weight-bold {% if admission_net_impact < 0 %}text-danger{% else %}text-info{% endif %}">
-                                ₦{{ admission_net_impact|floatformat:2 }}
+                                {{ admission_net_impact|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -101,7 +102,7 @@
                                 Outstanding Cost
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-warning">
-                                ₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}
+                                {{ admission.get_outstanding_admission_cost|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -121,7 +122,7 @@
                                 Projected Balance
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-success">
-                                ₦{{ projected_balance|floatformat:2 }}
+                                {{ projected_balance|currency }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -157,15 +158,15 @@
                             <table class="table table-bordered">
                                 <tr>
                                     <td>Total Admission Cost</td>
-                                    <td>₦{{ admission.get_total_cost|floatformat:2 }}</td>
+                                    <td>{{ admission.get_total_cost|currency }}</td>
                                 </tr>
                                 <tr>
                                     <td>Amount Paid from Wallet</td>
-                                    <td>₦{{ admission.get_actual_charges_from_wallet|floatformat:2 }}</td>
+                                    <td>{{ admission.get_actual_charges_from_wallet|currency }}</td>
                                 </tr>
                                 <tr>
                                     <th>Outstanding Cost</th>
-                                    <th class="text-warning">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</th>
+                                    <th class="text-warning">{{ admission.get_outstanding_admission_cost|currency }}</th>
                                 </tr>
                             </table>
                         </div>
@@ -174,16 +175,16 @@
                             <table class="table table-bordered">
                                 <tr>
                                     <td>Current Wallet Balance</td>
-                                    <td>₦{{ admission.patient.wallet.balance|floatformat:2 }}</td>
+                                    <td>{{ admission.patient.wallet.balance|currency }}</td>
                                 </tr>
                                 <tr>
                                     <td>Outstanding Admission Cost</td>
-                                    <td>- ₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                    <td>- {{ admission.get_outstanding_admission_cost|currency }}</td>
                                 </tr>
                                 <tr>
                                     <th>Net Impact</th>
                                     <th class="{% if admission_net_impact < 0 %}text-danger{% else %}text-success{% endif %}">
-                                        ₦{{ admission_net_impact|floatformat:2 }}
+                                        {{ admission_net_impact|currency }}
                                     </th>
                                 </tr>
                                 <tr>
@@ -221,9 +222,9 @@
                         <div class="alert alert-info">
                             <h6>Summary of Changes:</h6>
                             <ul>
-                                <li>Current Balance: <strong>₦{{ admission.patient.wallet.balance|floatformat:2 }}</strong></li>
-                                <li>Admission Net Impact: <strong>₦{{ admission_net_impact|floatformat:2 }}</strong></li>
-                                <li>New Balance: <strong>₦{{ projected_balance|floatformat:2 }}</strong></li>
+                                <li>Current Balance: <strong>{{ admission.patient.wallet.balance|currency }}</strong></li>
+                                <li>Admission Net Impact: <strong>{{ admission_net_impact|currency }}</strong></li>
+                                <li>New Balance: <strong>{{ projected_balance|currency }}</strong></li>
                             </ul>
                         </div>
                         

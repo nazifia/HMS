@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -92,7 +93,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Pending Value</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_pending_value|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pending_value|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -167,7 +168,7 @@
                                     <td>{{ order.invoice_number }}</td>
                                     <td>{{ order.supplier.name }}</td>
                                     <td>{{ order.purchase_date|date:"M d" }}</td>
-                                    <td>₦{{ order.total_amount|floatformat:2 }}</td>
+                                    <td>{{ order.total_amount|currency }}</td>
                                     <td>
                                         <a href="{% url 'pharmacy:purchase_detail' order.id %}" class="btn btn-sm btn-outline-primary">
                                             View
@@ -268,7 +269,7 @@
                                             {{ order.get_payment_status_display }}
                                         </span>
                                     </td>
-                                    <td>₦{{ order.total_amount|floatformat:2 }}</td>
+                                    <td>{{ order.total_amount|currency }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -305,7 +306,7 @@
                                 <tr>
                                     <td>{{ supplier.supplier__name|truncatechars:20 }}</td>
                                     <td>{{ supplier.order_count }}</td>
-                                    <td>₦{{ supplier.total_value|floatformat:2 }}</td>
+                                    <td>{{ supplier.total_value|currency }}</td>
                                     <td>
                                         <div class="progress" style="height: 20px;">
                                             <div class="progress-bar bg-primary" role="progressbar" 

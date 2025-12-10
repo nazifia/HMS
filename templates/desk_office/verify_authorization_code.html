@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Verify Authorization Code - NHIA Authorization{% endblock %}
 
@@ -203,19 +204,19 @@
                                         {% endif %}
                                         <tr>
                                             <td><strong>Authorized Amount:</strong></td>
-                                            <td><strong>₦{{ authorization_code.amount|floatformat:2 }}</strong></td>
+                                            <td><strong>{{ authorization_code.amount|currency }}</strong></td>
                                         </tr>
                                         {% if authorization_code.used_amount %}
                                         <tr>
                                             <td><strong>Used Amount:</strong></td>
-                                            <td>₦{{ authorization_code.used_amount|floatformat:2 }}</td>
+                                            <td>{{ authorization_code.used_amount|currency }}</td>
                                         </tr>
                                         {% if authorization_code.remaining_amount %}
                                         <tr>
                                             <td><strong>Remaining:</strong></td>
                                             <td>
                                                 <strong class="{% if authorization_code.remaining_amount <= 0 %}text-danger{% endif %}">
-                                                    ₦{{ authorization_code.remaining_amount|floatformat:2 }}
+                                                    {{ authorization_code.remaining_amount|currency }}
                                                 </strong>
                                             </td>
                                         </tr>
@@ -310,7 +311,7 @@
                                     </a>
                                     {% endif %}
                                     <button type="button" class="btn btn-outline-primary" 
-                                            onclick="printCode('{{ authorization_code.code }}', '{{ authorization_code.patient.get_full_name }}', '₦{{ authorization_code.amount|floatformat:2 }}', '{{ authorization_code.get_status_display }}')">
+                                            onclick="printCode('{{ authorization_code.code }}', '{{ authorization_code.patient.get_full_name }}', '{{ authorization_code.amount|currency }}', '{{ authorization_code.get_status_display }}')">
                                         <i class="fas fa-print"></i> Print Code
                                     </button>
                                 </div>

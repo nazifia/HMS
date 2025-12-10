@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 {% load crispy_forms_tags %}
 
 {% block title %}
@@ -62,7 +63,7 @@
                 <!-- Wallet Information -->
                 <h5>Wallet Information</h5>
                 {% if has_wallet and wallet_is_active %}
-                    <p><strong>Wallet Balance:</strong> ₦{{ patient.wallet.balance|floatformat:2 }}</p>
+                    <p><strong>Wallet Balance:</strong> {{ patient.wallet.balance|currency }}</p>
                     <p><strong>Wallet Status:</strong>
                         {% if patient.wallet.is_active %}
                             <span class="badge bg-success">Active</span>
@@ -83,7 +84,7 @@
                     </div>
                 {% elif has_wallet and not wallet_is_active %}
                     <p>Wallet is currently inactive.</p>
-                    <p><strong>Wallet Balance:</strong> ₦{{ patient.wallet.balance|floatformat:2 }}</p>
+                    <p><strong>Wallet Balance:</strong> {{ patient.wallet.balance|currency }}</p>
                      <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-primary btn-sm">
                         <i class="fas fa-dashboard"></i> Wallet Dashboard
                     </a>
@@ -152,9 +153,9 @@
                                 <tr>
                                     <td>{{ admission.id }}</td>
                                     <td>{{ admission.admission_date|date:"Y-m-d" }}</td>
-                                    <td>₦{{ admission.billed_amount|floatformat:2 }}</td>
-                                    <td>₦{{ admission.amount_paid|floatformat:2 }}</td>
-                                    <td>₦{{ admission.billed_amount|sub:admission.amount_paid|floatformat:2 }}</td>
+                                    <td>{{ admission.billed_amount|currency }}</td>
+                                    <td>{{ admission.amount_paid|currency }}</td>
+                                    <td>{{ admission.billed_amount|sub:admission.amount_paid|currency }}</td>
                                     <td>
                                         {% if admission.get_total_cost <= admission.amount_paid %}
                                             <span class="badge bg-success">Paid</span>

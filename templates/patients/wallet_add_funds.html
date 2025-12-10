@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Add Funds - {{ patient.get_full_name }}{% endblock %}
 
@@ -32,7 +33,7 @@
                         <div class="col-md-3">
                             <p><strong>Current Balance:</strong> 
                                 <span class="{% if wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
-                                    ₦{{ wallet.balance|floatformat:2 }}
+                                    {{ wallet.balance|currency }}
                                 </span>
                             </p>
                             <p><strong>Wallet Status:</strong> 
@@ -43,15 +44,15 @@
                         </div>
                         <div class="col-md-3">
                             <p><strong>Outstanding Admissions:</strong> 
-                                <span class="text-warning">₦{{ admission_outstanding|floatformat:2 }}</span>
+                                <span class="text-warning">{{ admission_outstanding|currency }}</span>
                             </p>
                             <p><strong>Outstanding Invoices:</strong> 
-                                <span class="text-warning">₦{{ invoice_outstanding|floatformat:2 }}</span>
+                                <span class="text-warning">{{ invoice_outstanding|currency }}</span>
                             </p>
                         </div>
                         <div class="col-md-3">
                             <p><strong>Total Outstanding:</strong> 
-                                <span class="text-danger font-weight-bold">₦{{ total_outstanding|floatformat:2 }}</span>
+                                <span class="text-danger font-weight-bold">{{ total_outstanding|currency }}</span>
                             </p>
                         </div>
                     </div>
@@ -88,7 +89,7 @@
                                         <td>{{ admission.id }}</td>
                                         <td>{{ admission.bed.ward.name|default:"-" }}</td>
                                         <td>{{ admission.get_duration }} days</td>
-                                        <td class="text-warning">₦{{ admission.get_outstanding_admission_cost|floatformat:2 }}</td>
+                                        <td class="text-warning">{{ admission.get_outstanding_admission_cost|currency }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -115,8 +116,8 @@
                                     <tr>
                                         <td>{{ invoice.invoice_number }}</td>
                                         <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
-                                        <td>₦{{ invoice.total_amount|floatformat:2 }}</td>
-                                        <td class="text-warning">₦{{ invoice.get_balance|floatformat:2 }}</td>
+                                        <td>{{ invoice.total_amount|currency }}</td>
+                                        <td class="text-warning">{{ invoice.get_balance|currency }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -181,7 +182,7 @@
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input" id="apply_to_outstanding" name="apply_to_outstanding">
                                 <label class="custom-control-label" for="apply_to_outstanding">
-                                    Automatically apply funds to outstanding charges (₦{{ total_outstanding|floatformat:2 }})
+                                    Automatically apply funds to outstanding charges ({{ total_outstanding|currency }})
                                 </label>
                                 <small class="form-text text-muted">
                                     If checked, funds will be automatically applied to outstanding admission costs and invoices in chronological order.
@@ -212,20 +213,20 @@
                     <div class="mb-3">
                         <small class="text-muted">Current Balance</small>
                         <h5 class="{% if wallet.balance < 0 %}text-danger{% else %}text-success{% endif %}">
-                            ₦{{ wallet.balance|floatformat:2 }}
+                            {{ wallet.balance|currency }}
                         </h5>
                     </div>
                     
                     {% if total_outstanding > 0 %}
                     <div class="mb-3">
                         <small class="text-muted">Total Outstanding</small>
-                        <h5 class="text-warning">₦{{ total_outstanding|floatformat:2 }}</h5>
+                        <h5 class="text-warning">{{ total_outstanding|currency }}</h5>
                     </div>
                     
                     <div class="mb-3">
                         <small class="text-muted">Net Impact</small>
                         <h5 class="{% if wallet.get_total_wallet_impact_with_admissions < 0 %}text-danger{% else %}text-success{% endif %}">
-                            ₦{{ wallet.get_total_wallet_impact_with_admissions|floatformat:2 }}
+                            {{ wallet.get_total_wallet_impact_with_admissions|currency }}
                         </h5>
                     </div>
                     {% endif %}
@@ -266,7 +267,7 @@
         // Show warning if amount is less than total outstanding and auto-apply is checked
         $('form').on('submit', function(e) {
             var amount = parseFloat($('#id_amount').val()) || 0;
-            var totalOutstanding = parseFloat('{{ total_outstanding|floatformat:2 }}') || 0;
+            var totalOutstanding = parseFloat('{{ total_outstanding|currency }}') || 0;
             var applyToOutstanding = $('#apply_to_outstanding').is(':checked');
             
             if (applyToOutstanding && amount < totalOutstanding) {

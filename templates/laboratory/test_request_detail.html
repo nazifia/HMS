@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% load form_tags %}
 {% load billing_tags %} {# Assuming you might create billing_tags later for invoice status #}
 {% load hms_permissions %}
@@ -439,14 +440,14 @@
                                         <tr>
                                             <td>{{ test_obj.name }}</td>
                                             <td>{{ test_obj.category.name|default:"N/A" }}</td>
-                                            <td>₦{{ test_obj.price|floatformat:2 }}</td>
+                                            <td>{{ test_obj.price|currency }}</td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
                                 <tfoot>
                                     <tr class="table-primary fw-bold">
                                         <td colspan="2" class="text-end">Total Estimated Price:</td>
-                                        <td>₦{{ test_request.get_total_price|floatformat:2 }}</td>
+                                        <td>{{ test_request.get_total_price|currency }}</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -924,7 +925,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Show success message
                 showSuccessMessage(data.message || 'Test result saved successfully!');
-                setTimeout(() => window.location.reload(), 1500);
+                setTimeout(() => window.location.reload(), 500);
             } else {
                 // Show form errors
                 document.getElementById('testResultModalBody').innerHTML = data.html || data;
@@ -955,7 +956,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         document.body.appendChild(alert);
-        setTimeout(() => alert.remove(), 5000);
+        setTimeout(() => alert.remove(), 3000);
     }
 
     function showErrorMessage(message) {
@@ -970,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         document.body.appendChild(alert);
-        setTimeout(() => alert.remove(), 5000);
+        setTimeout(() => alert.remove(), 3000);
     }
 });
 </script>

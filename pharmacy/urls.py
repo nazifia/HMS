@@ -43,6 +43,7 @@ urlpatterns = [
     path('revenue/comprehensive/', RedirectView.as_view(pattern_name='pharmacy:simple_revenue_statistics', query_string=True, permanent=False), name='revenue_comprehensive_redirect'),
     path('revenue/test-charts/', views.simple_revenue_statistics, name='test_revenue_charts_public'),
     path('revenue/statistics/', views.simple_revenue_statistics, name='simple_revenue_statistics'),
+    path('revenue/dispensary/', views.pharmacy_dispensary_revenue, name='pharmacy_dispensary_revenue'),
     path('expense/analysis/', views.expense_analysis, name='expense_analysis'),
     path('medications/<int:medication_id>/procure/', views.create_procurement_request, name='create_procurement_request'),
     path('api/suppliers/', views.api_suppliers, name='api_suppliers'),
@@ -127,6 +128,8 @@ urlpatterns = [
     path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/delete/', views.delete_dispensary_inventory_item, name='delete_dispensary_inventory_item'),
     # Active Store Detail
     path('dispensaries/<int:dispensary_id>/active-store/', views.active_store_detail, name='active_store_detail'),
+    path('dispensaries/<int:dispensary_id>/active-store/bulk-transfers/', views.active_store_bulk_transfers, name='active_store_bulk_transfers'),
+    path('dispensaries/<int:dispensary_id>/active-store/dispensary-transfers/', views.active_store_dispensary_transfers, name='active_store_dispensary_transfers'),
     path('dispensaries/<int:dispensary_id>/transfer-to-dispensary/', views.transfer_to_dispensary, name='transfer_to_dispensary'),
     
     # Transfer Management
@@ -212,4 +215,8 @@ urlpatterns = [
     path('transfers/inter/<int:transfer_id>/execute/', inter_dispensary_views.execute_inter_dispensary_transfer, name='execute_inter_dispensary_transfer'),
     path('transfers/inter/<int:transfer_id>/cancel/', inter_dispensary_views.cancel_inter_dispensary_transfer, name='cancel_inter_dispensary_transfer'),
     path('transfers/inter/statistics/', inter_dispensary_views.transfer_statistics, name='transfer_statistics'),
+
+    # Markup Management
+    path('bulk-store/markup/bulk-apply/', views.bulk_apply_markup, name='bulk_apply_markup'),
+    path('bulk-store/markup/<int:item_id>/update/', views.update_item_markup, name='update_item_markup'),
 ]

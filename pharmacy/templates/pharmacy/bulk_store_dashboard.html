@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% load pharmacy_tags %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -41,6 +42,9 @@
             <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Procurement
             </a>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#bulkMarkupModal">
+                <i class="fas fa-percent"></i> Apply Bulk Markup
+            </button>
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
                 <i class="fas fa-exchange-alt"></i> Request Transfer
             </button>
@@ -77,7 +81,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Stock Value
                             </div>
-                            <div class="metric-value text-success">₦{{ total_stock_value|floatformat:2 }}</div>
+                            <div class="metric-value text-success">{{ total_stock_value|currency }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -217,19 +221,24 @@
                         <table class="table table-bordered" id="inventoryTable">
                             <thead>
                                 <tr>
+                                    <th><input type="checkbox" id="selectAll"></th>
                                     <th>Medication</th>
                                     <th>Stock Quantity</th>
                                     <th>Unit Cost</th>
+                                    <th>Markup %</th>
+                                    <th>Marked Up Cost</th>
                                     <th>Total Value</th>
                                     <th>Batch Number</th>
                                     <th>Expiry Date</th>
                                     <th>Supplier</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in bulk_inventory %}
-                                <tr>
+                                <tr data-item-id="{{ item.id }}">
+                                    <td><input type="checkbox" class="item-checkbox" value="{{ item.id }}"></td>
                                     <td>{{ item.medication.name }}</td>
                                     <td>
                                         {% if item.stock_quantity <= 50 %}
@@ -238,8 +247,14 @@
                                             {{ item.stock_quantity }}
                                         {% endif %}
                                     </td>
-                                    <td>₦{{ item.unit_cost|floatformat:2 }}</td>
-                                    <td>₦{{ item.stock_quantity|mul:item.unit_cost|floatformat:2 }}</td>
+                                    <td>{{ item.unit_cost|currency }}</td>
+                                    <td>
+                                        <span class="markup-percentage">{{ item.markup_percentage|floatformat:2 }}%</span>
+                                    </td>
+                                    <td>
+                                        <span class="marked-up-cost">{{ item.marked_up_cost|currency }}</span>
+                                    </td>
+                                    <td>{{ item.stock_quantity|mul:item.marked_up_cost|currency }}</td>
                                     <td>{{ item.batch_number|default:"N/A" }}</td>
                                     <td>
                                         {% if item.expiry_date %}
@@ -277,6 +292,15 @@
                                                 <span class="badge bg-success">Good</span>
                                             {% endif %}
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info edit-markup-btn"
+                                                data-item-id="{{ item.id }}"
+                                                data-current-markup="{{ item.markup_percentage }}"
+                                                data-medication-name="{{ item.medication.name }}"
+                                                data-batch-number="{{ item.batch_number }}">
+                                            <i class="fas fa-edit"></i> Edit Markup
+                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -395,6 +419,106 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Markup Modal -->
+<div class="modal fade" id="bulkMarkupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-percent"></i> Apply Bulk Markup
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'pharmacy:bulk_apply_markup' %}" id="bulkMarkupForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="bulk_markup_percentage" class="form-label">
+                            Markup Percentage (%) <span class="text-danger">*</span>
+                        </label>
+                        <input type="number" class="form-control" id="bulk_markup_percentage"
+                               name="markup_percentage" min="0" max="100" step="0.01"
+                               value="20" required>
+                        <div class="form-text">Enter markup percentage between 0% and 100%</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="apply_to"
+                                   id="apply_selected" value="selected" checked>
+                            <label class="form-check-label" for="apply_selected">
+                                Apply to selected items (<span id="selected-count">0</span> items)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="apply_to"
+                                   id="apply_all" value="all">
+                            <label class="form-check-label" for="apply_all">
+                                Apply to all items in bulk store
+                            </label>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        This will update the markup percentage and calculate the new marked-up cost for all selected items.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Apply Markup
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Item Markup Modal -->
+<div class="modal fade" id="editMarkupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> Edit Markup
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editMarkupForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit_item_id" name="item_id">
+                    <div class="mb-3">
+                        <label class="form-label">Medication:</label>
+                        <p class="fw-bold" id="edit_medication_name"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Batch Number:</label>
+                        <p id="edit_batch_number"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Current Markup:</label>
+                        <p class="fw-bold text-success" id="edit_current_markup"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_markup_percentage" class="form-label">
+                            New Markup Percentage (%) <span class="text-danger">*</span>
+                        </label>
+                        <input type="number" class="form-control" id="edit_markup_percentage"
+                               name="markup_percentage" min="0" max="100" step="0.01" required>
+                        <div class="form-text">Enter markup percentage between 0% and 100%</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -804,7 +928,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert.classList.remove('show');
                 setTimeout(() => alert.remove(), 150);
             }
-        }, 5000);
+        }, 3000);
     }
 
     // Form validation function
@@ -985,6 +1109,152 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         }
         return false;
+    }
+
+    // ============================================
+    // MARKUP MANAGEMENT
+    // ============================================
+
+    // Handle "Select All" checkbox
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const selectedCountSpan = document.getElementById('selected-count');
+
+    function updateSelectedCount() {
+        const checked = document.querySelectorAll('.item-checkbox:checked').length;
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = checked;
+        }
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            // Query checkboxes each time (works with DataTables pagination)
+            const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+            itemCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateSelectedCount();
+        });
+    }
+
+    // Use event delegation for individual checkboxes (handles dynamically loaded content)
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('item-checkbox')) {
+            updateSelectedCount();
+
+            // Update select all checkbox state
+            const allCheckboxes = document.querySelectorAll('.item-checkbox');
+            const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length;
+            }
+        }
+    });
+
+    // Handle bulk markup form submission
+    const bulkMarkupForm = document.getElementById('bulkMarkupForm');
+    if (bulkMarkupForm) {
+        bulkMarkupForm.addEventListener('submit', function(e) {
+            const applyTo = document.querySelector('input[name="apply_to"]:checked').value;
+
+            if (applyTo === 'selected') {
+                const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+
+                if (checkedBoxes.length === 0) {
+                    e.preventDefault();
+                    alert('Please select at least one item to apply markup');
+                    return false;
+                }
+
+                // Add selected item IDs to form
+                checkedBoxes.forEach(checkbox => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'item_ids[]';
+                    input.value = checkbox.value;
+                    this.appendChild(input);
+                });
+            }
+        });
+    }
+
+    // Handle Edit Markup button clicks
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.closest('.edit-markup-btn')) {
+            const button = e.target.closest('.edit-markup-btn');
+            const itemId = button.getAttribute('data-item-id');
+            const currentMarkup = button.getAttribute('data-current-markup');
+            const medicationName = button.getAttribute('data-medication-name');
+            const batchNumber = button.getAttribute('data-batch-number');
+
+            // Populate modal
+            document.getElementById('edit_item_id').value = itemId;
+            document.getElementById('edit_medication_name').textContent = medicationName;
+            document.getElementById('edit_batch_number').textContent = batchNumber;
+            document.getElementById('edit_current_markup').textContent = currentMarkup + '%';
+            document.getElementById('edit_markup_percentage').value = currentMarkup;
+
+            // Set form action
+            const form = document.getElementById('editMarkupForm');
+            form.action = "{% url 'pharmacy:update_item_markup' 0 %}".replace('0', itemId);
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editMarkupModal'));
+            modal.show();
+        }
+    });
+
+    // Handle Edit Markup form submission with AJAX
+    const editMarkupForm = document.getElementById('editMarkupForm');
+    if (editMarkupForm) {
+        editMarkupForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const itemId = document.getElementById('edit_item_id').value;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('editMarkupModal')).hide();
+
+                    // Update the table row
+                    const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
+                    if (row) {
+                        const markupCell = row.querySelector('.markup-percentage');
+                        const markedUpCostCell = row.querySelector('.marked-up-cost');
+                        const editBtn = row.querySelector('.edit-markup-btn');
+
+                        if (markupCell) {
+                            markupCell.textContent = formData.get('markup_percentage') + '%';
+                        }
+                        if (markedUpCostCell) {
+                            markedUpCostCell.textContent = '₦' + data.marked_up_cost.toFixed(2);
+                        }
+                        if (editBtn) {
+                            editBtn.setAttribute('data-current-markup', formData.get('markup_percentage'));
+                        }
+                    }
+
+                    // Show success message
+                    alert(data.message);
+                    location.reload(); // Reload to update total value
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error updating markup: ' + error);
+            });
+        });
     }
 });
 </script>

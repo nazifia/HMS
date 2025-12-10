@@ -171,7 +171,7 @@
                             Total Revenue
                         </div>
                         <div class="revenue-amount">
-                            ₦{{ breakdown_data.total_revenue|default:0|floatformat:2|intcomma }}
+                            {{ breakdown_data.total_revenue|default:0|currency }}
                         </div>
                     </div>
                     <div class="col-auto">
@@ -193,7 +193,7 @@
                         </div>
                         {% if breakdown_data.summary_by_category and breakdown_data.summary_by_category.clinical_services %}
                         <div class="revenue-amount text-success">
-                            ₦{{ breakdown_data.summary_by_category.clinical_services.revenue|default:0|floatformat:2|intcomma }}
+                            {{ breakdown_data.summary_by_category.clinical_services.revenue|default:0|currency }}
                         </div>
                         <div class="text-xs">
                             {{ breakdown_data.summary_by_category.clinical_services.percentage|default:0 }}% of total
@@ -226,7 +226,7 @@
                         </div>
                         {% if breakdown_data.summary_by_category and breakdown_data.summary_by_category.support_services %}
                         <div class="revenue-amount text-info">
-                            ₦{{ breakdown_data.summary_by_category.support_services.revenue|default:0|floatformat:2|intcomma }}
+                            {{ breakdown_data.summary_by_category.support_services.revenue|default:0|currency }}
                         </div>
                         <div class="text-xs">
                             {{ breakdown_data.summary_by_category.support_services.percentage|default:0 }}% of total
@@ -292,7 +292,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="font-weight-bold">{{ dept_name|title }}</span>
-                                <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
+                                <span class="text-primary">{{ dept_data.revenue|currency }}</span>
                             </div>
                             <div class="progress progress-sm">
                                 <div class="progress-bar bg-primary" role="progressbar" 
@@ -304,7 +304,7 @@
                             </div>
                             <small class="text-muted">
                                 {{ dept_data.transactions }} transactions • 
-                                Avg: ₦{{ dept_data.avg_transaction|floatformat:2|intcomma }}
+                                Avg: {{ dept_data.avg_transaction|currency }}
                             </small>
                         </div>
                     </div>
@@ -316,7 +316,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="font-weight-bold">{{ dept_name|title }}</span>
-                                <span class="text-primary">₦{{ dept_data.revenue|floatformat:2|intcomma }}</span>
+                                <span class="text-primary">{{ dept_data.revenue|currency }}</span>
                             </div>
                             <div class="progress progress-sm">
                                 <div class="progress-bar bg-secondary" role="progressbar" 
@@ -328,7 +328,7 @@
                             </div>
                             <small class="text-muted">
                                 {{ dept_data.transactions|default:0 }} txns • 
-                                Avg: ₦{{ dept_data.avg_transaction|default:0|floatformat:2|intcomma }}
+                                Avg: {{ dept_data.avg_transaction|default:0|currency }}
                             </small>
                         </div>
                     </div>
@@ -357,7 +357,7 @@
                                 </h6>
                                 <p class="mb-1">
                                     <strong>Revenue:</strong> 
-                                    ₦{{ enhanced_data.pharmacy_details.total_revenue|floatformat:2|intcomma }}
+                                    {{ enhanced_data.pharmacy_details.total_revenue|currency }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Dispense Logs:</strong> 
@@ -365,7 +365,7 @@
                                 </p>
                                 <p class="mb-1">
                                     <strong>Avg Value:</strong> 
-                                    ₦{{ enhanced_data.pharmacy_details.avg_prescription_value|default:0|floatformat:2|intcomma }}
+                                    {{ enhanced_data.pharmacy_details.avg_prescription_value|default:0|currency }}
                                 </p>
                                 <a href="{% url 'core:department_revenue_detail' 'pharmacy' %}?date_filter={{ date_filter }}" 
                                    class="btn btn-sm btn-success">
@@ -385,7 +385,7 @@
                                 {% with lab=enhanced_data.laboratory_details %}
                                 <p class="mb-1">
                                     <strong>Revenue:</strong> 
-                                    ₦{{ lab.total_revenue|default:0|floatformat:2|intcomma }}
+                                    {{ lab.total_revenue|default:0|currency }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Tests:</strong> 
@@ -417,7 +417,7 @@
                                 {% with cons=enhanced_data.consultation_details %}
                                 <p class="mb-1">
                                     <strong>Revenue:</strong> 
-                                    ₦{{ cons.total_revenue|default:0|floatformat:2|intcomma }}
+                                    {{ cons.total_revenue|default:0|currency }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Consultations:</strong> 
@@ -425,7 +425,7 @@
                                 </p>
                                 <p class="mb-1">
                                     <strong>Avg Fee:</strong> 
-                                    ₦{{ cons.avg_consultation_fee|default:0|floatformat:2|intcomma }}
+                                    {{ cons.avg_consultation_fee|default:0|currency }}
                                 </p>
                                 {% if cons.error %}
                                 <small class="text-muted">{{ cons.error }}</small>
@@ -449,7 +449,7 @@
                                 {% with th=enhanced_data.theatre_details %}
                                 <p class="mb-1">
                                     <strong>Revenue:</strong> 
-                                    ₦{{ th.total_revenue|default:0|floatformat:2|intcomma }}
+                                    {{ th.total_revenue|default:0|currency }}
                                 </p>
                                 <p class="mb-1">
                                     <strong>Payments:</strong> 
@@ -457,7 +457,7 @@
                                 </p>
                                 <p class="mb-1">
                                     <strong>Avg Fee:</strong> 
-                                    ₦{{ th.avg_surgery_fee|default:0|floatformat:2|intcomma }}
+                                    {{ th.avg_surgery_fee|default:0|currency }}
                                 </p>
                                 {% if th.error %}
                                 <small class="text-muted">{{ th.error }}</small>
@@ -490,7 +490,7 @@
                         <div class="card-body p-3">
                             <h6 class="font-weight-bold">{{ dept_name|title }}</h6>
                             <p class="mb-1">
-                                <strong>Revenue:</strong> ₦{{ dept_data.revenue|floatformat:2|intcomma }}
+                                <strong>Revenue:</strong> {{ dept_data.revenue|currency }}
                             </p>
                             <p class="mb-1">
                                 <strong>Records:</strong> {{ dept_data.records|default:0 }}

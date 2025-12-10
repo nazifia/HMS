@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Order Medical Pack for Surgery - Hospital Management System{% endblock %}
 
@@ -70,7 +71,7 @@
                             <p><strong>Contents:</strong> {{ pack.get_contents_display }}</p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Price:</strong> ₦{{ pack.price|floatformat:2 }}</p>
+                            <p><strong>Price:</strong> {{ pack.price|currency }}</p>
                             <p><strong>Status:</strong> 
                                 {% if pack.is_active %}
                                     <span class="badge bg-success">Active</span>
