@@ -47,7 +47,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'o39@*p9_djglfvp(r8&m9+hl*2+xnz0#fm-uk%cqg-32655$22')
 if not SECRET_KEY:
     if os.environ.get('DEBUG', 'False') == 'True':
         SECRET_KEY = 'django-dev-key-change-in-production-make-it-very-long-and-random-at-least-50-chars'
@@ -153,6 +153,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Disable SSL in development middleware (must be first to intercept HTTPS headers)
+    'core.middleware.disable_ssl_in_dev.DisableSSLInDevMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

@@ -1,0 +1,16 @@
+{%extends 'family_planning/base.html' %}
+
+{%block page_title %}Delete Clinical Note{%endblock%}
+
+{%block family_planning_content %}
+<div class="card">
+    <div class="card-body">
+        <h5>Are you sure?</h5>
+        <form method="post">
+            {%csrf_token%}
+            <button type="submit" class="btn btn-danger">Delete</button>
+            <a href="{{back_url}}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{%endblock%}

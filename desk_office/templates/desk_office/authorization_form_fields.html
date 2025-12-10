@@ -1,5 +1,20 @@
 <!-- This partial template contains the authorization form fields -->
 <div id="authorization-form-fields">
+    <div class="form-group mb-3">
+        <label for="id_service_select">Select Service (Auto-fill):</label>
+        <select class="form-control" id="id_service_select">
+            <option value="">-- Select a Service to Auto-fill Price --</option>
+            {% for service in services %}
+            <option value="{{ service.id }}" 
+                    data-price="{{ service.price }}" 
+                    data-category="{{ service.category.name|lower|default:'' }}">
+                {{ service.name }} - ₦{{ service.price }}
+            </option>
+            {% endfor %}
+        </select>
+        <small class="form-text text-muted">Selecting a service will automatically update the amount.</small>
+    </div>
+
     <div class="form-group">
         <label for="id_service_type">Service Type:</label>
         <select name="service_type" class="form-control" id="id_service_type" required>
@@ -31,3 +46,45 @@
         <input type="text" name="department" class="form-control" id="id_department" placeholder="Department where service will be delivered" required>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const serviceSelect = document.getElementById('id_service_select');
+        const amountInput = document.querySelector('input[name="amount"]'); // Assuming standard django form field name
+        const serviceTypeSelect = document.getElementById('id_service_type');
+        const serviceDescInput = document.getElementById('id_service_description');
+
+        if (serviceSelect) {
+            serviceSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.value) {
+                    const price = selectedOption.getAttribute('data-price');
+                    const category = selectedOption.getAttribute('data-category');
+                    const serviceName = selectedOption.text.split(' - ')[0]; // Extract name part
+
+                    // Update Amount
+                    if (amountInput) {
+                        amountInput.value = price;
+                    }
+
+                    // Update Service Description
+                    if (serviceDescInput) {
+                        serviceDescInput.value = serviceName;
+                    }
+
+                    // Try to match category to service type
+                    if (category && serviceTypeSelect) {
+                        // Simple matching logic - can be expanded
+                        for (let i = 0; i < serviceTypeSelect.options.length; i++) {
+                            const option = serviceTypeSelect.options[i];
+                            if (option.value === category || category.includes(option.value)) {
+                                serviceTypeSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>

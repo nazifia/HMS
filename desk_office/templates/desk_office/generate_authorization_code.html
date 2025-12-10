@@ -72,137 +72,112 @@
                         </tbody>
                     </table>
                 </div>
-                {% extends 'base.html' %}
-                {% load crispy_forms_tags %}
-                {% load static %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
 
-                {% block title %}Generate Service Authorization Code{% endblock %}
-
-                {% block extra_css %}
-                <style>
-                    .card {
-                        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-                        border: 1px solid rgba(0, 0, 0, 0.125);
-                    }
-
-                    .card-header {
-                        background-color: #f8f9fa;
-                        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
-                    }
-                </style>
-                {% endblock %}
-
-                {% block content %}
-                <div class="container">
-                    <h2 class="mb-4">Generate Service Authorization Code for NHIA Patients</h2>
-
-                    <!-- Patient Search Section -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5>Search NHIA Patient</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="post" id="patient-search-form">
-                                {% csrf_token %}
-                                <input type="hidden" name="search_patients" value="1">
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        {{ patient_search_form.search|as_crispy_field }}
-                                    </div>
-                                    <div class="col-md-4">
-                                        <button type="submit" class="btn btn-primary mt-4">Search Patient</button>
-                                    </div>
-                                </div>
-                            </form>
-
-                            {% if patients %}
-                            <div class="mt-3">
-                                <h6>Search Results for "{{ search_query }}":</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Patient Name</th>
-                                                <th>Patient ID</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for patient in patients %}
-                                            <tr>
-                                                <td>{{ patient.get_full_name }}</td>
-                                                <td>{{ patient.patient_id }}</td>
-                                                <td>
-                                                    <a href="?patient_id={{ patient.id }}"
-                                                        class="btn btn-sm btn-success">
-                                                        Select Patient
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            {% empty %}
-                                            <tr>
-                                                <td colspan="3">No patients found.</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Authorization Code Generation Section -->
-                    {% if selected_patient %}
-                    <div class="card">
-                        <div class="card-header">
-                            <h5>Generate Authorization Code for {{ selected_patient.get_full_name }} ({{
-                                selected_patient.patient_id }})</h5>
-                        </div>
-                        <div class="card-body">
-                            {% if existing_code %}
-                            <div class="alert alert-warning" role="alert">
-                                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Active
-                                    Authorization Code Exists</h4>
-                                <p>This patient already has an active authorization code: <strong>{{ existing_code.code
-                                        }}</strong></p>
-                                <hr>
-                                <p class="mb-0">
-                                    Generated on: {{ existing_code.generated_at|date:"M d, Y H:i" }}<br>
-                                    Amount: ₦{{ existing_code.amount }}<br>
-                                    Expiry: {{ existing_code.expiry_date|date:"M d, Y" }}
-                                </p>
-                                <div class="mt-3">
-                                    <button class="btn btn-secondary" disabled>Cannot Generate New Code</button>
-                                    <a href="{% url 'desk_office:authorization_dashboard' %}"
-                                        class="btn btn-primary">Return to Dashboard</a>
-                                </div>
-                            </div>
-                            {% else %}
-                            <form method="post" id="authorization-form">
-                                {% csrf_token %}
-                                <input type="hidden" name="generate_code" value="1">
-                                <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
-
-                                {% if authorization_form %}
-                                {{ authorization_form|crispy }}
-                                {% else %}
-                                {% with patient=selected_patient %}
-                                {% include "desk_office/authorization_form_fields.html" %}
-                                {% endwith %}
-                                {% endif %}
-
-                                <button type="submit" class="btn btn-primary">Generate Authorization Code</button>
-                                <a href="{% url 'desk_office:generate_authorization_code' %}"
-                                    class="btn btn-secondary">Cancel</a>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
+    <!-- Authorization Code Generation Section -->
+    {% if selected_patient %}
+    <div class="card">
+        <div class="card-header">
+            <h5>Generate Authorization Code for {{ selected_patient.get_full_name }} ({{ selected_patient.patient_id }})
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if existing_code %}
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Active Authorization Code Exists
+                </h4>
+                <p>This patient already has an active authorization code: <strong>{{ existing_code.code }}</strong></p>
+                <hr>
+                <p class="mb-0">
+                    Generated on: {{ existing_code.generated_at|date:"M d, Y H:i" }}<br>
+                    Amount: ₦{{ existing_code.amount }}<br>
+                    Expiry: {{ existing_code.expiry_date|date:"M d, Y" }}
+                </p>
+                <div class="mt-3">
+                    <button class="btn btn-secondary" disabled>Cannot Generate New Code</button>
+                    <a href="{% url 'desk_office:authorization_dashboard' %}" class="btn btn-primary">Return to
+                        Dashboard</a>
                 </div>
-                {% endblock %}
+            </div>
+            {% else %}
+            <form method="post" id="authorization-form">
+                {% csrf_token %}
+                <input type="hidden" name="generate_code" value="1">
+                <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
 
-                {% block extra_js %}
-                <script src="{% static 'js/desk_office.js' %}"></script>
-                {% endblock %}
+                <!-- Service Selection Dropdown -->
+                <div class="form-group mb-3">
+                    <label for="id_service_select" class="form-label">Select Service (Auto-fill):</label>
+                    <select class="form-select" id="id_service_select">
+                        <option value="">-- Select a Service to Auto-fill Price --</option>
+                        {% for service in services %}
+                        <option value="{{ service.id }}" data-price="{{ service.price }}"
+                            data-category="{{ service.category.name|lower|default:'' }}">
+                            {{ service.name }} - ₦{{ service.price }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">Selecting a service will automatically update the amount and
+                        description.</small>
+                </div>
+
+                {{ authorization_form|crispy }}
+
+                <button type="submit" class="btn btn-primary">Generate Authorization Code</button>
+                <a href="{% url 'desk_office:generate_authorization_code' %}" class="btn btn-secondary">Cancel</a>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const serviceSelect = document.getElementById('id_service_select');
+        const amountInput = document.querySelector('input[name="amount"]');
+        const serviceTypeSelect = document.getElementById('id_service_type');
+        const serviceDescInput = document.getElementById('id_service_description');
+
+        if (serviceSelect) {
+            serviceSelect.addEventListener('change', function () {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.value) {
+                    const price = selectedOption.getAttribute('data-price');
+                    const category = selectedOption.getAttribute('data-category');
+                    const serviceName = selectedOption.text.split(' - ')[0]; // Extract name part
+
+                    // Update Amount
+                    if (amountInput) {
+                        amountInput.value = price;
+                    }
+
+                    // Update Service Description
+                    if (serviceDescInput) {
+                        serviceDescInput.value = serviceName;
+                    }
+
+                    // Try to match category to service type
+                    if (category && serviceTypeSelect) {
+                        // Simple matching logic
+                        for (let i = 0; i < serviceTypeSelect.options.length; i++) {
+                            const option = serviceTypeSelect.options[i];
+                            if (option.value === category || category.includes(option.value)) {
+                                serviceTypeSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/desk_office.js' %}"></script>
+{% endblock %}

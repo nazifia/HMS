@@ -1,0 +1,14 @@
+{%extends 'ophthalmic/base.html' %}
+
+{%block page_title %}Clinical Note{%endblock%}
+
+{%block ophthalmic_content %}
+<div class="card">
+    <div class="card-body">
+        <h6>Subjective:</h6><p>{{note.subjective}}</p>
+        <h6>Objective:</h6><p>{{note.objective}}</p>
+        <h6>Assessment:</h6><p>{{note.assessment}}</p>
+        <h6>Plan:</h6><p>{{note.plan}}</p>
+    </div>
+</div>
+{%endblock%}

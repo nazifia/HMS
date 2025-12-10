@@ -95,6 +95,7 @@ def generate_authorization_code(request):
     patient_search_form = PatientSearchForm()
     authorization_form = None
     selected_patient = None
+    existing_code = None
 
     # Handle patient search
     if request.method == 'POST' and 'search_patients' in request.POST:
@@ -126,10 +127,10 @@ def generate_authorization_code(request):
                 if str(patient_identifier).isdigit():
                     selected_patient = Patient.objects.get(id=patient_identifier, patient_type='nhia')
                 else:
-                    raise Patient.DoesNotExist
+                    selected_patient = Patient.objects.get(patient_id=patient_identifier, patient_type='nhia')
             except Patient.DoesNotExist:
-                # Try custom patient_id
-                selected_patient = Patient.objects.get(patient_id=patient_identifier, patient_type='nhia')
+                # Try searching by NHIA number
+                selected_patient = Patient.objects.get(nhia_info__nhia_reg_number=patient_identifier, patient_type='nhia')
             
             # Check for existing active authorization code
             existing_code = AuthorizationCode.objects.filter(
@@ -151,15 +152,6 @@ def generate_authorization_code(request):
             
             authorization_form = AuthorizationCodeForm(patient=selected_patient, initial=initial_data)
             
-            # Pass existing code to context
-            context = {
-                'patient_search_form': patient_search_form,
-                'authorization_form': authorization_form,
-                'selected_patient': selected_patient,
-                'existing_code': existing_code
-            }
-            return render(request, 'desk_office/generate_authorization_code.html', context)
-            
         except Patient.DoesNotExist:
             messages.error(request, 'Selected patient not found or is not an NHIA patient.')
 
@@ -180,10 +172,16 @@ def generate_authorization_code(request):
             messages.error(request, 'Selected patient not found or is not an NHIA patient.')
             authorization_form = AuthorizationCodeForm()
     
+    # Fetch active services for the dropdown
+    from billing.models import Service
+    services = Service.objects.filter(is_active=True).select_related('category').order_by('name')
+
     context = {
         'patient_search_form': patient_search_form,
         'authorization_form': authorization_form,
-        'selected_patient': selected_patient
+        'selected_patient': selected_patient,
+        'existing_code': existing_code,
+        'services': services,
     }
     return render(request, 'desk_office/generate_authorization_code.html', context)
 

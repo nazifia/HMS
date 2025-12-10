@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Pharmacy Dispensary Revenue{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<style>
+    .revenue-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid #4e73df;
+        height: 100%;
+    }
+    .revenue-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
+    }
+    .dispensary-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border-left: 4px solid #1cc88a;
+    }
+    .dispensary-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    .dispensary-card.unassigned {
+        border-left-color: #858796;
+    }
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #2e59d9;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 20px 0;
+    }
+    .revenue-table th {
+        background-color: #f8f9fc;
+        font-weight: 600;
+    }
+    .badge-revenue {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.65rem;
+    }
+    .progress-bar-animated {
+        animation: progress-bar-stripes 1s linear infinite;
+    }
+    .dispensary-icon {
+        font-size: 2rem;
+        color: #1cc88a;
+    }
+    .stat-card {
+        border-radius: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-pills text-primary"></i> Pharmacy Dispensary Revenue
+        </h1>
+        <div>
+            <a href="{% url 'pharmacy:simple_revenue_statistics' %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-chart-line"></i> All Departments
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Date Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search Dispensaries</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="search" name="search"
+                                       placeholder="Search dispensaries..." value="{{ search_query }}">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date"
+                                   value="{{ start_date_str|default:start_date|date:'Y-m-d' }}">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date"
+                                   value="{{ end_date_str|default:end_date|date:'Y-m-d' }}">
+                        </div>
+
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-filter"></i> Apply
+                                </button>
+                                <a href="{% url 'pharmacy:pharmacy_dispensary_revenue' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-center">
+                <i class="fas fa-info-circle me-2 fa-lg"></i>
+                <div>
+                    <strong>Period:</strong> {{ start_date|date:'M d, Y' }} to {{ end_date|date:'M d, Y' }}
+                    ({{ performance_metrics.days_in_period }} days) |
+                    <strong>Active Dispensaries:</strong> {{ performance_metrics.dispensaries_count }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Pharmacy Revenue Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body text-center">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                <i class="fas fa-pills"></i> Total Pharmacy Revenue (All Dispensaries)
+                            </div>
+                            <div class="h1 mb-0 font-weight-bold text-gray-800">{{ total_pharmacy_revenue|currency }}</div>
+                            <div class="mt-3 row text-center">
+                                <div class="col-md-4">
+                                    <span class="text-muted">
+                                        <i class="fas fa-receipt"></i> {{ performance_metrics.total_transactions }} Transactions
+                                    </span>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="text-muted">
+                                        <i class="fas fa-capsules"></i> {{ performance_metrics.total_medications_dispensed }} Medications Dispensed
+                                    </span>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="text-muted">
+                                        <i class="fas fa-store"></i> {{ performance_metrics.dispensaries_count }} Active Dispensaries
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-primary shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Average Transaction Value
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ performance_metrics.average_transaction_value|currency }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-coins fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-info shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Daily Average
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ performance_metrics.daily_average|currency }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-warning shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Total Transactions
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ performance_metrics.total_transactions }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-receipt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-left-danger shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Medications Dispensed
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ performance_metrics.total_medications_dispensed }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-capsules fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dispensary Cards -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3"><i class="fas fa-store-alt"></i> Revenue by Dispensary</h5>
+        </div>
+        {% for data in dispensary_data %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card dispensary-card {% if not data.dispensary %}unassigned{% endif %} shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title mb-1">
+                                {% if data.dispensary %}
+                                    <i class="fas fa-store-alt text-success"></i> {{ data.dispensary.name }}
+                                {% else %}
+                                    <i class="fas fa-question-circle text-secondary"></i> Unassigned
+                                {% endif %}
+                            </h5>
+                            {% if data.dispensary and data.dispensary.location %}
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-map-marker-alt"></i> {{ data.dispensary.location }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="dispensary-icon">
+                            <i class="fas fa-pills"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Revenue</div>
+                        <div class="h4 mb-0 font-weight-bold text-gray-800">{{ data.revenue|currency }}</div>
+                        {% if total_pharmacy_revenue > 0 %}
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar"
+                                 style="width: {% widthratio data.revenue total_pharmacy_revenue 100 %}%"
+                                 aria-valuenow="{{ data.revenue }}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="{{ total_pharmacy_revenue }}">
+                            </div>
+                        </div>
+                        <small class="text-muted">{% widthratio data.revenue total_pharmacy_revenue 100 %}% of total</small>
+                        {% endif %}
+                    </div>
+
+                    <div class="row text-center mt-3">
+                        <div class="col-6 border-right">
+                            <div class="text-xs text-uppercase text-muted mb-1">Transactions</div>
+                            <div class="h6 mb-0">{{ data.transactions }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-xs text-uppercase text-muted mb-1">Prescriptions</div>
+                            <div class="h6 mb-0">{{ data.prescriptions_count }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 text-center">
+                        <span class="badge badge-revenue bg-info text-white">
+                            <i class="fas fa-capsules"></i> {{ data.quantity_dispensed }} Units Dispensed
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> No dispensary data found for the selected period.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Revenue by Dispensary Table -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-table"></i> Detailed Revenue Breakdown
+                    </h6>
+                    <span class="badge bg-primary text-white">{{ dispensary_data|length }} Dispensar{{ dispensary_data|length|pluralize:"y,ies" }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover revenue-table" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Dispensary</th>
+                                    <th>Revenue (₦)</th>
+                                    <th>Transactions</th>
+                                    <th>Prescriptions</th>
+                                    <th>Units Dispensed</th>
+                                    <th>% of Total</th>
+                                    <th>Avg Transaction</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for data in dispensary_data %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        {% if data.dispensary %}
+                                            <i class="fas fa-store-alt text-success mr-1"></i> {{ data.dispensary.name }}
+                                        {% else %}
+                                            <i class="fas fa-question-circle text-secondary mr-1"></i> <em>Unassigned</em>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ data.revenue|currency }}</strong></td>
+                                    <td>{{ data.transactions }}</td>
+                                    <td>{{ data.prescriptions_count }}</td>
+                                    <td>{{ data.quantity_dispensed }}</td>
+                                    <td>
+                                        {% if total_pharmacy_revenue > 0 %}
+                                            <span class="badge bg-success text-white">
+                                                {% widthratio data.revenue total_pharmacy_revenue 100 %}%
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary text-white">0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if data.transactions > 0 %}
+                                            {{ data.revenue|div:data.transactions|currency }}
+                                        {% else %}
+                                            ₦0.00
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-success">
+                                <tr>
+                                    <th colspan="2">Total</th>
+                                    <th>{{ total_pharmacy_revenue|currency }}</th>
+                                    <th>{{ performance_metrics.total_transactions }}</th>
+                                    <th>-</th>
+                                    <th>{{ performance_metrics.total_medications_dispensed }}</th>
+                                    <th>100%</th>
+                                    <th>{{ performance_metrics.average_transaction_value|currency }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Charts -->
+    <div class="row mb-4">
+        <!-- Dispensary Comparison Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie"></i> Dispensary Revenue Distribution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="dispensaryPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dispensary Bar Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Dispensary Revenue Comparison
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="dispensaryBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Trends Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-line"></i> Monthly Revenue Trends (Last 6 Months)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Color palette for dispensaries
+    const colorPalette = [
+        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+        '#858796', '#5a5c69', '#6f42c1', '#20c9a6', '#fd7e14'
+    ];
+
+    // Prepare data for charts
+    const dispensaryLabels = [
+        {% for data in dispensary_data %}
+            '{% if data.dispensary %}{{ data.dispensary.name }}{% else %}Unassigned{% endif %}',
+        {% endfor %}
+    ];
+
+    const dispensaryRevenues = [
+        {% for data in dispensary_data %}
+            {{ data.revenue|default:0 }},
+        {% endfor %}
+    ];
+
+    // Dispensary Pie Chart
+    const pieCtx = document.getElementById('dispensaryPieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: dispensaryLabels,
+            datasets: [{
+                data: dispensaryRevenues,
+                backgroundColor: colorPalette,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: { size: 11 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': ₦' + value.toLocaleString() + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Dispensary Bar Chart
+    const barCtx = document.getElementById('dispensaryBarChart').getContext('2d');
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: dispensaryLabels,
+            datasets: [{
+                label: 'Revenue',
+                data: dispensaryRevenues,
+                backgroundColor: colorPalette,
+                borderColor: colorPalette,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₦' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Revenue: ₦' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Monthly Trends Chart
+    const monthlyCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
+    const months = JSON.parse('{{ chart_data.months|escapejs }}');
+
+    const datasets = [];
+    let colorIndex = 0;
+
+    {% for dispensary_name, revenue_data in chart_data.dispensaries.items %}
+        datasets.push({
+            label: '{{ dispensary_name }}',
+            data: JSON.parse('{{ revenue_data|escapejs }}'),
+            borderColor: colorPalette[colorIndex % colorPalette.length],
+            backgroundColor: colorPalette[colorIndex % colorPalette.length] + '20',
+            tension: 0.3,
+            fill: true,
+            borderWidth: 2
+        });
+        colorIndex++;
+    {% endfor %}
+
+    // Add total line
+    datasets.push({
+        label: 'Total Revenue',
+        data: JSON.parse('{{ chart_data.total|escapejs }}'),
+        borderColor: '#2e59d9',
+        backgroundColor: 'rgba(46, 89, 217, 0.1)',
+        borderWidth: 3,
+        tension: 0.3,
+        fill: true
+    });
+
+    new Chart(monthlyCtx, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₦' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ₦' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
