@@ -131,7 +131,7 @@ def dashboard(request):
 
     # Optimize: Get recent wallet transactions with select_related
     recent_wallet_transactions = WalletTransaction.objects.select_related(
-        'wallet__patient'
+        'patient_wallet__patient'
     ).order_by('-created_at')[:5]
 
     context = {
