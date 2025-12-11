@@ -428,13 +428,26 @@ class UserProfileForm(forms.ModelForm):
         profile = user_instance.profile if user_instance and user_instance.pk else getattr(self, 'profile_instance', None)
 
         if profile:
-            profile.phone_number = self.cleaned_data.get('contact_phone_number')
+            # Handle phone_number - convert empty string to None to avoid UNIQUE constraint violations
+            phone_number_value = self.cleaned_data.get('contact_phone_number')
+            if phone_number_value == '':
+                profile.phone_number = None
+            else:
+                profile.phone_number = phone_number_value
+            
             profile.address = self.cleaned_data.get('address')
             if self.cleaned_data.get('profile_picture') is not False: # False means "clear"
                 profile.profile_picture = self.cleaned_data.get('profile_picture', profile.profile_picture)
             profile.date_of_birth = self.cleaned_data.get('date_of_birth')
             profile.department = self.cleaned_data.get('department') # Assumes this matches profile field type
-            profile.employee_id = self.cleaned_data.get('employee_id')
+            
+            # Handle employee_id - convert empty string to None to avoid UNIQUE constraint violations
+            employee_id_value = self.cleaned_data.get('employee_id')
+            if employee_id_value == '':
+                profile.employee_id = None
+            else:
+                profile.employee_id = employee_id_value
+            
             profile.specialization = self.cleaned_data.get('specialization')
             profile.qualification = self.cleaned_data.get('qualification')
 
@@ -608,7 +621,14 @@ class StaffCreationForm(UserCreationForm): # Base on UserCreationForm for passwo
             # Create/Update CustomUserProfile
             profile = user.profile
             profile.department = self.cleaned_data.get('department_profile')
-            profile.employee_id = self.cleaned_data.get('employee_id_profile')
+            
+            # Handle employee_id - convert empty string to None to avoid UNIQUE constraint violations
+            employee_id_value = self.cleaned_data.get('employee_id_profile')
+            if employee_id_value == '':
+                profile.employee_id = None
+            else:
+                profile.employee_id = employee_id_value
+            
             profile.save()
         return user
 
