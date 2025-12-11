@@ -217,20 +217,21 @@ class CustomUserProfile(models.Model):
         return self.role
 
 
-@receiver(post_save, sender=CustomUser)
-def create_or_update_user_profile(sender, instance, created, **kwargs):
-    if created:
-        CustomUserProfile.objects.create(user=instance)
-    else:
-        # Ensure profile exists and save it (e.g., if profile has auto_now fields or other logic on save)
-        # The @property user.profile already implements get_or_create,
-        # but saving here ensures any profile-specific save logic runs.
-        try:
-            instance.profile.save()
-        except CustomUserProfile.DoesNotExist:
-            # This case should be rare if the @property user.profile is robust (uses get_or_create)
-            # or if the created block always succeeds.
-            CustomUserProfile.objects.create(user=instance)
+# Signal has been moved to signals.py to ensure proper registration
+# @receiver(post_save, sender=CustomUser)
+# def create_or_update_user_profile(sender, instance, created, **kwargs):
+#     if created:
+#         CustomUserProfile.objects.create(user=instance)
+#     else:
+#         # Ensure profile exists and save it (e.g., if profile has auto_now fields or other logic on save)
+#         # The @property user.profile already implements get_or_create,
+#         # but saving here ensures any profile-specific save logic runs.
+#         try:
+#             instance.profile.save()
+#         except CustomUserProfile.DoesNotExist:
+#             # This case should be rare if the @property user.profile is robust (uses get_or_create)
+#             # or if the created block always succeeds.
+#             CustomUserProfile.objects.create(user=instance)
 
 
 # Removed the second post_save receiver 'save_user_profile' as 'create_or_update_user_profile'
