@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, ClinicalNote, PhysiotherapyRequest
+from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, ClinicalNote, PhysiotherapyRequest, SharedWallet, WalletMembership
 from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm, ClinicalNoteForm, PhysiotherapyRequestForm
 from .utils import get_safe_vitals_for_patient
 from accounts.permissions import permission_required, user_has_permission

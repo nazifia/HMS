@@ -1,5 +1,10 @@
 from django.urls import path
 from . import views
+from .views_shared_wallets import (
+    shared_wallet_list, create_shared_wallet, shared_wallet_detail,
+    add_member_to_wallet, remove_member_from_wallet, add_funds_to_shared_wallet,
+    transfer_between_wallets, retainership_wallet_list
+)
 
 app_name = 'patients'
 
@@ -59,4 +64,14 @@ urlpatterns = [
     path('<int:patient_id>/retainership/register/', views.register_retainership_patient, name='register_retainership_patient'),
     path('<int:patient_id>/retainership/edit/', views.edit_retainership_patient, name='edit_retainership_patient'),
     path('clear-context/', views.clear_patient_context, name='clear_patient_context'),
+    
+    # Shared Wallet URLs
+    path('shared-wallets/', shared_wallet_list, name='shared_wallet_list'),
+    path('shared-wallets/create/', create_shared_wallet, name='create_shared_wallet'),
+    path('shared-wallets/<int:wallet_id>/', shared_wallet_detail, name='shared_wallet_detail'),
+    path('shared-wallets/<int:wallet_id>/add-member/', add_member_to_wallet, name='add_member_to_wallet'),
+    path('shared-wallets/<int:wallet_id>/remove-member/<int:membership_id>/', remove_member_from_wallet, name='remove_member_from_wallet'),
+    path('shared-wallets/<int:wallet_id>/add-funds/', add_funds_to_shared_wallet, name='add_funds_to_shared_wallet'),
+    path('shared-wallets/<int:wallet_id>/transfer/', transfer_between_wallets, name='transfer_between_wallets'),
+    path('shared-wallets/retainership/', retainership_wallet_list, name='retainership_wallet_list'),
 ]

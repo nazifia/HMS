@@ -4,7 +4,8 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from patients.models import Patient
-from patients.forms import PatientSearchForm, NHIAIndependentPatientForm
+from core.patient_search_forms import PatientSearchForm
+from patients.forms import NHIAIndependentPatientForm
 from .models import NHIAPatient
 import random
 from datetime import datetime

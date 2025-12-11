@@ -5,7 +5,8 @@ from django.db.models import Q
 from django.contrib import messages
 
 from patients.models import Patient
-from patients.forms import PatientSearchForm, RetainershipIndependentPatientForm # Import RetainershipIndependentPatientForm
+from core.patient_search_forms import PatientSearchForm
+from patients.forms import RetainershipIndependentPatientForm # Import RetainershipIndependentPatientForm
 from .models import RetainershipPatient
 
 @login_required

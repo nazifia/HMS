@@ -260,7 +260,7 @@ class Payment(models.Model):
                     # from patients.models import PatientWallet # Already imported at top
                     patient_wallet = PatientWallet.objects.get(patient=self.invoice.patient)
                     
-                    # Perform the debit operation
+                    # Perform the debit operation - this will automatically handle shared wallets
                     patient_wallet.debit(
                         amount=self.amount,
                         description=f"Payment for Invoice #{self.invoice.invoice_number} via Wallet",
@@ -289,6 +289,9 @@ class Payment(models.Model):
                     # or other ValueErrors. The transaction will roll back the Payment save.
                     raise e # Re-raise to signal failure and ensure rollback
                 # Any other unexpected error will also cause a rollback.
+                
+                # Note: The patient_wallet.debit() method now automatically handles shared wallets
+                # through the get_effective_wallet() method, so no additional logic is needed here.
         else:
             # Standard save for non-wallet payments or for updates to existing payments.
             super().save(*args, **kwargs)

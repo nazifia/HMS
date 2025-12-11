@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django import forms
 from django.shortcuts import render, redirect
-from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction
+from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, SharedWallet, WalletMembership
 from nhia.models import NHIAPatient
 from .utils import merge_patients
 
@@ -118,13 +118,51 @@ class PatientWalletAdmin(admin.ModelAdmin):
 
 @admin.register(WalletTransaction)
 class WalletTransactionAdmin(admin.ModelAdmin):
-    list_display = ['wallet', 'transaction_type', 'amount', 'balance_after', 'status', 'created_at', 'created_by']
+    list_display = ['get_wallet_info', 'transaction_type', 'amount', 'balance_after', 'status', 'created_at', 'created_by']
     list_filter = ['transaction_type', 'status', 'created_at']
-    search_fields = ['wallet__patient__first_name', 'wallet__patient__last_name', 'description', 'reference_number']
+    search_fields = ['patient__first_name', 'patient__last_name', 'description', 'reference_number']
     readonly_fields = ['reference_number', 'created_at', 'updated_at']
     date_hierarchy = 'created_at'
 
+    def get_wallet_info(self, obj):
+        """Get wallet info for display"""
+        if obj.shared_wallet:
+            return f"Shared: {obj.shared_wallet.wallet_name}"
+        elif obj.patient_wallet:
+            return f"Individual: {obj.patient_wallet.patient.get_full_name()}"
+        else:
+            return "Unknown Wallet"
+    
+    get_wallet_info.short_description = 'Wallet'
+    get_wallet_info.admin_order_field = 'patient__last_name'
+
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
-            return self.readonly_fields + ['wallet', 'transaction_type', 'amount', 'balance_after']
+            return self.readonly_fields + ['shared_wallet', 'patient_wallet', 'transaction_type', 'amount', 'balance_after']
+        return self.readonly_fields
+
+
+@admin.register(SharedWallet)
+class SharedWalletAdmin(admin.ModelAdmin):
+    list_display = ['wallet_name', 'wallet_type', 'balance', 'is_active', 'created_at']
+    list_filter = ['wallet_type', 'is_active', 'created_at']
+    search_fields = ['wallet_name', 'retainership_registration']
+    readonly_fields = ['created_at', 'last_updated']
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # editing an existing object
+            return self.readonly_fields + ['balance']
+        return self.readonly_fields
+
+
+@admin.register(WalletMembership)
+class WalletMembershipAdmin(admin.ModelAdmin):
+    list_display = ['wallet', 'patient', 'is_primary', 'date_joined', 'date_left']
+    list_filter = ['is_primary', 'date_joined']
+    search_fields = ['wallet__wallet_name', 'patient__first_name', 'patient__last_name']
+    readonly_fields = ['date_joined']
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # editing an existing object
+            return self.readonly_fields + ['wallet', 'patient']
         return self.readonly_fields

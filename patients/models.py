@@ -7,6 +7,150 @@ import logging
 from decimal import Decimal
 
 
+class SharedWallet(models.Model):
+    """
+    Model for shared wallets that can be used by multiple patients.
+    This enables retainership, family, and corporate wallet functionality.
+    """
+    WALLET_TYPES = (
+        ('individual', 'Individual'),
+        ('family', 'Family'),
+        ('corporate', 'Corporate'),
+        ('retainership', 'Retainership'),
+    )
+
+    wallet_name = models.CharField(max_length=100, help_text="Name for this shared wallet")
+    wallet_type = models.CharField(max_length=20, choices=WALLET_TYPES, default='individual')
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    # For retainership wallets
+    retainership_registration = models.CharField(
+        max_length=50, 
+        blank=True, 
+        null=True,
+        help_text="Retainership registration number if applicable"
+    )
+
+    def __str__(self):
+        return f"{self.wallet_name} ({self.get_wallet_type_display()}) - ₦{self.balance}"
+
+    def _credit(self, amount, description="Credit", transaction_type="credit", user=None, 
+                invoice=None, payment_instance=None, admission=None, patient=None):
+        """
+        Internal credit method for shared wallets
+        """
+        if amount <= 0:
+            raise ValueError("Credit amount must be positive.")
+
+        self.balance += amount
+        self.save(update_fields=['balance', 'last_updated'])
+
+        # Create transaction record
+        WalletTransaction.objects.create(
+            wallet=self,
+            patient=patient,
+            transaction_type=transaction_type,
+            amount=amount,
+            balance_after=self.balance,
+            description=description,
+            created_by=user,
+            invoice=invoice,
+            payment=payment_instance,
+            admission=admission
+        )
+
+        return self.transactions.latest('created_at')
+
+    def _debit(self, amount, description="Debit", transaction_type="debit", user=None, 
+               invoice=None, payment_instance=None, admission=None, patient=None):
+        """
+        Internal debit method for shared wallets
+        """
+        if amount <= 0:
+            raise ValueError("Debit amount must be positive.")
+
+        self.balance -= amount
+        self.save(update_fields=['balance', 'last_updated'])
+
+        # Create transaction record
+        transaction = WalletTransaction.objects.create(
+            wallet=self,
+            patient=patient,
+            transaction_type=transaction_type,
+            amount=amount,
+            balance_after=self.balance,
+            description=description,
+            created_by=user,
+            invoice=invoice,
+            payment=payment_instance,
+            admission=admission
+        )
+
+        return transaction
+
+    def get_members(self):
+        """Get all active members of this wallet"""
+        return WalletMembership.objects.filter(
+            wallet=self, 
+            date_left__isnull=True
+        ).select_related('patient')
+
+    def get_primary_member(self):
+        """Get the primary member of this wallet"""
+        return self.members.filter(is_primary=True).first()
+
+    def get_transaction_history(self, limit=None):
+        """Get wallet transaction history"""
+        transactions = self.transactions.all().order_by('-created_at')
+        if limit:
+            transactions = transactions[:limit]
+        return transactions
+
+    class Meta:
+        verbose_name = "Shared Wallet"
+        verbose_name_plural = "Shared Wallets"
+        ordering = ['-created_at']
+
+
+class WalletMembership(models.Model):
+    """
+    Model to track which patients belong to which shared wallets.
+    """
+    wallet = models.ForeignKey(
+        SharedWallet, 
+        on_delete=models.CASCADE, 
+        related_name='members'
+    )
+    patient = models.ForeignKey(
+        'Patient', 
+        on_delete=models.CASCADE, 
+        related_name='wallet_memberships'
+    )
+    is_primary = models.BooleanField(
+        default=False, 
+        help_text="Is this the primary member?"
+    )
+    date_joined = models.DateTimeField(auto_now_add=True)
+    date_left = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('wallet', 'patient')
+        verbose_name = "Wallet Membership"
+        verbose_name_plural = "Wallet Memberships"
+        ordering = ['-date_joined']
+
+    def __str__(self):
+        return f"{self.patient.get_full_name()} in {self.wallet.wallet_name}"
+
+    def leave_wallet(self):
+        """Mark this membership as inactive"""
+        self.date_left = timezone.now()
+        self.save()
+
+
 class Patient(models.Model):
     GENDER_CHOICES = (
         ('M', 'Male'),
@@ -304,6 +448,14 @@ class Vitals(models.Model):
 
 class PatientWallet(models.Model):
     patient = models.OneToOneField(Patient, on_delete=models.CASCADE, related_name='wallet')
+    shared_wallet = models.ForeignKey(
+        SharedWallet, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='individual_wallets',
+        help_text="Shared wallet if this patient is part of a shared wallet system"
+    )
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -311,6 +463,128 @@ class PatientWallet(models.Model):
 
     def __str__(self):
         return f"Wallet for {self.patient.get_full_name()} (₦{self.balance})"
+
+    def get_effective_wallet(self):
+        """
+        Get the wallet that should be used for this patient.
+        Returns the shared wallet if available, otherwise returns self.
+        """
+        return self.shared_wallet if self.shared_wallet else self
+
+    def is_shared_wallet(self):
+        """Check if this patient is using a shared wallet"""
+        return self.shared_wallet is not None
+
+    def credit(self, amount, description="Credit", transaction_type="credit", user=None, 
+                invoice=None, payment_instance=None, admission=None, apply_to_outstanding=False):
+        """
+        Credit amount to wallet and create transaction record
+        
+        Args:
+            amount: Amount to credit to wallet
+            description: Description for the transaction
+            transaction_type: Type of transaction
+            user: User making the transaction
+            invoice: Related invoice if any
+            payment_instance: Related payment instance if any
+            admission: Related admission if any
+            apply_to_outstanding: If True, automatically apply funds to outstanding charges
+        """
+        if amount <= 0:
+            raise ValueError("Credit amount must be positive.")
+
+        effective_wallet = self.get_effective_wallet()
+        
+        if isinstance(effective_wallet, SharedWallet):
+            # Use shared wallet's credit method
+            return effective_wallet._credit(
+                amount=amount,
+                description=description,
+                transaction_type=transaction_type,
+                user=user,
+                invoice=invoice,
+                payment_instance=payment_instance,
+                admission=admission,
+                patient=self.patient
+            )
+        else:
+            # Original individual wallet logic
+            original_balance = self.balance
+            self.balance += amount
+            self.save(update_fields=['balance', 'last_updated'])
+
+            # Create transaction record for the credit
+            transaction = WalletTransaction.objects.create(
+                wallet=None,
+                patient_wallet=self,
+                patient=self.patient,
+                transaction_type=transaction_type,
+                amount=amount,
+                balance_after=self.balance,
+                description=description,
+                created_by=user,
+                invoice=invoice,
+                payment=payment_instance,
+                admission=admission
+            )
+            
+            # If apply_to_outstanding is True, automatically apply funds to outstanding charges
+            if apply_to_outstanding:
+                self._apply_funds_to_outstanding(amount, user)
+            
+            return transaction
+    
+    def debit(self, amount, description="Debit", transaction_type="debit", user=None, 
+              invoice=None, payment_instance=None, admission=None):
+        """
+        Debit amount from wallet and create transaction record
+        """
+        if amount <= 0:
+            raise ValueError("Debit amount must be positive.")
+
+        effective_wallet = self.get_effective_wallet()
+        
+        if isinstance(effective_wallet, SharedWallet):
+            # Use shared wallet's debit method
+            return effective_wallet._debit(
+                amount=amount,
+                description=description,
+                transaction_type=transaction_type,
+                user=user,
+                invoice=invoice,
+                payment_instance=payment_instance,
+                admission=admission,
+                patient=self.patient
+            )
+        else:
+            # Original individual wallet logic
+            original_balance = self.balance
+            self.balance -= amount
+            self.save(update_fields=['balance', 'last_updated'])
+
+            # Create transaction record
+            transaction = WalletTransaction.objects.create(
+                wallet=None,
+                patient_wallet=self,
+                patient=self.patient,
+                transaction_type=transaction_type,
+                amount=amount,
+                balance_after=self.balance,
+                description=description,
+                created_by=user,
+                invoice=invoice,
+                payment=payment_instance,
+                admission=admission
+            )
+            
+            # Check if this debit creates a negative balance
+            # This would be the case when balance goes from positive to negative
+            if self.balance < 0 and original_balance >= 0:
+                # The balance just crossed from positive to negative
+                # We could send a notification here
+                pass
+
+            return transaction
 
     def credit(self, amount, description="Credit", transaction_type="credit", user=None, invoice=None, payment_instance=None, admission=None, apply_to_outstanding=False):
         """Credit amount to wallet and create transaction record
@@ -334,7 +608,8 @@ class PatientWallet(models.Model):
 
         # Create transaction record for the credit
         transaction = WalletTransaction.objects.create(
-            wallet=self,
+            patient_wallet=self,
+            patient=self.patient,
             transaction_type=transaction_type,
             amount=amount,
             balance_after=self.balance,
@@ -378,6 +653,7 @@ class PatientWallet(models.Model):
         )
         
         funds_to_apply = available_funds
+        effective_wallet = self.get_effective_wallet()
         
         # First, apply to outstanding admission costs
         for admission in active_admissions:
@@ -392,15 +668,21 @@ class PatientWallet(models.Model):
             amount_to_apply = min(funds_to_apply, outstanding_cost)
             
             # Update wallet balance
-            self.balance -= amount_to_apply
-            self.save(update_fields=['balance'])
+            if isinstance(effective_wallet, SharedWallet):
+                effective_wallet.balance -= amount_to_apply
+                effective_wallet.save(update_fields=['balance'])
+            else:
+                self.balance -= amount_to_apply
+                self.save(update_fields=['balance'])
             
             # Create a payment transaction for the admission
             WalletTransaction.objects.create(
-                wallet=self,
+                shared_wallet=effective_wallet if isinstance(effective_wallet, SharedWallet) else None,
+                patient_wallet=effective_wallet if isinstance(effective_wallet, PatientWallet) else None,
+                patient=self.patient,
                 transaction_type='admission_payment',
                 amount=amount_to_apply,
-                balance_after=self.balance,
+                balance_after=effective_wallet.balance if isinstance(effective_wallet, SharedWallet) else self.balance,
                 description=f'Automatic payment towards admission #{admission.id}',
                 created_by=user,
                 admission=admission
@@ -421,8 +703,12 @@ class PatientWallet(models.Model):
             amount_to_apply = min(funds_to_apply, invoice_balance)
             
             # Update wallet balance
-            self.balance -= amount_to_apply
-            self.save(update_fields=['balance'])
+            if isinstance(effective_wallet, SharedWallet):
+                effective_wallet.balance -= amount_to_apply
+                effective_wallet.save(update_fields=['balance'])
+            else:
+                self.balance -= amount_to_apply
+                self.save(update_fields=['balance'])
             
             # Update the invoice
             invoice.amount_paid += amount_to_apply
@@ -434,10 +720,12 @@ class PatientWallet(models.Model):
             
             # Create a payment transaction for the invoice
             WalletTransaction.objects.create(
-                wallet=self,
+                shared_wallet=effective_wallet if isinstance(effective_wallet, SharedWallet) else None,
+                patient_wallet=effective_wallet if isinstance(effective_wallet, PatientWallet) else None,
+                patient=self.patient,
                 transaction_type='payment',
                 amount=amount_to_apply,
-                balance_after=self.balance,
+                balance_after=effective_wallet.balance if isinstance(effective_wallet, SharedWallet) else self.balance,
                 description=f'Automatic payment towards invoice #{invoice.invoice_number}',
                 created_by=user,
                 invoice=invoice
@@ -459,7 +747,8 @@ class PatientWallet(models.Model):
 
         # Create transaction record
         transaction = WalletTransaction.objects.create(
-            wallet=self,
+            patient_wallet=self,
+            patient=self.patient,
             transaction_type=transaction_type,
             amount=amount,
             balance_after=self.balance,
@@ -487,11 +776,19 @@ class PatientWallet(models.Model):
         
         Returns a dictionary with settlement details.
         """
+        # Get the effective wallet
+        effective_wallet = self.get_effective_wallet()
+        
         # Store original balance for reporting
-        original_balance = self.balance
+        if isinstance(effective_wallet, SharedWallet):
+            original_balance = effective_wallet.balance
+        else:
+            original_balance = self.balance
         
         # If wallet has positive balance, we can use it to pay outstanding amounts
-        if self.balance > 0:
+        current_balance = effective_wallet.balance if isinstance(effective_wallet, SharedWallet) else self.balance
+        
+        if current_balance > 0:
             # Get all outstanding invoices for this patient
             from billing.models import Invoice
             outstanding_invoices = Invoice.objects.filter(
@@ -565,15 +862,21 @@ class PatientWallet(models.Model):
                 remaining_to_pay -= payment_amount
             
             # Deduct the total amount paid from wallet
-            self.balance -= amount_to_pay
-            self.save(update_fields=['balance', 'last_updated'])
+            if isinstance(effective_wallet, SharedWallet):
+                effective_wallet.balance -= amount_to_pay
+                effective_wallet.save(update_fields=['balance', 'last_updated'])
+            else:
+                self.balance -= amount_to_pay
+                self.save(update_fields=['balance', 'last_updated'])
             
             # Create wallet transaction for the payment
             WalletTransaction.objects.create(
-                wallet=self,
+                shared_wallet=effective_wallet if isinstance(effective_wallet, SharedWallet) else None,
+                patient_wallet=effective_wallet if isinstance(effective_wallet, PatientWallet) else None,
+                patient=self.patient,
                 transaction_type='payment',
                 amount=amount_to_pay,
-                balance_after=self.balance,
+                balance_after=effective_wallet.balance if isinstance(effective_wallet, SharedWallet) else self.balance,
                 description=f"{description} - Paid outstanding invoices",
                 created_by=user
             )
@@ -638,22 +941,55 @@ class PatientWallet(models.Model):
 
     def get_transaction_history(self, limit=None):
         """Get wallet transaction history"""
-        transactions = self.transactions.all().order_by('-created_at')
+        effective_wallet = self.get_effective_wallet()
+        
+        if isinstance(effective_wallet, SharedWallet):
+            # For shared wallets, get transactions for this specific patient
+            transactions = WalletTransaction.objects.filter(
+                shared_wallet=effective_wallet,
+                patient=self.patient
+            ).order_by('-created_at')
+        else:
+            # For individual wallets, use the original logic
+            transactions = self.transactions.all().order_by('-created_at')
+            
         if limit:
             transactions = transactions[:limit]
         return transactions
 
     def get_total_credits(self):
         """Get total amount credited to wallet"""
-        return self.transactions.filter(
-            transaction_type__in=['credit', 'deposit', 'refund']
-        ).aggregate(total=Sum('amount'))['total'] or 0
+        effective_wallet = self.get_effective_wallet()
+        
+        if isinstance(effective_wallet, SharedWallet):
+            # For shared wallets, get credits for this specific patient
+            return WalletTransaction.objects.filter(
+                shared_wallet=effective_wallet,
+                patient=self.patient,
+                transaction_type__in=['credit', 'deposit', 'refund']
+            ).aggregate(total=Sum('amount'))['total'] or 0
+        else:
+            # For individual wallets, use the original logic
+            return self.transactions.filter(
+                transaction_type__in=['credit', 'deposit', 'refund']
+            ).aggregate(total=Sum('amount'))['total'] or 0
 
     def get_total_debits(self):
         """Get total amount debited from wallet"""
-        return self.transactions.filter(
-            transaction_type__in=['debit', 'payment', 'withdrawal']
-        ).aggregate(total=Sum('amount'))['total'] or 0
+        effective_wallet = self.get_effective_wallet()
+        
+        if isinstance(effective_wallet, SharedWallet):
+            # For shared wallets, get debits for this specific patient
+            return WalletTransaction.objects.filter(
+                shared_wallet=effective_wallet,
+                patient=self.patient,
+                transaction_type__in=['debit', 'payment', 'withdrawal']
+            ).aggregate(total=Sum('amount'))['total'] or 0
+        else:
+            # For individual wallets, use the original logic
+            return self.transactions.filter(
+                transaction_type__in=['debit', 'payment', 'withdrawal']
+            ).aggregate(total=Sum('amount'))['total'] or 0
 
     def get_transaction_statistics(self):
         """Get comprehensive transaction statistics"""
@@ -929,7 +1265,28 @@ class WalletTransaction(models.Model):
         ('cancelled', 'Cancelled'),
     )
 
-    wallet = models.ForeignKey(PatientWallet, on_delete=models.CASCADE, related_name='transactions')
+    # Support for both shared wallets and individual wallets
+    shared_wallet = models.ForeignKey(
+        SharedWallet, 
+        on_delete=models.CASCADE, 
+        related_name='transactions',
+        null=True, 
+        blank=True
+    )
+    patient_wallet = models.ForeignKey(
+        PatientWallet, 
+        on_delete=models.CASCADE, 
+        related_name='transactions',
+        null=True, 
+        blank=True
+    )
+    patient = models.ForeignKey(
+        Patient, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="The patient this transaction is for"
+    )
     transaction_type = models.CharField(max_length=30, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     balance_after = models.DecimalField(max_digits=12, decimal_places=2)
@@ -975,6 +1332,15 @@ class WalletTransaction(models.Model):
     def is_debit_transaction(self):
         """Check if this transaction decreases the wallet balance"""
         return not self.is_credit_transaction()
+
+    def get_wallet_name(self):
+        """Get the name of the wallet this transaction belongs to"""
+        if self.shared_wallet:
+            return self.shared_wallet.wallet_name
+        elif self.patient_wallet:
+            return f"Individual Wallet - {self.patient_wallet.patient.get_full_name()}"
+        else:
+            return "Unknown Wallet"
 
     def get_transaction_category(self):
         """Get the category of transaction for better organization"""
@@ -1031,7 +1397,13 @@ class WalletTransaction(models.Model):
         return icons.get(self.transaction_type, 'fas fa-exchange-alt text-secondary')
 
     def __str__(self):
-        return f"{self.transaction_type.title()} - ₦{self.amount} - {self.wallet.patient.get_full_name()}"
+        if self.shared_wallet:
+            wallet_name = self.shared_wallet.wallet_name
+        elif self.patient_wallet:
+            wallet_name = f"Wallet for {self.patient_wallet.patient.get_full_name()}"
+        else:
+            wallet_name = "Unknown Wallet"
+        return f"{self.transaction_type.title()} - ₦{self.amount} - {wallet_name}"
 
     class Meta:
         verbose_name = "Wallet Transaction"

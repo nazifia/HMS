@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>Warning:</strong> This action cannot be undone.
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Wallet Information</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Wallet Name:</strong> {{ wallet.wallet_name }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Wallet Type:</strong> {{ wallet.get_wallet_type_display }}
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <strong>Current Balance:</strong> ₦{{ wallet.balance }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Current Members:</strong> {{ wallet.get_members.count }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Member to Remove</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Patient Name:</strong> {{ membership.patient.get_full_name }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Patient ID:</strong> {{ membership.patient.patient_id }}
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <strong>Role:</strong> 
+                                        {% if membership.is_primary %}
+                                        <span class="badge bg-primary">Primary Member</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Regular Member</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Joined:</strong> {{ membership.date_joined|date:"Y-m-d H:i" }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> 
+                        After removal, this patient will have their own individual wallet and will no longer share this wallet's balance.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'patients:shared_wallet_detail' wallet.id %}" 
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Remove Member
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize any additional JavaScript if needed
+});
+</script>
+{% endblock %}
