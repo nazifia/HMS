@@ -16,4 +16,5 @@ urlpatterns = [
     path('wallet/<int:wallet_id>/manage/', views.manage_wallet_by_id, name='manage_wallet_by_id'),
     path('create-wallet/<int:patient_id>/', views.create_retainership_wallet, name='create_wallet'),
     path('manage-wallet/<int:patient_id>/', views.manage_retainership_wallet, name='manage_wallet'),
+    path('link-to-wallet/<int:patient_id>/', views.link_retainership_patient_to_wallet, name='link_to_wallet'),
 ]

@@ -185,6 +185,15 @@ def patient_detail(request, patient_id):
     nhia_info = getattr(patient, 'nhia_info', None)
     retainership_info = getattr(patient, 'retainership_info', None)
     
+    # Get wallet information
+    has_wallet = hasattr(patient, 'wallet') and patient.wallet is not None
+    wallet_is_active = has_wallet and patient.wallet.is_active
+    
+    # Get retainership wallet information
+    retainership_wallet = None
+    if hasattr(patient, 'wallet_memberships'):
+        retainership_wallet = patient.wallet_memberships.filter(wallet__wallet_type='retainership').first()
+    
     context = {
         'patient': patient,
         'age': age,
@@ -196,6 +205,9 @@ def patient_detail(request, patient_id):
         'physiotherapy_requests': physiotherapy_requests,
         'nhia_info': nhia_info,
         'retainership_info': retainership_info,
+        'has_wallet': has_wallet,
+        'wallet_is_active': wallet_is_active,
+        'retainership_wallet': retainership_wallet,
         'page_title': f'Patient Details - {patient.get_full_name()}',
         'active_nav': 'patients',
     }

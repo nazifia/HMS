@@ -10,6 +10,7 @@ from patients.models import Patient, SharedWallet, WalletMembership, PatientWall
 from core.patient_search_forms import PatientSearchForm
 from patients.forms import RetainershipIndependentPatientForm # Import RetainershipIndependentPatientForm
 from .models import RetainershipPatient
+from .forms import RetainershipPatientForm, RetainershipWalletLinkForm
 
 @login_required
 def retainership_patient_list(request):
@@ -481,4 +482,58 @@ def manage_retainership_wallet(request, patient_id):
         'transactions': transactions,
         'available_wallets': available_wallets,
         'title': f'Manage Retainership Wallet - {patient.get_full_name()}'
+    })
+
+@login_required
+def link_retainership_patient_to_wallet(request, patient_id):
+    """Link a retainership patient to an existing retainership wallet"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Check if patient is already linked to a retainership wallet
+    existing_membership = patient.wallet_memberships.filter(wallet__wallet_type='retainership').first()
+    if existing_membership:
+        messages.warning(request, f'This patient is already linked to a retainership wallet: {existing_membership.wallet.wallet_name}')
+        return redirect('retainership:retainership_patient_list')
+    
+    if request.method == 'POST':
+        form = RetainershipWalletLinkForm(request.POST)
+        if form.is_valid():
+            wallet = form.cleaned_data['wallet']
+            is_primary = form.cleaned_data['is_primary']
+            
+            try:
+                with transaction.atomic():
+                    # Check if this wallet already has a primary member
+                    if is_primary:
+                        existing_primary = wallet.members.filter(is_primary=True).first()
+                        if existing_primary:
+                            messages.warning(request, f'This wallet already has a primary member: {existing_primary.patient.get_full_name()}')
+                            messages.info(request, 'Adding this patient as a regular member instead.')
+                            is_primary = False
+                    
+                    # Create wallet membership
+                    membership = WalletMembership.objects.create(
+                        wallet=wallet,
+                        patient=patient,
+                        is_primary=is_primary
+                    )
+                    
+                    # Create or update patient wallet to link to shared wallet
+                    patient_wallet, created = PatientWallet.objects.get_or_create(patient=patient)
+                    patient_wallet.shared_wallet = wallet
+                    patient_wallet.save()
+                    
+                    messages.success(request, f'Successfully linked {patient.get_full_name()} to retainership wallet: {wallet.wallet_name}')
+                    return redirect('retainership:retainership_patient_list')
+                    
+            except Exception as e:
+                messages.error(request, f'Error linking patient to wallet: {str(e)}')
+                return redirect('retainership:retainership_patient_list')
+    else:
+        form = RetainershipWalletLinkForm()
+    
+    return render(request, 'retainership/link_patient_to_wallet.html', {
+        'form': form,
+        'patient': patient,
+        'title': f'Link {patient.get_full_name()} to Retainership Wallet'
     })

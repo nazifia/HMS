@@ -83,9 +83,14 @@
                                     <i class="fas fa-wallet"></i> Manage Wallet
                                 </a>
                             {% else %}
-                                <a href="{% url 'retainership:create_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-success">
-                                    <i class="fas fa-plus"></i> Create Wallet
-                                </a>
+                                <div class="btn-group">
+                                    <a href="{% url 'retainership:create_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-plus"></i> Create Wallet
+                                    </a>
+                                    <a href="{% url 'retainership:link_to_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-link"></i> Link to Wallet
+                                    </a>
+                                </div>
                             {% endif %}
                         </td>
                     </tr>

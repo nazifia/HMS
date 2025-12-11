@@ -63,6 +63,9 @@
                 <!-- Wallet Information -->
                 <h5>Wallet Information</h5>
                 {% if has_wallet and wallet_is_active %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> This patient has an active wallet linked.
+                    </div>
                     <p><strong>Wallet Balance:</strong> {{ patient.wallet.balance|currency }}</p>
                     <p><strong>Wallet Status:</strong>
                         {% if patient.wallet.is_active %}
@@ -83,13 +86,17 @@
                         </a>
                     </div>
                 {% elif has_wallet and not wallet_is_active %}
-                    <p>Wallet is currently inactive.</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> This patient has a wallet but it's currently inactive.
+                    </div>
                     <p><strong>Wallet Balance:</strong> {{ patient.wallet.balance|currency }}</p>
                      <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-primary btn-sm">
                         <i class="fas fa-dashboard"></i> Wallet Dashboard
                     </a>
                 {% else %}
-                    <p>No wallet found for this patient.</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No wallet found for this patient.
+                    </div>
                     <a href="{% url 'patients:add_funds_to_wallet' patient.id %}" class="btn btn-info btn-sm">
                         <i class="fas fa-wallet"></i> Create Wallet & Add Funds
                     </a>
@@ -119,7 +126,43 @@
                 {% if retainership_info %}
                     <p><strong>Retainership Registration Number:</strong> {{ retainership_info.retainership_reg_number }}</p>
                     <p><strong>Retainership Status:</strong> {% if retainership_info.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</p>
-                    <a href="{% url 'patients:edit_retainership_patient' patient.id %}" class="btn btn-info btn-sm">
+                    
+                    <!-- Retainership Wallet Information -->
+                    {% if retainership_wallet %}
+                        <div class="alert alert-success mt-3">
+                            <i class="fas fa-check-circle"></i> This patient is linked to a retainership wallet.
+                        </div>
+                        <p><strong>Retainership Wallet:</strong> {{ retainership_wallet.wallet.wallet_name }}</p>
+                        <p><strong>Wallet Balance:</strong> <span class="{% if retainership_wallet.wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ₦{{ retainership_wallet.wallet.balance }}
+                        </span></p>
+                        <p><strong>Wallet Status:</strong> {% if retainership_wallet.wallet.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</p>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'retainership:manage_wallet' patient.id %}" class="btn btn-info btn-sm">
+                                <i class="fas fa-wallet"></i> Manage Wallet
+                            </a>
+                            {% if retainership_wallet.is_primary %}
+                                <span class="badge bg-primary ms-2">Primary Member</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-exclamation-triangle"></i> This retainership patient has no wallet linked.
+                        </div>
+                        <p>No retainership wallet linked to this patient.</p>
+                        {% if user.is_superuser or user.profile and user.profile.role in 'admin,health_record_officer' %}
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'retainership:create_wallet' patient.id %}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus"></i> Create Wallet
+                                </a>
+                                <a href="{% url 'retainership:link_to_wallet' patient.id %}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-link"></i> Link to Existing Wallet
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <a href="{% url 'patients:edit_retainership_patient' patient.id %}" class="btn btn-info btn-sm mt-2">
                         <i class="fas fa-edit"></i> Edit Retainership Record
                     </a>
                 {% else %}
@@ -238,6 +281,12 @@
                 {% endif %}
                 {% if patient.retainership_info %}
                     <span class="badge bg-info text-dark ms-1">Retainership Patient</span>
+                {% endif %}
+                {% if has_wallet and wallet_is_active %}
+                    <span class="badge bg-primary ms-1">Wallet Linked</span>
+                {% endif %}
+                {% if retainership_wallet %}
+                    <span class="badge bg-warning text-dark ms-1">Retainership Wallet</span>
                 {% endif %}
             </div>
         </div>
