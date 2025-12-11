@@ -50,7 +50,7 @@ class SharedWallet(models.Model):
 
         # Create transaction record
         WalletTransaction.objects.create(
-            wallet=self,
+            shared_wallet=self,
             patient=patient,
             transaction_type=transaction_type,
             amount=amount,
@@ -77,7 +77,7 @@ class SharedWallet(models.Model):
 
         # Create transaction record
         transaction = WalletTransaction.objects.create(
-            wallet=self,
+            shared_wallet=self,
             patient=patient,
             transaction_type=transaction_type,
             amount=amount,
@@ -90,6 +90,48 @@ class SharedWallet(models.Model):
         )
 
         return transaction
+
+    def transfer_to(self, recipient_wallet, amount, description="Transfer", user=None, patient=None):
+        """Transfer funds to another shared wallet atomically"""
+        if amount <= 0:
+            raise ValueError("Transfer amount must be positive.")
+        if recipient_wallet == self:
+            raise ValueError("Cannot transfer to the same wallet.")
+        if not recipient_wallet.is_active:
+            raise ValueError("Recipient wallet is not active.")
+        if not self.is_active:
+            raise ValueError("Source wallet is not active.")
+        
+        from django.db import transaction
+        
+        with transaction.atomic():
+            # Debit from sender (this wallet)
+            sender_transaction = self._debit(
+                amount=amount,
+                description=f'Transfer to {recipient_wallet.wallet_name} - {description}',
+                transaction_type='transfer_out',
+                user=user,
+                patient=patient
+            )
+            
+            # Credit to recipient
+            recipient_transaction = recipient_wallet._credit(
+                amount=amount,
+                description=f'Transfer from {self.wallet_name} - {description}',
+                transaction_type='transfer_in',
+                user=user,
+                patient=patient
+            )
+            
+            # For shared wallet transfers, we store the transfer info in the description
+            # since the model fields are designed for PatientWallet transfers
+            sender_transaction.description = f'Transfer to {recipient_wallet.wallet_name} (ID: {recipient_wallet.id}) - {description}'
+            sender_transaction.save(update_fields=['description'])
+            
+            recipient_transaction.description = f'Transfer from {self.wallet_name} (ID: {self.id}) - {description}'
+            recipient_transaction.save(update_fields=['description'])
+            
+            return sender_transaction, recipient_transaction
 
     def get_members(self):
         """Get all active members of this wallet"""

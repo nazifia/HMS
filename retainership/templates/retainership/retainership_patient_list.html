@@ -42,6 +42,7 @@
                         <th>Retainership Reg. No.</th>
                         <th>Type</th>
                         <th>Status</th>
+                        <th>Wallet Status</th>
                         <th>Date Registered</th>
                         <th>Actions</th>
                     </tr>
@@ -60,9 +61,27 @@
                                 <span class="badge bg-danger">Inactive</span>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if retainership_patient.wallet_info %}
+                                <span class="badge {% if retainership_patient.wallet_info.balance >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                    ₦{{ retainership_patient.wallet_info.balance }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning">No Wallet</span>
+                            {% endif %}
+                        </td>
                         <td>{{ retainership_patient.date_registered|date:"Y-m-d H:i" }}</td>
                         <td>
                             <a href="{% url 'patients:edit' retainership_patient.patient.id %}" class="btn btn-sm btn-primary">Edit</a>
+                            {% if retainership_patient.wallet_info %}
+                                <a href="{% url 'retainership:manage_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-wallet"></i> Manage Wallet
+                                </a>
+                            {% else %}
+                                <a href="{% url 'retainership:create_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-plus"></i> Create Wallet
+                                </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

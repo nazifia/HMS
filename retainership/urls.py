@@ -9,4 +9,8 @@ urlpatterns = [
     path('register-patient/<int:patient_id>/', views.register_patient_for_retainership, name='register_patient_for_retainership'),
     path('register-patient/', views.select_patient_for_retainership, name='register_patient_no_id'),
     path('register-independent/', views.register_independent_retainership_patient, name='register_independent_retainership_patient'),
+    
+    # Wallet management URLs
+    path('create-wallet/<int:patient_id>/', views.create_retainership_wallet, name='create_wallet'),
+    path('manage-wallet/<int:patient_id>/', views.manage_retainership_wallet, name='manage_wallet'),
 ]
