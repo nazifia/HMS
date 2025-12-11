@@ -1385,9 +1385,25 @@ def pharmacy_dispensary_revenue(request):
     monthly_trends = []
     dispensary_monthly_data = defaultdict(list)
 
-    # Calculate start date for trends (6 months back)
-    trend_end_date = timezone.now().date()
-    trend_start_date = trend_end_date - timedelta(days=180)  # Approximately 6 months
+    # Calculate trend date range - make it relevant to the selected data
+    if start_date_str or end_date_str or search_query:
+        # User selected custom filters, use expanded version of selected range
+        trend_end_date = end_date
+        trend_start_date = start_date
+        
+        # Expand range to minimum 3 months for meaningful trends, max 12 months
+        current_range_days = (end_date - start_date).days + 1
+        if current_range_days < 90:  # Less than 3 months
+            # Expand to 6 months ending at end_date
+            trend_start_date = end_date - timedelta(days=180)
+            if trend_start_date < start_date:
+                trend_start_date = start_date  # Don't go before original start
+        elif current_range_days > 365:  # More than 1 year
+            trend_start_date = end_date - timedelta(days=365)  # Limit to 1 year
+    else:
+        # Default view - show last 6 months from today
+        trend_end_date = timezone.now().date()
+        trend_start_date = trend_end_date - timedelta(days=180)  # Approximately 6 months
 
     current_date = trend_start_date.replace(day=1)  # Start from first of the month
     months_list = []

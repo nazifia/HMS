@@ -526,3 +526,40 @@ def percentage(value, total):
         return f"{pct:.1f}%"
     except (ValueError, TypeError):
         return '0.0%'
+
+@register.filter
+def sum_list(values):
+    """
+    Sum a list of numeric values.
+
+    Usage: {{ list|sum_list }}
+
+    Args:
+        values: List of numeric values
+
+    Returns:
+        Sum of all values
+    """
+    try:
+        return sum(float(v or 0) for v in values)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
+def map_attribute(items, attribute_name):
+    """
+    Extract a specific attribute from a list of objects.
+
+    Usage: {{ objects|map_attribute:'attribute_name' }}
+
+    Args:
+        items: List of objects
+        attribute_name: Name of attribute to extract
+
+    Returns:
+        List of attribute values
+    """
+    try:
+        return [getattr(item, attribute_name) for item in items]
+    except (AttributeError, TypeError):
+        return []
