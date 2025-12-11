@@ -48,7 +48,7 @@ def authorization_dashboard(request):
         if patient_search_form.is_valid():
             search_query = patient_search_form.cleaned_data.get('search')
             if search_query:
-                # Search for NHIA patients by name, patient ID, or NHIA number
+                # Search for NHIA patients by name, patient ID, NHIA number, or retainership number
                 patients = Patient.objects.filter(
                     patient_type='nhia'
                 ).filter(
@@ -56,8 +56,9 @@ def authorization_dashboard(request):
                     Q(last_name__icontains=search_query) |
                     Q(patient_id__icontains=search_query) |
                     Q(nhia_info__nhia_reg_number__icontains=search_query) |
+                    Q(retainership_info__retainership_reg_number__icontains=search_query) |
                     Q(phone_number__icontains=search_query)
-                ).select_related('nhia_info').order_by('first_name', 'last_name')
+                ).select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
                 
                 # Pagination for search results
                 paginator = Paginator(patients, 10)

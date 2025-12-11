@@ -11,6 +11,9 @@
                 <span class="badge {% if wallet.balance >= 0 %}bg-success{% else %}bg-danger{% endif %}">
                     Balance: ₦{{ wallet.balance }}
                 </span>
+                <a href="{% url 'retainership:retainership_wallet_list' %}" class="btn btn-sm btn-info ml-2">
+                    <i class="fas fa-list"></i> All Wallets
+                </a>
             {% else %}
                 <span class="badge bg-warning">No retainership wallet</span>
             {% endif %}

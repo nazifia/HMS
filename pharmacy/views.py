@@ -3319,6 +3319,7 @@ def prescription_list(request):
                 Q(patient__last_name__icontains=search_query) |
                 Q(patient__patient_id__icontains=search_query) |
                 Q(patient__phone_number__icontains=search_query) |
+                Q(patient__retainership_info__retainership_reg_number__icontains=search_query) |
                 Q(doctor__first_name__icontains=search_query) |
                 Q(doctor__last_name__icontains=search_query) |
                 Q(diagnosis__icontains=search_query)
@@ -6280,7 +6281,8 @@ def pack_order_list(request):
                 Q(pack__name__icontains=search) |
                 Q(patient__first_name__icontains=search) |
                 Q(patient__last_name__icontains=search) |
-                Q(patient__patient_id__icontains=search)
+                Q(patient__patient_id__icontains=search) |
+                Q(patient__retainership_info__retainership_reg_number__icontains=search)
             )
 
         if form.cleaned_data.get('status'):

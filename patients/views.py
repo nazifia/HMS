@@ -43,6 +43,7 @@ def patient_list(request):
         date_from = request.GET.get('date_from', '').strip()
         date_to = request.GET.get('date_to', '').strip()
         diagnosis = request.GET.get('diagnosis', '').strip()
+        retainership_number = request.GET.get('retainership_number', '').strip()
 
         # Apply search query filter
         if search_query:
@@ -51,7 +52,8 @@ def patient_list(request):
                 Q(last_name__icontains=search_query) |
                 Q(patient_id__icontains=search_query) |
                 Q(phone_number__icontains=search_query) |
-                Q(email__icontains=search_query)
+                Q(email__icontains=search_query) |
+                Q(retainership_info__retainership_reg_number__icontains=search_query)
             )
 
         # Apply diagnosis filter
@@ -72,6 +74,8 @@ def patient_list(request):
             patients = patients.filter(patient_type=patient_type)
         if city:
             patients = patients.filter(city__icontains=city)
+        if retainership_number:
+            patients = patients.filter(retainership_info__retainership_reg_number__icontains=retainership_number)
         if date_from:
             try:
                 from datetime import datetime

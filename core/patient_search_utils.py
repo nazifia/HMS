@@ -1,5 +1,6 @@
 from django.db.models import Q
 from patients.models import Patient
+from core.activity_log import ActivityLog
 
 def search_patients_by_query(query, limit=10):
     """
@@ -25,7 +26,8 @@ def search_patients_by_query(query, limit=10):
         Q(first_name__icontains=query) |
         Q(last_name__icontains=query) |
         Q(patient_id__icontains=query) |
-        Q(phone_number__icontains=query)
+        Q(phone_number__icontains=query) |
+        Q(retainership_info__retainership_reg_number__icontains=query)
     )
     
     # Order by last name for better user experience
@@ -113,3 +115,43 @@ def add_patient_search_context(context, request, model_class, search_fields=None
     
     context['search_query'] = search_query
     return context
+
+
+def log_patient_search(user, query, results_count, search_type='general', **kwargs):
+    """
+    Log patient search activity for tracking and auditing purposes
+    
+    Args:
+        user: User who performed the search
+        query: Search query that was used
+        results_count: Number of results returned
+        search_type: Type of search (general, nhia, retainership, etc.)
+        **kwargs: Additional context for the search
+    """
+    if not user or not user.is_authenticated:
+        return
+    
+    # Build description with retainership information if present
+    description = f"Patient search: '{query}' returned {results_count} results"
+    
+    # Add retainership-specific information if this was a retainership search
+    if search_type == 'retainership' or kwargs.get('retainership_number'):
+        retainership_number = kwargs.get('retainership_number', '')
+        description += f" (Retainership search: {retainership_number})"
+    
+    # Log the search activity
+    ActivityLog.log_activity(
+        user=user,
+        category='data_access',
+        action_type='search',
+        description=description,
+        object_repr=f"Search: {query}",
+        ip_address=kwargs.get('ip_address'),
+        additional_data={
+            'search_query': query,
+            'search_type': search_type,
+            'results_count': results_count,
+            'retainership_number': kwargs.get('retainership_number'),
+            'user_agent': kwargs.get('user_agent')
+        }
+    )

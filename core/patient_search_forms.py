@@ -98,6 +98,17 @@ class EnhancedPatientSearchForm(PatientSearchForm):
         help_text='Search patients by diagnosis from consultations or medical history'
     )
 
+    retainership_number = forms.CharField(
+        required=False,
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by retainership number...',
+            'autocomplete': 'off'
+        }),
+        help_text='Search patients by retainership registration number'
+    )
+
     def clean(self):
         cleaned_data = super().clean()
         date_from = cleaned_data.get('date_from')

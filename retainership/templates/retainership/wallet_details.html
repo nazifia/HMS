@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'retainership:retainership_wallet_list' %}">Retainership Wallets</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+        <div>
+            <span class="badge {% if wallet.balance >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                Balance: ₦{{ wallet.balance }}
+            </span>
+            <a href="{% url 'retainership:manage_wallet_by_id' wallet.id %}" class="btn btn-sm btn-primary ml-2">
+                <i class="fas fa-cog"></i> Manage Wallet
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Wallet Information -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Wallet Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-4">Wallet Name:</dt>
+                            <dd class="col-sm-8">{{ wallet.wallet_name }}</dd>
+
+                            <dt class="col-sm-4">Wallet Type:</dt>
+                            <dd class="col-sm-8">{{ wallet.get_wallet_type_display }}</dd>
+
+                            <dt class="col-sm-4">Registration No:</dt>
+                            <dd class="col-sm-8">{{ wallet.retainership_registration }}</dd>
+
+                            <dt class="col-sm-4">Current Balance:</dt>
+                            <dd class="col-sm-8">
+                                <strong class="{% if wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ₦{{ wallet.balance }}
+                                </strong>
+                            </dd>
+
+                            <dt class="col-sm-4">Status:</dt>
+                            <dd class="col-sm-8">
+                                {% if wallet.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-4">Created:</dt>
+                            <dd class="col-sm-8">{{ wallet.created_at|date:"Y-m-d H:i" }}</dd>
+
+                            <dt class="col-sm-4">Last Updated:</dt>
+                            <dd class="col-sm-8">{{ wallet.last_updated|date:"Y-m-d H:i" }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Wallet Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-6">Total Credits:</dt>
+                            <dd class="col-sm-6 text-success">₦{{ total_credits }}</dd>
+
+                            <dt class="col-sm-6">Total Debits:</dt>
+                            <dd class="col-sm-6 text-danger">₦{{ total_debits }}</dd>
+
+                            <dt class="col-sm-6">Net Flow:</dt>
+                            <dd class="col-sm-6 {% if wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ₦{{ wallet.balance }}
+                            </dd>
+
+                            <dt class="col-sm-6">Number of Members:</dt>
+                            <dd class="col-sm-6">{{ members.count }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Members Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Wallet Members ({{ members.count }})</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Patient ID</th>
+                                <th>Retainership No.</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for membership in members %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'patients:detail' membership.patient.id %}">
+                                        {{ membership.patient.get_full_name }}
+                                    </a>
+                                </td>
+                                <td>{{ membership.patient.patient_id }}</td>
+                                <td>{{ membership.patient.retainership_info.retainership_reg_number }}</td>
+                                <td>
+                                    {% if membership.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'patients:detail' membership.patient.id %}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No members found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction History with Filter -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Transaction History</h5>
+                <div>
+                    <form method="GET" class="form-inline">
+                        <select name="type" class="form-control form-control-sm mr-2" onchange="this.form.submit()">
+                            <option value="">All Transactions</option>
+                            <option value="credit" {% if request.GET.type == 'credit' %}selected{% endif %}>Credits Only</option>
+                            <option value="debit" {% if request.GET.type == 'debit' %}selected{% endif %}>Debits Only</option>
+                            <option value="transfer_in" {% if request.GET.type == 'transfer_in' %}selected{% endif %}>Transfers In</option>
+                            <option value="transfer_out" {% if request.GET.type == 'transfer_out' %}selected{% endif %}>Transfers Out</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Balance After</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in page_obj %}
+                            <tr>
+                                <td>{{ transaction.created_at|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if transaction.is_credit_transaction %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ transaction.get_transaction_type_display }}
+                                    </span>
+                                </td>
+                                <td>₦{{ transaction.amount }}</td>
+                                <td>₦{{ transaction.balance_after }}</td>
+                                <td>{{ transaction.description }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ transaction.get_status_display }}</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No transactions found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="Page navigation example">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Previous</a></li>
+                        {% endif %}
+
+                        {% for i in page_obj.paginator.page_range %}
+                            {% if page_obj.number == i %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                            {% else %}
+                                <li class="page-item"><a class="page-link" href="?page={{ i }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Next</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

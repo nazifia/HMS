@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'retainership:retainership_patient_list' %}">Retainership</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+        <div class="d-flex align-items-center">
+            <form class="d-none d-sm-inline-block form-inline mr-auto my-2 my-md-0 mw-100 navbar-search" method="GET">
+                <div class="input-group">
+                    <input type="text" class="form-control bg-light border-0 small" placeholder="Search wallets..." aria-label="Search"
+                           aria-describedby="basic-addon2" name="search" value="{{ search_query }}">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Dashboard Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                    Total Wallets</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_wallets }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                    Total Balance</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">₦{{ total_balance }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                    Total Members</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_members }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-users fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Wallet Name</th>
+                        <th>Registration No.</th>
+                        <th>Balance</th>
+                        <th>Members</th>
+                        <th>Total Credits</th>
+                        <th>Total Debits</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wallet in page_obj %}
+                    <tr>
+                        <td>{{ wallet.wallet_name }}</td>
+                        <td>{{ wallet.retainership_registration }}</td>
+                        <td>
+                            <span class="badge {% if wallet.balance >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                ₦{{ wallet.balance }}
+                            </span>
+                        </td>
+                        <td>{{ wallet.member_count }}</td>
+                        <td>₦{{ wallet.total_credits }}</td>
+                        <td>₦{{ wallet.total_debits }}</td>
+                        <td>
+                            {% if wallet.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ wallet.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'retainership:view_wallet_details' wallet.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{% url 'retainership:manage_wallet_by_id' wallet.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-cog"></i> Manage
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center">No retainership wallets found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="Page navigation example">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a></li>
+                {% endif %}
+
+                {% for i in page_obj.paginator.page_range %}
+                    {% if page_obj.number == i %}
+                        <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add any wallet-specific JavaScript here
+$(document).ready(function() {
+    // Initialize tooltips for action buttons
+    $('[data-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}
