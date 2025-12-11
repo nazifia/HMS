@@ -562,7 +562,7 @@ class StaffCreationForm(UserCreationForm): # Base on UserCreationForm for passwo
     username = forms.CharField(max_length=150, required=True, label="Username (for display & records)")
     # phone_number will be the login ID (USERNAME_FIELD)
     phone_number = forms.CharField(max_length=15, required=True, label="Phone Number (Login ID)")
-    email = forms.EmailField(required=True)
+    email = forms.EmailField(required=False)  # Make email field optional
     first_name = forms.CharField(max_length=150, required=True)
     last_name = forms.CharField(max_length=150, required=True)
     

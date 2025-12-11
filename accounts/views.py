@@ -401,13 +401,13 @@ def edit_staff(request, staff_id):
     user = user_profile.user
 
     if request.method == 'POST':
-        form = UserProfileForm(request.POST, request.FILES, instance=user_profile)
+        form = UserProfileForm(request.POST, request.FILES, instance=user, request_user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, f'{user.username}\'s profile has been updated!')
             return redirect('accounts:staff_list')
     else:
-        form = UserProfileForm(instance=user_profile)
+        form = UserProfileForm(instance=user, request_user=request.user)
 
     context = {
         'form': form,
