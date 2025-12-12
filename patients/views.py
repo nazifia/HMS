@@ -193,6 +193,8 @@ def patient_detail(request, patient_id):
     retainership_wallet = None
     if hasattr(patient, 'wallet_memberships'):
         retainership_wallet = patient.wallet_memberships.filter(wallet__wallet_type='retainership').first()
+    # Get recent vitals using the safe utility function
+    vitals = get_safe_vitals_for_patient(patient)
     
     context = {
         'patient': patient,
@@ -208,6 +210,7 @@ def patient_detail(request, patient_id):
         'has_wallet': has_wallet,
         'wallet_is_active': wallet_is_active,
         'retainership_wallet': retainership_wallet,
+        'vitals': vitals,
         'page_title': f'Patient Details - {patient.get_full_name()}',
         'active_nav': 'patients',
     }

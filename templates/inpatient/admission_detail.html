@@ -271,12 +271,12 @@
                         <a href="{% url 'inpatient:admission_net_impact' admission.id %}" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-calculator"></i> Analyze Net Impact
                         </a>
-                        {% if admission.get_outstanding_admission_cost > 0 %}
+                        {% if admission.get_outstanding_admission_cost > 0 and not admission.patient.is_nhia_patient %}
                         <button type="button" id="processOutstandingBtn" class="btn btn-success btn-sm" data-url="{% url 'inpatient:ajax_process_outstanding_admission_payment' admission.id %}">
                             <i class="fas fa-wallet"></i> Process Outstanding from Wallet
                         </button>
                         {% endif %}
-                        {% if admission.get_outstanding_admission_cost > 0 and admission.patient.wallet.balance > 0 %}
+                        {% if admission.get_outstanding_admission_cost > 0 and admission.patient.wallet.balance > 0 and not admission.patient.is_nhia_patient %}
                         <a href="{% url 'patients:wallet_payment' admission.patient.id %}" class="btn btn-outline-success btn-sm">
                             <i class="fas fa-credit-card"></i> Pay Outstanding
                         </a>

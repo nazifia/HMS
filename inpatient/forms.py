@@ -74,7 +74,8 @@ class AdmissionForm(forms.ModelForm):
 
     admission_service = forms.ModelChoiceField(
         queryset=Service.objects.filter(name='Admission Fee'),
-        empty_label=None,  # Ensures a service is always selected
+        required=False,  # Make it optional to handle cases where no service exists
+        empty_label="Select Admission Service",
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='Admission Service'
     )
@@ -130,6 +131,20 @@ class AdmissionForm(forms.ModelForm):
             else:
                 self.fields['authorization_code'].widget.attrs['disabled'] = True
                 self.fields['authorization_code'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        admission_service = cleaned_data.get('admission_service')
+        
+        # If no admission service is selected, check if any exist
+        if not admission_service:
+            available_services = Service.objects.filter(name='Admission Fee').exists()
+            if available_services:
+                # If services exist but none was selected, raise validation error
+                raise forms.ValidationError("Admission service is required.")
+            # If no services exist, we allow the form to be submitted (will be handled in view)
+        
+        return cleaned_data
 
 class DischargeForm(forms.ModelForm):
     class Meta:

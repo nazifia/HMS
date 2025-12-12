@@ -1134,7 +1134,7 @@ class ClinicalNoteForm(forms.ModelForm):
 
     class Meta:
         model = ClinicalNote
-        fields = ['note']
+        fields = ['note', 'doctor']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -1143,6 +1143,10 @@ class ClinicalNoteForm(forms.ModelForm):
         # Auto-populate doctor field with current user if they are a doctor
         if self.user and not self.instance.pk:
             self.fields['doctor'].initial = self.user
+            self.fields['doctor'].widget = forms.HiddenInput()
+        elif self.instance.pk:
+            # If editing existing note, make doctor field readonly
+            self.fields['doctor'].widget.attrs['readonly'] = True
 
         # Add form-control class to all widgets
         for field_name, field in self.fields.items():

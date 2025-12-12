@@ -170,6 +170,11 @@ def process_outstanding_admission_payment(request, admission_id):
     """Process outstanding admission payment from patient wallet"""
     admission = get_object_or_404(Admission, id=admission_id)
     
+    # Check if patient is NHIA - NHIA patients are exempt from admission fees
+    if admission.patient.is_nhia_patient():
+        messages.warning(request, 'NHIA patients are exempt from admission fees and cannot be charged for admission.')
+        return redirect('inpatient:admission_detail', pk=admission.id)
+    
     # Get patient wallet
     patient_wallet = None
     try:
@@ -297,6 +302,13 @@ def ajax_process_outstanding_admission_payment(request, admission_id):
     """AJAX endpoint for processing outstanding admission payment from patient wallet"""
     try:
         admission = get_object_or_404(Admission, id=admission_id)
+
+        # Check if patient is NHIA - NHIA patients are exempt from admission fees
+        if admission.patient.is_nhia_patient():
+            return JsonResponse({
+                'success': False,
+                'message': 'NHIA patients are exempt from admission fees and cannot be charged for admission.'
+            }, status=403)
 
         # Get patient wallet
         patient_wallet = None
