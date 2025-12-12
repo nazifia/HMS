@@ -1,16 +1,23 @@
-{% extends 'includes/department_dashboard_base.html' %}
+{% extends 'base.html' %}
 
-{% block department_name %}Dermatology{% endblock %}
+{% block title %}Dermatology Dashboard{% endblock %}
 
-{% block department_icon %}
-<i class="fas fa-skin"></i>
-{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-skin me-2"></i>
+            Dermatology Department Dashboard
+        </h1>
+        <div>
+            <a href="{% block create_record_url %}#{% endblock %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create New Record
+            </a>
+        </div>
+    </div>
 
-{% block department_description %}
-Dermatology Department Dashboard - Manage skin conditions, treatments, and services
-{% endblock %}
-
-{% block department_stats %}
+    {% block department_stats %}
 <div class="row">
     <!-- Total Records -->
     <div class="col-xl-3 col-md-6 mb-4">
@@ -163,152 +170,152 @@ Dermatology Department Dashboard - Manage skin conditions, treatments, and servi
 </div>
 {% endblock %}
 
-{% block department_charts %}
-<div class="row">
-    <!-- Daily Trend Chart -->
-    <div class="col-xl-6 col-lg-6">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Daily Records Trend</h6>
+    {% block department_charts %}
+    <div class="row">
+        <!-- Daily Trend Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Daily Records Trend</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="dailyTrendChart"></canvas>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="chart-area">
-                    <canvas id="dailyTrendChart"></canvas>
+        </div>
+
+        <!-- Status Distribution Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Treatment Status Distribution</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="statusDistributionChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Status Distribution Chart -->
-    <div class="col-xl-6 col-lg-6">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Treatment Status Distribution</h6>
-            </div>
-            <div class="card-body">
-                <div class="chart-pie pt-4 pb-2">
-                    <canvas id="statusDistributionChart"></canvas>
+    <div class="row">
+        <!-- Common Conditions Chart -->
+        <div class="col-xl-12 col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Common Skin Conditions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-bar">
+                        <canvas id="conditionsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="row">
-    <!-- Common Conditions Chart -->
-    <div class="col-xl-12 col-lg-12">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Common Skin Conditions</h6>
-            </div>
-            <div class="card-body">
-                <div class="chart-bar">
-                    <canvas id="conditionsChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-// Daily Trend Chart
-var dailyTrendCtx = document.getElementById('dailyTrendChart');
-var dailyTrendChart = new Chart(dailyTrendCtx, {
-    type: 'line',
-    data: {
-        labels: {{ daily_trend.labels|safe }},
-        datasets: [{
-            label: 'Records per Day',
-            data: {{ daily_trend.data|safe }},
-            backgroundColor: 'rgba(78, 115, 223, 0.05)',
-            borderColor: 'rgba(78, 115, 223, 1)',
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    precision: 0
+    <script>
+    // Daily Trend Chart
+    var dailyTrendCtx = document.getElementById('dailyTrendChart');
+    var dailyTrendChart = new Chart(dailyTrendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ daily_trend.labels|safe }},
+            datasets: [{
+                label: 'Records per Day',
+                data: {{ daily_trend.data|safe }},
+                backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                borderColor: 'rgba(78, 115, 223, 1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
                 }
             }
+        }
+    });
+
+    // Status Distribution Chart
+    var statusDistributionCtx = document.getElementById('statusDistributionChart');
+    var statusDistributionChart = new Chart(statusDistributionCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ status_distribution.labels|safe }},
+            datasets: [{
+                data: {{ status_distribution.data|safe }},
+                backgroundColor: {{ status_distribution.colors|safe }},
+                hoverBackgroundColor: ['#5a6268', '#138496', '#218838'],
+                hoverBorderColor: 'white'
+            }]
         },
-        plugins: {
-            legend: {
-                display: true,
-                position: 'bottom'
-            }
-        }
-    }
-});
-
-// Status Distribution Chart
-var statusDistributionCtx = document.getElementById('statusDistributionChart');
-var statusDistributionChart = new Chart(statusDistributionCtx, {
-    type: 'doughnut',
-    data: {
-        labels: {{ status_distribution.labels|safe }},
-        datasets: [{
-            data: {{ status_distribution.data|safe }},
-            backgroundColor: {{ status_distribution.colors|safe }},
-            hoverBackgroundColor: ['#5a6268', '#138496', '#218838'],
-            hoverBorderColor: 'white'
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                display: true,
-                position: 'bottom'
-            }
-        }
-    }
-});
-
-// Conditions Chart
-var conditionsCtx = document.getElementById('conditionsChart');
-var conditionsChart = new Chart(conditionsCtx, {
-    type: 'bar',
-    data: {
-        labels: {{ condition_labels|safe }},
-        datasets: [{
-            label: 'Number of Cases',
-            data: {{ condition_counts|safe }},
-            backgroundColor: 'rgba(54, 162, 235, 0.7)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    precision: 0
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
                 }
             }
+        }
+    });
+
+    // Conditions Chart
+    var conditionsCtx = document.getElementById('conditionsChart');
+    var conditionsChart = new Chart(conditionsCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ condition_labels|safe }},
+            datasets: [{
+                label: 'Number of Cases',
+                data: {{ condition_counts|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
         },
-        plugins: {
-            legend: {
-                display: true,
-                position: 'bottom'
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
             }
         }
-    }
-});
-</script>
-{% endblock %}
+    });
+    </script>
+    {% endblock %}
 
-{% block recent_records_table %}
+    {% block recent_records_table %}
 <div class="card shadow mb-4">
     <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Recent Dermatology Records</h6>
@@ -358,5 +365,21 @@ var conditionsChart = new Chart(conditionsCtx, {
             </a>
         </div>
     </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize DataTable for recent records
+$(document).ready(function() {
+    $('#dataTable').DataTable({
+        pageLength: 10,
+        order: [[0, 'desc']],
+        responsive: true
+    });
+});
+</script>
+{% endblock %}
+</div>
 </div>
 {% endblock %}
