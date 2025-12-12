@@ -314,14 +314,18 @@ def categorize_referrals(department):
     Categorize referrals by their authorization and status
 
     Args:
-        department: Department instance
+        department: Department instance or None (for superusers)
 
     Returns:
         dict: Categorized referrals including pending and accepted
     """
     # Get pending referrals
+    referral_filter = {}
+    if department is not None:
+        referral_filter['referred_to_department'] = department
+    
     pending_referrals = Referral.objects.filter(
-        referred_to_department=department,
+        **referral_filter,
         status='pending'
     ).select_related(
         'patient',
@@ -335,7 +339,7 @@ def categorize_referrals(department):
 
     # Get accepted referrals (patients under care)
     accepted_referrals = Referral.objects.filter(
-        referred_to_department=department,
+        **referral_filter,
         status='accepted'
     ).select_related(
         'patient',

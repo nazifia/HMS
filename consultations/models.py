@@ -337,16 +337,25 @@ class Referral(models.Model):
         """
         Check if this referral requires authorization.
         NHIA patients referred from NHIA to non-NHIA units require authorization.
+        Also, NHIA patients accessing specialty services require authorization regardless of referral path.
         """
         if self.is_nhia_patient() and self.is_from_nhia_unit() and not self.is_to_nhia_unit():
             self.requires_authorization = True
             if not self.authorization_code:
                 self.authorization_status = 'required'
             return True
-        else:
-            self.requires_authorization = False
-            self.authorization_status = 'not_required'
-            return False
+        
+        # NHIA patients accessing specialty services require authorization
+        # This covers cases where there's no consultation or the referral doesn't meet the above criteria
+        if self.is_nhia_patient():
+            self.requires_authorization = True
+            if not self.authorization_code:
+                self.authorization_status = 'required'
+            return True
+        
+        self.requires_authorization = False
+        self.authorization_status = 'not_required'
+        return False
 
     def can_be_acted_upon(self):
         """

@@ -216,6 +216,9 @@
                         </a>
                         <a href="{% url 'consultations:department_referral_dashboard' %}" class="list-group-item list-group-item-action">
                             <i class="fas fa-exchange-alt text-warning"></i> View Referrals
+                            {% if pending_referrals_count > 0 %}
+                                <span class="badge bg-warning float-end">{{ pending_referrals_count }}</span>
+                            {% endif %}
                         </a>
                         {% if pending_authorizations > 0 %}
                         <a href="{% url 'desk_office:authorization_dashboard' %}" class="list-group-item list-group-item-action">

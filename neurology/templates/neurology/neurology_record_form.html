@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | Neurology | HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'neurology:neurology_records' %}" class="btn btn-secondary btn-icon-split">
+            <span class="icon text-white-50">
+                <i class="fas fa-arrow-left"></i>
+            </span>
+            <span class="text">Back to Records</span>
+        </a>
+    </div>
+
+    <!-- Form Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Patient Selection -->
+                <div class="form-group row">
+                    <label class="col-sm-2 col-form-label">Patient</label>
+                    <div class="col-sm-10">
+                        {{ form.patient }}
+                        {% if form.patient.errors %}
+                        <div class="text-danger">{{ form.patient.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Condition Type and Service -->
+                <div class="form-group row">
+                    <div class="col-sm-6">
+                        <label>Condition Type</label>
+                        {{ form.condition_type }}
+                        {% if form.condition_type.errors %}
+                        <div class="text-danger">{{ form.condition_type.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        <label>Service</label>
+                        {{ form.service }}
+                        {% if form.service.errors %}
+                        <div class="text-danger">{{ form.service.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Diagnosis -->
+                <div class="form-group row">
+                    <label class="col-sm-2 col-form-label">Diagnosis</label>
+                    <div class="col-sm-10">
+                        {{ form.diagnosis }}
+                        {% if form.diagnosis.errors %}
+                        <div class="text-danger">{{ form.diagnosis.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Treatment Procedure -->
+                <div class="form-group row">
+                    <label class="col-sm-2 col-form-label">Treatment Procedure</label>
+                    <div class="col-sm-10">
+                        {{ form.treatment_procedure }}
+                        {% if form.treatment_procedure.errors %}
+                        <div class="text-danger">{{ form.treatment_procedure.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Treatment Status and Appointment Date -->
+                <div class="form-group row">
+                    <div class="col-sm-6">
+                        <label>Treatment Status</label>
+                        {{ form.treatment_status }}
+                        {% if form.treatment_status.errors %}
+                        <div class="text-danger">{{ form.treatment_status.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        <label>Appointment Date</label>
+                        {{ form.appointment_date }}
+                        {% if form.appointment_date.errors %}
+                        <div class="text-danger">{{ form.appointment_date.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Next Appointment Date -->
+                <div class="form-group row">
+                    <label class="col-sm-2 col-form-label">Next Appointment Date</label>
+                    <div class="col-sm-10">
+                        {{ form.next_appointment_date }}
+                        {% if form.next_appointment_date.errors %}
+                        <div class="text-danger">{{ form.next_appointment_date.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Neurologist -->
+                <div class="form-group row">
+                    <label class="col-sm-2 col-form-label">Neurologist</label>
+                    <div class="col-sm-10">
+                        {{ form.neurologist }}
+                        {% if form.neurologist.errors %}
+                        <div class="text-danger">{{ form.neurologist.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-group row">
+                    <label class="col-sm-2 col-form-label">Notes</label>
+                    <div class="col-sm-10">
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                        <div class="text-danger">{{ form.notes.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="form-group row">
+                    <div class="col-sm-10 offset-sm-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Save Record
+                        </button>
+                        <a href="{% url 'neurology:neurology_records' %}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

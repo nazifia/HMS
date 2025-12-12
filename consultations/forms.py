@@ -95,6 +95,15 @@ class ReferralForm(forms.ModelForm):
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         self.fields['referred_to_department'].queryset = Department.objects.all().order_by('name')
+        
+        # Add unit suggestions as placeholder
+        from .department_units import COMMON_UNITS
+        unit_placeholder = "e.g., " + ", ".join(COMMON_UNITS[:3]) + "..."
+        self.fields['referred_to_unit'].widget.attrs['placeholder'] = unit_placeholder
+        
+        # Add specialty suggestions as placeholder  
+        specialty_placeholder = "e.g., Cardiology, Neurology, Orthopedics..."
+        self.fields['referred_to_specialty'].widget.attrs['placeholder'] = specialty_placeholder
 
         # Get doctors using multiple role systems with fallback to all active users
         from django.db.models import Q

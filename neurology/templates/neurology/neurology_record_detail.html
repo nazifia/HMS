@@ -1,0 +1,411 @@
+{% extends 'base.html' %}
+
+{% block title %}Neurology Record #{{ record.id }} | HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Neurology Record #{{ record.id }}</h1>
+        <div>
+            <a href="{% url 'neurology:edit_neurology_record' record.id %}" class="btn btn-warning btn-icon-split">
+                <span class="icon text-white-50">
+                    <i class="fas fa-edit"></i>
+                </span>
+                <span class="text">Edit</span>
+            </a>
+            <a href="{% url 'neurology:neurology_records' %}" class="btn btn-secondary btn-icon-split">
+                <span class="icon text-white-50">
+                    <i class="fas fa-arrow-left"></i>
+                </span>
+                <span class="text">Back</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-primary text-white">
+            <h6 class="m-0 font-weight-bold">Patient Information</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Full Name:</label>
+                        <div class="col-sm-8">
+                            {{ record.patient.get_full_name }}
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Patient ID:</label>
+                        <div class="col-sm-8">
+                            {{ record.patient.patient_id }}
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Age:</label>
+                        <div class="col-sm-8">
+                            {{ record.patient.age }} years
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Phone:</label>
+                        <div class="col-sm-8">
+                            {{ record.patient.phone_number }}
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Patient Type:</label>
+                        <div class="col-sm-8">
+                            <span class="badge {% if record.patient.patient_type == 'nhia' %}badge-info{% elif record.patient.patient_type == 'retainership' %}badge-success{% else %}badge-primary{% endif %}">
+                                {{ record.patient.get_patient_type_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Gender:</label>
+                        <div class="col-sm-8">
+                            {{ record.patient.get_gender_display }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Info Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-primary text-white">
+            <h6 class="m-0 font-weight-bold">Neurology Record Information</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Condition Type:</label>
+                        <div class="col-sm-8">
+                            {{ record.get_condition_display }}
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Service:</label>
+                        <div class="col-sm-8">
+                            {{ record.service.name if record.service else 'N/A' }}
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Treatment Status:</label>
+                        <div class="col-sm-8">
+                            <span class="badge {% if record.treatment_status == 'completed' %}badge-success{% elif record.treatment_status == 'in_progress' %}badge-info{% else %}badge-warning{% endif %}">
+                                {{ record.get_treatment_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Appointment Date:</label>
+                        <div class="col-sm-8">
+                            {{ record.appointment_date|date:"M d, Y H:i" }}
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Next Appointment:</label>
+                        <div class="col-sm-8">
+                            {{ record.next_appointment_date|date:"M d, Y H:i" if record.next_appointment_date else 'Not scheduled' }}
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Neurologist:</label>
+                        <div class="col-sm-8">
+                            {{ record.neurologist.get_full_name if record.neurologist else 'Not assigned' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group row mt-4">
+                <label class="col-sm-2 col-form-label font-weight-bold">Diagnosis:</label>
+                <div class="col-sm-10">
+                    <div class="card bg-light p-3">
+                        {{ record.diagnosis|linebreaks }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group row mt-4">
+                <label class="col-sm-2 col-form-label font-weight-bold">Treatment Procedure:</label>
+                <div class="col-sm-10">
+                    <div class="card bg-light p-3">
+                        {{ record.treatment_procedure|linebreaks }}
+                    </div>
+                </div>
+            </div>
+
+            {% if record.notes %}
+            <div class="form-group row mt-4">
+                <label class="col-sm-2 col-form-label font-weight-bold">Notes:</label>
+                <div class="col-sm-10">
+                    <div class="card bg-light p-3">
+                        {{ record.notes|linebreaks }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- NHIA Authorization Card -->
+    {% if is_nhia_patient %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 {% if authorization_valid %}bg-success text-white{% elif requires_authorization %}bg-warning text-dark{% else %}bg-info text-white{% endif %}">
+            <h6 class="m-0 font-weight-bold">NHIA Authorization Status</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Status:</label>
+                        <div class="col-sm-8">
+                            <span class="badge {% if authorization_valid %}badge-success{% elif requires_authorization %}badge-warning{% else %}badge-info{% endif %}">
+                                {{ authorization_message }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% if authorization_amount %}
+                <div class="col-md-6">
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label font-weight-bold">Authorization Amount:</label>
+                        <div class="col-sm-8">
+                            <span class="badge badge-primary">
+                                GHS {{ authorization_amount|floatformat:2 }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if requires_authorization and not has_pending_request %}
+            <div class="alert alert-warning mt-3">
+                <i class="fas fa-exclamation-triangle"></i>
+                This NHIA patient requires authorization from the desk office before treatment or billing can proceed.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tests Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Neurology Tests</h6>
+            <a href="{% url 'neurology:add_test_to_neurology_record' record.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> Add Test
+            </a>
+        </div>
+        <div class="card-body">
+            {% if tests %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Test Type</th>
+                            <th>Date Performed</th>
+                            <th>Performed By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for test in tests %}
+                        <tr>
+                            <td>{{ test.get_test_type_display }}</td>
+                            <td>{{ test.performed_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ test.performed_by.get_full_name if test.performed_by else 'N/A' }}</td>
+                            <td>
+                                <a href="{% url 'neurology:delete_test' test.id %}" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                No neurology tests recorded for this patient.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Clinical Notes Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Clinical Notes (SOAP)</h6>
+            <a href="{% url 'neurology:add_clinical_note' record.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> Add Clinical Note
+            </a>
+        </div>
+        <div class="card-body">
+            {% if clinical_notes %}
+            <div class="accordion" id="clinicalNotesAccordion">
+                {% for note in clinical_notes %}
+                <div class="card mb-2">
+                    <div class="card-header" id="heading{{ note.id }}">
+                        <h2 class="mb-0">
+                            <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapse{{ note.id }}" aria-expanded="true" aria-controls="collapse{{ note.id }}">
+                                <strong>Clinical Note - {{ note.created_at|date:"M d, Y H:i" }}</strong> by {{ note.created_by.get_full_name if note.created_by else 'Unknown' }}
+                            </button>
+                        </h2>
+                    </div>
+                    <div id="collapse{{ note.id }}" class="collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ note.id }}" data-parent="#clinicalNotesAccordion">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Subjective</h6>
+                                    <p>{{ note.subjective }}</p>
+                                    <h6 class="text-primary">Objective</h6>
+                                    <p>{{ note.objective }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Assessment</h6>
+                                    <p>{{ note.assessment }}</p>
+                                    <h6 class="text-primary">Plan</h6>
+                                    <p>{{ note.plan }}</p>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <a href="{% url 'neurology:edit_clinical_note' note.id %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="{% url 'neurology:delete_clinical_note' note.id %}" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                No clinical notes recorded for this patient.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Prescriptions Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Prescriptions</h6>
+            <a href="{% url 'neurology:create_prescription_for_neurology' record.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> Create Prescription
+            </a>
+        </div>
+        <div class="card-body">
+            {% if prescriptions %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Prescription ID</th>
+                            <th>Date</th>
+                            <th>Diagnosis</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prescription in prescriptions %}
+                        <tr>
+                            <td>{{ prescription.prescription_number }}</td>
+                            <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
+                            <td>{{ prescription.diagnosis|truncatechars:50 }}</td>
+                            <td>
+                                <span class="badge badge-primary">
+                                    {{ prescription.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                No prescriptions found for this patient.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Billing Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Billing Information</h6>
+            {% if not record.invoice %}
+            <a href="{% url 'neurology:generate_invoice_for_neurology' record.id %}" class="btn btn-sm btn-success">
+                <i class="fas fa-file-invoice"></i> Generate Invoice
+            </a>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if record.invoice %}
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                Invoice #{{ record.invoice.invoice_number }} has been generated for this neurology record.
+                <a href="{% url 'billing:invoice_detail' record.invoice.id %}" class="btn btn-sm btn-primary ml-3">
+                    <i class="fas fa-eye"></i> View Invoice
+                </a>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                No invoice has been generated for this neurology record yet.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="card shadow mb-4">
+        <div class="card-body text-center">
+            <a href="{% url 'neurology:edit_neurology_record' record.id %}" class="btn btn-lg btn-warning mr-3">
+                <i class="fas fa-edit"></i> Edit Record
+            </a>
+            <a href="{% url 'neurology:neurology_records' %}" class="btn btn-lg btn-secondary mr-3">
+                <i class="fas fa-arrow-left"></i> Back to Records
+            </a>
+            {% if not record.invoice %}
+            <a href="{% url 'neurology:generate_invoice_for_neurology' record.id %}" class="btn btn-lg btn-success mr-3">
+                <i class="fas fa-file-invoice"></i> Generate Invoice
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize tooltips
+$(function () {
+    $('[data-toggle="tooltip"]').tooltip()
+});
+</script>
+{% endblock %}

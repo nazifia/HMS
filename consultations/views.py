@@ -1808,40 +1808,80 @@ def department_referral_dashboard(request):
     if auth_status_filter:
         referrals = referrals.filter(authorization_status=auth_status_filter)
 
-    # Separate referrals by authorization status
-    authorized_referrals = referrals.filter(
-        Q(authorization_status='authorized') | Q(authorization_status='not_required')
-    )
-    pending_authorization = referrals.filter(
-        authorization_status__in=['required', 'pending']
-    )
-    rejected_authorization = referrals.filter(
-        authorization_status='rejected'
-    )
+    # Apply search filter
+    search_query = request.GET.get('search', '')
+    if search_query:
+        referrals = referrals.filter(
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(patient__patient_id__icontains=search_query) |
+            Q(reason__icontains=search_query)
+        )
 
-    # Get counts
-    total_referrals = referrals.count()
-    authorized_count = authorized_referrals.count()
-    pending_auth_count = pending_authorization.count()
-    rejected_count = rejected_authorization.count()
-    pending_acceptance_count = referrals.filter(status='pending').count()
+    # Apply urgency filter
+    urgency_filter = request.GET.get('urgency', '')
+    if urgency_filter:
+        referrals = referrals.filter(urgency_level=urgency_filter)
 
-    # Pagination
-    paginator = Paginator(referrals, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # Categorize referrals using the utility function
+    from core.department_dashboard_utils import categorize_referrals
+    categorized = categorize_referrals(user_department)
+
+    # Get counts for each category
+    ready_to_accept_count = len(categorized['ready_to_accept'])
+    awaiting_authorization_count = len(categorized['awaiting_authorization'])
+    rejected_authorization_count = len(categorized['rejected_authorization'])
+    under_care_count = len(categorized['under_care'])
+
+    # Apply filters to categorized referrals
+    if status_filter:
+        if status_filter == 'pending':
+            categorized['ready_to_accept'] = [r for r in categorized['ready_to_accept'] if r.status == 'pending']
+            categorized['awaiting_authorization'] = [r for r in categorized['awaiting_authorization'] if r.status == 'pending']
+            categorized['rejected_authorization'] = [r for r in categorized['rejected_authorization'] if r.status == 'pending']
+        elif status_filter == 'accepted':
+            categorized['under_care'] = [r for r in categorized['under_care'] if r.status == 'accepted']
+        elif status_filter == 'completed':
+            categorized['under_care'] = [r for r in categorized['under_care'] if r.status == 'completed']
+        elif status_filter == 'cancelled':
+            categorized['ready_to_accept'] = [r for r in categorized['ready_to_accept'] if r.status == 'cancelled']
+            categorized['awaiting_authorization'] = [r for r in categorized['awaiting_authorization'] if r.status == 'cancelled']
+
+    if auth_status_filter:
+        if auth_status_filter == 'authorized':
+            categorized['ready_to_accept'] = [r for r in categorized['ready_to_accept'] if r.authorization_status == 'authorized']
+        elif auth_status_filter == 'not_required':
+            categorized['ready_to_accept'] = [r for r in categorized['ready_to_accept'] if r.authorization_status == 'not_required']
+        elif auth_status_filter == 'pending':
+            categorized['awaiting_authorization'] = [r for r in categorized['awaiting_authorization'] if r.authorization_status == 'pending']
+        elif auth_status_filter == 'required':
+            categorized['awaiting_authorization'] = [r for r in categorized['awaiting_authorization'] if r.authorization_status == 'required']
+        elif auth_status_filter == 'rejected':
+            categorized['rejected_authorization'] = [r for r in categorized['rejected_authorization'] if r.authorization_status == 'rejected']
 
     context = {
         'user_department': user_department,
-        'page_obj': page_obj,
-        'total_referrals': total_referrals,
-        'authorized_count': authorized_count,
-        'pending_auth_count': pending_auth_count,
-        'rejected_count': rejected_count,
-        'pending_acceptance_count': pending_acceptance_count,
+        'department_name': user_department.name if user_department else 'All Departments',
+        
+        # Categorized referrals
+        'ready_to_accept_referrals': categorized['ready_to_accept'],
+        'awaiting_authorization_referrals': categorized['awaiting_authorization'],
+        'rejected_authorization_referrals': categorized['rejected_authorization'],
+        'under_care_referrals': categorized['under_care'],
+        
+        # Counts
+        'ready_to_accept_count': ready_to_accept_count,
+        'awaiting_authorization_count': awaiting_authorization_count,
+        'rejected_authorization_count': rejected_authorization_count,
+        'under_care_count': under_care_count,
+        
+        # Filter states
         'status_filter': status_filter,
         'auth_status_filter': auth_status_filter,
-        'page_title': f'{user_department.name} - Referrals Dashboard',
+        'search_query': search_query,
+        'urgency_filter': urgency_filter,
+        
+        'page_title': f'{user_department.name} - Referrals Dashboard' if user_department else 'All Departments - Referrals Dashboard',
     }
 
     return render(request, 'consultations/department_referral_dashboard.html', context)

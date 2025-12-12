@@ -57,6 +57,8 @@ urlpatterns = [
     path('icu/', include('icu.urls')),
     path('family-planning/', include('family_planning.urls')),
     path('gynae-emergency/', include('gynae_emergency.urls')),
+    path('neurology/', include('neurology.urls')),
+    path('dermatology/', include('dermatology.urls')),
 ]
 
 # Serve media files in development

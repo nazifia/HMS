@@ -150,7 +150,13 @@
                                     {{ form.referred_to_specialty.errors }}
                                 </div>
                             {% endif %}
-                            <div class="form-text">Enter the medical specialty (e.g., Cardiology, Neurology).</div>
+                            <div class="form-text">Enter the medical specialty (e.g., Cardiology, Neurology, Orthopedics).</div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <strong>Common Specialties:</strong> 
+                                    Cardiology, Neurology, Orthopedics, Dermatology, Ophthalmology, ENT, Urology, Gastroenterology, Endocrinology, Pulmonology
+                                </small>
+                            </div>
                         </div>
 
                         <!-- Unit Input (shown when referral_type is 'unit') -->
@@ -165,7 +171,13 @@
                                     {{ form.referred_to_unit.errors }}
                                 </div>
                             {% endif %}
-                            <div class="form-text">Enter the specific unit (e.g., ICU, Emergency).</div>
+                            <div class="form-text">Enter the specific unit (e.g., ICU, Emergency, NICU, Operating Theater).</div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <strong>Common Units:</strong> 
+                                    ICU, NICU, PICU, Emergency, Operating Theater, Labor & Delivery, Radiology, Laboratory
+                                </small>
+                            </div>
                         </div>
 
                         <!-- Doctor Selection (shown when referral_type is 'doctor') -->

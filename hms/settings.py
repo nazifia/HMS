@@ -149,6 +149,8 @@ INSTALLED_APPS = [
     'icu',
     'family_planning',
     'gynae_emergency',
+    'neurology',
+    'dermatology',
     'pharmacy_billing.apps.PharmacyBillingConfig',  # Added to resolve RuntimeError
 
 ]

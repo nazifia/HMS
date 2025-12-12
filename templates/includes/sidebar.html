@@ -362,6 +362,24 @@
         </li>
         {% endif %}
 
+        <!-- Neurology Module -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/neurology/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'neurology:dashboard' %}">
+                <i class="fas fa-fw fa-brain text-white"></i>
+                <span class="text-white">Neurology</span>
+            </a>
+        </li>
+        {% endif %}
+        <!-- Dermatology Module -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/dermatology/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'dermatology:dashboard' %}">
+                <i class="fas fa-fw fa-skin text-white"></i>
+                <span class="text-white">Dermatology</span>
+            </a>
+        </li>
+        {% endif %}
         <!-- Oncology Module -->
         {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
         <li class="nav-item {% if '/oncology/' in request.path %}active{% endif %}">
