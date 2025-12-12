@@ -87,12 +87,46 @@ def enhanced_add_result(request, order_id):
         order=order
     ).select_related('order__test').order_by('-study_date')[:5]
     
+    # Get user-related information for the context
+    current_user = request.user
+    
+    # Get available radiologists for the form
+    from accounts.models import CustomUser
+    radiologists = CustomUser.objects.filter(
+        profile__specialization__icontains='radiology'
+    ).order_by('first_name', 'last_name')
+    
+    # Get available technologists
+    technologists = CustomUser.objects.filter(
+        profile__specialization__icontains='radiology'
+    ).order_by('first_name', 'last_name')
+    
+    # Get user's department and role for display
+    user_department = None
+    user_role = None
+    if hasattr(current_user, 'profile') and current_user.profile:
+        user_department = current_user.profile.department
+        user_role = current_user.profile.role
+    
+    # Check if user has verification permissions
+    can_verify = (
+        current_user.is_superuser or 
+        current_user.is_staff or
+        current_user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
+    )
+    
     context = {
         'form': form,
         'radiology_order': order,
         'result': result,
         'previous_studies': previous_studies,
-        'title': f'Radiology Result Entry - {order.test.name}'
+        'title': f'Radiology Result Entry - {order.test.name}',
+        'current_user': current_user,
+        'user_department': user_department,
+        'user_role': user_role,
+        'can_verify': can_verify,
+        'radiologists': radiologists,
+        'technologists': technologists,
     }
     
     return render(request, 'radiology/enhanced_result_entry.html', context)

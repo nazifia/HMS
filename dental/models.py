@@ -85,6 +85,24 @@ class DentalRecord(models.Model):
     
     # Billing fields
     invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='dental_record')
+    # NHIA Authorization fields
+    requires_authorization = models.BooleanField(
+        default=False,
+        help_text="True if this NHIA patient dental record requires desk office authorization"
+    )
+    AUTHORIZATION_STATUS_CHOICES = (
+        ('not_required', 'Not Required'),
+        ('required', 'Required'),
+        ('pending', 'Pending Authorization'),
+        ('authorized', 'Authorized'),
+        ('rejected', 'Rejected'),
+    )
+    authorization_status = models.CharField(
+        max_length=20,
+        choices=AUTHORIZATION_STATUS_CHOICES,
+        default='not_required',
+        help_text="Status of authorization for this dental record"
+    )
     authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='dental_records')
 
     def __str__(self) -> str:
@@ -99,6 +117,32 @@ class DentalRecord(models.Model):
     def get_service_price(self) -> Any:
         """Get the price of the service"""
         return self.service.price if self.service else 0.00  # type: ignore
+
+    def is_nhia_patient(self) -> bool:
+        """Check if the patient is an NHIA patient"""
+        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None  # type: ignore
+
+    def check_authorization_requirement(self) -> bool:
+        """
+        Check if this dental record requires authorization.
+        All NHIA patient dental records require authorization.
+        """
+        if self.is_nhia_patient():
+            self.requires_authorization = True
+            if not self.authorization_code:
+                self.authorization_status = 'required'
+            elif self.authorization_code and hasattr(self.authorization_code, 'is_valid') and self.authorization_code.is_valid():  # type: ignore
+                self.authorization_status = 'authorized'
+            return True
+        else:
+            self.requires_authorization = False
+            self.authorization_status = 'not_required'
+            return False
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Override save to auto-check authorization requirement"""
+        self.check_authorization_requirement()
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['-created_at']

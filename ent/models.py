@@ -34,8 +34,25 @@ class EntRecord(models.Model):
     follow_up_date = models.DateField(blank=True, null=True)
     
     
-    # Authorization Code
-    authorization_code = models.CharField(max_length=50, blank=True, null=True, help_text="Authorization code from desk office")
+    # NHIA Authorization fields
+    requires_authorization = models.BooleanField(
+        default=False,
+        help_text="True if this NHIA patient ENT record requires desk office authorization"
+    )
+    AUTHORIZATION_STATUS_CHOICES = (
+        ('not_required', 'Not Required'),
+        ('required', 'Required'),
+        ('pending', 'Pending Authorization'),
+        ('authorized', 'Authorized'),
+        ('rejected', 'Rejected'),
+    )
+    authorization_status = models.CharField(
+        max_length=20,
+        choices=AUTHORIZATION_STATUS_CHOICES,
+        default='not_required',
+        help_text="Status of authorization for this ENT record"
+    )
+    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='ent_records')
     
     notes = models.TextField(blank=True, null=True)
 
@@ -45,6 +62,32 @@ class EntRecord(models.Model):
 
     def __str__(self):
         return f"Ent Record for {self.patient.get_full_name()} - {self.visit_date.strftime('%Y-%m-%d')}"
+
+    def is_nhia_patient(self):
+        """Check if the patient is an NHIA patient"""
+        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None
+
+    def check_authorization_requirement(self):
+        """
+        Check if this ENT record requires authorization.
+        All NHIA patient ENT records require authorization.
+        """
+        if self.is_nhia_patient():
+            self.requires_authorization = True
+            if not self.authorization_code:
+                self.authorization_status = 'required'
+            elif self.authorization_code and hasattr(self.authorization_code, 'is_valid') and self.authorization_code.is_valid():
+                self.authorization_status = 'authorized'
+            return True
+        else:
+            self.requires_authorization = False
+            self.authorization_status = 'not_required'
+            return False
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-check authorization requirement"""
+        self.check_authorization_requirement()
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['-visit_date']

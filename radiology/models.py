@@ -127,6 +127,15 @@ class RadiologyOrder(models.Model):
                 else:
                     self.authorization_status = 'authorized'
                 return True
+            
+            # NHIA patients accessing radiology services require authorization
+            # This covers cases where there's no consultation or the consultation doesn't require auth
+            self.requires_authorization = True
+            if not self.authorization_code:
+                self.authorization_status = 'required'
+            else:
+                self.authorization_status = 'authorized'
+            return True
 
         self.requires_authorization = False
         self.authorization_status = 'not_required'

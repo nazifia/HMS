@@ -109,6 +109,24 @@ AUTHORIZATION_SUPPORTED_MODELS = {
         'display_name': 'Gynae Emergency Record',
         'service_type': 'general',
     },
+    'dental_record': {
+        'app': 'dental',
+        'model': 'DentalRecord',
+        'display_name': 'Dental Record',
+        'service_type': 'dental',
+    },
+    'ophthalmic_record': {
+        'app': 'ophthalmic',
+        'model': 'OphthalmicRecord',
+        'display_name': 'Ophthalmic Record',
+        'service_type': 'ophthalmic',
+    },
+    'ent_record': {
+        'app': 'ent',
+        'model': 'EntRecord',
+        'display_name': 'ENT Record',
+        'service_type': 'ent',
+    },
 }
 
 
@@ -197,9 +215,16 @@ def get_authorization_status(obj):
     if not requires_auth:
         return 'not_required'
     
-    # Check if has authorization_status field
+    # Check if has authorization_status field and it's set to 'pending'
     if hasattr(obj, 'authorization_status'):
-        return obj.authorization_status
+        if obj.authorization_status == 'pending':
+            return 'pending'
+        elif obj.authorization_status == 'authorized':
+            return 'authorized'
+        elif obj.authorization_status == 'rejected':
+            return 'rejected'
+        elif obj.authorization_status == 'expired':
+            return 'expired'
     
     # Check if has authorization_code
     if hasattr(obj, 'authorization_code') and obj.authorization_code:
@@ -213,6 +238,7 @@ def get_authorization_status(obj):
         elif isinstance(obj.authorization_code, str) and obj.authorization_code.strip():
             return 'authorized'
     
+    # Default to 'required' if authorization is needed but not yet obtained
     return 'required'
 
 
