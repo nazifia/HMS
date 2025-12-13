@@ -3,14 +3,14 @@
 {% load custom_filters %}
 {% load widget_tweaks %}
 
-{% block title %}{{ title }} | Neurology | HMS{% endblock %}
+{% block title %}{{ title }} | Dermatology | HMS{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
-        <a href="{% url 'neurology:neurology_records' %}" class="btn btn-secondary btn-icon-split">
+        <a href="{% url 'dermatology:dermatology_records' %}" class="btn btn-secondary btn-icon-split">
             <span class="icon text-white-50">
                 <i class="fas fa-arrow-left"></i>
             </span>
@@ -78,7 +78,7 @@
                     </div>
                 </div>
 
-                <!-- Treatment Status and Neurologist -->
+                <!-- Treatment Status and Dermatologist -->
                 <div class="form-group row">
                     <div class="col-sm-6">
                         <label>Treatment Status *</label>
@@ -88,10 +88,10 @@
                         {% endif %}
                     </div>
                     <div class="col-sm-6">
-                        <label>Neurologist</label>
-                        {{ form.neurologist|add_class:"form-control" }}
-                        {% if form.neurologist.errors %}
-                        <div class="text-danger">{{ form.neurologist.errors }}</div>
+                        <label>Dermatologist</label>
+                        {{ form.dermatologist|add_class:"form-control" }}
+                        {% if form.dermatologist.errors %}
+                        <div class="text-danger">{{ form.dermatologist.errors }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -131,7 +131,7 @@
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-save"></i> Save Record
                         </button>
-                        <a href="{% url 'neurology:neurology_records' %}" class="btn btn-secondary btn-lg">
+                        <a href="{% url 'dermatology:dermatology_records' %}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-times"></i> Cancel
                         </a>
                     </div>
@@ -147,7 +147,7 @@
 // Add any form-specific JavaScript here
 $(document).ready(function() {
     // Initialize any special form behaviors
-    console.log('Neurology record form initialized');
+    console.log('Dermatology record form initialized');
 });
 </script>
 {% endblock %}
