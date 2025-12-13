@@ -25,8 +25,9 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
 
             # Check if admission fee has already been deducted to prevent double deduction
             from patients.models import WalletTransaction
+            from django.db.models import Q
             existing_admission_fee = WalletTransaction.objects.filter(
-                wallet__patient=instance.patient,
+                Q(patient_wallet__patient=instance.patient) | Q(shared_wallet__patient=instance.patient),
                 transaction_type='admission_fee',
                 admission=instance  # Use FK relationship for accurate duplicate detection
             ).exists()

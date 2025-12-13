@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
 from patients.models import Patient, PatientWallet
@@ -148,7 +149,7 @@ class Admission(models.Model):
         # Fallback to date-range method for backward compatibility
         # Get admission fee
         admission_fee = WalletTransaction.objects.filter(
-            wallet__patient=self.patient,
+            Q(patient=self.patient) | Q(patient_wallet__patient=self.patient),
             transaction_type='admission_fee',
             created_at__gte=self.admission_date
         ).aggregate(total=models.Sum('amount'))['total'] or 0
@@ -158,14 +159,14 @@ class Admission(models.Model):
         end_date = self.discharge_date.date() if self.discharge_date else timezone.now().date()
 
         daily_charges = WalletTransaction.objects.filter(
-            wallet__patient=self.patient,
+            Q(patient=self.patient) | Q(patient_wallet__patient=self.patient),
             transaction_type='daily_admission_charge',
             created_at__date__range=[admission_date, end_date]
         ).aggregate(total=models.Sum('amount'))['total'] or 0
 
         # Also include admission_payment transactions for this admission
         admission_payments = WalletTransaction.objects.filter(
-            wallet__patient=self.patient,
+            Q(patient=self.patient) | Q(patient_wallet__patient=self.patient),
             transaction_type='admission_payment',
             created_at__date__range=[admission_date, end_date],
             admission=self  # Ensure it's linked to this specific admission
