@@ -294,7 +294,7 @@ def appointment_calendar(request):
 @login_required
 def doctor_appointments(request, doctor_id):
     """View for displaying appointments for a specific doctor"""
-    doctor = get_object_or_404(User, id=doctor_id)
+    doctor = get_object_or_404(CustomUser, id=doctor_id)
 
     # Get date range from request, default to today
     date_str = request.GET.get('date')
@@ -341,7 +341,7 @@ def doctor_appointments(request, doctor_id):
 def manage_doctor_schedule(request, doctor_id=None):
     """View for managing doctor schedules"""
     if doctor_id:
-        doctor = get_object_or_404(User, id=doctor_id)
+        doctor = get_object_or_404(CustomUser, id=doctor_id)
         schedules = DoctorSchedule.objects.filter(doctor=doctor).order_by('weekday')
     else:
         doctor = None
