@@ -145,7 +145,7 @@ Create Surgery
 
 {% block content %}
 <div class="container mt-4">
-    < <div class="card">
+    <div class="card">
         <div class="card-header">
             <h2 class="card-title">{% if form.instance.pk %}Edit Surgery{% else %}Create Surgery{% endif %}</h2>
         </div>
@@ -173,7 +173,7 @@ Create Surgery
                 
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="id_patient_search">Search Patient <span class="text-danger">*</span></label>
                             <div class="position-relative">
                                 {{ form.patient_search }}
@@ -218,7 +218,7 @@ Create Surgery
                         {{ form.patient }}
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="{{ form.surgery_type.id_for_label }}">
                                 Surgery Type <small class="text-muted">(Optional - can be specified later)</small>
                             </label>
@@ -234,7 +234,7 @@ Create Surgery
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="{{ form.primary_surgeon.id_for_label }}">
                                 Primary Surgeon <small class="text-muted">(Optional - can be assigned later)</small>
                             </label>
@@ -248,7 +248,7 @@ Create Surgery
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="{{ form.anesthetist.id_for_label }}">
                                 Anesthetist <small class="text-muted">(Optional - can be assigned later)</small>
                             </label>
@@ -264,7 +264,7 @@ Create Surgery
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="{{ form.theatre.id_for_label }}">
                                 Operation Theatre <small class="text-muted">(Optional - can be assigned later)</small>
                             </label>
@@ -283,7 +283,7 @@ Create Surgery
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="{{ form.scheduled_date.id_for_label }}">
                                 Scheduled Date/Time <small class="text-muted">(Optional - can be scheduled later)</small>
                             </label>
@@ -297,7 +297,7 @@ Create Surgery
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="{{ form.expected_duration.id_for_label }}">
                                 Expected Duration <small class="text-muted">(Optional - can be estimated later)</small>
                             </label>
@@ -375,7 +375,7 @@ Create Surgery
                 </div>
                 
                 <!-- Authorization Code Field (only for NHIA patients) -->
-                <div class="form-group" id="authorization-code-section" style="display: none;">
+                <div class="mb-3" id="authorization-code-section" style="display: none;">
                     <label for="id_authorization_code">
                         NHIA Authorization Code <small class="text-muted">(Optional - for NHIA patients)</small>
                     </label>
