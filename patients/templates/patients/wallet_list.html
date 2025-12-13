@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block title %}All Wallets - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.wallet-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #e3e6f0;
+}
+.wallet-card:hover {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    border-left-color: #4e73df;
+}
+.wallet-card.positive {
+    border-left-color: #1cc88a;
+}
+.wallet-card.negative {
+    border-left-color: #e74a3b;
+}
+.wallet-card.zero {
+    border-left-color: #f6c23e;
+}
+.search-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.35rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    margin-bottom: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">All Patient Wallets</h1>
+        <a href="{% url 'patients:register' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus fa-sm"></i> Register New Patient
+        </a>
+    </div>
+
+    <!-- Search Form -->
+    <div class="search-container">
+        <h4 class="mb-4">Search & Filter Wallets</h4>
+        <form method="get" class="mb-4">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="{{ search_form.patient_name.id_for_label }}" class="form-label">Patient Name</label>
+                    {{ search_form.patient_name }}
+                    <small class="form-text text-muted">Search by first or last name</small>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="{{ search_form.patient_id_or_phone.id_for_label }}" class="form-label">Patient ID or Phone</label>
+                    {{ search_form.patient_id_or_phone }}
+                    <small class="form-text text-muted">Search by patient ID or phone number</small>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="{{ search_form.patient_type.id_for_label }}" class="form-label">Patient Type</label>
+                    {{ search_form.patient_type }}
+                    <small class="form-text text-muted">Filter by patient type</small>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="{{ search_form.balance_filter.id_for_label }}" class="form-label">Balance Filter</label>
+                    {{ search_form.balance_filter }}
+                    <small class="form-text text-muted">Filter by balance status</small>
+                </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="{{ search_form.min_balance.id_for_label }}" class="form-label">Minimum Balance</label>
+                    {{ search_form.min_balance }}
+                    <small class="form-text text-muted">Minimum wallet balance</small>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="{{ search_form.max_balance.id_for_label }}" class="form-label">Maximum Balance</label>
+                    {{ search_form.max_balance }}
+                    <small class="form-text text-muted">Maximum wallet balance</small>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label>&nbsp;</label>
+                    <div class="d-flex flex-column h-100">
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{% url 'patients:wallet_list' %}" class="btn btn-secondary btn-block mt-2">
+                            <i class="fas fa-redo"></i> Clear Filters
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Wallets</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_wallets }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Balance</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_balance|currency }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Positive Wallets</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ positive_wallets }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-arrow-up fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Negative Wallets</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ negative_wallets }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-arrow-down fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wallet List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Patient Wallets</h6>
+        </div>
+        <div class="card-body">
+            {% if wallets %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Patient</th>
+                            <th>Patient ID</th>
+                            <th>Type</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for wallet in wallets %}
+                        <tr class="wallet-card {% if wallet.balance > 0 %}positive{% elif wallet.balance < 0 %}negative{% else %}zero{% endif %}">
+                            <td>
+                                <a href="{% url 'patients:wallet_dashboard' wallet.patient.id %}" class="text-decoration-none">
+                                    {{ wallet.patient.get_full_name }}
+                                </a>
+                            </td>
+                            <td>{{ wallet.patient.patient_id }}</td>
+                            <td>
+                                {% if wallet.patient.is_nhia %}
+                                <span class="badge bg-info">NHIA</span>
+                                {% elif wallet.patient.is_retainership %}
+                                <span class="badge bg-success">Retainership</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Regular</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-weight-bold {% if wallet.balance > 0 %}text-success{% elif wallet.balance < 0 %}text-danger{% else %}text-warning{% endif %}">
+                                {{ wallet.balance|currency }}
+                            </td>
+                            <td>
+                                {% if wallet.balance > 0 %}
+                                <span class="badge bg-success">Positive</span>
+                                {% elif wallet.balance < 0 %}
+                                <span class="badge bg-danger">Negative</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Zero</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'patients:wallet_dashboard' wallet.patient.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{% url 'patients:detail' wallet.patient.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-user"></i> Profile
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No wallets found matching your search criteria.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add any additional JavaScript if needed
+</script>
+{% endblock %}

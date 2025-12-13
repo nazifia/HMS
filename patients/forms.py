@@ -1305,3 +1305,79 @@ class TransferBetweenWalletsForm(forms.Form):
         if source_wallet:
             # Exclude the source wallet from recipient choices
             self.fields['recipient_wallet'].queryset = SharedWallet.objects.exclude(id=source_wallet.id)
+
+
+class WalletSearchForm(forms.Form):
+    """
+    Form for searching patient wallets with focus on name and number search
+    """
+    PATIENT_TYPE_CHOICES = [
+        ('', 'All Patient Types'),
+        ('regular', 'Regular'),
+        ('nhia', 'NHIA'),
+        ('retainership', 'Retainership'),
+    ]
+    
+    BALANCE_FILTER_CHOICES = [
+        ('', 'All Balances'),
+        ('positive', 'Positive Balance'),
+        ('zero', 'Zero Balance'),
+        ('negative', 'Negative Balance'),
+    ]
+    
+    # Focused search fields for name and number
+    patient_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by patient name (first or last)'
+        }),
+        label='Patient Name'
+    )
+    
+    patient_id_or_phone = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by patient ID or phone number'
+        }),
+        label='Patient ID or Phone Number'
+    )
+    
+    patient_type = forms.ChoiceField(
+        choices=PATIENT_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Patient Type'
+    )
+    
+    balance_filter = forms.ChoiceField(
+        choices=BALANCE_FILTER_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Balance Filter'
+    )
+    
+    min_balance = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'placeholder': 'Minimum balance'
+        }),
+        label='Minimum Balance'
+    )
+    
+    max_balance = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'placeholder': 'Maximum balance'
+        }),
+        label='Maximum Balance'
+    )

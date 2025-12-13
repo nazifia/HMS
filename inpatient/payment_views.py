@@ -199,7 +199,7 @@ def process_outstanding_admission_payment(request, admission_id):
     # Check if user has permission to process wallet payments
     # Only billing staff and authorized personnel should be able to process wallet payments
     user_roles = request.user.roles.values_list('name', flat=True)
-    if not any(role in ['billing_staff', 'admin', 'cashier'] for role in user_roles):
+    if not (request.user.is_superuser or any(role in ['billing_staff', 'admin', 'cashier'] for role in user_roles)):
         messages.error(request, 'You do not have permission to process wallet payments.')
         return redirect('inpatient:admission_detail', pk=admission.id)
     
@@ -339,7 +339,7 @@ def ajax_process_outstanding_admission_payment(request, admission_id):
 
         # Check if user has permission to process wallet payments
         user_roles = request.user.roles.values_list('name', flat=True)
-        if not any(role in ['billing_staff', 'admin', 'cashier'] for role in user_roles):
+        if not (request.user.is_superuser or any(role in ['billing_staff', 'admin', 'cashier'] for role in user_roles)):
             return JsonResponse({
                 'success': False,
                 'message': 'You do not have permission to process wallet payments.'

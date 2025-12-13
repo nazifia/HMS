@@ -1025,10 +1025,64 @@ def wallet_payment(request, patient_id):
 
 @login_required
 def wallet_list(request):
-    """View to display all patient wallets"""
+    """View to display all patient wallets with search functionality"""
+    from .forms import WalletSearchForm
+    
+    # Initialize search form
+    search_form = WalletSearchForm(request.GET or None)
+    
+    # Start with all wallets
     wallets = PatientWallet.objects.select_related('patient').all()
     
-    # Calculate statistics
+    # Apply search filters if form is valid
+    if search_form.is_valid():
+        patient_name = search_form.cleaned_data.get('patient_name')
+        patient_id_or_phone = search_form.cleaned_data.get('patient_id_or_phone')
+        patient_type = search_form.cleaned_data.get('patient_type')
+        balance_filter = search_form.cleaned_data.get('balance_filter')
+        min_balance = search_form.cleaned_data.get('min_balance')
+        max_balance = search_form.cleaned_data.get('max_balance')
+        
+        # Apply name search filter
+        if patient_name:
+            wallets = wallets.filter(
+                Q(patient__first_name__icontains=patient_name) |
+                Q(patient__last_name__icontains=patient_name)
+            )
+        
+        # Apply ID or phone number search filter
+        if patient_id_or_phone:
+            wallets = wallets.filter(
+                Q(patient__patient_id__icontains=patient_id_or_phone) |
+                Q(patient__phone_number__icontains=patient_id_or_phone)
+            )
+        
+        # Apply patient type filter
+        if patient_type:
+            if patient_type == 'nhia':
+                wallets = wallets.filter(patient__is_nhia=True)
+            elif patient_type == 'retainership':
+                wallets = wallets.filter(patient__is_retainership=True)
+            elif patient_type == 'regular':
+                wallets = wallets.filter(patient__is_nhia=False, patient__is_retainership=False)
+        
+        # Apply balance filter
+        if balance_filter:
+            if balance_filter == 'positive':
+                wallets = wallets.filter(balance__gt=0)
+            elif balance_filter == 'zero':
+                wallets = wallets.filter(balance=0)
+            elif balance_filter == 'negative':
+                wallets = wallets.filter(balance__lt=0)
+        
+        # Apply min/max balance filters
+        if min_balance is not None:
+            wallets = wallets.filter(balance__gte=min_balance)
+        
+        if max_balance is not None:
+            wallets = wallets.filter(balance__lte=max_balance)
+    
+    # Calculate statistics for filtered results
     total_balance = sum(wallet.balance for wallet in wallets)
     positive_wallets = sum(1 for wallet in wallets if wallet.balance > 0)
     zero_wallets = sum(1 for wallet in wallets if wallet.balance == 0)
@@ -1040,6 +1094,8 @@ def wallet_list(request):
         'positive_wallets': positive_wallets,
         'zero_wallets': zero_wallets,
         'negative_wallets': negative_wallets,
+        'search_form': search_form,
+        'total_wallets': wallets.count(),
         'page_title': 'All Wallets',
         'active_nav': 'wallet',
     }
