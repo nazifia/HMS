@@ -45,9 +45,24 @@ def comprehensive_transaction_history(request, patient_id=None):
         created_at__date__range=[date_from, date_to]
     )
     if patient:
-        wallet_transactions = wallet_transactions.filter(wallet__patient=patient)
+        wallet_transactions = wallet_transactions.filter(
+            Q(patient=patient) | 
+            Q(patient_wallet__patient=patient) | 
+            Q(shared_wallet__patient=patient)
+        )
     
     for wt in wallet_transactions:
+        # Get patient from wallet transaction
+        transaction_patient = None
+        if wt.patient:
+            transaction_patient = wt.patient
+        elif wt.patient_wallet:
+            transaction_patient = wt.patient_wallet.patient
+        elif wt.shared_wallet:
+            # For shared wallets, patient should be in the direct patient field
+            # If not, we can't determine the patient from shared wallet alone
+            transaction_patient = wt.patient  # This will be None if not set
+            
         transactions.append({
             'date': wt.created_at,
             'type': 'Wallet Transaction',
@@ -56,7 +71,7 @@ def comprehensive_transaction_history(request, patient_id=None):
             'balance_after': wt.balance_after,
             'description': wt.description,
             'reference': wt.reference_number,
-            'patient': wt.wallet.patient,
+            'patient': transaction_patient,
             'created_by': wt.created_by,
             'status': wt.get_status_display(),
             'source': 'wallet',
