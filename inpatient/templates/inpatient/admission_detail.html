@@ -4,6 +4,8 @@
 
 {% block content %}
 <div class="container">
+    <!-- CSRF Token for AJAX requests -->
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <h2>{{ title }}</h2>
     <div class="card">
         <div class="card-header">
@@ -194,12 +196,12 @@
             <!-- Payment Status Summary -->
             <div class="row mt-4">
                 <div class="col-12">
-                    <div class="alert alert-{% if admission.get_outstanding_admission_cost > 0 %}warning{% else %}success{% endif %} alert-dismissible fade show" role="alert">
+                    <div class="alert alert-{% if admission.get_outstanding_admission_cost > 0 %}warning{% else %}success{% endif %} alert-dismissible fade show" role="alert" id="paymentStatusAlert">
                         <h6 class="alert-heading">
                             <i class="fas fa-{% if admission.get_outstanding_admission_cost > 0 %}exclamation-triangle{% else %}check-circle{% endif %}"></i>
                             Payment Status
                         </h6>
-                        <p class="mb-2">
+                        <p class="mb-2" id="paymentStatusText">
                             <strong>Total Cost:</strong> {{ admission.get_total_cost|currency }} |
                             <strong>Paid from Wallet:</strong> {{ admission.get_actual_charges_from_wallet|currency }} |
                             <strong>Outstanding:</strong> {{ admission.get_outstanding_admission_cost|currency }}
@@ -268,6 +270,31 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Hidden elements for payment processing -->
+    <div id="paymentForm" style="display: none;">
+        <!-- This div is shown during normal form display -->
+    </div>
+    <div id="paymentLoading" style="display: none;">
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Processing payment...</p>
+        </div>
+    </div>
+    <div id="paymentSuccess" style="display: none;">
+        <div class="alert alert-success">
+            <h4 class="alert-heading">Payment Successful!</h4>
+            <p id="successMessage">Your payment has been processed successfully.</p>
+        </div>
+    </div>
+    <div id="paymentError" style="display: none;">
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Payment Error</h4>
+            <p id="errorMessage">An error occurred while processing your payment.</p>
         </div>
     </div>
 
@@ -652,7 +679,7 @@ $(document).ready(function() {
 
         // Make AJAX request
         $.ajax({
-            url: `/inpatient/admissions/${admissionId}/payment/ajax-process-outstanding/`,
+            url: `{% url 'inpatient:ajax_process_outstanding_admission_payment' admission.id %}`.replace(admission.id, admissionId),
             method: 'POST',
             headers: {
                 'X-CSRFToken': csrfToken,
@@ -663,6 +690,7 @@ $(document).ready(function() {
                     // Show success message
                     $('#paymentForm').hide();
                     $('#paymentLoading').hide();
+                    $('#successMessage').text(response.message);
                     $('#paymentSuccess').show();
 
                     // Update page data
@@ -676,9 +704,9 @@ $(document).ready(function() {
                         $('.card.border-left-danger .h5').first().text('₦' + outstandingAmount.toLocaleString('en-US', {minimumFractionDigits: 2}));
 
                         // Update payment status alert
-                        const paymentStatusAlert = $('.alert-warning, .alert-success').first();
+                        const paymentStatusAlert = $('#paymentStatusAlert');
                         if (paymentStatusAlert.length) {
-                            const alertText = paymentStatusAlert.find('p').first();
+                            const alertText = $('#paymentStatusText');
                             if (alertText.length) {
                                 if (outstandingAmount > 0) {
                                     alertText.html(
@@ -711,16 +739,16 @@ $(document).ready(function() {
                     // Show error message
                     $('#paymentForm').hide();
                     $('#paymentLoading').hide();
-                    $('#paymentError').show();
                     $('#errorMessage').text(response.message);
+                    $('#paymentError').show();
                 }
             },
             error: function(xhr, status, error) {
                 // Show error message
                 $('#paymentForm').hide();
                 $('#paymentLoading').hide();
-                $('#paymentError').show();
                 $('#errorMessage').text('An error occurred while processing the payment. Please try again.');
+                $('#paymentError').show();
                 console.error('Payment processing error:', error);
             }
         });

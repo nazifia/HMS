@@ -14,6 +14,53 @@
         </div>
     </div>
 
+    <!-- Search Form -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search Patients</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" action="" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Name, ID, or Phone</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Search..." value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="patient_id_or_phone" class="form-label">Patient ID/Phone</label>
+                    <input type="text" class="form-control" id="patient_id_or_phone" name="patient_id_or_phone" placeholder="ID or Phone" value="{{ request.GET.patient_id_or_phone }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="patient_type" class="form-label">Patient Type</label>
+                    <select class="form-select" id="patient_type" name="patient_type">
+                        <option value="" {% if not request.GET.patient_type %}selected{% endif %}>All Types</option>
+                        <option value="nhia" {% if request.GET.patient_type == 'nhia' %}selected{% endif %}>NHIA</option>
+                        <option value="retainership" {% if request.GET.patient_type == 'retainership' %}selected{% endif %}>Retainership</option>
+                        <option value="regular" {% if request.GET.patient_type == 'regular' %}selected{% endif %}>Regular</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="balance_filter" class="form-label">Balance Filter</label>
+                    <select class="form-select" id="balance_filter" name="balance_filter">
+                        <option value="" {% if not request.GET.balance_filter %}selected{% endif %}>All Balances</option>
+                        <option value="positive" {% if request.GET.balance_filter == 'positive' %}selected{% endif %}>Positive</option>
+                        <option value="zero" {% if request.GET.balance_filter == 'zero' %}selected{% endif %}>Zero</option>
+                        <option value="negative" {% if request.GET.balance_filter == 'negative' %}selected{% endif %}>Negative</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <a href="{% url 'patients:wallet_list' %}" class="btn btn-secondary w-100">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Wallet Statistics -->
     <div class="row">
         <div class="col-xl-3 col-md-6 mb-4">
@@ -155,10 +202,51 @@
 <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
 <script>
     $(document).ready(function() {
-        $('#walletsTable').DataTable({
+        // Initialize DataTable
+        var table = $('#walletsTable').DataTable({
             "order": [[2, "desc"]], // Sort by balance (descending)
             "pageLength": 25,
             "responsive": true,
+        });
+
+        // Real-time filtering for search fields
+        $('#search, #patient_id_or_phone').on('keyup', function() {
+            table.search($(this).val()).draw();
+        });
+
+        // Real-time filtering for dropdowns
+        $('#patient_type, #balance_filter').on('change', function() {
+            var patientType = $('#patient_type').val();
+            var balanceFilter = $('#balance_filter').val();
+            var searchValue = $('#search').val();
+            var idPhoneValue = $('#patient_id_or_phone').val();
+            
+            // Combine all filters
+            var combinedSearch = searchValue + ' ' + idPhoneValue;
+            
+            // Apply search filter
+            table.search(combinedSearch).draw();
+            
+            // Apply column-specific filters
+            // Filter by patient type (column 1 - Patient ID)
+            if (patientType) {
+                table.column(1).search(patientType).draw();
+            } else {
+                table.column(1).search('').draw();
+            }
+            
+            // Filter by balance (column 2 - Balance)
+            if (balanceFilter) {
+                if (balanceFilter === 'positive') {
+                    table.column(2).search('>0', true, false).draw();
+                } else if (balanceFilter === 'zero') {
+                    table.column(2).search('=0', true, false).draw();
+                } else if (balanceFilter === 'negative') {
+                    table.column(2).search('<0', true, false).draw();
+                }
+            } else {
+                table.column(2).search('').draw();
+            }
         });
     });
 </script>

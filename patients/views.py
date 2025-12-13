@@ -1060,11 +1060,11 @@ def wallet_list(request):
         # Apply patient type filter
         if patient_type:
             if patient_type == 'nhia':
-                wallets = wallets.filter(patient__is_nhia=True)
+                wallets = wallets.filter(patient__patient_type='nhia')
             elif patient_type == 'retainership':
-                wallets = wallets.filter(patient__is_retainership=True)
+                wallets = wallets.filter(patient__patient_type='retainership')
             elif patient_type == 'regular':
-                wallets = wallets.filter(patient__is_nhia=False, patient__is_retainership=False)
+                wallets = wallets.filter(patient__patient_type='regular')
         
         # Apply balance filter
         if balance_filter:
