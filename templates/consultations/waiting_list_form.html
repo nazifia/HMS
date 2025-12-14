@@ -26,10 +26,14 @@
                         <div class="mb-3">
                             <label for="{{ form.patient.id_for_label }}" class="form-label">Patient</label>
                             <div class="input-group">
-                                <input type="text" id="patient-search" class="form-control" placeholder="Search patient by name or ID...">
+                                {% comment %} <input type="text" id="patient-search" class="form-control" 
+                                       placeholder="Search patient by name or ID...">
                                 <button class="btn btn-outline-secondary" type="button" id="search-patient-btn">
                                     <i class="fas fa-search"></i>
-                                </button>
+                                </button> {% endcomment %}
+                                <span class="search-loading ms-2" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
                             </div>
                             <div class="mt-2">
                                 {{ form.patient|add_class:"form-control select2" }}
@@ -39,6 +43,7 @@
                                     </div>
                                 {% endif %}
                             </div>
+                            <div id="search-feedback" class="text-danger mt-2" style="display: none;"></div>
                         </div>
 
                         <div class="row">
@@ -114,146 +119,246 @@
 
 {% block extra_js %}
 <script>
-    $(document).ready(function() {
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            width: '100%'
-        });
+    // Initialize Select2 for dropdowns
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Select2
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+        }
 
-        // Patient search functionality
-        $('#search-patient-btn').click(function() {
-            var searchTerm = $('#patient-search').val().trim();
-            if (searchTerm.length >= 2) {
-                // Try AJAX search first, but expect it might fail due to permissions
-                // So immediately also do client-side filtering for better UX
+        // Set up patient search functionality
+        const searchInput = document.getElementById('patient-search');
+        const searchButton = document.getElementById('search-patient-btn');
+        const loadingIndicator = document.querySelector('.search-loading');
+        
+        if (searchInput && searchButton) {
+            // Search button click handler
+            searchButton.addEventListener('click', function() {
+                performPatientSearch();
+            });
+            
+            // Enter key handler
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    performPatientSearch();
+                }
+            });
+            
+            // Debounced search on input
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                if (this.value.trim().length >= 2) {
+                    searchTimeout = setTimeout(performPatientSearch, 500);
+                }
+            });
+        }
+
+        // Perform patient search using HTMX
+        function performPatientSearch() {
+            const searchTerm = searchInput.value.trim();
+            
+            if (searchTerm.length === 0) {
+                return;
+            }
+            
+            if (searchTerm.length < 2) {
+                showFeedback('Please enter at least 2 characters to search.', 'warning');
+                return;
+            }
+            
+            // Show loading indicator
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'inline-block';
+            }
+            
+            // Check if user is likely authenticated
+            const isAuthenticated = document.cookie.includes('hms_sessionid') || document.cookie.includes('sessionid');
+            
+            if (!isAuthenticated) {
+                showFeedback('Please login to use server search. Using client-side search instead.', 'warning');
                 filterPatientDropdown(searchTerm);
-                searchPatients(searchTerm);
-            } else if (searchTerm.length > 0) {
-                alert('Please enter at least 2 characters to search.');
-            } else {
-                // If search is empty, show all patients
-                location.reload();
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+                return;
             }
-        });
-
-        // Also search when Enter key is pressed
-        $('#patient-search').keypress(function(e) {
-            if (e.which == 13) {  // Enter key
-                e.preventDefault();
-                $('#search-patient-btn').click();
-            }
-        });
-
-        function searchPatients(searchTerm) {
-            $.ajax({
-                url: '/patients/search/',
-                data: {
-                    'q': searchTerm
-                },
-                dataType: 'json',
-                beforeSend: function(xhr, settings) {
-                    // Add CSRF token for POST requests if needed
-                    if (settings.type.toUpperCase() === 'POST') {
-                        xhr.setRequestHeader('X-CSRFToken', $('input[name=csrfmiddlewaretoken]').val());
+            
+            // Use HTMX to make the request
+            if (typeof htmx !== 'undefined' && htmx.ajax) {
+                const url = '/patients/search/?q=' + encodeURIComponent(searchTerm);
+                
+                htmx.ajax('GET', url, {
+                    target: '#patient-search-results',
+                    swap: 'innerHTML'
+                }).then(function() {
+                    // Request completed, hide loading indicator
+                    if (loadingIndicator) {
+                        loadingIndicator.style.display = 'none';
                     }
-                },
-                success: function(data) {
-                    if (data.patients && data.patients.length > 0) {
-                        updatePatientDropdown(data.patients);
-                    } else {
-                        alert('No patients found matching: ' + searchTerm);
-                        // Fallback to client-side search
+                }).catch(function(error) {
+                    console.error('HTMX request failed:', error);
+                    showFeedback('Server search failed. Using client-side search.', 'warning');
+                    filterPatientDropdown(searchTerm);
+                    if (loadingIndicator) {
+                        loadingIndicator.style.display = 'none';
+                    }
+                });
+            } else {
+                // HTMX not available, fall back to client-side search
+                showFeedback('HTMX not available. Using client-side search.', 'warning');
+                filterPatientDropdown(searchTerm);
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+            }
+        }
+
+        // Handle HTMX response by listening to HTMX events
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.path === '/patients/search/') {
+                const xhr = evt.detail.xhr;
+                if (xhr.status === 200) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (data.patients && data.patients.length > 0) {
+                            updatePatientDropdown(data.patients);
+                            showFeedback('Found ' + data.patients.length + ' patients via server search.', 'success');
+                        } else {
+                            showFeedback('No patients found via server search. Using client-side search.', 'warning');
+                            const searchTerm = searchInput.value.trim();
+                            if (searchTerm.length >= 2) {
+                                filterPatientDropdown(searchTerm);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error parsing search response:', e);
+                        showFeedback('Error parsing search results. Using client-side search.', 'warning');
+                    }
+                } else if (xhr.status === 302 || xhr.status === 403) {
+                    showFeedback('Please login to use server search. Using client-side search.', 'warning');
+                    const searchTerm = searchInput.value.trim();
+                    if (searchTerm.length >= 2) {
                         filterPatientDropdown(searchTerm);
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Search error:', error);
-                    var errorMessage = 'Error searching for patients. ';
-                    
-                    if (xhr.status === 302) {
-                        errorMessage += 'Please login to use server search. ';
-                    } else if (xhr.status === 403) {
-                        errorMessage += 'You don\'t have permission to use server search. ';
-                    } else if (xhr.status === 404) {
-                        errorMessage += 'Search endpoint not found. ';
-                    } else {
-                        errorMessage += error + '. ';
+                } else if (xhr.status === 404) {
+                    showFeedback('Search endpoint not found. Using client-side search.', 'warning');
+                    const searchTerm = searchInput.value.trim();
+                    if (searchTerm.length >= 2) {
+                        filterPatientDropdown(searchTerm);
                     }
-                    
-                    errorMessage += 'Using client-side search instead.';
-                    alert(errorMessage);
-                    
-                    // Fallback to client-side search is already done above
                 }
-            });
-        }
-
-        function updatePatientDropdown(patients) {
-            var select = $('#id_patient');
-            select.empty();
-            
-            // Add default option
-            select.append($('<option></option>').val('').text('---------'));
-            
-            // Add matching patients
-            $.each(patients, function(index, patient) {
-                var displayText = patient.name + ' (' + patient.patient_id + ') - ' + patient.phone_number;
-                select.append($('<option></option>').val(patient.id).text(displayText));
-            });
-            
-            select.trigger('change');
-        }
-        
-        // Client-side search fallback function
-        function filterPatientDropdown(searchTerm) {
-            var select = $('#id_patient');
-            var originalOptions = select.find('option').clone();
-            
-            select.empty();
-            select.append($('<option></option>').val('').text('---------'));
-            
-            var matchesFound = 0;
-            originalOptions.each(function() {
-                var option = $(this);
-                if (option.val() === '') return; // Skip empty option
                 
-                var optionText = option.text().toLowerCase();
-                var searchLower = searchTerm.toLowerCase();
-                
-                // Check if option text contains search term
-                if (optionText.includes(searchLower)) {
-                    select.append(option.clone());
-                    matchesFound++;
+                // Hide loading indicator
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
                 }
-            });
-            
-            select.trigger('change');
-            
-            // Show user feedback
-            if (matchesFound === 0) {
-                alert('No matching patients found in the current list. Try a different search term.');
-            } else {
-                console.log('Found ' + matchesFound + ' matching patients');
-            }
-        }
-
-        // When patient changes, update appointment options
-        $('#id_patient').change(function() {
-            var patientId = $(this).val();
-            if (patientId) {
-                // You could make an AJAX call here to get appointments for this patient
-                // For now, we'll just clear the current selection
-                $('#id_appointment').val(null).trigger('change');
             }
         });
 
-        // When doctor changes, update consulting room options
-        $('#id_doctor').change(function() {
-            var doctorId = $(this).val();
-            if (doctorId) {
-                // You could make an AJAX call here to get rooms for this doctor
-                // For now, we'll just clear the current selection
-                $('#id_consulting_room').val(null).trigger('change');
+        // Update patient dropdown with search results
+        function updatePatientDropdown(patients) {
+            const select = document.getElementById('id_patient');
+            if (!select) return;
+            
+            // Clear existing options (except the first empty option)
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            // Add new options
+            patients.forEach(function(patient) {
+                const option = document.createElement('option');
+                option.value = patient.id;
+                option.text = patient.name + ' (' + patient.patient_id + ') - ' + patient.phone_number;
+                select.add(option);
+            });
+            
+            // Trigger change event
+            if (typeof Event === 'function') {
+                select.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // Client-side search fallback
+        function filterPatientDropdown(searchTerm) {
+            const select = document.getElementById('id_patient');
+            if (!select) return;
+            
+            const options = select.options;
+            let matchesFound = 0;
+            
+            // Show all options first
+            for (let i = 0; i < options.length; i++) {
+                options[i].style.display = '';
+            }
+            
+            // Filter options
+            for (let i = 0; i < options.length; i++) {
+                const option = options[i];
+                if (option.value === '') continue; // Skip empty option
+                
+                const optionText = option.text.toLowerCase();
+                const searchLower = searchTerm.toLowerCase();
+                
+                if (optionText.includes(searchLower)) {
+                    option.style.display = '';
+                    matchesFound++;
+                } else {
+                    option.style.display = 'none';
+                }
+            }
+            
+            // Show feedback
+            if (matchesFound === 0) {
+                showFeedback('No matching patients found. Try a different search term.', 'danger');
+            } else {
+                showFeedback('Found ' + matchesFound + ' matching patients.', 'success');
+            }
+        }
+
+        // Show feedback message
+        function showFeedback(message, type) {
+            const feedbackDiv = document.getElementById('search-feedback');
+            if (feedbackDiv) {
+                feedbackDiv.textContent = message;
+                feedbackDiv.className = 'text-' + type + ' mt-2';
+                feedbackDiv.style.display = 'block';
+            }
+        }
+
+        // Handle Enter key for search
+        document.getElementById('patient-search')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const searchTerm = this.value.trim();
+                if (searchTerm.length >= 2) {
+                    // Trigger HTMX search manually if needed
+                    if (typeof htmx !== 'undefined' && htmx.trigger) {
+                        htmx.trigger(this, 'search');
+                    }
+                } else if (searchTerm.length > 0) {
+                    showFeedback('Please enter at least 2 characters to search.', 'warning');
+                }
+            }
+        });
+
+        // Handle empty search (show all patients)
+        document.getElementById('patient-search')?.addEventListener('input', function(e) {
+            if (this.value.trim().length === 0) {
+                // Show all options when search is cleared
+                const select = document.getElementById('id_patient');
+                if (select) {
+                    const options = select.options;
+                    for (let i = 0; i < options.length; i++) {
+                        options[i].style.display = '';
+                    }
+                }
+                showFeedback('', 'danger'); // Clear feedback
             }
         });
     });
