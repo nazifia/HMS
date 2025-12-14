@@ -613,7 +613,7 @@
         {% endif %}
 
         <!-- Nav Item - Wallet Management -->
-        {% if user.is_superuser or user|can_show_ui:'menu_billing' %}
+        {% if user.is_superuser or user|can_show_ui:'menu_billing' or user|has_permission:'wallet.manage' %}
         <li class="nav-item {% if '/patients/wallet/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/patients/wallet/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseWallet" aria-expanded="{% if '/patients/wallet/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseWallet">
                 <i class="fas fa-fw fa-wallet text-white"></i>

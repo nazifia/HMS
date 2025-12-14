@@ -10,7 +10,7 @@ from decimal import Decimal
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def shared_wallet_list(request):
     """List all shared wallets"""
     wallets = SharedWallet.objects.all().order_by('-created_at')
@@ -44,7 +44,7 @@ def shared_wallet_list(request):
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def create_shared_wallet(request):
     """Create a new shared wallet"""
     if request.method == 'POST':
@@ -64,7 +64,7 @@ def create_shared_wallet(request):
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def shared_wallet_detail(request, wallet_id):
     """View details of a shared wallet"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id)
@@ -96,7 +96,7 @@ def shared_wallet_detail(request, wallet_id):
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def add_member_to_wallet(request, wallet_id):
     """Add a patient to a shared wallet"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id)
@@ -131,7 +131,7 @@ def add_member_to_wallet(request, wallet_id):
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def remove_member_from_wallet(request, wallet_id, membership_id):
     """Remove a patient from a shared wallet"""
     membership = get_object_or_404(WalletMembership, id=membership_id, wallet_id=wallet_id)
@@ -163,7 +163,7 @@ def remove_member_from_wallet(request, wallet_id, membership_id):
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def add_funds_to_shared_wallet(request, wallet_id):
     """Add funds to a shared wallet"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id)
@@ -196,7 +196,7 @@ def add_funds_to_shared_wallet(request, wallet_id):
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def transfer_between_wallets(request, wallet_id):
     """Transfer funds between shared wallets"""
     source_wallet = get_object_or_404(SharedWallet, id=wallet_id)
@@ -241,7 +241,7 @@ def transfer_between_wallets(request, wallet_id):
 
 
 @login_required
-@permission_required('patients.manage_shared_wallets')
+@permission_required('wallet.manage')
 def retainership_wallet_list(request):
     """List all retainership wallets"""
     wallets = SharedWallet.objects.filter(wallet_type='retainership').order_by('-created_at')

@@ -522,6 +522,7 @@ def check_patient_nhia(request):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_dashboard(request, patient_id):
     """View for patient wallet dashboard"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -626,6 +627,7 @@ def wallet_dashboard(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def add_funds_to_wallet(request, patient_id):
     """View for adding funds to patient wallet"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -702,6 +704,7 @@ def add_funds_to_wallet(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_transactions(request, patient_id):
     """View for displaying patient wallet transactions"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -753,6 +756,7 @@ def wallet_transactions(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_withdrawal(request, patient_id):
     """View for patient wallet withdrawal"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -792,6 +796,7 @@ def wallet_withdrawal(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_transfer(request, patient_id):
     """View for patient wallet transfer"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -837,6 +842,7 @@ def wallet_transfer(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_refund(request, patient_id):
     """View for patient wallet refund"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -876,6 +882,7 @@ def wallet_refund(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_adjustment(request, patient_id):
     """View for patient wallet adjustment"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -925,6 +932,7 @@ def wallet_adjustment(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_settlement(request, patient_id):
     """View for settling patient wallet outstanding balance"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -963,6 +971,7 @@ def wallet_settlement(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 @require_http_methods(["GET", "POST"])
 def wallet_payment(request, patient_id):
     """View for paying outstanding amounts from patient wallet balance"""
@@ -1024,6 +1033,7 @@ def wallet_payment(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_list(request):
     """View to display all patient wallets with search functionality"""
     from .forms import WalletSearchForm
@@ -1111,6 +1121,7 @@ def wallet_net_impact_fallback(request):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_net_impact_global(request):
     """View for analyzing and applying net impact to patient wallet"""
     # Show the global net impact report
@@ -1149,6 +1160,7 @@ def wallet_net_impact_global(request):
 
 
 @login_required
+@permission_required('wallet.manage')
 def wallet_net_impact(request, patient_id):
     """View for showing patient's wallet net impact analysis"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1207,6 +1219,7 @@ def wallet_net_impact(request, patient_id):
 
 
 @login_required
+@permission_required('wallet.manage')
 def apply_wallet_net_impact(request, patient_id):
     """View for applying net impact calculation to patient wallet"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1706,6 +1719,7 @@ def update_physiotherapy_status(request, request_id, status):
 
 
 @login_required
+@permission_required('wallet.manage')
 def sync_admission_charges(request, patient_id):
     """View to sync admission charges with wallet transactions"""
     patient = get_object_or_404(Patient, id=patient_id)

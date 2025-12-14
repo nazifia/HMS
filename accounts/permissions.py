@@ -42,7 +42,7 @@ ROLE_PERMISSIONS = {
             
             # Billing & Finance
             'billing.view', 'billing.create', 'billing.edit', 'billing.process_payment',
-            'wallet.view', 'wallet.create', 'wallet.edit', 'wallet.transactions',
+            'wallet.view', 'wallet.create', 'wallet.edit', 'wallet.transactions', 'wallet.manage',
             
             # Appointments
             'appointments.view', 'appointments.create', 'appointments.edit',
@@ -97,7 +97,6 @@ ROLE_PERMISSIONS = {
             'medical.view',
             'consultations.view', 'consultations.create',
             'appointments.view', 'appointments.create', 'appointments.edit',
-            'wallet.view', 'wallet.create',
             'reports.view',
         ]
     },
@@ -127,7 +126,7 @@ ROLE_PERMISSIONS = {
         'permissions': [
             'patients.view',
             'billing.view', 'billing.create', 'billing.edit', 'billing.process_payment',
-            'wallet.view', 'wallet.edit', 'wallet.transactions',
+            'wallet.view', 'wallet.edit', 'wallet.transactions', 'wallet.manage',
             'reports.view',
         ]
     },
