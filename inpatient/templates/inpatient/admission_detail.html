@@ -260,7 +260,7 @@
                             <i class="fas fa-receipt"></i> View Admission Charges
                         </a>
                         {% if admission.get_outstanding_admission_cost > 0 %}
-                            <button type="button" class="btn btn-success btn-sm payment-modal-btn" data-bs-toggle="modal" data-bs-target="#paymentModal" data-admission-id="{{ admission.id }}">
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#paymentModal" data-admission-id="{{ admission.id }}">
                                 <i class="fas fa-wallet"></i> Process Outstanding from Wallet
                             </button>
                             <a href="{% url 'inpatient:process_outstanding_admission_payment' admission.id %}" class="btn btn-outline-success btn-sm" title="Open full payment page">
@@ -589,7 +589,7 @@
         }
 
         /* Payment button enhancements - Success color to match the original Pay Outstanding button */
-        .payment-modal-btn {
+        [data-bs-target="#paymentModal"] {
             position: relative !important;
             display: inline-block !important;
             visibility: visible !important;
@@ -606,21 +606,21 @@
             cursor: pointer;
         }
 
-        .payment-modal-btn:hover {
+        [data-bs-target="#paymentModal"]:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
             background-color: #218838 !important;
             border-color: #1e7e34 !important;
         }
 
-        .payment-modal-btn:active {
+        [data-bs-target="#paymentModal"]:active {
             transform: translateY(0);
         }
 
         /* Force visibility for all button states */
-        .payment-modal-btn:focus,
-        .payment-modal-btn:active,
-        .payment-modal-btn:visited {
+        [data-bs-target="#paymentModal"]:focus,
+        [data-bs-target="#paymentModal"]:active,
+        [data-bs-target="#paymentModal"]:visited {
             display: inline-block !important;
             visibility: visible !important;
             opacity: 1 !important;
@@ -632,21 +632,34 @@
 <!-- Payment Modal JavaScript -->
 <script>
 $(document).ready(function() {
-    // Initialize modal
+    // Initialize modal using Bootstrap 5
     const paymentModalEl = document.getElementById('paymentModal');
     let paymentModalInstance = null;
+    
     if (window.bootstrap && bootstrap.Modal) {
-        paymentModalInstance = bootstrap.Modal.getOrCreateInstance(paymentModalEl, {backdrop: true, keyboard: true});
-    } else if (window.jQuery && $.fn && $.fn.modal) {
-        $('#paymentModal').modal({ show: false });
+        paymentModalInstance = new bootstrap.Modal(paymentModalEl, {
+            backdrop: 'static', 
+            keyboard: true
+        });
+        console.log('Payment modal initialized with Bootstrap 5');
+    } else {
+        console.error('Bootstrap 5 Modal not available');
+        return;
     }
 
     // Debug logging
     console.log('Payment modal initialized successfully');
+    
     // Pass admission ID from the clicked button into the modal each time
-    $(document).on('click', '.payment-modal-btn', function() {
+    $(document).on('click', '[data-bs-target="#paymentModal"]', function() {
         const admissionId = $(this).data('admission-id');
-        $('#paymentModal').attr('data-admission-id', admissionId).data('admission-id', admissionId);
+        $(paymentModalEl).attr('data-admission-id', admissionId).data('admission-id', admissionId);
+        console.log('Button clicked, admission ID:', admissionId);
+        
+        // Show the modal
+        if (paymentModalInstance) {
+            paymentModalInstance.show();
+        }
     });
 
     // Handle payment modal functionality
@@ -754,7 +767,7 @@ $(document).ready(function() {
         });
     });
 
-    // Reset modal when hidden (Bootstrap 5 + jQuery fallback)
+    // Reset modal when hidden using Bootstrap 5 event listener
     if (paymentModalEl) {
         paymentModalEl.addEventListener('hidden.bs.modal', function() {
             $('#paymentForm').show();
@@ -763,17 +776,8 @@ $(document).ready(function() {
             $('#paymentError').hide();
             $('#confirmPayment').prop('checked', false);
             $('#processPaymentBtn').prop('disabled', true).removeClass('btn-success').addClass('btn-primary');
+            console.log('Modal hidden, reset complete');
         });
-        if (window.jQuery && $.fn && $.fn.on) {
-            $('#paymentModal').on('hidden.bs.modal', function() {
-                $('#paymentForm').show();
-                $('#paymentLoading').hide();
-                $('#paymentSuccess').hide();
-                $('#paymentError').hide();
-                $('#confirmPayment').prop('checked', false);
-                $('#processPaymentBtn').prop('disabled', true).removeClass('btn-success').addClass('btn-primary');
-            });
-        }
     }
 });
 </script>
