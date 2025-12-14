@@ -557,7 +557,6 @@ class PatientWallet(models.Model):
 
             # Create transaction record for the credit
             transaction = WalletTransaction.objects.create(
-                wallet=None,
                 patient_wallet=self,
                 patient=self.patient,
                 transaction_type=transaction_type,
@@ -606,7 +605,6 @@ class PatientWallet(models.Model):
 
             # Create transaction record
             transaction = WalletTransaction.objects.create(
-                wallet=None,
                 patient_wallet=self,
                 patient=self.patient,
                 transaction_type=transaction_type,
@@ -1249,7 +1247,8 @@ class PatientWallet(models.Model):
                 # Create a transaction record for this adjustment
                 try:
                     WalletTransaction.objects.create(
-                        wallet=self,
+                        patient_wallet=self,
+                        patient=self.patient,
                         transaction_type='adjustment',
                         amount=current_balance - new_balance,  # Positive if balance decreased
                         balance_after=new_balance,
