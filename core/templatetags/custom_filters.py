@@ -2,6 +2,45 @@ from django import template
 
 register = template.Library()
 
+@register.simple_tag
+def count_child_roles(roles):
+    """
+    Count the number of roles that have a parent (child roles).
+    
+    Usage: {% count_child_roles roles %}
+    """
+    try:
+        return roles.filter(parent__isnull=False).count()
+    except AttributeError:
+        return 0
+
+@register.simple_tag
+def count_active_roles(roles):
+    """
+    Count the number of roles that are assigned to users.
+    
+    Usage: {% count_active_roles roles %}
+    """
+    try:
+        return roles.filter(users__isnull=False).distinct().count()
+    except AttributeError:
+        return 0
+
+@register.simple_tag
+def sum_permissions(roles):
+    """
+    Sum the total number of permissions across all roles.
+    
+    Usage: {% sum_permissions roles %}
+    """
+    try:
+        total = 0
+        for role in roles:
+            total += role.permissions.count()
+        return total
+    except AttributeError:
+        return 0
+
 @register.filter
 def get_all_permission_names(permissions_queryset):
     """

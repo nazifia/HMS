@@ -148,25 +148,19 @@
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
-                                <h3 class="text-success">{{ roles|length }}</h3>
+                                <h3 class="text-success">{% count_active_roles roles %}</h3>
                                 <p class="text-muted">Active Roles</p>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
-                                <h3 class="text-info">
-                                    {% for role in roles %}
-                                        {% if role.parent %}{{ role.name }}{% if not forloop.last %}, {% endif %}{% endif %}
-                                    {% empty %}0{% endfor %}
-                                </h3>
+                                <h3 class="text-info">{% count_child_roles roles %}</h3>
                                 <p class="text-muted">Child Roles</p>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
-                                <h3 class="text-warning">
-                                    {% for role in roles %}{{ role.permissions.count }}{% if not forloop.last %} + {% endif %}{% endfor %}
-                                </h3>
+                                <h3 class="text-warning">{% sum_permissions roles %}</h3>
                                 <p class="text-muted">Total Permissions</p>
                             </div>
                         </div>
