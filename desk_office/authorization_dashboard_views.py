@@ -30,6 +30,75 @@ def generate_authorization_code_string():
     return f"AUTH-{date_str}-{random_str}"
 
 
+def calculate_referral_estimated_cost(referral):
+    """
+    Calculate the estimated cost for a referral based on destination and type.
+    
+    Args:
+        referral (Referral): The referral object to calculate cost for
+        
+    Returns:
+        float: Estimated cost for the referral
+    """
+    # Base referral cost (same as used in bulk authorization)
+    base_cost = 10000.00
+    
+    # Check if the referral has specific cost factors based on destination
+    if referral.referred_to_department:
+        # Department-specific pricing (can be expanded with actual pricing data)
+        department_name = referral.referred_to_department.name.lower()
+        
+        # Specialty-specific pricing adjustments
+        if department_name in ['surgery', 'theatre', 'operating']:
+            # Surgical referrals typically have higher costs
+            return 25000.00
+        elif department_name in ['radiology', 'imaging', 'x-ray']:
+            # Imaging referrals
+            return 15000.00
+        elif department_name in ['laboratory', 'lab', 'pathology']:
+            # Lab referrals
+            return 12000.00
+        elif department_name in ['physiotherapy', 'rehabilitation']:
+            # Physiotherapy referrals
+            return 8000.00
+        elif department_name in ['ophthalmic', 'ophthalmology', 'eye']:
+            # Ophthalmic referrals
+            return 18000.00
+        elif department_name in ['dental', 'oral']:
+            # Dental referrals
+            return 10000.00
+        elif department_name in ['neurology', 'neurosurgery']:
+            # Neurology referrals
+            return 20000.00
+        elif department_name in ['oncology', 'cancer']:
+            # Oncology referrals
+            return 30000.00
+        elif department_name in ['cardiology', 'heart']:
+            # Cardiology referrals
+            return 22000.00
+        elif department_name in ['icu', 'intensive', 'critical']:
+            # ICU referrals
+            return 35000.00
+        elif department_name in ['nhia', 'national health insurance']:
+            # NHIA referrals (shouldn't normally require auth, but if they do)
+            return 5000.00
+    
+    # Check for specialty-specific referrals
+    if referral.referred_to_specialty:
+        specialty = referral.referred_to_specialty.lower()
+        if any(word in specialty for word in ['surgery', 'surgical', 'operative']):
+            return 25000.00
+        elif any(word in specialty for word in ['cardiology', 'heart']):
+            return 22000.00
+        elif any(word in specialty for word in ['neurology', 'neurosurgery', 'brain']):
+            return 20000.00
+        elif any(word in specialty for word in ['oncology', 'cancer', 'tumor']):
+            return 30000.00
+    
+    # Default base cost for general referrals
+    return base_cost
+
+
 @login_required
 def authorization_dashboard(request):
     """
@@ -500,10 +569,14 @@ def authorize_referral(request, referral_id):
         messages.success(request, f'Authorization code {auth_code.code} generated successfully for referral #{referral.id}.')
         return redirect('desk_office:authorization_dashboard')
     
+    # Calculate estimated cost for the referral
+    estimated_cost = calculate_referral_estimated_cost(referral)
+    
     context = {
         'referral': referral,
         'page_title': f'Authorize Referral #{referral.id}',
         'active_nav': 'desk_office',
+        'estimated_cost': estimated_cost,
     }
     
     return render(request, 'desk_office/authorize_referral.html', context)
