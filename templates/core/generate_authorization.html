@@ -218,12 +218,18 @@
                                 </div>
                                 <input type="number" class="form-control" id="amount" name="amount"
                                        step="0.01" min="0"
-                                       value="{% if form_data.amount %}{{ form_data.amount }}{% else %}0.00{% endif %}"
+                                       value="{% if form_data.amount %}{{ form_data.amount }}{% elif default_amount %}{{ default_amount }}{% else %}0.00{% endif %}"
                                        required>
                             </div>
                             <small class="form-text text-muted">
                                 Enter the amount that will be covered by this authorization code.
                             </small>
+                            {% if estimated_cost %}
+                            <small class="form-text text-primary">
+                                <i class="fas fa-info-circle"></i> 
+                                Estimated cost for this referral: <strong>₦{{ estimated_cost|floatformat:2 }}</strong>
+                            </small>
+                            {% endif %}
                         </div>
 
                         <div class="form-group">

@@ -19,6 +19,96 @@ from .authorization_utils import (
     AUTHORIZATION_SUPPORTED_MODELS
 )
 from nhia.models import AuthorizationCode
+from consultations.models import Referral
+
+
+def calculate_referral_estimated_cost(referral):
+    """
+    Calculate the estimated cost for a referral based on destination and type.
+    
+    Args:
+        referral (Referral): The referral object to calculate cost for
+        
+    Returns:
+        float: Estimated cost for the referral
+    """
+    # Base referral cost (same as used in bulk authorization)
+    base_cost = 10000.00
+    
+    # Check if the referral has specific cost factors based on destination
+    if referral.referred_to_department:
+        # Department-specific pricing (can be expanded with actual pricing data)
+        department_name = referral.referred_to_department.name.lower()
+        
+        # Specialty-specific pricing adjustments
+        if department_name in ['surgery', 'theatre', 'operating']:
+            # Surgical referrals typically have higher costs
+            return 25000.00
+        elif department_name in ['radiology', 'imaging', 'x-ray']:
+            # Imaging referrals
+            return 15000.00
+        elif department_name in ['laboratory', 'lab', 'pathology']:
+            # Lab referrals
+            return 12000.00
+        elif department_name in ['physiotherapy', 'rehabilitation']:
+            # Physiotherapy referrals
+            return 8000.00
+        elif department_name in ['ophthalmic', 'ophthalmology', 'eye']:
+            # Ophthalmic referrals
+            return 18000.00
+        elif department_name in ['dental', 'oral']:
+            # Dental referrals
+            return 10000.00
+        elif department_name in ['neurology', 'neurosurgery']:
+            # Neurology referrals
+            return 20000.00
+        elif department_name in ['oncology', 'cancer']:
+            # Oncology referrals
+            return 30000.00
+        elif department_name in ['cardiology', 'heart']:
+            # Cardiology referrals
+            return 22000.00
+        elif department_name in ['icu', 'intensive', 'critical']:
+            # ICU referrals
+            return 35000.00
+        elif department_name in ['nhia', 'national health insurance']:
+            # NHIA referrals (shouldn't normally require auth, but if they do)
+            return 5000.00
+    
+    # Check for specialty-specific referrals
+    if referral.referred_to_specialty:
+        specialty = referral.referred_to_specialty.lower()
+        if any(word in specialty for word in ['surgery', 'surgical', 'operative']):
+            return 25000.00
+        elif any(word in specialty for word in ['cardiology', 'heart']):
+            return 22000.00
+        elif any(word in specialty for word in ['neurology', 'neurosurgery', 'brain']):
+            return 20000.00
+        elif any(word in specialty for word in ['oncology', 'cancer', 'tumor']):
+            return 30000.00
+    
+    # Default base cost for general referrals
+    return base_cost
+
+
+def calculate_test_request_estimated_cost(test_request):
+    """
+    Calculate the estimated cost for a test request based on the sum of all test prices.
+    
+    Args:
+        test_request (TestRequest): The test request object to calculate cost for
+        
+    Returns:
+        float: Estimated cost for the test request
+    """
+    # Sum up the prices of all tests in the request
+    total_cost = 0.00
+    
+    if test_request.tests.exists():
+        for test in test_request.tests.all():
+            total_cost += float(test.price)
+    
+    return total_cost if total_cost > 0 else 5000.00  # Default minimum cost if no tests found
 
 
 @login_required
@@ -172,6 +262,26 @@ def generate_authorization(request, model_type, object_id):
         'model_info': model_info,
         'page_title': f'Generate Authorization - {model_info["display_name"]}',
     }
+    
+    # Calculate estimated cost for referrals
+    if model_type == 'referral' and isinstance(obj, Referral):
+        estimated_cost = calculate_referral_estimated_cost(obj)
+        context['estimated_cost'] = estimated_cost
+        # Set default amount if not provided in form data
+        if 'form_data' not in context or not context['form_data'].get('amount'):
+            context['default_amount'] = estimated_cost
+    
+    # Calculate estimated cost for test requests
+    elif model_type == 'test_request' and hasattr(obj, 'tests'):
+        # Import TestRequest model dynamically to avoid circular imports
+        from laboratory.models import TestRequest
+        if isinstance(obj, TestRequest):
+            estimated_cost = calculate_test_request_estimated_cost(obj)
+            context['estimated_cost'] = estimated_cost
+            # Set default amount if not provided in form data
+            if 'form_data' not in context or not context['form_data'].get('amount'):
+                context['default_amount'] = estimated_cost
+    
     return render(request, 'core/generate_authorization.html', context)
 
 

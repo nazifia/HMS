@@ -236,7 +236,7 @@
                                 <tr>
                                     <th>Code</th>
                                     <th>Patient</th>
-                                    <th>Amount</th>
+                                    <th>Estimated Cost</th>
                                     <th>Status</th>
                                     <th>Generated</th>
                                 </tr>
@@ -366,6 +366,12 @@
                                     To: {{ referral.get_referral_destination }} |
                                     Date: {{ referral.referral_date|date:"M d, Y" }}
                                 </small>
+                                {% if referral.estimated_cost %}
+                                <br>
+                                <small class="text-primary">
+                                    <strong>Estimated Cost: ₦{{ referral.estimated_cost|floatformat:2 }}</strong>
+                                </small>
+                                {% endif %}
                             </div>
                             <div class="btn-group btn-group-sm">
                                 <a href="{% url 'desk_office:authorize_referral' referral.id %}"

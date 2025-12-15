@@ -257,6 +257,10 @@ def authorization_dashboard(request):
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'referring_doctor', 'referred_to_doctor', 'referred_to_department', 'assigned_doctor').order_by('-referral_date')
+    
+    # Calculate estimated costs for referrals
+    for referral in pending_referrals:
+        referral.estimated_cost = calculate_referral_estimated_cost(referral)
 
     # Get all prescriptions requiring authorization
     pending_prescriptions = Prescription.objects.filter(
@@ -375,6 +379,10 @@ def pending_referrals_list(request):
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related('patient', 'referring_doctor', 'referred_to_doctor', 'referred_to_department', 'assigned_doctor').order_by('-referral_date')
+    
+    # Calculate estimated costs for referrals
+    for referral in referrals:
+        referral.estimated_cost = calculate_referral_estimated_cost(referral)
     
     # Create a simple paginator-like object for main template
     from django.core.paginator import Paginator

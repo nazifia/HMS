@@ -255,6 +255,13 @@
                                         </span><br>
                                         <strong>Reason:</strong><br>
                                         <small class="text-muted">{{ referral.reason|truncatewords:10 }}</small>
+                                        {% if referral.estimated_cost %}
+                                        <br><br>
+                                        <strong>Estimated Cost:</strong><br>
+                                        <span class="badge bg-primary">
+                                            <i class="fas fa-money-bill-wave"></i> ₦{{ referral.estimated_cost|floatformat:2 }}
+                                        </span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <strong>Dr. {{ referral.referring_doctor.get_full_name }}</strong><br>
