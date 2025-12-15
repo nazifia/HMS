@@ -359,9 +359,9 @@ def export_revenue_breakdown(request):
         if export_format == 'csv':
             return _export_csv(analyzer, start_date, end_date, department_filter)
         elif export_format == 'excel':
-            return _export_excel(analyzer, start_date, end_date, department_filter)
+            return _export_excel(analyzer, start_date, end_date, department_filter, request)
         elif export_format == 'pdf':
-            return _export_pdf(analyzer, start_date, end_date, department_filter)
+            return _export_pdf(analyzer, start_date, end_date, department_filter, request)
         else:
             messages.error(request, 'Invalid export format')
             return redirect('core:revenue_point_dashboard')
@@ -653,17 +653,17 @@ def _export_csv(analyzer, start_date, end_date, department_filter):
     return response
 
 
-def _export_excel(analyzer, start_date, end_date, department_filter):
+def _export_excel(analyzer, start_date, end_date, department_filter, request):
     """Export data as Excel (placeholder)"""
     # This would require openpyxl or xlsxwriter
-    messages.info("Excel export functionality coming soon")
+    messages.info(request, "Excel export functionality coming soon")
     return redirect('core:revenue_point_dashboard')
 
 
-def _export_pdf(analyzer, start_date, end_date, department_filter):
+def _export_pdf(analyzer, start_date, end_date, department_filter, request):
     """Export data as PDF (placeholder)"""
     # This would require reportlab integration
-    messages.info("PDF export functionality coming soon")
+    messages.info(request, "PDF export functionality coming soon")
     return redirect('core:revenue_point_dashboard')
 
 
