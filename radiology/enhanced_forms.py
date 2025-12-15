@@ -107,21 +107,38 @@ class EnhancedRadiologyResultForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.radiology_order = kwargs.pop('radiology_order', None)
         super().__init__(*args, **kwargs)
-        
-        # Filter users to radiology staff
+
+        # Filter users to radiology staff (try specific groups first)
         radiology_staff = User.objects.filter(
             is_active=True,
             groups__name__in=['Radiology Staff', 'Radiologic Technologists', 'Radiologists']
         ).distinct()
-        
+
+        # Fallback to all active staff/superusers if no radiology groups exist
+        if not radiology_staff.exists():
+            radiology_staff = User.objects.filter(
+                is_active=True
+            ).filter(
+                models.Q(is_staff=True) | models.Q(is_superuser=True)
+            ).distinct()
+
+        # Try to get radiologists from specific groups
         radiologists = User.objects.filter(
             is_active=True,
             groups__name__in=['Radiologists', 'Radiology Consultants']
         ).distinct()
-        
+
+        # Fallback to all active staff/superusers if no radiologist groups exist
+        if not radiologists.exists():
+            radiologists = User.objects.filter(
+                is_active=True
+            ).filter(
+                models.Q(is_staff=True) | models.Q(is_superuser=True)
+            ).distinct()
+
         self.fields['performed_by'].queryset = radiology_staff
         self.fields['radiologist'].queryset = radiologists
-        
+
         # Set default values
         if not self.instance.pk:
             from django.utils import timezone
