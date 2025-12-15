@@ -12,7 +12,7 @@ from .models import (
     Medication, MedicationCategory, Supplier, Purchase, PurchaseItem,
     Prescription, PrescriptionItem, Dispensary, ActiveStore, ActiveStoreInventory, MedicationInventory,
     BulkStore, BulkStoreInventory, MedicationTransfer, DispensaryTransfer, DispensingLog,
-    MedicalPack, PackItem, PackOrder
+    MedicalPack, PackItem, MedicalPackItem, PackOrder
 )
 from accounts.models import CustomUser
 from patients.models import Patient
