@@ -6065,21 +6065,22 @@ def edit_medical_pack(request, pack_id):
 @login_required
 def manage_pack_items(request, pack_id):
     """View for managing items in a medical pack"""
-    from .forms import PackItemForm
+    from .forms import MedicalPackItemForm
 
     pack = get_object_or_404(MedicalPack, id=pack_id)
 
     if request.method == 'POST':
-        form = PackItemForm(request.POST)
+        form = MedicalPackItemForm(request.POST)
         if form.is_valid():
             pack_item = form.save(commit=False)
             pack_item.pack = pack
             pack_item.save()
-            pack.update_total_cost()
+            if hasattr(pack, 'update_total_cost'):
+                pack.update_total_cost()
             messages.success(request, f'Added {pack_item.medication.name} to pack.')
             return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
     else:
-        form = PackItemForm()
+        form = MedicalPackItemForm()
 
     pack_items = pack.items.select_related('medication').order_by('order', 'medication__name')
 
@@ -6098,12 +6099,13 @@ def manage_pack_items(request, pack_id):
 def delete_pack_item(request, pack_id, item_id):
     """View for deleting an item from a medical pack"""
     pack = get_object_or_404(MedicalPack, id=pack_id)
-    pack_item = get_object_or_404(PackItem, id=item_id, pack=pack)
+    pack_item = get_object_or_404(MedicalPackItem, id=item_id, pack=pack)
 
     if request.method == 'POST':
         medication_name = pack_item.medication.name
         pack_item.delete()
-        pack.update_total_cost()
+        if hasattr(pack, 'update_total_cost'):
+            pack.update_total_cost()
         messages.success(request, f'Removed {medication_name} from pack.')
         return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
 
@@ -6120,13 +6122,13 @@ def delete_pack_item(request, pack_id, item_id):
 @login_required
 def edit_pack_item(request, pack_id, item_id):
     """View for editing an item in a medical pack"""
-    from .forms import PackItemForm
+    from .forms import MedicalPackItemForm
 
     pack = get_object_or_404(MedicalPack, id=pack_id)
     pack_item = get_object_or_404(MedicalPackItem, id=item_id, pack=pack)
 
     if request.method == 'POST':
-        form = PackItemForm(request.POST, instance=pack_item)
+        form = MedicalPackItemForm(request.POST, instance=pack_item)
         if form.is_valid():
             updated_item = form.save(commit=False)
             updated_item.pack = pack
@@ -6163,7 +6165,7 @@ def edit_pack_item(request, pack_id, item_id):
                     'errors': form.errors
                 }, status=400)
     else:
-        form = PackItemForm(instance=pack_item)
+        form = MedicalPackItemForm(instance=pack_item)
 
     context = {
         'pack': pack,

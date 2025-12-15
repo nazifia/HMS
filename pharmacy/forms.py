@@ -6,7 +6,7 @@ from django.utils import timezone
 from .models import (
     MedicationCategory, Medication, Supplier, Purchase,
     PurchaseItem, Prescription, PrescriptionItem, DispensingLog, Dispensary, MedicationInventory, ActiveStoreInventory,
-    MedicalPack, PackItem, PackOrder, BulkStore, ActiveStore, MedicationTransfer
+    MedicalPack, PackItem, MedicalPackItem, PackOrder, BulkStore, ActiveStore, MedicationTransfer
 )
 from patients.models import Patient
 from django.contrib.auth import get_user_model
@@ -1240,14 +1240,14 @@ class MedicalPackForm(forms.ModelForm):
 
 
 class PackItemForm(forms.ModelForm):
-    """Form for creating and editing pack items"""
-    
+    """Form for creating and editing pack items (legacy Pack model)"""
+
     medication = forms.ModelChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Medication/Consumable"
     )
-    
+
     class Meta:
         model = PackItem
         fields = [
@@ -1280,6 +1280,50 @@ class PackItemForm(forms.ModelForm):
         if is_critical and is_optional:
             raise ValidationError('Item cannot be both critical and optional.')
             
+        return cleaned_data
+
+
+class MedicalPackItemForm(forms.ModelForm):
+    """Form for creating and editing medical pack items"""
+
+    medication = forms.ModelChoiceField(
+        queryset=Medication.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select select2'}),
+        empty_label="Select Medication/Consumable"
+    )
+
+    class Meta:
+        model = MedicalPackItem
+        fields = [
+            'medication', 'quantity', 'item_type', 'usage_instructions',
+            'is_critical', 'is_optional', 'order'
+        ]
+        widgets = {
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'item_type': forms.Select(attrs={'class': 'form-select'}),
+            'usage_instructions': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'is_critical': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_optional': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add help text
+        self.fields['is_critical'].help_text = 'Critical items cannot be substituted'
+        self.fields['is_optional'].help_text = 'Optional items can be omitted if unavailable'
+        self.fields['order'].help_text = 'Order of usage in procedure (0 for no specific order)'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        is_critical = cleaned_data.get('is_critical')
+        is_optional = cleaned_data.get('is_optional')
+
+        # Item cannot be both critical and optional
+        if is_critical and is_optional:
+            raise ValidationError('Item cannot be both critical and optional.')
+
         return cleaned_data
 
 
