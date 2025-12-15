@@ -225,13 +225,19 @@
                                         </div>
                                         <div class="col-2 text-end">
                                             <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-sm btn-outline-info" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button" class="btn btn-sm btn-outline-info"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#itemModal{{ item.id }}"
                                                         title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                                <a href="{% url 'pharmacy:delete_pack_item' pack.id item.id %}" 
+                                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#editItemModal{{ item.id }}"
+                                                        title="Edit Item">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <a href="{% url 'pharmacy:delete_pack_item' pack.id item.id %}"
                                                    class="btn btn-sm btn-outline-danger"
                                                    onclick="return confirm('Are you sure you want to remove this item?')"
                                                    title="Remove Item">
@@ -300,6 +306,124 @@
                                             <div class="text-muted">{{ item.usage_instructions }}</div>
                                             {% endif %}
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Edit Item Modal -->
+                            <div class="modal fade" id="editItemModal{{ item.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <form method="post" action="{% url 'pharmacy:edit_pack_item' pack.id item.id %}" class="edit-item-form">
+                                            {% csrf_token %}
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">
+                                                    <i class="fas fa-edit text-primary"></i> Edit Item - {{ item.medication.name }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle"></i>
+                                                    <strong>Current Medication:</strong> {{ item.medication.name }} ({{ item.medication.strength }})
+                                                    <br>
+                                                    <strong>Unit Price:</strong> {{ item.medication.price|currency }}
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <div class="mb-3">
+                                                            <label for="edit_quantity_{{ item.id }}" class="form-label">
+                                                                Quantity <span class="text-danger">*</span>
+                                                            </label>
+                                                            <input type="number"
+                                                                   class="form-control"
+                                                                   id="edit_quantity_{{ item.id }}"
+                                                                   name="quantity"
+                                                                   value="{{ item.quantity }}"
+                                                                   min="1"
+                                                                   required>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-3">
+                                                            <label for="edit_item_type_{{ item.id }}" class="form-label">Item Type</label>
+                                                            <select class="form-select" id="edit_item_type_{{ item.id }}" name="item_type">
+                                                                <option value="medication" {% if item.item_type == 'medication' %}selected{% endif %}>Medication</option>
+                                                                <option value="supply" {% if item.item_type == 'supply' %}selected{% endif %}>Medical Supply</option>
+                                                                <option value="equipment" {% if item.item_type == 'equipment' %}selected{% endif %}>Equipment</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-3">
+                                                            <label for="edit_order_{{ item.id }}" class="form-label">Order</label>
+                                                            <input type="number"
+                                                                   class="form-control"
+                                                                   id="edit_order_{{ item.id }}"
+                                                                   name="order"
+                                                                   value="{{ item.order }}"
+                                                                   min="0">
+                                                            <div class="form-text">Usage order (0 = no specific order)</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="edit_usage_instructions_{{ item.id }}" class="form-label">
+                                                        Usage Instructions
+                                                    </label>
+                                                    <textarea class="form-control"
+                                                              id="edit_usage_instructions_{{ item.id }}"
+                                                              name="usage_instructions"
+                                                              rows="2">{{ item.usage_instructions }}</textarea>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input"
+                                                                   type="checkbox"
+                                                                   id="edit_is_critical_{{ item.id }}"
+                                                                   name="is_critical"
+                                                                   {% if item.is_critical %}checked{% endif %}>
+                                                            <label class="form-check-label" for="edit_is_critical_{{ item.id }}">
+                                                                Critical Item
+                                                                <small class="text-muted d-block">Cannot be substituted</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input"
+                                                                   type="checkbox"
+                                                                   id="edit_is_optional_{{ item.id }}"
+                                                                   name="is_optional"
+                                                                   {% if item.is_optional %}checked{% endif %}>
+                                                            <label class="form-check-label" for="edit_is_optional_{{ item.id }}">
+                                                                Optional Item
+                                                                <small class="text-muted d-block">Can be omitted if unavailable</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="alert alert-warning mt-3">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                    Note: An item cannot be both critical and optional.
+                                                </div>
+
+                                                <input type="hidden" name="medication" value="{{ item.medication.id }}">
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-save"></i> Save Changes
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -394,6 +518,38 @@ $(document).ready(function() {
 
     // Initialize tooltips
     $('[title]').tooltip();
+
+    // Handle edit modal - prevent both critical and optional from being checked
+    $('[id^="edit_is_critical_"]').change(function() {
+        if ($(this).is(':checked')) {
+            const itemId = $(this).attr('id').split('_').pop();
+            $(`#edit_is_optional_${itemId}`).prop('checked', false);
+        }
+    });
+
+    $('[id^="edit_is_optional_"]').change(function() {
+        if ($(this).is(':checked')) {
+            const itemId = $(this).attr('id').split('_').pop();
+            $(`#edit_is_critical_${itemId}`).prop('checked', false);
+        }
+    });
+
+    // Handle edit form submission validation
+    $('.edit-item-form').on('submit', function(e) {
+        const quantity = $(this).find('input[name="quantity"]').val();
+
+        if (!quantity || quantity <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid quantity greater than 0.');
+            return false;
+        }
+    });
+
+    // Auto-calculate total cost in edit modal when quantity changes
+    $('[id^="edit_quantity_"]').on('input', function() {
+        // Visual feedback only - actual calculation happens on server
+        $(this).addClass('is-valid');
+    });
 });
 </script>
 {% endblock %}

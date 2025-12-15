@@ -6118,6 +6118,65 @@ def delete_pack_item(request, pack_id, item_id):
 
 
 @login_required
+def edit_pack_item(request, pack_id, item_id):
+    """View for editing an item in a medical pack"""
+    from .forms import PackItemForm
+
+    pack = get_object_or_404(MedicalPack, id=pack_id)
+    pack_item = get_object_or_404(MedicalPackItem, id=item_id, pack=pack)
+
+    if request.method == 'POST':
+        form = PackItemForm(request.POST, instance=pack_item)
+        if form.is_valid():
+            updated_item = form.save(commit=False)
+            updated_item.pack = pack
+            updated_item.save()
+
+            # Update pack total cost
+            if hasattr(pack, 'update_total_cost'):
+                pack.update_total_cost()
+
+            messages.success(request, f'Updated {updated_item.medication.name} in pack.')
+
+            # Return JSON response for AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Updated {updated_item.medication.name} successfully.',
+                    'item': {
+                        'id': updated_item.id,
+                        'medication_name': updated_item.medication.name,
+                        'quantity': updated_item.quantity,
+                        'total_cost': float(updated_item.get_total_cost()),
+                        'unit_price': float(updated_item.medication.price),
+                    }
+                })
+
+            return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
+        else:
+            # Handle form errors for AJAX requests
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+    else:
+        form = PackItemForm(instance=pack_item)
+
+    context = {
+        'pack': pack,
+        'pack_item': pack_item,
+        'form': form,
+        'page_title': f'Edit Item - {pack_item.medication.name}',
+        'active_nav': 'pharmacy',
+    }
+
+    return render(request, 'pharmacy/medical_packs/edit_pack_item.html', context)
+
+
+@login_required
 def create_pack_order(request, pack_id=None):
     """View for creating a pack order"""
     from .forms import PackOrderForm

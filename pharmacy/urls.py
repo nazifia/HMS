@@ -157,6 +157,7 @@ urlpatterns = [
     path('packs/<int:pack_id>/', views.medical_pack_detail, name='medical_pack_detail'),
     path('packs/<int:pack_id>/edit/', views.edit_medical_pack, name='edit_medical_pack'),
     path('packs/<int:pack_id>/items/', views.manage_pack_items, name='manage_pack_items'),
+    path('packs/<int:pack_id>/items/<int:item_id>/edit/', views.edit_pack_item, name='edit_pack_item'),
     path('packs/<int:pack_id>/items/<int:item_id>/delete/', views.delete_pack_item, name='delete_pack_item'),
     
     # Pack Order Management
