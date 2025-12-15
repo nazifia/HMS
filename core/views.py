@@ -104,10 +104,44 @@ def search_patients(request):
 
 def patient_search_ajax(request):
     """
-    AJAX patient search - placeholder for existing functionality
+    HTMX AJAX patient search endpoint
+    Returns HTML fragment with patient search results
     """
-    # This would integrate with existing patient search
-    return JsonResponse({'results': []})
+    from patients.models import Patient
+    from django.db.models import Q
+
+    query = request.GET.get('q', '').strip()
+    patient_type = request.GET.get('patient_type', '')  # Optional filter for NHIA/non-NHIA
+
+    if not query or len(query) < 2:
+        return render(request, 'pharmacy/pack_orders/partials/patient_search_results.html', {
+            'patients': [],
+            'query': query
+        })
+
+    # Search patients by name, ID, phone, or NHIA number
+    patients = Patient.objects.filter(
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query) |
+        Q(patient_id__icontains=query) |
+        Q(phone_number__icontains=query) |
+        Q(email__icontains=query)
+    )
+
+    # Filter by patient type if specified
+    if patient_type:
+        patients = patients.filter(patient_type=patient_type)
+
+    # Filter active patients only
+    patients = patients.filter(is_active=True)
+
+    # Limit results
+    patients = patients[:10]
+
+    return render(request, 'pharmacy/pack_orders/partials/patient_search_results.html', {
+        'patients': patients,
+        'query': query
+    })
 
 
 def test_url_helpers(request):
