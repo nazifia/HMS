@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from pharmacy.models import MedicalPack, PackItem, Medication, MedicationCategory
+from pharmacy.models import MedicalPack, MedicalPackItem, Medication, MedicationCategory
 from decimal import Decimal
 
 
@@ -389,11 +389,11 @@ class Command(BaseCommand):
                 for item_name, quantity in pack_data['items']:
                     try:
                         medication = Medication.objects.get(name=item_name)
-                        PackItem.objects.create(
+                        MedicalPackItem.objects.create(
                             pack=pack,
                             medication=medication,
                             quantity=quantity,
-                            item_type='medication' if medication.category.name not in ['Consumables', 'Surgical Supplies'] else 'consumable',
+                            item_type='medication' if medication.category.name not in ['Consumables', 'Surgical Supplies'] else 'supply',
                             is_critical=pack_data['risk_level'] == 'critical',
                             order=0
                         )
@@ -401,10 +401,7 @@ class Command(BaseCommand):
                         self.stdout.write(
                             self.style.WARNING(f'Medication "{item_name}" not found for pack "{pack.name}"')
                         )
-                
-                # Update total cost
-                pack.update_total_cost()
-                
+
                 self.stdout.write(f'Created pack: {pack.name}')
 
     def medication_exists(self, name):
