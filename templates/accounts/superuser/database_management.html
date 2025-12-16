@@ -5,6 +5,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -180,41 +181,123 @@ function refreshDatabaseInfo() {
 }
 
 function viewTableDetails(tableName) {
-    // Placeholder for table details functionality
     const modal = new bootstrap.Modal(document.getElementById('tableDetailsModal'));
-    document.getElementById('tableDetailsModalLabel').innerHTML = 
+    document.getElementById('tableDetailsModalLabel').innerHTML =
         `<i class="fas fa-table me-1"></i>Details for ${tableName}`;
-    
+
     // Show loading message
-    document.getElementById('tableDetailsContent').innerHTML = 
+    document.getElementById('tableDetailsContent').innerHTML =
         `<div class="text-center">
             <div class="spinner-border" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
             <p class="mt-2">Loading table details...</p>
         </div>`;
-    
+
     modal.show();
-    
-    // You can implement AJAX call here to fetch table details
-    setTimeout(() => {
-        document.getElementById('tableDetailsContent').innerHTML = 
-            `<div class="alert alert-info">
-                <h6>Table: ${tableName}</h6>
-                <p>Table structure and preview functionality would be implemented here.</p>
-                <p>This would include column information, data types, and sample data preview.</p>
-            </div>`;
-    }, 1000);
+
+    // Fetch table details via AJAX
+    fetch(`/accounts/superuser/view-table-details/${tableName}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let html = `
+                <div class="mb-3">
+                    <h6 class="text-primary">Table: ${data.table_name}</h6>
+                    <p class="mb-2"><strong>Total Records:</strong> ${data.row_count}</p>
+                </div>
+
+                <h6 class="mb-2">Table Structure:</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Column Name</th>
+                                <th>Data Type</th>
+                                <th>Primary Key</th>
+                                <th>Not Null</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            data.columns.forEach(col => {
+                html += `
+                    <tr>
+                        <td><strong>${col.name}</strong></td>
+                        <td><span class="badge bg-info">${col.type}</span></td>
+                        <td>${col.pk ? '<i class="fas fa-check text-success"></i>' : ''}</td>
+                        <td>${col.notnull ? '<i class="fas fa-check text-warning"></i>' : ''}</td>
+                        <td>${col.default || '-'}</td>
+                    </tr>`;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>`;
+
+            if (data.sample_data.length > 0) {
+                html += `
+                    <h6 class="mb-2">Sample Data (First 10 Rows):</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered table-striped">
+                            <thead class="table-dark">
+                                <tr>`;
+
+                data.columns.forEach(col => {
+                    html += `<th>${col.name}</th>`;
+                });
+
+                html += `
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                data.sample_data.forEach(row => {
+                    html += '<tr>';
+                    row.forEach(cell => {
+                        let cellValue = cell !== null ? cell : '<em class="text-muted">NULL</em>';
+                        if (typeof cellValue === 'string' && cellValue.length > 50) {
+                            cellValue = cellValue.substring(0, 50) + '...';
+                        }
+                        html += `<td>${cellValue}</td>`;
+                    });
+                    html += '</tr>';
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>`;
+            } else {
+                html += `<div class="alert alert-info">No data available in this table.</div>`;
+            }
+
+            document.getElementById('tableDetailsContent').innerHTML = html;
+        } else {
+            document.getElementById('tableDetailsContent').innerHTML =
+                `<div class="alert alert-danger">Error: ${data.error}</div>`;
+        }
+    })
+    .catch(error => {
+        document.getElementById('tableDetailsContent').innerHTML =
+            `<div class="alert alert-danger">Error loading table details: ${error.message}</div>`;
+    });
 }
 
 function exportTable(tableName) {
-    // Placeholder for export functionality
     if (confirm(`Are you sure you want to export table "${tableName}"?`)) {
         // Create a temporary form to trigger export
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/admin/export-table/${tableName}/`;
-        
+        form.action = `/accounts/superuser/export-table/${tableName}/`;
+
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
         if (csrfToken) {
             const input = document.createElement('input');
@@ -223,11 +306,11 @@ function exportTable(tableName) {
             input.value = csrfToken.value;
             form.appendChild(input);
         }
-        
+
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);
-        
+
         // Show message
         showNotification(`Export started for table "${tableName}"`, 'info');
     }
@@ -238,8 +321,8 @@ function clearTable(tableName) {
         // Create a temporary form to trigger clear action
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/admin/clear-table/${tableName}/`;
-        
+        form.action = `/accounts/superuser/clear-table/${tableName}/`;
+
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
         if (csrfToken) {
             const input = document.createElement('input');
@@ -248,11 +331,11 @@ function clearTable(tableName) {
             input.value = csrfToken.value;
             form.appendChild(input);
         }
-        
+
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);
-        
+
         // Show message
         showNotification(`Clear action initiated for table "${tableName}"`, 'warning');
     }

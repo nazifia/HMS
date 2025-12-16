@@ -2125,6 +2125,133 @@ def superuser_database_management(request):
 
 
 @superuser_required
+def view_table_details(request, table_name):
+    """AJAX endpoint to view table structure and sample data"""
+    from django.db import connection
+    import json
+
+    try:
+        with connection.cursor() as cursor:
+            # Get table structure
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = cursor.fetchall()
+
+            # Get row count
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            row_count = cursor.fetchone()[0]
+
+            # Get sample data (first 10 rows)
+            cursor.execute(f"SELECT * FROM {table_name} LIMIT 10")
+            sample_data = cursor.fetchall()
+
+            # Format column information
+            column_info = []
+            for col in columns:
+                column_info.append({
+                    'cid': col[0],
+                    'name': col[1],
+                    'type': col[2],
+                    'notnull': col[3],
+                    'default': col[4],
+                    'pk': col[5]
+                })
+
+            # Format sample data
+            sample_rows = []
+            for row in sample_data:
+                sample_rows.append(list(row))
+
+            response_data = {
+                'success': True,
+                'table_name': table_name,
+                'row_count': row_count,
+                'columns': column_info,
+                'sample_data': sample_rows
+            }
+
+            return JsonResponse(response_data)
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@superuser_required
+def export_table(request, table_name):
+    """Export table data to CSV"""
+    import csv
+    from django.db import connection
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('accounts:superuser_database_management')
+
+    try:
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{table_name}_export.csv"'
+
+        with connection.cursor() as cursor:
+            # Get column names
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [col[1] for col in cursor.fetchall()]
+
+            # Get all data
+            cursor.execute(f"SELECT * FROM {table_name}")
+            rows = cursor.fetchall()
+
+            # Write to CSV
+            writer = csv.writer(response)
+            writer.writerow(columns)  # Header
+            writer.writerows(rows)     # Data
+
+        messages.success(request, f'Table "{table_name}" exported successfully.')
+        return response
+
+    except Exception as e:
+        messages.error(request, f'Error exporting table: {str(e)}')
+        return redirect('accounts:superuser_database_management')
+
+
+@superuser_required
+def clear_table(request, table_name):
+    """Clear all records from a table"""
+    from django.db import connection
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('accounts:superuser_database_management')
+
+    # Prevent clearing system tables
+    protected_tables = ['auth_permission', 'django_content_type', 'django_migrations',
+                       'django_session', 'sqlite_sequence']
+
+    if any(protected in table_name.lower() for protected in protected_tables):
+        messages.error(request, f'Cannot clear protected system table: {table_name}')
+        return redirect('accounts:superuser_database_management')
+
+    try:
+        with connection.cursor() as cursor:
+            # Get count before deletion
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            count = cursor.fetchone()[0]
+
+            # Delete all records
+            cursor.execute(f"DELETE FROM {table_name}")
+
+            # Reset auto-increment for SQLite
+            cursor.execute(f"DELETE FROM sqlite_sequence WHERE name='{table_name}'")
+
+        messages.success(request, f'Successfully cleared {count} records from table "{table_name}".')
+
+    except Exception as e:
+        messages.error(request, f'Error clearing table: {str(e)}')
+
+    return redirect('accounts:superuser_database_management')
+
+
+@superuser_required
 def superuser_security_audit(request):
     """Security audit panel"""
     # Get recent security-related logs
