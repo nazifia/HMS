@@ -1731,6 +1731,65 @@ def superuser_user_profiles(request):
 
 
 @superuser_required
+def toggle_user_active_status(request, user_id):
+    """Toggle user active/inactive status"""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('accounts:superuser_user_profiles')
+
+    try:
+        user = User.objects.get(id=user_id)
+
+        # Prevent superusers from deactivating themselves
+        if user.id == request.user.id:
+            messages.error(request, 'You cannot deactivate your own account.')
+            return redirect('accounts:superuser_user_profiles')
+
+        # Toggle the active status
+        was_active = user.is_active
+        user.is_active = not user.is_active
+        user.save()
+
+        # Create audit log
+        action_type = 'update' if user.is_active else 'deactivate'
+        action_description = 'activated' if user.is_active else 'deactivated'
+        AuditLog.objects.create(
+            user=request.user,
+            target_user=user,
+            action=action_type,
+            details={
+                'action': f'User {action_description}',
+                'username': user.username,
+                'previous_status': 'active' if was_active else 'inactive',
+                'new_status': 'active' if user.is_active else 'inactive',
+                'user_agent': request.META.get('HTTP_USER_AGENT', '')[:255]
+            },
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+
+        messages.success(request, f'User {user.username} has been {action_description} successfully.')
+
+    except User.DoesNotExist:
+        messages.error(request, 'User not found.')
+    except Exception as e:
+        messages.error(request, f'Error updating user status: {str(e)}')
+
+    # Preserve search query in redirect
+    query = request.GET.get('q', '')
+    page = request.GET.get('page', '')
+    redirect_url = reverse('accounts:superuser_user_profiles')
+    params = []
+    if query:
+        params.append(f'q={query}')
+    if page:
+        params.append(f'page={page}')
+    if params:
+        redirect_url += '?' + '&'.join(params)
+
+    return redirect(redirect_url)
+
+
+@superuser_required
 def superuser_dashboard(request):
     """Main superuser dashboard with system overview"""
     from django.db.models import Count

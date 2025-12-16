@@ -77,6 +77,7 @@ urlpatterns = [
     path('superuser/', views.superuser_dashboard, name='superuser_dashboard'),
     path('superuser/user-profiles/', views.superuser_user_profiles, name='superuser_user_profiles'),
     path('superuser/user-profiles/<int:user_id>/edit/', views.superuser_edit_user_profile, name='superuser_edit_user_profile'),
+    path('superuser/user-profiles/<int:user_id>/toggle-status/', views.toggle_user_active_status, name='toggle_user_active_status'),
     path('superuser/password-reset/', views.superuser_password_reset, name='superuser_password_reset'),
     path('superuser/password-reset/<int:user_id>/', views.superuser_reset_user_password, name='superuser_reset_user_password'),
     path('superuser/bulk-operations/', views.superuser_bulk_operations, name='superuser_bulk_operations'),

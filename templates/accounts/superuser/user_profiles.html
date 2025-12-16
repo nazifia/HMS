@@ -84,6 +84,18 @@
                                             <a href="{% url 'accounts:superuser_manage_user_permissions' user.id %}" class="btn btn-sm btn-info">
                                                 <i class="fas fa-shield-alt"></i> Permissions
                                             </a>
+                                            <form method="POST" action="{% url 'accounts:toggle_user_active_status' user.id %}?{% if query %}q={{ query }}&{% endif %}{% if page_obj.number %}page={{ page_obj.number }}{% endif %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to {% if user.is_active %}deactivate{% else %}activate{% endif %} this user?');">
+                                                {% csrf_token %}
+                                                {% if user.is_active %}
+                                                    <button type="submit" class="btn btn-sm btn-danger" {% if user.id == request.user.id %}disabled title="You cannot deactivate yourself"{% endif %}>
+                                                        <i class="fas fa-ban"></i> Deactivate
+                                                    </button>
+                                                {% else %}
+                                                    <button type="submit" class="btn btn-sm btn-success">
+                                                        <i class="fas fa-check-circle"></i> Activate
+                                                    </button>
+                                                {% endif %}
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
