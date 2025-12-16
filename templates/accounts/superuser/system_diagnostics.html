@@ -16,6 +16,14 @@
                 </div>
                 <div class="card-body">
                     {% if diagnostics %}
+                        {% if not diagnostics.psutil_available %}
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Limited Diagnostics:</strong> {{ diagnostics.psutil_error }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="info-box">
@@ -26,17 +34,31 @@
                                     </div>
                                 </div>
                             </div>
+                            {% if diagnostics.psutil_available %}
                             <div class="col-md-6">
                                 <div class="info-box">
                                     <span class="info-box-icon bg-warning"><i class="fas fa-microchip"></i></span>
                                     <div class="info-box-content">
                                         <span class="info-box-text">CPU Usage</span>
                                         <span class="info-box-number">{{ diagnostics.cpu_percent }}%</span>
+                                        <small>{{ diagnostics.cpu_count }} CPU(s)</small>
                                     </div>
                                 </div>
                             </div>
+                            {% else %}
+                            <div class="col-md-6">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-secondary"><i class="fas fa-python"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Django Version</span>
+                                        <span class="info-box-number">{{ diagnostics.django_version }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
-                        
+
+                        {% if diagnostics.psutil_available %}
                         <div class="row mt-3">
                             <div class="col-md-6">
                                 <div class="info-box">
@@ -59,29 +81,48 @@
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
                         
                         <div class="row mt-3">
                             <div class="col-md-12">
                                 <div class="card">
                                     <div class="card-header">
-                                        <h5>System Information</h5>
+                                        <h5><i class="fas fa-info-circle me-2"></i>System Information</h5>
                                     </div>
                                     <div class="card-body">
-                                        <table class="table table-bordered">
-                                            <tr>
-                                                <th>Platform</th>
-                                                <td>{{ diagnostics.platform }}</td>
-                                            </tr>
-                                            <tr>
-                                                <th>Python Version</th>
-                                                <td>{{ diagnostics.python_version }}</td>
-                                            </tr>
-                                            {% if diagnostics.error %}
-                                            <tr>
-                                                <th>Error</th>
-                                                <td class="text-danger">{{ diagnostics.error }}</td>
-                                            </tr>
-                                            {% endif %}
+                                        <table class="table table-bordered table-striped">
+                                            <tbody>
+                                                <tr>
+                                                    <th width="30%">Platform</th>
+                                                    <td>{{ diagnostics.platform }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Python Version</th>
+                                                    <td>{{ diagnostics.python_version }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Django Version</th>
+                                                    <td>{{ diagnostics.django_version }}</td>
+                                                </tr>
+                                                {% if diagnostics.database_engine %}
+                                                <tr>
+                                                    <th>Database Engine</th>
+                                                    <td>{{ diagnostics.database_engine }}</td>
+                                                </tr>
+                                                {% endif %}
+                                                {% if diagnostics.database_tables %}
+                                                <tr>
+                                                    <th>Database Tables</th>
+                                                    <td>{{ diagnostics.database_tables }}</td>
+                                                </tr>
+                                                {% endif %}
+                                                {% if diagnostics.database_error %}
+                                                <tr>
+                                                    <th>Database Error</th>
+                                                    <td class="text-danger">{{ diagnostics.database_error }}</td>
+                                                </tr>
+                                                {% endif %}
+                                            </tbody>
                                         </table>
                                     </div>
                                 </div>

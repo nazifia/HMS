@@ -40,7 +40,8 @@
       "Bash(else echo \"Directory not found\")",
       "Bash(fi)",
       "Bash(done)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": []

@@ -2507,30 +2507,54 @@ def download_backup(request, backup_name):
 @superuser_required
 def superuser_system_diagnostics(request):
     """System diagnostics panel"""
-    import psutil
     import platform
     import os
-    
-    # Get correct disk path for Windows
-    disk_path = '/' if os.name != 'nt' else 'C:'
-    
+    from django.conf import settings
+
+    # Basic system information (always available)
+    diagnostics = {
+        'system': platform.system(),
+        'platform': platform.platform(),
+        'python_version': platform.python_version(),
+        'django_version': __import__('django').get_version(),
+    }
+
+    # Try to get advanced metrics with psutil
     try:
-        diagnostics = {
-            'system': platform.system(),
-            'platform': platform.platform(),
-            'python_version': platform.python_version(),
-            'cpu_percent': psutil.cpu_percent(),
+        import psutil
+
+        # Get correct disk path for Windows
+        disk_path = '/' if os.name != 'nt' else 'C:'
+
+        diagnostics.update({
+            'cpu_percent': psutil.cpu_percent(interval=1),
+            'cpu_count': psutil.cpu_count(),
             'memory': psutil.virtual_memory(),
             'disk': psutil.disk_usage(disk_path),
-        }
+            'psutil_available': True,
+        })
+    except ImportError:
+        diagnostics.update({
+            'psutil_available': False,
+            'psutil_error': 'psutil module not installed. Install it with: pip install psutil',
+        })
     except Exception as e:
-        diagnostics = {
-            'system': platform.system(),
-            'platform': platform.platform(),
-            'python_version': platform.python_version(),
-            'error': str(e),
-        }
-    
+        diagnostics.update({
+            'psutil_available': False,
+            'psutil_error': f'Error getting system metrics: {str(e)}',
+        })
+
+    # Get database information
+    from django.db import connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            table_count = len(cursor.fetchall())
+            diagnostics['database_tables'] = table_count
+            diagnostics['database_engine'] = settings.DATABASES['default']['ENGINE']
+    except Exception as e:
+        diagnostics['database_error'] = str(e)
+
     return render(request, 'accounts/superuser/system_diagnostics.html', {
         'diagnostics': diagnostics,
         'page_title': 'System Diagnostics',
