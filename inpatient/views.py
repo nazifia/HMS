@@ -681,6 +681,7 @@ def create_admission(request):
     context = {
         'form': form,
         'title': 'Create New Admission',
+        'all_patients': Patient.objects.filter(is_active=True).select_related().order_by('first_name', 'last_name'),
     }
     return render(request, 'inpatient/admission_form.html', context)
 

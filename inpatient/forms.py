@@ -62,7 +62,7 @@ class AdmissionForm(forms.ModelForm):
         fields = ['patient', 'admission_date', 'bed', 'diagnosis', 'attending_doctor',
                   'reason_for_admission', 'admission_notes', 'admission_service']
         widgets = {
-            'patient': forms.Select(attrs={'class': 'form-select select2'}),
+            'patient': forms.Select(attrs={'class': 'form-select select2', 'id': 'patientDropdown'}),
             'admission_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'bed': forms.Select(attrs={'class': 'form-select'}),
             'diagnosis': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),

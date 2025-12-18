@@ -1,0 +1,48 @@
+{% if patients %}
+<div class="list-group">
+    {% for patient in patients %}
+    <a href="#" class="list-group-item list-group-item-action patient-select"
+       data-patient-id="{{ patient.id }}"
+       data-patient-name="{{ patient.name }}"
+       data-patient-patient-id="{{ patient.patient_id }}"
+       data-patient-phone="{{ patient.phone_number }}">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <strong>{{ patient.name }}</strong>
+                <div class="text-muted small">
+                    ID: {{ patient.patient_id }} | Phone: {{ patient.phone_number }}
+                </div>
+            </div>
+            <span class="badge bg-primary">Select</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">No patients found.</div>
+{% endif %}
+
+<script>
+// Add click event listeners to patient selection links
+document.querySelectorAll('.patient-select').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Get patient data from data attributes
+        const patientId = this.getAttribute('data-patient-id');
+        const patientName = this.getAttribute('data-patient-name');
+        const patientPatientId = this.getAttribute('data-patient-patient-id');
+        const patientPhone = this.getAttribute('data-patient-phone');
+        
+        // Update the dropdown with selected patient ID
+        document.getElementById('patientDropdown').value = patientId;
+        
+        // Clear search results
+        document.getElementById('patientResults').innerHTML = '';
+        document.getElementById('patientSearch').value = '';
+        
+        // Show success message
+        alert('Patient selected: ' + patientName);
+    });
+});
+</script>

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_ajax
 from .views_shared_wallets import (
     shared_wallet_list, create_shared_wallet, shared_wallet_detail,
     add_member_to_wallet, remove_member_from_wallet, add_funds_to_shared_wallet,
@@ -16,6 +17,8 @@ urlpatterns = [
     path('<int:patient_id>/edit/', views.edit_patient, name='edit'),
     path('<int:patient_id>/toggle-active/', views.toggle_patient_status, name='toggle_active'),
     path('search/', views.search_patients, name='search'),
+    path('ajax-search/', views.search_patients, name='ajax_patient_search'),
+    path('htmx-search/', views_ajax.ajax_patient_search, name='htmx_patient_search'),
     path('medical-history/<int:history_id>/edit/', views.edit_medical_history, name='edit_medical_history'),
     path('medical-history/<int:history_id>/delete/', views.delete_medical_history, name='delete_medical_history'),
     path('<int:patient_id>/medical-history/', views.patient_medical_history, name='medical_history'),
