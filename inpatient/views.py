@@ -503,11 +503,24 @@ def create_admission(request):
         try:
             patient = Patient.objects.get(id=patient_id)
             initial_data['patient'] = patient.id  # Pass patient ID, not patient object
+            initial_data['patient_search'] = str(patient)  # Also set patient search field
         except Patient.DoesNotExist:
             pass
 
     if request.method == 'POST':
         form = AdmissionForm(request.POST)
+        # Handle patient search selection if patient ID is provided via JavaScript
+        patient_id = request.POST.get('patient')
+        if patient_id:
+            try:
+                patient = Patient.objects.get(id=patient_id)
+                form.data = form.data.copy()
+                form.data['patient'] = patient_id
+                form.data['patient_search'] = str(patient)
+            except Patient.DoesNotExist:
+                messages.error(request, 'Selected patient not found.')
+                return redirect('inpatient:create_admission')
+                
         if form.is_valid():
             bed = form.cleaned_data['bed']
             # Ensure bed is available and active at the time of admission

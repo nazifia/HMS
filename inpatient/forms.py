@@ -49,6 +49,17 @@ class BedForm(forms.ModelForm):
         return cleaned_data
 
 class AdmissionForm(forms.ModelForm):
+    # Patient search field for enhanced UX
+    patient_search = forms.CharField(
+        required=False,
+        label="Search Patient",
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by name or ID',
+            'class': 'form-control',
+            'id': 'id_patient_search'
+        })
+    )
+    
     # Authorization code field
     authorization_code = forms.ModelChoiceField(
         queryset=None,  # Will be set in __init__
@@ -62,7 +73,7 @@ class AdmissionForm(forms.ModelForm):
         fields = ['patient', 'admission_date', 'bed', 'diagnosis', 'attending_doctor',
                   'reason_for_admission', 'admission_notes', 'admission_service']
         widgets = {
-            'patient': forms.Select(attrs={'class': 'form-select select2', 'id': 'patientDropdown'}),
+            'patient': forms.HiddenInput(),  # Hidden field for patient ID
             'admission_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'bed': forms.Select(attrs={'class': 'form-select'}),
             'diagnosis': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
@@ -131,6 +142,10 @@ class AdmissionForm(forms.ModelForm):
             else:
                 self.fields['authorization_code'].widget.attrs['disabled'] = True
                 self.fields['authorization_code'].required = False
+        
+        # If editing an existing admission, populate the patient search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            self.fields['patient_search'].initial = str(self.instance.patient)
 
     def clean(self):
         cleaned_data = super().clean()
