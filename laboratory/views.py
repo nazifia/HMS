@@ -1645,6 +1645,14 @@ def laboratory_sales_report(request):
 
 
 @login_required
+def htmx_diagnostic(request):
+    """Diagnostic page for testing HTMX patient search"""
+    return render(request, 'laboratory/htmx_test_diagnostic.html', {
+        'title': 'HTMX Patient Search Diagnostic'
+    })
+
+
+@login_required
 def radiology_sales_report(request):
     """View for daily radiology tests by user and total monthly radiology revenue."""
     from radiology.models import RadiologyOrder

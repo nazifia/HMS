@@ -49,9 +49,12 @@ urlpatterns = [
 
     # Reports
     path('reports/statistics/', views.lab_statistics_report, name='lab_statistics_report'),
-    
+
     # Payment management
     path('requests/<int:test_request_id>/payment/', payment_views.laboratory_payment, name='laboratory_payment'),
     path('requests/<int:test_request_id>/payment-history/', payment_views.laboratory_payment_history, name='laboratory_payment_history'),
     path('requests/<int:test_request_id>/confirm-payment/', payment_views.confirm_lab_payment, name='confirm_lab_payment'),
+
+    # Diagnostic page for HTMX testing
+    path('htmx-diagnostic/', views.htmx_diagnostic, name='htmx_diagnostic'),
 ]

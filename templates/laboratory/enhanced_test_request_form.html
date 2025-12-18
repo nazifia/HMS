@@ -2,6 +2,65 @@
 {% load custom_filters %}
 {% load form_tags %}
 
+{% block extra_css %}
+<style>
+.autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.autocomplete-results .list-group-item {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+.autocomplete-results .list-group-item:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.position-relative {
+    position: relative;
+}
+
+.patient-dropdown-section {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.patient-dropdown-section .form-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator {
+    display: inline-block;
+}
+
+.htmx-request.htmx-indicator {
+    display: inline-block;
+}
+</style>
+{% endblock %}
+
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
@@ -68,11 +127,48 @@
                                     <input type="text" class="form-control" value="{{ patient.get_full_name }} ({{ patient.patient_id }})" readonly style="background-color: #e9ecef;">
                                     <small class="form-text text-muted">Patient is preselected from patient detail page</small>
                                 {% else %}
-                                    <label for="{{ form.patient.id_for_label }}" class="form-label">Patient</label>
-                                    {{ form.patient|add_class:"form-control select2" }}
-                                    {% if form.patient.errors %}
-                                        <div class="text-danger">{{ form.patient.errors }}</div>
-                                    {% endif %}
+                                    <label for="patientSearch" class="form-label">Search Patient</label>
+                                    <div class="position-relative">
+                                        <input type="text" id="patientSearch" name="q" class="form-control"
+                                               placeholder="Search by name, ID, or phone..."
+                                               hx-get="{% url 'patients:htmx_patient_search' %}"
+                                               hx-trigger="keyup changed delay:500ms, search"
+                                               hx-target="#patientResults"
+                                               hx-swap="innerHTML"
+                                               hx-indicator="#search-loading"
+                                               autocomplete="off">
+                                        <div id="search-loading" class="htmx-indicator" style="position: absolute; right: 10px; top: 8px; display: none;">
+                                            <i class="fas fa-spinner fa-spin text-primary"></i>
+                                        </div>
+                                        <div id="patientResults" class="autocomplete-results" style="display: none;"></div>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> Type at least 2 characters to search
+                                    </small>
+                                    <div id="selected-patient-info" class="mt-2" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <strong>Selected Patient:</strong>
+                                            <span id="patient-name"></span> (<span id="patient-id"></span>)
+                                            <br><small>Phone: <span id="patient-phone"></span></small>
+                                        </div>
+                                    </div>
+                                    <div id="patient-required-warning" class="alert alert-warning mt-2" style="display: none;">
+                                        <small><i class="fas fa-exclamation-triangle"></i> Please search and select a patient to continue.</small>
+                                    </div>
+
+                                    <!-- Alternative: Direct Patient Selection Dropdown -->
+                                    <div class="mt-2 patient-dropdown-section">
+                                        <label for="patientDropdown" class="form-label">
+                                            <i class="fas fa-list"></i> Or select directly from list:
+                                        </label>
+                                        {{ form.patient|add_class:"form-control select2" }}
+                                        {% if form.patient.errors %}
+                                            <div class="text-danger">{{ form.patient.errors }}</div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">
+                                            <i class="fas fa-info-circle"></i> You can either search above or select from this dropdown
+                                        </small>
+                                    </div>
                                 {% endif %}
                             </div>
                             
@@ -235,6 +331,276 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ============================================
+    // Patient Search Functionality
+    // ============================================
+    const patientSearchField = document.getElementById('patientSearch');
+    const patientIdField = document.getElementById('id_patient');
+    const patientDropdown = patientIdField; // The actual patient field
+    const searchResults = document.getElementById('patientResults');
+    const selectedPatientInfo = document.getElementById('selected-patient-info');
+    const patientWarning = document.getElementById('patient-required-warning');
+    let searchTimeout;
+
+    // Show warning initially if no patient is selected and patient field exists
+    if (patientIdField && !patientIdField.value && patientWarning) {
+        patientWarning.style.display = 'block';
+    }
+
+    // Check if HTMX is available
+    if (typeof htmx !== 'undefined') {
+        console.log('✓ HTMX is loaded and ready');
+    } else {
+        console.error('✗ HTMX is not loaded!');
+    }
+
+    // HTMX event listeners for patient search
+    if (patientSearchField && typeof htmx !== 'undefined') {
+        console.log('✓ Setting up HTMX patient search listeners');
+
+        // Show results when HTMX loads content
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'patientResults') {
+                const searchTerm = patientSearchField.value.trim();
+                console.log('HTMX afterSwap - search term:', searchTerm);
+                if (searchTerm.length >= 2 && evt.detail.target.innerHTML.trim() !== '') {
+                    searchResults.style.display = 'block';
+                    // Re-attach click handlers to new results
+                    attachPatientResultHandlers();
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            }
+        });
+
+        // Log HTMX requests
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            if (evt.detail.target.id === 'patientResults' || evt.detail.elt.id === 'patientSearch') {
+                console.log('HTMX beforeRequest - URL:', evt.detail.requestConfig.path);
+            }
+        });
+
+        // Handle errors
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            console.error('HTMX error:', evt.detail);
+        });
+    }
+
+    // Attach click handlers to patient search results
+    function attachPatientResultHandlers() {
+        searchResults.querySelectorAll('.patient-result').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectPatient(this);
+            });
+        });
+    }
+
+    // Initialize Select2 for patient dropdown
+    if (patientDropdown && typeof $ !== 'undefined') {
+        $(patientDropdown).select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Select a patient...',
+            allowClear: true,
+            minimumInputLength: 0,
+            minimumResultsForSearch: 0, // Always show search box
+            matcher: function(params, data) {
+                // If no search term, return all
+                if ($.trim(params.term) === '') {
+                    return data;
+                }
+
+                // Search in text
+                if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
+                    return data;
+                }
+
+                // Search in data attributes if available
+                if (data.element) {
+                    var $element = $(data.element);
+                    var patientName = $element.data('patient-name') || '';
+                    var patientId = $element.data('patient-pid') || '';
+                    var patientPhone = $element.data('patient-phone') || '';
+
+                    var searchStr = (patientName + ' ' + patientId + ' ' + patientPhone).toLowerCase();
+                    if (searchStr.indexOf(params.term.toLowerCase()) > -1) {
+                        return data;
+                    }
+                }
+
+                return null;
+            },
+            language: {
+                searching: function() {
+                    return 'Searching patients...';
+                },
+                noResults: function() {
+                    return 'No patients found';
+                },
+                inputTooShort: function() {
+                    return 'Type to search...';
+                }
+            }
+        });
+
+        // Handle dropdown selection
+        $(patientDropdown).on('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                selectPatientFromDropdown(selectedOption);
+            } else {
+                clearPatientSelection();
+            }
+        });
+    }
+
+    // Hide results when clicking outside
+    if (patientSearchField) {
+        document.addEventListener('click', function(e) {
+            if (!patientSearchField.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+
+        // Add input event listener for clearing when empty
+        patientSearchField.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+            if (searchTerm.length < 2) {
+                searchResults.style.display = 'none';
+                searchResults.innerHTML = '';
+            }
+        });
+    }
+
+    function displaySearchResults(patients) {
+        if (patients.length === 0) {
+            searchResults.innerHTML = '<div class="list-group-item text-muted">No patients found</div>';
+            searchResults.style.display = 'block';
+            return;
+        }
+
+        let html = '<div class="list-group">';
+        patients.forEach(patient => {
+            const age = patient.age || 'N/A';
+            const gender = patient.gender || 'N/A';
+            const phone = patient.phone || 'N/A';
+
+            html += `
+                <a href="#" class="list-group-item list-group-item-action patient-result"
+                   data-patient-id="${patient.id}"
+                   data-patient-name="${patient.name}"
+                   data-patient-pid="${patient.patient_id}"
+                   data-patient-age="${age}"
+                   data-patient-gender="${gender}"
+                   data-patient-phone="${phone}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${patient.name}</h6>
+                        <small>${patient.patient_id}</small>
+                    </div>
+                    <p class="mb-1">Age: ${age} | Gender: ${gender}</p>
+                    <small>Phone: ${phone}</small>
+                </a>
+            `;
+        });
+        html += '</div>';
+
+        searchResults.innerHTML = html;
+        searchResults.style.display = 'block';
+
+        // Add click handlers to results
+        searchResults.querySelectorAll('.patient-result').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectPatient(this);
+            });
+        });
+    }
+
+    function selectPatient(element) {
+        const patientId = element.dataset.patientId;
+        const patientName = element.dataset.patientName;
+        const patientPid = element.dataset.patientPid;
+        const patientPhone = element.dataset.patientPhone;
+
+        // Set the hidden patient field
+        patientIdField.value = patientId;
+
+        // Update search field with patient name
+        patientSearchField.value = patientName;
+
+        // Show selected patient info
+        document.getElementById('patient-name').textContent = patientName;
+        document.getElementById('patient-id').textContent = patientPid;
+        document.getElementById('patient-phone').textContent = patientPhone;
+
+        selectedPatientInfo.style.display = 'block';
+        searchResults.style.display = 'none';
+
+        // Hide the patient warning
+        if (patientWarning) {
+            patientWarning.style.display = 'none';
+        }
+
+        // Sync the dropdown selection
+        if (patientDropdown && typeof $ !== 'undefined') {
+            $(patientDropdown).val(patientId).trigger('change.select2');
+        }
+    }
+
+    function selectPatientFromDropdown(selectedOption) {
+        const patientId = selectedOption.value;
+        const patientText = selectedOption.text;
+
+        // Extract patient name and ID from the dropdown text
+        const match = patientText.match(/^(.+?)\s+\((.+?)\)/);
+        const patientName = match ? match[1] : patientText;
+        const patientPid = match ? match[2] : 'N/A';
+
+        // Set the hidden patient field
+        patientIdField.value = patientId;
+
+        // Update search field with patient name
+        if (patientSearchField) {
+            patientSearchField.value = patientName;
+        }
+
+        // Show selected patient info
+        document.getElementById('patient-name').textContent = patientName;
+        document.getElementById('patient-id').textContent = patientPid;
+        document.getElementById('patient-phone').textContent = 'N/A';
+
+        selectedPatientInfo.style.display = 'block';
+        searchResults.style.display = 'none';
+
+        // Hide the patient warning
+        if (patientWarning) {
+            patientWarning.style.display = 'none';
+        }
+    }
+
+    function clearPatientSelection() {
+        if (patientIdField) {
+            patientIdField.value = '';
+        }
+        if (patientSearchField) {
+            patientSearchField.value = '';
+        }
+        selectedPatientInfo.style.display = 'none';
+
+        if (patientWarning) {
+            patientWarning.style.display = 'block';
+        }
+
+        // Clear dropdown selection
+        if (patientDropdown && typeof $ !== 'undefined') {
+            $(patientDropdown).val(null).trigger('change');
+        }
+    }
+
+    // ============================================
+    // Test Selection Functionality
+    // ============================================
     const selectedTests = new Set();
     const testSearch = document.getElementById('test-search');
     const categoryFilter = document.getElementById('category-filter');
@@ -413,6 +779,33 @@ document.addEventListener('DOMContentLoaded', function() {
             performSearch();
         }
     });
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize Select2 for other form fields
+$(document).ready(function() {
+    // Initialize Select2 for doctor and other select fields
+    $('.select2').not('#id_patient').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        minimumResultsForSearch: 0, // Always show search box
+        allowClear: false,
+        placeholder: 'Select an option...'
+    });
+
+    // Special configuration for authorization code if it exists
+    if ($('#id_authorization_code').length) {
+        $('#id_authorization_code').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            minimumResultsForSearch: 0,
+            allowClear: true,
+            placeholder: 'Select authorization code (optional)...'
+        });
+    }
 });
 </script>
 {% endblock %}

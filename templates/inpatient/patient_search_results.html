@@ -1,0 +1,19 @@
+{% if patients %}
+<div class="list-group">
+    {% for patient in patients %}
+    <a href="#" class="list-group-item list-group-item-action patient-result"
+       data-patient-id="{{ patient.id }}"
+       data-patient-name="{{ patient.name }}"
+       data-patient-pid="{{ patient.patient_id }}"
+       data-patient-phone="{{ patient.phone_number }}">
+        <div class="d-flex w-100 justify-content-between">
+            <h6 class="mb-1">{{ patient.name }}</h6>
+            <small>{{ patient.patient_id }}</small>
+        </div>
+        <small>Phone: {{ patient.phone_number }}</small>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="list-group-item text-muted">No patients found</div>
+{% endif %}
