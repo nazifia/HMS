@@ -6,6 +6,65 @@
 
 {% block title %}New Radiology Order - Hospital Management System{% endblock %}
 
+{% block extra_css %}
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+.autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.autocomplete-results .list-group-item {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+.autocomplete-results .list-group-item:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.position-relative {
+    position: relative;
+}
+
+.patient-dropdown-section {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.patient-dropdown-section .form-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.select2-container--bootstrap-5 .select2-selection {
+    border-color: #ced4da;
+}
+
+.select2-container--bootstrap-5 .select2-selection:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -43,9 +102,69 @@
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="id_patient" class="form-label">Patient <span class="text-danger">*</span></label>
-                                {{ form.patient|add_class:"form-select select2" }}
-                                <div class="form-text">Select the patient for this order. This field is locked if context is set.</div>
+                                <!-- Hidden field to store selected patient ID -->
+                                <input type="hidden" id="id_patient" name="patient" value="{% if selected_patient %}{{ selected_patient.id }}{% endif %}">
+
+                                {% if selected_patient %}
+                                    <!-- Patient is preselected -->
+                                    <label class="form-label">Patient <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" value="{{ selected_patient.get_full_name }} ({{ selected_patient.patient_id }})" readonly style="background-color: #e9ecef;">
+                                    <div class="form-text">Patient is preselected from patient detail page</div>
+                                {% else %}
+                                    <label for="patientSearch" class="form-label">Search Patient <span class="text-danger">*</span></label>
+                                    <div class="position-relative">
+                                        <input type="text" id="patientSearch" name="q" class="form-control"
+                                               placeholder="Search by name, ID, or phone..."
+                                               hx-get="{% url 'patients:htmx_patient_search' %}"
+                                               hx-trigger="keyup changed delay:500ms, search"
+                                               hx-target="#patientResults"
+                                               hx-swap="innerHTML"
+                                               hx-indicator="#search-loading"
+                                               autocomplete="off">
+                                        <div id="search-loading" class="htmx-indicator" style="position: absolute; right: 10px; top: 8px; display: none;">
+                                            <i class="fas fa-spinner fa-spin text-primary"></i>
+                                        </div>
+                                        <div id="patientResults" class="autocomplete-results" style="display: none;"></div>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> Type at least 2 characters to search
+                                    </small>
+                                    <div id="selected-patient-info" class="mt-2" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <strong>Selected Patient:</strong>
+                                            <span id="patient-name"></span> (<span id="patient-id"></span>)
+                                            <br><small>Phone: <span id="patient-phone"></span></small>
+                                        </div>
+                                    </div>
+                                    <div id="patient-required-warning" class="alert alert-warning mt-2" style="display: none;">
+                                        <small><i class="fas fa-exclamation-triangle"></i> Please search and select a patient to continue.</small>
+                                    </div>
+
+                                    <!-- Alternative: Direct Patient Selection Dropdown -->
+                                    <div class="mt-2 patient-dropdown-section">
+                                        <label for="id_patient_dropdown" class="form-label">
+                                            <i class="fas fa-list"></i> Or select directly from list:
+                                        </label>
+                                        <select id="id_patient_dropdown" class="form-select select2" data-placeholder="Select a patient...">
+                                            <option value="">Choose a patient...</option>
+                                            {% for patient_option in form.patient.field.queryset %}
+                                                <option value="{{ patient_option.id }}"
+                                                        data-patient-name="{{ patient_option.get_full_name }}"
+                                                        data-patient-pid="{{ patient_option.patient_id }}"
+                                                        data-patient-age="{{ patient_option.get_age }}"
+                                                        data-patient-gender="{{ patient_option.get_gender_display }}"
+                                                        data-patient-phone="{{ patient_option.phone_number|default:'N/A' }}">
+                                                    {{ patient_option.get_full_name }} ({{ patient_option.patient_id }}) - {{ patient_option.get_gender_display }}, {{ patient_option.get_age }} years
+                                                </option>
+                                            {% empty %}
+                                                <option value="" disabled>No patients registered</option>
+                                            {% endfor %}
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            <i class="fas fa-info-circle"></i> You can either search above or select from this dropdown
+                                        </small>
+                                    </div>
+                                {% endif %}
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="id_test" class="form-label">Radiology Test <span class="text-danger">*</span></label>
@@ -94,48 +213,301 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Select2 JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    $(document).ready(function() {
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            width: '100%'
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================
+    // Patient Search Functionality
+    // ============================================
+    const patientSearchField = document.getElementById('patientSearch');
+    const patientIdField = document.getElementById('id_patient');
+    const searchResults = document.getElementById('patientResults');
+    const selectedPatientInfo = document.getElementById('selected-patient-info');
+    const patientWarning = document.getElementById('patient-required-warning');
+    let searchTimeout;
+
+    // Show warning initially if no patient is selected and patient field exists
+    if (patientIdField && !patientIdField.value && patientWarning) {
+        patientWarning.style.display = 'block';
+    }
+
+    // HTMX event listeners for patient search
+    if (patientSearchField && typeof htmx !== 'undefined') {
+        // Show results when HTMX loads content
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'patientResults') {
+                const searchTerm = patientSearchField.value.trim();
+                if (searchTerm.length >= 2 && evt.detail.target.innerHTML.trim() !== '') {
+                    searchResults.style.display = 'block';
+                    // Re-attach click handlers to new results
+                    attachPatientResultHandlers();
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            }
         });
-        
-        // Function to check if selected patient is NHIA and show/hide authorization code field
-        function checkPatientType() {
-            var patientId = $('#id_patient').val();
-            if (patientId) {
-                // Make an AJAX request to check if patient is NHIA
-                $.ajax({
-                    url: '{% url "patients:check_patient_nhia" %}',
-                    data: {
-                        'patient_id': patientId,
-                        'csrfmiddlewaretoken': '{{ csrf_token }}'
-                    },
-                    type: 'POST',
-                    success: function(data) {
-                        if (data.is_nhia) {
-                            $('#authorization-code-section').show();
-                        } else {
-                            $('#authorization-code-section').hide();
-                        }
-                    },
-                    error: function() {
+    }
+
+    // Attach click handlers to patient search results
+    function attachPatientResultHandlers() {
+        searchResults.querySelectorAll('.patient-result').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectPatient(this);
+            });
+        });
+    }
+
+    // Hide results when clicking outside
+    if (patientSearchField) {
+        document.addEventListener('click', function(e) {
+            if (!patientSearchField.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+
+        // Add input event listener for clearing when empty
+        patientSearchField.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+            if (searchTerm.length < 2) {
+                searchResults.style.display = 'none';
+                searchResults.innerHTML = '';
+            }
+        });
+    }
+
+    function selectPatient(element) {
+        const patientId = element.dataset.patientId;
+        const patientName = element.dataset.patientName;
+        const patientPid = element.dataset.patientPid;
+        const patientPhone = element.dataset.patientPhone;
+
+        // Set the hidden patient field
+        if (patientIdField) {
+            patientIdField.value = patientId;
+        }
+
+        // Update search field with patient name
+        if (patientSearchField) {
+            patientSearchField.value = patientName;
+        }
+
+        // Show selected patient info
+        if (selectedPatientInfo) {
+            document.getElementById('patient-name').textContent = patientName;
+            document.getElementById('patient-id').textContent = patientPid;
+            document.getElementById('patient-phone').textContent = patientPhone;
+            selectedPatientInfo.style.display = 'block';
+        }
+
+        if (searchResults) {
+            searchResults.style.display = 'none';
+        }
+
+        // Hide the patient warning
+        if (patientWarning) {
+            patientWarning.style.display = 'none';
+        }
+
+        // Sync the dropdown selection
+        const patientDropdownSelect = document.getElementById('id_patient_dropdown');
+        if (patientDropdownSelect && typeof $ !== 'undefined') {
+            $(patientDropdownSelect).val(patientId).trigger('change.select2');
+        }
+
+        // Check patient type for NHIA
+        checkPatientType(patientId);
+    }
+
+    // Make functions globally accessible
+    window.selectPatientFromDropdown = function(selectedOption) {
+        const patientId = selectedOption.value;
+        const patientName = selectedOption.dataset.patientName;
+        const patientPid = selectedOption.dataset.patientPid;
+        const patientPhone = selectedOption.dataset.patientPhone;
+
+        // Set the hidden patient field
+        if (patientIdField) {
+            patientIdField.value = patientId;
+        }
+
+        // Update search field with patient name
+        if (patientSearchField) {
+            patientSearchField.value = patientName;
+        }
+
+        // Show selected patient info with all details
+        if (selectedPatientInfo) {
+            document.getElementById('patient-name').textContent = patientName;
+            document.getElementById('patient-id').textContent = patientPid;
+            document.getElementById('patient-phone').textContent = patientPhone;
+            selectedPatientInfo.style.display = 'block';
+        }
+
+        if (searchResults) {
+            searchResults.style.display = 'none';
+        }
+
+        // Hide the patient warning
+        if (patientWarning) {
+            patientWarning.style.display = 'none';
+        }
+
+        // Sync the dropdown selection (avoid infinite loop by checking if already selected)
+        const patientDropdownSelect = document.getElementById('id_patient_dropdown');
+        if (patientDropdownSelect && typeof $ !== 'undefined' && $(patientDropdownSelect).val() !== patientId) {
+            $(patientDropdownSelect).val(patientId).trigger('change.select2');
+        }
+
+        // Check patient type for NHIA
+        checkPatientType(patientId);
+    };
+
+    window.clearPatientSelection = function() {
+        if (patientIdField) {
+            patientIdField.value = '';
+        }
+        if (patientSearchField) {
+            patientSearchField.value = '';
+        }
+        if (selectedPatientInfo) {
+            selectedPatientInfo.style.display = 'none';
+        }
+
+        if (patientWarning) {
+            patientWarning.style.display = 'block';
+        }
+
+        // Clear dropdown selection
+        const patientDropdownSelect = document.getElementById('id_patient_dropdown');
+        if (patientDropdownSelect && typeof $ !== 'undefined') {
+            $(patientDropdownSelect).val(null).trigger('change');
+        }
+    };
+
+    // Function to check if selected patient is NHIA and show/hide authorization code field
+    function checkPatientType(patientId) {
+        if (patientId) {
+            // Make an AJAX request to check if patient is NHIA
+            $.ajax({
+                url: '{% url "patients:check_patient_nhia" %}',
+                data: {
+                    'patient_id': patientId,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                type: 'POST',
+                success: function(data) {
+                    if (data.is_nhia) {
+                        $('#authorization-code-section').show();
+                    } else {
                         $('#authorization-code-section').hide();
                     }
-                });
-            } else {
-                $('#authorization-code-section').hide();
-            }
+                },
+                error: function() {
+                    $('#authorization-code-section').hide();
+                }
+            });
+        } else {
+            $('#authorization-code-section').hide();
         }
-        
-        // Check patient type on page load
-        checkPatientType();
-        
-        // Check patient type when patient selection changes
-        $('#id_patient').on('change', function() {
-            checkPatientType();
+    }
+});
+
+// jQuery initialization for Select2 and other features
+$(document).ready(function() {
+    // Initialize Select2 for patient dropdown with enhanced search
+    if ($('#id_patient_dropdown').length) {
+        $('#id_patient_dropdown').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Select a patient...',
+            allowClear: true,
+            minimumResultsForSearch: 0, // 0 means ALWAYS show search box
+            dropdownAutoWidth: true,
+            language: {
+                noResults: function() {
+                    return 'No patients found';
+                },
+                searching: function() {
+                    return 'Searching...';
+                }
+            },
+            matcher: function(params, data) {
+                // If no search term, return all
+                if ($.trim(params.term) === '') {
+                    return data;
+                }
+
+                // Don't search on placeholder option
+                if (!data.id) {
+                    return null;
+                }
+
+                // Search in text
+                if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
+                    return data;
+                }
+
+                // Search in data attributes if available
+                if (data.element) {
+                    var $element = $(data.element);
+                    var patientName = $element.data('patient-name') || '';
+                    var patientId = $element.data('patient-pid') || '';
+                    var patientPhone = $element.data('patient-phone') || '';
+
+                    var searchStr = (patientName + ' ' + patientId + ' ' + patientPhone).toLowerCase();
+                    if (searchStr.indexOf(params.term.toLowerCase()) > -1) {
+                        return data;
+                    }
+                }
+
+                return null;
+            }
         });
+
+        // Handle dropdown selection
+        $('#id_patient_dropdown').on('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                // Call the global function defined in the main script
+                if (typeof window.selectPatientFromDropdown === 'function') {
+                    window.selectPatientFromDropdown(selectedOption);
+                }
+            } else {
+                // Call the global function to clear selection
+                if (typeof window.clearPatientSelection === 'function') {
+                    window.clearPatientSelection();
+                }
+            }
+        });
+    }
+
+    // Initialize Select2 for other form fields (excluding patient dropdowns)
+    $('.select2').not('#id_patient_dropdown').select2({
+        theme: 'bootstrap-5',
+        width: '100%'
     });
+
+    // Check patient type on page load if patient is already selected
+    const patientId = $('#id_patient').val();
+    if (patientId) {
+        $.ajax({
+            url: '{% url "patients:check_patient_nhia" %}',
+            data: {
+                'patient_id': patientId,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            type: 'POST',
+            success: function(data) {
+                if (data.is_nhia) {
+                    $('#authorization-code-section').show();
+                } else {
+                    $('#authorization-code-section').hide();
+                }
+            }
+        });
+    }
+});
 </script>
 {% endblock %}
