@@ -1035,69 +1035,59 @@ def wallet_payment(request, patient_id):
 @login_required
 @permission_required('wallet.manage')
 def wallet_list(request):
-    """View to display all patient wallets with search functionality"""
+    """View to display all patient wallets with search functionality using HTMX"""
     from .forms import WalletSearchForm
-    
-    # Initialize search form
+
+    # Initialize search form with GET parameters
     search_form = WalletSearchForm(request.GET or None)
-    
+
     # Start with all wallets
     wallets = PatientWallet.objects.select_related('patient').all()
-    
-    # Apply search filters if form is valid
-    if search_form.is_valid():
-        patient_name = search_form.cleaned_data.get('patient_name')
-        patient_id_or_phone = search_form.cleaned_data.get('patient_id_or_phone')
-        patient_type = search_form.cleaned_data.get('patient_type')
-        balance_filter = search_form.cleaned_data.get('balance_filter')
-        min_balance = search_form.cleaned_data.get('min_balance')
-        max_balance = search_form.cleaned_data.get('max_balance')
-        
-        # Apply name search filter
-        if patient_name:
-            wallets = wallets.filter(
-                Q(patient__first_name__icontains=patient_name) |
-                Q(patient__last_name__icontains=patient_name)
-            )
-        
-        # Apply ID or phone number search filter
-        if patient_id_or_phone:
-            wallets = wallets.filter(
-                Q(patient__patient_id__icontains=patient_id_or_phone) |
-                Q(patient__phone_number__icontains=patient_id_or_phone)
-            )
-        
-        # Apply patient type filter
-        if patient_type:
-            if patient_type == 'nhia':
-                wallets = wallets.filter(patient__patient_type='nhia')
-            elif patient_type == 'retainership':
-                wallets = wallets.filter(patient__patient_type='retainership')
-            elif patient_type == 'regular':
-                wallets = wallets.filter(patient__patient_type='regular')
-        
-        # Apply balance filter
-        if balance_filter:
-            if balance_filter == 'positive':
-                wallets = wallets.filter(balance__gt=0)
-            elif balance_filter == 'zero':
-                wallets = wallets.filter(balance=0)
-            elif balance_filter == 'negative':
-                wallets = wallets.filter(balance__lt=0)
-        
-        # Apply min/max balance filters
-        if min_balance is not None:
-            wallets = wallets.filter(balance__gte=min_balance)
-        
-        if max_balance is not None:
-            wallets = wallets.filter(balance__lte=max_balance)
-    
+
+    # Apply search filters if any GET parameters exist
+    patient_name = request.GET.get('patient_name', '').strip()
+    patient_id_or_phone = request.GET.get('patient_id_or_phone', '').strip()
+    patient_type = request.GET.get('patient_type', '').strip()
+    balance_filter = request.GET.get('balance_filter', '').strip()
+
+    # Apply name search filter (searches both first and last name)
+    if patient_name:
+        wallets = wallets.filter(
+            Q(patient__first_name__icontains=patient_name) |
+            Q(patient__last_name__icontains=patient_name)
+        )
+
+    # Apply ID or phone number search filter
+    if patient_id_or_phone:
+        wallets = wallets.filter(
+            Q(patient__patient_id__icontains=patient_id_or_phone) |
+            Q(patient__phone_number__icontains=patient_id_or_phone)
+        )
+
+    # Apply patient type filter
+    if patient_type:
+        if patient_type == 'nhia':
+            wallets = wallets.filter(patient__patient_type='nhia')
+        elif patient_type == 'retainership':
+            wallets = wallets.filter(patient__patient_type='retainership')
+        elif patient_type == 'regular':
+            wallets = wallets.filter(patient__patient_type='regular')
+
+    # Apply balance filter
+    if balance_filter:
+        if balance_filter == 'positive':
+            wallets = wallets.filter(balance__gt=0)
+        elif balance_filter == 'zero':
+            wallets = wallets.filter(balance=0)
+        elif balance_filter == 'negative':
+            wallets = wallets.filter(balance__lt=0)
+
     # Calculate statistics for filtered results
     total_balance = sum(wallet.balance for wallet in wallets)
     positive_wallets = sum(1 for wallet in wallets if wallet.balance > 0)
     zero_wallets = sum(1 for wallet in wallets if wallet.balance == 0)
     negative_wallets = sum(1 for wallet in wallets if wallet.balance < 0)
-    
+
     context = {
         'wallets': wallets,
         'total_balance': total_balance,
@@ -1109,7 +1099,11 @@ def wallet_list(request):
         'page_title': 'All Wallets',
         'active_nav': 'wallet',
     }
-    
+
+    # Check if request is HTMX and return partial template
+    if request.headers.get('HX-Request'):
+        return render(request, 'patients/wallet_table.html', context)
+
     return render(request, 'patients/wallet_list.html', context)
 
 

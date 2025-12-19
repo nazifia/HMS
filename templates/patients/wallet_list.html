@@ -15,47 +15,113 @@
     </div>
 
     <!-- Search Form -->
-    <div class="card shadow mb-4">
+    <div class="card shadow mb-4" x-data="{
+        typing: false,
+        timeout: null,
+        performSearch() {
+            this.typing = true;
+            clearTimeout(this.timeout);
+            this.timeout = setTimeout(() => {
+                this.typing = false;
+                if (typeof htmx !== 'undefined') {
+                    const form = document.getElementById('wallet-search-form');
+                    if (form) {
+                        htmx.trigger(form, 'search');
+                    }
+                }
+            }, 300);
+        },
+        clearFilters() {
+            const form = document.getElementById('wallet-search-form');
+            if (form) {
+                form.reset();
+                this.performSearch();
+            }
+        }
+    }">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Search Patients</h6>
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-search"></i> Search Patient Wallets
+            </h6>
         </div>
         <div class="card-body">
-            <form method="get" action="" class="row g-3">
+            <form
+                id="wallet-search-form"
+                method="get"
+                action="{% url 'patients:wallet_list' %}"
+                class="row g-3"
+                hx-get="{% url 'patients:wallet_list' %}"
+                hx-target="#wallet-table-container"
+                hx-trigger="submit, search"
+                hx-indicator=".search-loading">
                 <div class="col-md-3">
-                    <label for="search" class="form-label">Name, ID, or Phone</label>
-                    <input type="text" class="form-control" id="search" name="search" placeholder="Search..." value="{{ request.GET.search }}">
+                    <label for="id_patient_name" class="form-label">Patient Name</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="id_patient_name"
+                        name="patient_name"
+                        placeholder="Search by name..."
+                        value="{{ request.GET.patient_name }}"
+                        @input.debounce.300ms="performSearch()">
+                    <small class="form-text text-muted">Search by first or last name</small>
+                </div>
+                <div class="col-md-3">
+                    <label for="id_patient_id_or_phone" class="form-label">Patient ID or Phone</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="id_patient_id_or_phone"
+                        name="patient_id_or_phone"
+                        placeholder="ID or phone number..."
+                        value="{{ request.GET.patient_id_or_phone }}"
+                        @input.debounce.300ms="performSearch()">
+                    <small class="form-text text-muted">Search by ID or phone</small>
                 </div>
                 <div class="col-md-2">
-                    <label for="patient_id_or_phone" class="form-label">Patient ID/Phone</label>
-                    <input type="text" class="form-control" id="patient_id_or_phone" name="patient_id_or_phone" placeholder="ID or Phone" value="{{ request.GET.patient_id_or_phone }}">
-                </div>
-                <div class="col-md-2">
-                    <label for="patient_type" class="form-label">Patient Type</label>
-                    <select class="form-select" id="patient_type" name="patient_type">
-                        <option value="" {% if not request.GET.patient_type %}selected{% endif %}>All Types</option>
+                    <label for="id_patient_type" class="form-label">Patient Type</label>
+                    <select
+                        class="form-select"
+                        id="id_patient_type"
+                        name="patient_type"
+                        @change="performSearch()">
+                        <option value="">All Types</option>
+                        <option value="regular" {% if request.GET.patient_type == 'regular' %}selected{% endif %}>Regular</option>
                         <option value="nhia" {% if request.GET.patient_type == 'nhia' %}selected{% endif %}>NHIA</option>
                         <option value="retainership" {% if request.GET.patient_type == 'retainership' %}selected{% endif %}>Retainership</option>
-                        <option value="regular" {% if request.GET.patient_type == 'regular' %}selected{% endif %}>Regular</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="balance_filter" class="form-label">Balance Filter</label>
-                    <select class="form-select" id="balance_filter" name="balance_filter">
-                        <option value="" {% if not request.GET.balance_filter %}selected{% endif %}>All Balances</option>
+                    <label for="id_balance_filter" class="form-label">Balance Filter</label>
+                    <select
+                        class="form-select"
+                        id="id_balance_filter"
+                        name="balance_filter"
+                        @change="performSearch()">
+                        <option value="">All Balances</option>
                         <option value="positive" {% if request.GET.balance_filter == 'positive' %}selected{% endif %}>Positive</option>
                         <option value="zero" {% if request.GET.balance_filter == 'zero' %}selected{% endif %}>Zero</option>
                         <option value="negative" {% if request.GET.balance_filter == 'negative' %}selected{% endif %}>Negative</option>
                     </select>
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-search"></i> Search
-                    </button>
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <button
+                            type="button"
+                            @click="clearFilters()"
+                            class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </button>
+                    </div>
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <a href="{% url 'patients:wallet_list' %}" class="btn btn-secondary w-100">
-                        <i class="fas fa-times"></i> Clear
-                    </a>
+                <div class="col-12 d-flex align-items-center">
+                    <div class="search-loading htmx-indicator">
+                        <i class="fas fa-spinner fa-spin text-primary"></i>
+                        <span class="text-muted">Searching...</span>
+                    </div>
                 </div>
             </form>
         </div>
@@ -131,7 +197,9 @@
     <!-- Wallets Table -->
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Patient Wallets</h6>
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-wallet"></i> Patient Wallets
+            </h6>
             <div class="dropdown no-arrow">
                 <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
@@ -139,115 +207,119 @@
                 <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
                     <div class="dropdown-header">Actions:</div>
                     <a class="dropdown-item" href="{% url 'patients:wallet_net_impact_global' %}">Net Impact Report</a>
-                    <!-- Commented out Admission Net Impact link as it needs a pk parameter -->
-                    <!-- <a class="dropdown-item" href="/inpatient/admissions/1/net-impact/">Admission Net Impact</a> -->
                 </div>
             </div>
         </div>
         <div class="card-body">
-            {% if wallets %}
-                <div class="table-responsive">
-                    <table class="table table-bordered" id="walletsTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Patient</th>
-                                <th>Patient ID</th>
-                                <th>Balance</th>
-                                <th>Last Updated</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for wallet in wallets %}
-                            <tr>
-                                <td>
-                                    <a href="{% url 'patients:detail' wallet.patient.id %}">
-                                        {{ wallet.patient.get_full_name }}
-                                    </a>
-                                </td>
-                                <td>{{ wallet.patient.patient_id }}</td>
-                                <td class="{% if wallet.balance > 0 %}text-success{% elif wallet.balance < 0 %}text-danger{% else %}text-warning{% endif %}">
-                                    {{ wallet.balance|currency }}
-                                </td>
-                                <td>{{ wallet.last_updated|date:'M d, Y H:i' }}</td>
-                                <td>
-                                    <a href="{% url 'patients:wallet_dashboard' wallet.patient.id %}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'accountant' or user|has_role:'receptionist' %}
-                                        <a href="{% url 'patients:add_funds_to_wallet' wallet.patient.id %}" class="btn btn-sm btn-success">
-                                            <i class="fas fa-plus"></i> Add Funds
-                                        </a>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="text-center py-4">
-                    <i class="fas fa-wallet fa-3x text-gray-300 mb-3"></i>
-                    <h5 class="text-gray-500">No wallets found</h5>
-                    <p class="text-gray-400">Patient wallets will appear here when they are created.</p>
-                </div>
-            {% endif %}
+            <div id="wallet-table-container">
+                {% include 'patients/wallet_table.html' %}
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
 <script>
-    $(document).ready(function() {
-        // Initialize DataTable
-        var table = $('#walletsTable').DataTable({
-            "order": [[2, "desc"]], // Sort by balance (descending)
-            "pageLength": 25,
-            "responsive": true,
-        });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        initializeTooltips();
 
-        // Real-time filtering for search fields
-        $('#search, #patient_id_or_phone').on('keyup', function() {
-            table.search($(this).val()).draw();
-        });
+        // Enhanced HTMX behavior for wallet table
+        if (typeof htmx !== 'undefined') {
+            htmx.on('htmx:afterSwap', function(evt) {
+                // Re-initialize tooltips after content swap
+                initializeTooltips();
 
-        // Real-time filtering for dropdowns
-        $('#patient_type, #balance_filter').on('change', function() {
-            var patientType = $('#patient_type').val();
-            var balanceFilter = $('#balance_filter').val();
-            var searchValue = $('#search').val();
-            var idPhoneValue = $('#patient_id_or_phone').val();
-            
-            // Combine all filters
-            var combinedSearch = searchValue + ' ' + idPhoneValue;
-            
-            // Apply search filter
-            table.search(combinedSearch).draw();
-            
-            // Apply column-specific filters
-            // Filter by patient type (column 1 - Patient ID)
-            if (patientType) {
-                table.column(1).search(patientType).draw();
-            } else {
-                table.column(1).search('').draw();
-            }
-            
-            // Filter by balance (column 2 - Balance)
-            if (balanceFilter) {
-                if (balanceFilter === 'positive') {
-                    table.column(2).search('>0', true, false).draw();
-                } else if (balanceFilter === 'zero') {
-                    table.column(2).search('=0', true, false).draw();
-                } else if (balanceFilter === 'negative') {
-                    table.column(2).search('<0', true, false).draw();
+                // Smooth scroll to top of results
+                if (evt.detail.target.id === 'wallet-table-container') {
+                    evt.detail.target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
-            } else {
-                table.column(2).search('').draw();
+            });
+
+            htmx.on('htmx:beforeRequest', function(evt) {
+                // Add loading opacity to table
+                const container = document.getElementById('wallet-table-container');
+                if (container) {
+                    container.style.opacity = '0.6';
+                    container.style.transition = 'opacity 0.2s ease-in-out';
+                }
+            });
+
+            htmx.on('htmx:afterRequest', function(evt) {
+                // Remove loading opacity
+                const container = document.getElementById('wallet-table-container');
+                if (container) {
+                    container.style.opacity = '1';
+                }
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + K to focus patient name search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                const searchInput = document.getElementById('id_patient_name');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
             }
         });
     });
+
+    function initializeTooltips() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
 </script>
+
+<style>
+    .htmx-indicator {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    .htmx-indicator.htmx-request {
+        opacity: 1;
+    }
+
+    /* Enhanced loading states */
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Search input enhancements */
+    #id_patient_name:focus,
+    #id_patient_id_or_phone:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    .search-loading {
+        color: #007bff;
+        display: none;
+    }
+
+    .search-loading.htmx-request {
+        display: block;
+    }
+
+    /* Table hover effect */
+    #wallets-table tbody tr {
+        transition: all 0.2s ease-in-out;
+    }
+
+    #wallets-table tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transform: scale(1.01);
+    }
+</style>
 {% endblock %}
