@@ -17,7 +17,8 @@
       "WebFetch(domain:127.0.0.1)",
       "mcp__byterover-mcp__byterover-retrieve-knowledge",
       "mcp__byterover-mcp__byterover-store-knowledge",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

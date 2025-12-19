@@ -1121,14 +1121,52 @@ def wallet_net_impact_global(request):
     # Show the global net impact report
     # Get all wallets with their net impact
     wallets = PatientWallet.objects.select_related('patient').filter(patient__isnull=False)
-    
+
+    # Apply search filters
+    search = request.GET.get('search', '').strip()
+    patient_id_or_phone = request.GET.get('patient_id_or_phone', '').strip()
+    patient_type = request.GET.get('patient_type', '').strip()
+    balance_filter = request.GET.get('balance_filter', '').strip()
+
+    # Filter by search term (name, ID, or phone)
+    if search:
+        from django.db.models import Q
+        wallets = wallets.filter(
+            Q(patient__first_name__icontains=search) |
+            Q(patient__last_name__icontains=search) |
+            Q(patient__patient_id__icontains=search) |
+            Q(patient__phone_number__icontains=search)
+        )
+
+    # Filter by patient ID or phone
+    if patient_id_or_phone:
+        from django.db.models import Q
+        wallets = wallets.filter(
+            Q(patient__patient_id__icontains=patient_id_or_phone) |
+            Q(patient__phone_number__icontains=patient_id_or_phone)
+        )
+
+    # Filter by patient type
+    if patient_type:
+        wallets = wallets.filter(patient__patient_type=patient_type)
+
     # Calculate net impact for each wallet
     wallet_data = []
     total_net_impact = 0
     total_balance = 0
-    
+
     for wallet in wallets:
         net_impact = wallet.get_total_wallet_impact_with_admissions()
+
+        # Apply balance filter
+        if balance_filter:
+            if balance_filter == 'positive' and wallet.balance <= 0:
+                continue
+            elif balance_filter == 'zero' and wallet.balance != 0:
+                continue
+            elif balance_filter == 'negative' and wallet.balance >= 0:
+                continue
+
         wallet_data.append({
             'wallet': wallet,
             'net_impact': net_impact,
@@ -1136,10 +1174,10 @@ def wallet_net_impact_global(request):
         })
         total_net_impact += net_impact
         total_balance += wallet.balance
-    
+
     # Calculate difference
     difference = total_net_impact - total_balance
-    
+
     context = {
         'wallet_data': wallet_data,
         'total_net_impact': total_net_impact,
@@ -1149,7 +1187,11 @@ def wallet_net_impact_global(request):
         'page_title': 'Wallet Net Impact',
         'active_nav': 'wallet',
     }
-    
+
+    # If this is an HTMX request, return only the table fragment
+    if request.headers.get('HX-Request'):
+        return render(request, 'patients/partials/wallet_net_impact_table.html', context)
+
     return render(request, 'patients/wallet_net_impact_global.html', context)
 
 

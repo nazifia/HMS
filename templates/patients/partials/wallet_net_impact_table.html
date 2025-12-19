@@ -1,0 +1,57 @@
+{% load custom_filters %}
+{% if wallet_data %}
+    <div class="table-responsive">
+        <table class="table table-bordered" id="netImpactTable" width="100%" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Patient ID</th>
+                    <th>Current Balance</th>
+                    <th>Net Impact</th>
+                    <th>Difference</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in wallet_data %}
+                <tr>
+                    <td>
+                        <a href="{% url 'patients:detail' item.wallet.patient.id %}">
+                            {{ item.wallet.patient.get_full_name }}
+                        </a>
+                    </td>
+                    <td>{{ item.wallet.patient.patient_id }}</td>
+                    <td class="{% if item.balance > 0 %}text-success{% elif item.balance < 0 %}text-danger{% else %}text-warning{% endif %}">
+                        {{ item.balance|currency }}
+                    </td>
+                    <td class="{% if item.net_impact > 0 %}text-success{% elif item.net_impact < 0 %}text-danger{% else %}text-warning{% endif %}">
+                        {{ item.net_impact|currency }}
+                    </td>
+                    <td class="text-info">
+                        {{ item.net_impact|add:item.balance|currency }}
+                    </td>
+                    <td>
+                        {% load patient_tags %}
+                        {% if item.wallet.patient %}
+                            <a href="{% url 'patients:wallet_dashboard' item.wallet.patient.id %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'patients:wallet_net_impact' item.wallet.patient.id %}" class="btn btn-sm btn-info">
+                                <i class="fas fa-calculator"></i> Calculate
+                            </a>
+                        {% else %}
+                            <span class="text-muted">No patient associated</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="text-center py-4">
+        <i class="fas fa-chart-line fa-3x text-gray-300 mb-3"></i>
+        <h5 class="text-gray-500">No wallet data found</h5>
+        <p class="text-gray-400">Try adjusting your search filters or clear them to see all wallets.</p>
+    </div>
+{% endif %}
