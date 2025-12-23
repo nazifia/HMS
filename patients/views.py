@@ -26,8 +26,12 @@ def patient_list(request):
     """View for listing all patients with search and pagination"""
     from core.patient_search_forms import EnhancedPatientSearchForm
 
-    # Get all active patients
-    patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+    # Get all active patients with optimized query using select_related and prefetch_related
+    patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name').select_related(
+        'nhia_info', 'retainership_info'
+    ).prefetch_related(
+        'consultations', 'medical_histories', 'physiotherapy_requests'
+    )
 
     # Initialize search form with GET data if present
     search_form = EnhancedPatientSearchForm(request.GET if request.GET else None)

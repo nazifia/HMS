@@ -11,6 +11,18 @@ logger = logging.getLogger(__name__)
 class LoginRequiredMiddleware:
     """
     Middleware to ensure all pages (except public ones) require authentication.
+    
+    This middleware intercepts all requests and checks if the user is authenticated.
+    If not authenticated, the user is redirected to the login page unless the
+    requested URL is in the public URLs list.
+    
+    Security Considerations:
+    - Public URLs should be carefully reviewed to ensure no sensitive endpoints are exposed
+    - The middleware should be placed early in the MIDDLEWARE list to catch requests before they reach views
+    - Session-based authentication is used, so proper session security settings are critical
+    
+    Attributes:
+        public_urls (list): List of URL patterns that are accessible without authentication
     """
 
     def __init__(self, get_response):
@@ -29,9 +41,7 @@ class LoginRequiredMiddleware:
             '/static/',
             '/media/',
             '/admin/login/',
-            # Temporary: Allow access to revenue test page for debugging
-            '/pharmacy/revenue/test-charts/',
-            '/pharmacy/revenue/statistics/debug/',
+            # Revenue statistics URL (remove debug-specific paths)
             '/pharmacy/revenue/statistics/',
         ]
 
@@ -58,7 +68,23 @@ class LoginRequiredMiddleware:
 class RoleBasedAccessMiddleware:
     """
     Middleware to handle role-based access control across the application.
-    This middleware checks if a user has the required role to access certain URL patterns.
+    
+    This middleware implements fine-grained access control by checking if authenticated users
+    have the appropriate roles to access specific URL patterns. It works alongside Django's
+    built-in permission system to provide comprehensive access control.
+    
+    Security Considerations:
+    - Superusers bypass all role checks for application-level access (Django admin has separate permissions)
+    - URL patterns should be ordered from most specific to least specific for proper matching
+    - Role checks are performed after authentication but before view execution
+    - Django admin URLs are explicitly excluded from role-based checks
+    
+    Attributes:
+        role_required_urls (list): List of tuples containing (url_pattern, [allowed_roles])
+    
+    Note:
+        This middleware should be placed after authentication middleware but before
+        view execution in the MIDDLEWARE list.
     """
 
     def __init__(self, get_response):
@@ -145,7 +171,30 @@ class RoleBasedAccessMiddleware:
 class SessionTimeoutMiddleware:
     """
     Middleware to handle session timeout and automatic logout.
-    Supports different timeout periods for different user types.
+    
+    This middleware implements automatic session expiration based on user activity.
+    It tracks the last activity time and enforces different timeout periods for
+    different user types (patients vs staff). The middleware also performs session
+    integrity validation to prevent session tampering attacks.
+    
+    Security Features:
+    - Session timeout based on inactivity rather than fixed duration
+    - Session integrity validation to detect tampering
+    - Different timeout periods for patients vs staff
+    - Automatic logout and redirect when session expires
+    - Session data validation to prevent invalid timestamp attacks
+    
+    Attributes:
+        None (uses Django settings for timeout configuration)
+    
+    Configuration Settings:
+        PATIENT_SESSION_TIMEOUT: Timeout in seconds for patient users (default: 1200/20min)
+        STAFF_SESSION_TIMEOUT: Timeout in seconds for staff users (default: 1200/20min)
+        SESSION_MAX_AGE_DAYS: Maximum session age before forced re-authentication (default: 30)
+        SESSION_TIMEOUT_WARNING: Warning threshold in seconds before timeout (default: 300/5min)
+    
+    Note:
+        This middleware should be placed after authentication middleware in the MIDDLEWARE list.
     """
 
     def __init__(self, get_response):
@@ -169,10 +218,24 @@ class SessionTimeoutMiddleware:
         # Get last activity time
         last_activity = request.session.get('last_activity')
         if last_activity:
-            last_activity = timezone.datetime.fromtimestamp(last_activity, tz=timezone.get_current_timezone())
+            try:
+                last_activity = timezone.datetime.fromtimestamp(last_activity, tz=timezone.get_current_timezone())
+            except (ValueError, TypeError, OverflowError):
+                # Invalid timestamp format - reset session for security
+                logger.warning(f"Invalid session timestamp for user {request.user.username}. Resetting session.")
+                request.session.flush()
+                messages.warning(request, "Invalid session detected. Please log in again.")
+                return redirect('accounts:login')
         else:
             last_activity = now
             request.session['last_activity'] = now.timestamp()
+            
+        # Validate session data integrity
+        if not self.validate_session_integrity(request):
+            logger.warning(f"Session integrity check failed for user {request.user.username}")
+            logout(request)
+            messages.error(request, "Session integrity check failed. Please log in again.")
+            return redirect('accounts:login')
 
         # Determine timeout period based on user type
         timeout_seconds = self.get_timeout_for_user(request.user)
@@ -208,6 +271,47 @@ class SessionTimeoutMiddleware:
         
         # Staff members get longer sessions
         return getattr(settings, 'STAFF_SESSION_TIMEOUT', 1200)  # 20 minutes
+
+    def validate_session_integrity(self, request):
+        """
+        Validate session data integrity to prevent session tampering.
+        
+        Args:
+            request: HttpRequest object
+            
+        Returns:
+            bool: True if session is valid, False if integrity check fails
+        """
+        try:
+            # Check for required session keys
+            required_keys = ['session_start_time', 'last_activity']
+            for key in required_keys:
+                if key not in request.session:
+                    logger.warning(f"Missing required session key: {key}")
+                    return False
+            
+            # Validate session start time is reasonable
+            session_start = request.session.get('session_start_time')
+            if session_start:
+                try:
+                    start_time = timezone.datetime.fromtimestamp(session_start, tz=timezone.get_current_timezone())
+                    time_since_start = (timezone.now() - start_time).total_seconds()
+                    
+                    # Session shouldn't be older than maximum allowed age
+                    max_session_age = getattr(settings, 'SESSION_MAX_AGE_DAYS', 30) * 24 * 60 * 60  # Convert days to seconds
+                    if time_since_start > max_session_age:
+                        logger.warning(f"Session too old: {time_since_start} seconds")
+                        return False
+                        
+                except (ValueError, TypeError, OverflowError):
+                    logger.warning("Invalid session start time format")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Session integrity validation error: {str(e)}", exc_info=True)
+            return False
 
 
 class PatientSessionMiddleware:

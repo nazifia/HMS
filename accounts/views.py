@@ -1,5 +1,4 @@
 import logging
-import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Permission
@@ -554,7 +553,7 @@ def register(request):
             messages.success(request, 'Your account has been created. You can now log in.')
             return redirect('accounts:login')
         else:
-            print('Registration form errors:', form.errors.as_json())  # Debug print
+            logger.debug('Registration form errors: %s', form.errors.as_json())
     else:
         form = UserRegistrationForm()
     return render(request, 'accounts/register.html', {'form': form, 'title': 'Register'})

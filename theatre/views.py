@@ -3,12 +3,13 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.db import transaction, models
+from django.db import transaction, models, DatabaseError, IntegrityError
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from decimal import Decimal
+import logging
 from patients.models import Patient
 from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
 from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
@@ -21,6 +22,9 @@ from core.department_dashboard_utils import (
     get_department_referral_statistics,
     categorize_referrals
 )
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 from .models import (
     OperationTheatre,
@@ -990,8 +994,14 @@ def get_patient_surgery_history(request):
         
     except Patient.DoesNotExist:
         return JsonResponse({'error': 'Patient not found'}, status=404)
+    except (ValueError, TypeError, Decimal.InvalidOperation) as e:
+        return JsonResponse({'error': f'Invalid data format: {str(e)}'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        # Log the error for debugging while maintaining security
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Unexpected error in surgery cost estimation: {str(e)}', exc_info=True)
+        return JsonResponse({'error': 'An unexpected error occurred. Please try again.'}, status=500)
 
 
 @login_required
@@ -1043,8 +1053,12 @@ def create_prescription_for_theatre(request, surgery_id):
                     messages.success(request, 'Prescription created successfully!')
                     return redirect('theatre:surgery_detail', pk=surgery.id)
                     
+            except (DatabaseError, IntegrityError) as e:
+                messages.error(request, 'Database error occurred while creating prescription. Please try again.')
+                logger.error(f'Database error in prescription creation: {str(e)}', exc_info=True)
             except Exception as e:
-                messages.error(request, f'Error creating prescription: {str(e)}')
+                messages.error(request, 'An unexpected error occurred while creating prescription. Please try again.')
+                logger.error(f'Unexpected error in prescription creation: {str(e)}', exc_info=True)
         else:
             messages.error(request, 'Please correct the form errors.')
     else:
