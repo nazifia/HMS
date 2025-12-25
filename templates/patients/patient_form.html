@@ -220,34 +220,7 @@
                         {% endif %}
                     </div>
 
-                    <!-- Insurance Information -->
-                    <div class="col-12 mt-4">
-                        <h5 class="border-bottom pb-2">Insurance Information</h5>
-                    </div>
 
-                    <div class="col-md-4">
-                        <label for="{{ form.insurance_provider.id_for_label }}" class="form-label">Insurance Provider</label>
-                        {{ form.insurance_provider|add_class:"form-control" }}
-                        {% if form.insurance_provider.errors %}
-                            <div class="text-danger">{{ form.insurance_provider.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-md-4">
-                        <label for="{{ form.insurance_policy_number.id_for_label }}" class="form-label">Policy Number</label>
-                        {{ form.insurance_policy_number|add_class:"form-control" }}
-                        {% if form.insurance_policy_number.errors %}
-                            <div class="text-danger">{{ form.insurance_policy_number.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-md-4">
-                        <label for="{{ form.insurance_expiry_date.id_for_label }}" class="form-label">Expiry Date</label>
-                        {{ form.insurance_expiry_date|add_class:"form-control" }}
-                        {% if form.insurance_expiry_date.errors %}
-                            <div class="text-danger">{{ form.insurance_expiry_date.errors }}</div>
-                        {% endif %}
-                    </div>
 
                     <!-- Additional Information -->
                     <div class="col-12 mt-4">
@@ -279,22 +252,7 @@
                         {% endif %}
                     </div>
 
-                    <div class="col-md-6">
-                        <label for="{{ form.profile_picture.id_for_label }}" class="form-label">
-                            Profile Picture <span class="text-secondary">(Alternative)</span>
-                        </label>
-                        {{ form.profile_picture|add_class:"form-control" }}
-                        <small class="form-text text-muted">Used if no primary photo is available</small>
-                        {% if form.profile_picture.errors %}
-                            <div class="text-danger">{{ form.profile_picture.errors }}</div>
-                        {% endif %}
-                        {% if patient.profile_picture %}
-                            <div class="mt-2">
-                                <img src="{{ patient.profile_picture.url }}" alt="{{ patient.get_full_name }}" class="img-thumbnail" style="max-height: 100px;">
-                                <div class="text-info small mt-1">✓ Alternative picture</div>
-                            </div>
-                        {% endif %}
-                    </div>
+
                     <div class="col-md-6">
                         <label for="{{ form.id_document.id_for_label }}" class="form-label">ID Document</label>
                         {{ form.id_document|add_class:"form-control" }}

@@ -200,6 +200,38 @@ class PatientForm(forms.ModelForm):
         help_text='Enter any additional notes'
     )
 
+    blood_group = forms.ChoiceField(
+        choices=[
+            ('', 'Select Blood Group'),
+            ('A+', 'A+'),
+            ('A-', 'A-'),
+            ('B+', 'B+'),
+            ('B-', 'B-'),
+            ('AB+', 'AB+'),
+            ('AB-', 'AB-'),
+            ('O+', 'O+'),
+            ('O-', 'O-'),
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Blood Group',
+        help_text='Select patient blood group'
+    )
+
+    photo = forms.ImageField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        label='Patient Photo',
+        help_text='Upload patient photo (Primary)'
+    )
+
+    id_document = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        label='ID Document',
+        help_text='Upload patient ID document'
+    )
+
     class Meta:
         model = Patient
         fields = [
@@ -207,7 +239,7 @@ class PatientForm(forms.ModelForm):
             'patient_type', 'email', 'phone_number', 'emergency_contact_name',
             'emergency_contact_relation', 'emergency_contact_phone', 'address',
             'city', 'state', 'postal_code', 'country', 'allergies', 'chronic_diseases',
-            'current_medications', 'occupation', 'notes'
+            'current_medications', 'occupation', 'notes', 'blood_group', 'photo', 'id_document'
         ]
         widgets = {
             'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
