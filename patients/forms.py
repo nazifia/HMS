@@ -185,6 +185,30 @@ class PatientForm(forms.ModelForm):
         help_text='Enter current medications'
     )
 
+    # Insurance Information
+    insurance_provider = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='Insurance Provider',
+        help_text='Enter insurance provider name'
+    )
+
+    insurance_policy_number = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='Policy Number',
+        help_text='Enter insurance policy number'
+    )
+
+    insurance_expiry_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Insurance Expiry Date',
+        help_text='Enter insurance expiry date'
+    )
+
     occupation = forms.CharField(
         max_length=100,
         required=False,
@@ -200,6 +224,20 @@ class PatientForm(forms.ModelForm):
         help_text='Enter any additional notes'
     )
 
+    photo = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'form-control'}),
+        label='Patient Photo',
+        help_text='Upload patient photo'
+    )
+
+    id_document = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'form-control'}),
+        label='ID Document',
+        help_text='Upload patient ID document'
+    )
+
     class Meta:
         model = Patient
         fields = [
@@ -207,7 +245,8 @@ class PatientForm(forms.ModelForm):
             'patient_type', 'email', 'phone_number', 'emergency_contact_name',
             'emergency_contact_relation', 'emergency_contact_phone', 'address',
             'city', 'state', 'postal_code', 'country', 'allergies', 'chronic_diseases',
-            'current_medications', 'occupation', 'notes'
+            'current_medications', 'insurance_provider', 'insurance_policy_number',
+            'insurance_expiry_date', 'occupation', 'notes', 'photo', 'id_document'
         ]
         widgets = {
             'date_of_birth': forms.DateInput(attrs={'type': 'date'}),

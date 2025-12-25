@@ -1593,5 +1593,36 @@
             };
         });
     </script>
+    
+    <!-- Global Error Handler -->
+    <script>
+        // Global error handler to prevent JavaScript errors from breaking the page
+        window.addEventListener('error', function(e) {
+            // Prevent default error handling for specific known issues
+            if (e.error && e.error.message) {
+                const message = e.error.message.toLowerCase();
+                
+                // Ignore common non-critical errors
+                if (message.includes('cannot read properties of null') ||
+                    message.includes('addEventListener') ||
+                    message.includes('htmx') ||
+                    message.includes('alpine')) {
+                    
+                    console.warn('Handled JavaScript error:', e.error.message);
+                    e.preventDefault();
+                    return;
+                }
+            }
+            
+            // For other errors, log them but don't prevent default handling
+            console.error('Unhandled JavaScript error:', e.error);
+        });
+        
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(e) {
+            console.warn('Unhandled promise rejection:', e.reason);
+            e.preventDefault();
+        });
+    </script>
 </body>
 </html>

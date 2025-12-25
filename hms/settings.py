@@ -370,9 +370,41 @@ if IS_WINDOWS and not LOG_FILE:
     # Create logs directory if it doesn't exist
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
-# Temporary fix: Disable logging to allow Django start
-LOGGING = None
-LOGGING_CONFIG = None
+# Enable basic console logging for development
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': LOG_FILE,
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': True,
+        },
+        'hms': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': True,
+        },
+    },
+}
 
 
 # Hospital Information

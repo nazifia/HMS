@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 {% load form_tags %}
+{% load static %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
 
@@ -84,10 +85,10 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label for="{{ form.blood_group.id_for_label }}" class="form-label">Blood Group</label>
-                        {{ form.blood_group|add_class:"form-select" }}
-                        {% if form.blood_group.errors %}
-                            <div class="text-danger">{{ form.blood_group.errors }}</div>
+                        <label for="{{ form.patient_type.id_for_label }}" class="form-label">Patient Type *</label>
+                        {{ form.patient_type|add_class:"form-select" }}
+                        {% if form.patient_type.errors %}
+                            <div class="text-danger">{{ form.patient_type.errors }}</div>
                         {% endif %}
                     </div>
 
@@ -152,10 +153,18 @@
                         {% endif %}
                     </div>
 
-                    <!-- Postal Code field removed as per requirements -->
+                    <div class="col-md-4">
+                        <label for="{{ form.postal_code.id_for_label }}" class="form-label">Postal Code</label>
+                        {{ form.postal_code|add_class:"form-control" }}
+                        {% if form.postal_code.errors %}
+                            <div class="text-danger">{{ form.postal_code.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Postal Code field included for complete address information -->
 
                     <div class="col-md-4">
-                        <label for="{{ form.country.id_for_label }}" class="form-label">Country *</label>
+                        <label for="{{ form.country.id_for_label }}" class="form-label">Country</label>
                         {{ form.country|add_class:"form-control" }}
                         {% if form.country.errors %}
                             <div class="text-danger">{{ form.country.errors }}</div>
@@ -220,10 +229,6 @@
                         {% endif %}
                     </div>
 
-                    <!-- Insurance Information -->
-                    <div class="col-12 mt-4">
-                        <h5 class="border-bottom pb-2">Insurance Information</h5>
-                    </div>
 
                     <div class="col-md-4">
                         <label for="{{ form.insurance_provider.id_for_label }}" class="form-label">Insurance Provider</label>
@@ -242,19 +247,20 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label for="{{ form.insurance_expiry_date.id_for_label }}" class="form-label">Expiry Date</label>
+                        <label for="{{ form.insurance_expiry_date.id_for_label }}" class="form-label">Insurance Expiry Date</label>
                         {{ form.insurance_expiry_date|add_class:"form-control" }}
                         {% if form.insurance_expiry_date.errors %}
                             <div class="text-danger">{{ form.insurance_expiry_date.errors }}</div>
                         {% endif %}
                     </div>
 
+
                     <!-- Additional Information -->
                     <div class="col-12 mt-4">
                         <h5 class="border-bottom pb-2">Additional Information</h5>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-8">
                         <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
                         {{ form.notes|add_class:"form-control" }}
                         {% if form.notes.errors %}
@@ -264,10 +270,10 @@
 
                     <div class="col-md-6">
                         <label for="{{ form.photo.id_for_label }}" class="form-label">
-                            Patient Photo <span class="text-primary">(Primary)</span>
+                            Patient Photo
                         </label>
                         {{ form.photo|add_class:"form-control" }}
-                        <small class="form-text text-muted">This will be used as the main profile image</small>
+                        <small class="form-text text-muted">Upload patient photo</small>
                         {% if form.photo.errors %}
                             <div class="text-danger">{{ form.photo.errors }}</div>
                         {% endif %}
@@ -278,23 +284,11 @@
                             </div>
                         {% endif %}
                     </div>
+<<<<<<< HEAD
+=======
 
-                    <div class="col-md-6">
-                        <label for="{{ form.profile_picture.id_for_label }}" class="form-label">
-                            Profile Picture <span class="text-secondary">(Alternative)</span>
-                        </label>
-                        {{ form.profile_picture|add_class:"form-control" }}
-                        <small class="form-text text-muted">Used if no primary photo is available</small>
-                        {% if form.profile_picture.errors %}
-                            <div class="text-danger">{{ form.profile_picture.errors }}</div>
-                        {% endif %}
-                        {% if patient.profile_picture %}
-                            <div class="mt-2">
-                                <img src="{{ patient.profile_picture.url }}" alt="{{ patient.get_full_name }}" class="img-thumbnail" style="max-height: 100px;">
-                                <div class="text-info small mt-1">✓ Alternative picture</div>
-                            </div>
-                        {% endif %}
-                    </div>
+
+>>>>>>> 5a13240dc13507a2bc9dbaff8af13f902ccf957d
                     <div class="col-md-6">
                         <label for="{{ form.id_document.id_for_label }}" class="form-label">ID Document</label>
                         {{ form.id_document|add_class:"form-control" }}
@@ -320,7 +314,7 @@
                                 </a>
                             {% endif %}
 
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" id="submit-btn">
                                 <i class="fas fa-save me-1"></i>
                                 {% if patient %}
                                     Update Patient
