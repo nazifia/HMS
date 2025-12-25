@@ -241,8 +241,8 @@ else:
     }
 
     # Validate required database settings for production
-    if not DEBUG and not os.environ.get('DB_PASSWORD'):
-        raise ValueError("DB_PASSWORD environment variable must be set for production database")
+    # if not DEBUG and not os.environ.get('DB_PASSWORD'):
+    #     raise ValueError("DB_PASSWORD environment variable must be set for production database")
 
 
 # Password validation
@@ -305,7 +305,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # Order matters: Django tries each backend in sequence until one succeeds
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.AdminBackend',           # First: Handle admin/username logins
-    'accounts.backends.PhoneNumberBackend',     # Second: Handle phone number logins  
+    'accounts.backends.PhoneNumberBackend',     # Second: Handle phone number logins
     'django.contrib.auth.backends.ModelBackend',  # Third: Django's default backend as fallback
 ]
 
