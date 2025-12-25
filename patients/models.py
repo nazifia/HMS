@@ -204,6 +204,11 @@ class Patient(models.Model):
         ('A+', 'A+'),
         ('A-', 'A-'),
         ('B+', 'B+'),
+        ('B-', 'B-'),
+        ('AB+', 'AB+'),
+        ('AB-', 'AB-'),
+        ('O+', 'O+'),
+        ('O-', 'O-'),
     )
 
     MARITAL_STATUS_CHOICES = (
@@ -230,6 +235,7 @@ class Patient(models.Model):
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    blood_group = models.CharField(max_length=3, choices=BLOOD_GROUP_CHOICES, blank=True, null=True)
     marital_status = models.CharField(max_length=10, choices=MARITAL_STATUS_CHOICES, blank=True, null=True)
 
     # Contact Information
