@@ -360,7 +360,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 import sys
 import platform
 
-LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG' if DEBUG else 'INFO')
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO' if DEBUG else 'INFO')  # Changed default to INFO to reduce noise
 LOG_FILE = os.environ.get('LOG_FILE', None)
 
 # On Windows, always use file logging to avoid console encoding issues (OSError [Errno 22])
@@ -370,8 +370,7 @@ if IS_WINDOWS and not LOG_FILE:
     # Create logs directory if it doesn't exist
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
-# Enable basic console logging for development
-
+# Suppress verbose autoreload and debug messages
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -379,24 +378,54 @@ LOGGING = {
         'simple': {
             'format': '%(levelname)s %(asctime)s %(module)s %(message)s',
         },
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',  # Changed from DEBUG to INFO to reduce verbose output
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
     },
     'loggers': {
+        # Django root logger - set to WARNING to suppress info/debug
         'django': {
             'handlers': ['console'],
-            'level': 'DEBUG',  # or use LOG_LEVEL
-            'propagate': True,
+            'level': 'WARNING',  # Only show warnings and errors
+            'propagate': False,
         },
+        # Django autoreload logger - suppress entirely
+        'django.utils.autoreload': {
+            'handlers': ['console'],
+            'level': 'ERROR',  # Only show errors
+            'propagate': False,
+        },
+        # Django template debug messages
+        'django.template': {
+            'handlers': ['console'],
+            'level': 'INFO',  # INFO level to see template errors but not debug
+            'propagate': False,
+        },
+        # HMS application logger
         'hms': {
             'handlers': ['console'],
-            'level': 'DEBUG',  # or use LOG_LEVEL
-            'propagate': True,
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        # Requests logger - reduce noise
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Only show warnings and errors for requests
+            'propagate': False,
+        },
+        # Database queries logger - reduce noise
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Only show DB warnings and errors
+            'propagate': False,
         },
     },
 }
