@@ -175,11 +175,11 @@ def patient_detail(request, patient_id):
     ).select_related('doctor').order_by('-prescription_date')[:5]
 
     # Get medical history and clinical notes with optimized query
-    medical_histories = MedicalHistory.objects.filter(patient=patient).select_related('recorded_by').order_by('-date')
+    medical_histories = MedicalHistory.objects.filter(patient=patient).order_by('-date')
     clinical_notes = ClinicalNote.objects.filter(patient=patient).select_related('doctor').order_by('-date')
 
     # Get physiotherapy requests
-    physiotherapy_requests = PhysiotherapyRequest.objects.filter(patient=patient).select_related('doctor').order_by('-request_date')
+    physiotherapy_requests = PhysiotherapyRequest.objects.filter(patient=patient).select_related('referring_doctor').order_by('-request_date')
 
     # Get NHIA and Retainership information
     nhia_info = getattr(patient, 'nhia_info', None)
