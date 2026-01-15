@@ -50,7 +50,8 @@ def inpatient_medication_payment(request, admission_id, prescription_id):
                 category=None
             )
 
-        total_cost = prescription.get_total_prescribed_price()
+        # Use patient payable amount (10% for NHIA patients, 100% for others)
+        total_cost = prescription.get_patient_payable_amount()
         invoice = Invoice.objects.create(
             patient=admission.patient,
             status='pending',

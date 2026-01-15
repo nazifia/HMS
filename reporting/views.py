@@ -348,9 +348,10 @@ def pharmacy_sales_report(request):
     page_obj = paginator.get_page(page_number)
     
     # Calculate total sales amount for displayed prescriptions
+    # Use patient payable amount to show actual charges to patients (10% for NHIA, 100% for others)
     total_sales = 0
     for prescription in page_obj:
-        total_sales += prescription.get_total_prescribed_price()
+        total_sales += prescription.get_patient_payable_amount()
     
     context = {
         'form': form,

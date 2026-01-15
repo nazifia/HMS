@@ -4326,8 +4326,9 @@ def prescription_payment(request, prescription_id):
         pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
     except PharmacyInvoice.DoesNotExist:
         # Create invoice using the utility function
-        total_price = prescription.get_total_prescribed_price()
-        pharmacy_invoice = create_pharmacy_invoice(request, prescription, total_price)
+        # Use patient payable amount (10% for NHIA patients, 100% for others)
+        patient_payable_amount = prescription.get_patient_payable_amount()
+        pharmacy_invoice = create_pharmacy_invoice(request, prescription, patient_payable_amount)
         if not pharmacy_invoice:
             messages.error(request, 'Failed to create invoice for this prescription.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
@@ -4621,8 +4622,9 @@ def billing_office_medication_payment(request, prescription_id):
         pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
     except PharmacyInvoice.DoesNotExist:
         # Create invoice using the utility function
-        total_price = prescription.get_total_prescribed_price()
-        pharmacy_invoice = create_pharmacy_invoice(request, prescription, total_price)
+        # Use patient payable amount (10% for NHIA patients, 100% for others)
+        patient_payable_amount = prescription.get_patient_payable_amount()
+        pharmacy_invoice = create_pharmacy_invoice(request, prescription, patient_payable_amount)
         if not pharmacy_invoice:
             messages.error(request, 'Failed to create invoice for this prescription.')
             return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
