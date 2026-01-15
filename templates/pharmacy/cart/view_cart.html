@@ -492,6 +492,21 @@
     <div class="row">
         <!-- Cart Items -->
         <div class="col-lg-8">
+            <!-- Partial Dispensing Info -->
+            {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+            <div class="alert alert-info">
+                <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Partial Dispensing Enabled</h6>
+                <p class="mb-2">
+                    You can now dispense <strong>some or all</strong> medications from this prescription.
+                </p>
+                <ul class="mb-0" style="font-size: 0.9rem;">
+                    <li>Enter the quantity to dispense for each medication (0 to skip)</li>
+                    <li>Automatically pre-filled with maximum available stock</li>
+                    <li>Items with partial quantities will remain pending, allowing you to dispense again later</li>
+                </ul>
+            </div>
+            {% endif %}
+
             <!-- Dispensary Selection -->
             {% if cart.status == 'active' %}
             <div class="card mb-3">
@@ -532,16 +547,19 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th style="width: 22%;">Medication</th>
-                                <th style="width: 8%;">Strength</th>
-                                <th style="width: 8%;">Form</th>
-                                <th style="width: 8%;">Prescribed</th>
-                                <th style="width: 8%;">In Cart</th>
-                                <th style="width: 8%;">Dispensed</th>
-                                <th style="width: 10%;">Stock</th>
-                                <th style="width: 9%;">Unit Price</th>
-                                <th style="width: 9%;">Patient Pays</th>
-                                {% if is_nhia_patient %}<th style="width: 8%;">NHIA Covers</th>{% endif %}
+                                <th style="width: 20%;">Medication</th>
+                                <th style="width: 7%;">Strength</th>
+                                <th style="width: 7%;">Form</th>
+                                <th style="width: 7%;">Prescribed</th>
+                                <th style="width: 7%;">In Cart</th>
+                                <th style="width: 7%;">Dispensed</th>
+                                <th style="width: 8%;">Stock</th>
+                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                <th style="width: 10%;"><i class="fas fa-syringe"></i> Dispensing Qty</th>
+                                {% endif %}
+                                <th style="width: 8%;">Unit Price</th>
+                                <th style="width: 8%;">Patient Pays</th>
+                                {% if is_nhia_patient %}<th style="width: 7%;">NHIA Covers</th>{% endif %}
                                 <th style="width: 10%;">Actions</th>
                             </tr>
                         </thead>
@@ -619,6 +637,27 @@
                                         {{ item.get_stock_status.message }}
                                     </span>
                                 </td>
+                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                <td class="quantity-cell">
+                                    <div class="cart-qty">
+                                        {% with available_to_dispense=item.get_available_to_dispense_now %}
+                                        <input type="number" 
+                                               class="quantity-input" 
+                                               name="dispense_qty_{{ item.id }}" 
+                                               id="dispense_qty_{{ item.id }}"
+                                               value="{{ available_to_dispense }}" 
+                                               min="0" 
+                                               max="{{ available_to_dispense }}"
+                                               step="1"
+                                               placeholder="0"
+                                               title="Enter quantity to dispense (0 to skip this item)">
+                                        <small class="text-muted d-block" style="font-size: 0.7rem;">
+                                            Max: {{ available_to_dispense }}
+                                        </small>
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                                {% endif %}
                                 <td class="price-cell">{{ item.unit_price|currency }}</td>
                                 <td class="price-cell patient-pays">{{ item.get_patient_pays|currency }}</td>
                                 {% if is_nhia_patient %}
@@ -650,7 +689,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="{% if is_nhia_patient %}11{% else %}10{% endif %}" class="empty-state">
+                                <td colspan="{% if is_nhia_patient %}12{% else %}11{% endif %}" class="empty-state">
                                     <i class="fas fa-shopping-basket"></i>
                                     <p class="mb-0 mt-3">No items in cart</p>
                                 </td>
@@ -660,6 +699,34 @@
                     </table>
                 </div>
             </div>
+
+            {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+            <!-- Quick Dispensing Actions -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-tools"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-2">
+                        Click to quickly set dispensing quantities for all items:
+                    </p>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-success btn-sm" onclick="setDefaultQuantity('all')" title="Set all to maximum available">
+                            <i class="fas fa-check-double"></i> Dispense All Available
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm" onclick="setDefaultQuantity('none')" title="Skip all items">
+                            <i class="fas fa-ban"></i> Skip All (0)
+                        </button>
+                    </div>
+                    <p class="text-muted small mt-3 mb-0">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Tip:</strong> Leave quantity as default to dispense all available stock, or set to 0 to skip an item.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Action Buttons -->
             <div class="action-buttons">
@@ -674,17 +741,26 @@
                         </button>
                     {% endif %}
                 {% elif cart.status == 'invoiced' and cart.invoice.status == 'paid' %}
-                    <a href="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" class="btn btn-dispense">
-                        <i class="fas fa-check-circle"></i> Complete Dispensing
-                    </a>
+                    <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-dispense" onclick="return validateDispensingQuantities()">
+                            <i class="fas fa-check-circle"></i> Complete Dispensing
+                        </button>
+                    </form>
                 {% elif cart.status == 'paid' %}
-                    <a href="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" class="btn btn-dispense">
-                        <i class="fas fa-check-circle"></i> Complete Dispensing
-                    </a>
+                    <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-dispense" onclick="return validateDispensingQuantities()">
+                            <i class="fas fa-check-circle"></i> Complete Dispensing
+                        </button>
+                    </form>
                 {% elif cart.status == 'partially_dispensed' %}
-                    <a href="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" class="btn btn-dispense">
-                        <i class="fas fa-plus-circle"></i> Continue Dispensing
-                    </a>
+                    <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-dispense" onclick="return validateDispensingQuantities()">
+                            <i class="fas fa-plus-circle"></i> Continue Dispensing
+                        </button>
+                    </form>
                 {% endif %}
 
                 {% if cart.status in 'active,invoiced' %}
@@ -1042,6 +1118,81 @@ function filterMedications() {
 function removeSubstitution(itemId) {
     if (confirm('Are you sure you want to revert to the original prescribed medication?')) {
         window.location.href = `/pharmacy/cart/item/${itemId}/remove-substitution/`;
+    }
+}
+
+function validateDispensingQuantities() {
+    // Get all dispensing quantity inputs
+    const inputs = document.querySelectorAll('input[name^="dispense_qty_"]');
+    let hasValidQuantity = false;
+    
+    for (let input of inputs) {
+        const quantity = parseInt(input.value) || 0;
+        const max = parseInt(input.max) || 0;
+        const min = parseInt(input.min) || 0;
+        
+        // Validate positive quantity
+        if (quantity < min) {
+            alert(`Invalid quantity for item. Minimum is ${min}.`);
+            input.focus();
+            return false;
+        }
+        
+        // Validate maximum stock
+        if (quantity > max) {
+            alert(`Cannot dispense ${quantity} items. Maximum available is ${max}.`);
+            input.focus();
+            return false;
+        }
+        
+        // Check if any item is being dispensed
+        if (quantity > 0) {
+            hasValidQuantity = true;
+        }
+    }
+    
+    // Ensure at least one item is being dispensed
+    if (!hasValidQuantity) {
+        if (!confirm('Warning: No quantities specified. This will skip all items.\nClick OK if you want to skip dispensing for this cart (e.g., if all items are out of stock).')) {
+            return false;
+        }
+    }
+    
+    // Confirmation for partial dispensing
+    let totalDispensing = 0;
+    let pendingItems = 0;
+    for (let input of inputs) {
+        const quantity = parseInt(input.value) || 0;
+        const max = parseInt(input.max) || 0;
+        if (quantity > 0 && quantity < max) {
+            pendingItems++;
+        }
+        totalDispensing += quantity;
+    }
+    
+    if (pendingItems > 0) {
+        return confirm(`You are about to partially dispense ${totalDispensing} item(s).\n${pendingItems} item(s) will remain pending.\nClick OK to proceed.`);
+    }
+    
+    return true;
+}
+
+function setDefaultQuantity(operation) {
+    // Helper function to set default quantities
+    const inputs = document.querySelectorAll('input[name^="dispense_qty_"]');
+    
+    for (let input of inputs) {
+        const max = parseInt(input.max) || 0;
+        const remainingToDispense = max - parseInt(input.getAttribute('data-already-dispensed') || 0);
+        
+        if (operation === 'all') {
+            // Set to maximum available
+            input.value = max;
+        } else if (operation === 'none') {
+            // Skip all
+            input.value = 0;
+        }
+                
     }
 }
 </script>
