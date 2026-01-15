@@ -111,6 +111,41 @@ def calculate_test_request_estimated_cost(test_request):
     return total_cost if total_cost > 0 else 5000.00  # Default minimum cost if no tests found
 
 
+def calculate_prescription_authorization_amount(prescription):
+    """
+    Calculate the 10% patient portion for NHIA prescription authorization.
+    This is the amount NHIA patients actually need to pay (10% of total cost).
+    
+    Args:
+        prescription (Prescription): The prescription object to calculate amount for
+        
+    Returns:
+        float: 10% of the total prescription cost for NHIA patients
+    """
+    # Import the prescription model dynamically
+    from pharmacy.models import Prescription
+    
+    if not isinstance(prescription, Prescription):
+        return 0.00
+    
+    # Use the prescription's built-in method to get the patient payable amount (10% for NHIA)
+    try:
+        patient_amount = prescription.get_patient_payable_amount()
+        # Convert to float for compatibility
+        return float(patient_amount) if patient_amount else 0.00
+    except Exception:
+        # Fallback calculation if method fails
+        total_prescribed_price = 0.00
+        for item in prescription.items.all():
+            total_prescribed_price += float(item.medication.price * item.quantity)
+        
+        # NHIA patients pay 10%, others pay 100%
+        if prescription.patient.patient_type == 'nhia':
+            return total_prescribed_price * 0.10
+        else:
+            return total_prescribed_price
+
+
 @login_required
 def request_authorization(request, model_type, object_id):
     """
@@ -281,6 +316,30 @@ def generate_authorization(request, model_type, object_id):
             # Set default amount if not provided in form data
             if 'form_data' not in context or not context['form_data'].get('amount'):
                 context['default_amount'] = estimated_cost
+    
+    # Calculate patient portion for prescriptions
+    elif model_type == 'prescription':
+        try:
+            from pharmacy.models import Prescription
+            if isinstance(obj, Prescription):
+                # Get the 10% patient portion for NHIA patients
+                patient_amount = calculate_prescription_authorization_amount(obj)
+                
+                # Also calculate total for reference
+                total_prescribed_price = obj.get_total_prescribed_price()
+                
+                context['patient_amount'] = patient_amount
+                context['total_prescribed_price'] = total_prescribed_price
+                context['nhia_portion'] = total_prescribed_price - patient_amount
+                
+                # Set default amount to patient portion (10% for NHIA) if not provided in form data
+                if 'form_data' not in context or not context['form_data'].get('amount'):
+                    context['default_amount'] = patient_amount
+        except Exception as e:
+            # Log error but don't break the view
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error calculating prescription amount: {e}")
     
     return render(request, 'core/generate_authorization.html', context)
 
