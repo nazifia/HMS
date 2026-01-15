@@ -22,26 +22,35 @@
 
     // Function to open a dropdown
     function openDropdown($collapse, $trigger) {
+        // Use Bootstrap's collapse method
         $collapse.collapse('show');
+        $trigger.removeClass('collapsed').addClass('expanded');
+        $trigger.attr('aria-expanded', 'true');
         updateDropdownIcon($trigger, true);
         
         // Save state to localStorage
         saveDropdownState($collapse.attr('id'), true);
         
         // Scroll into view if needed
-        const sidebar = $('#sidebar-container');
-        const collapseTop = $collapse.offset().top;
-        const sidebarTop = sidebar.offset().top;
-        const scrollPos = collapseTop - sidebarTop - 100;
-        
-        if (scrollPos < 0) {
-            sidebar.animate({ scrollTop: sidebar.scrollTop() + scrollPos }, 300);
-        }
+        setTimeout(() => {
+            const sidebar = $('#sidebar-container');
+            const collapseTop = $collapse.offset().top;
+            const sidebarTop = sidebar.offset().top;
+            const sidebarScrollTop = sidebar.scrollTop();
+            const scrollPos = collapseTop - sidebarTop - 100;
+            
+            if (scrollPos < 0) {
+                sidebar.animate({ scrollTop: sidebarScrollTop + scrollPos }, 200);
+            }
+        }, 50);
     }
 
     // Function to close a dropdown
     function closeDropdown($collapse, $trigger) {
+        // Use Bootstrap's collapse method
         $collapse.collapse('hide');
+        $trigger.addClass('collapsed').removeClass('expanded');
+        $trigger.attr('aria-expanded', 'false');
         updateDropdownIcon($trigger, false);
         
         // Save state to localStorage
@@ -54,6 +63,8 @@
             const $collapse = $(this);
             const $trigger = $collapse.prev('.nav-link');
             $collapse.collapse('hide');
+            $trigger.addClass('collapsed').removeClass('expanded');
+            $trigger.attr('aria-expanded', 'false');
             updateDropdownIcon($trigger, false);
             saveDropdownState($collapse.attr('id'), false);
         });
@@ -61,23 +72,25 @@
 
     // Function to update dropdown arrow icon rotation
     function updateDropdownIcon($trigger, isOpen) {
+        // Use Bootstrap's default ::after pseudo-element approach
+        // The template uses data-bs-toggle="collapse" which automatically handles arrow rotation
+        // We just need to ensure the expanded class is set for custom CSS
+        
+        if (isOpen) {
+            $trigger.addClass('expanded');
+            $trigger.attr('aria-expanded', 'true');
+            $trigger.removeClass('collapsed');
+        } else {
+            $trigger.removeClass('expanded');
+            $trigger.attr('aria-expanded', 'false');
+            $trigger.addClass('collapsed');
+        }
+        
+        // Additional handling for custom icons if they exist
         let $icon = $trigger.find('.rotate-icon');
-        
-        if ($icon.length === 0) {
-            // Look for icon in the nav-link (could be after the span text)
-            $icon = $trigger.find('i.fa-chevron-right, i.fa-chevron-down, i.fas.fa-chevron-right, i.fas.fa-chevron-down');
+        if ($icon.length > 0) {
+            $icon.css('transform', isOpen ? 'rotate(90deg)' : 'rotate(0deg)');
         }
-        
-        if ($icon.length === 0) {
-            // Create rotation icon if not found
-            $icon = $('<i class="fas fa-chevron-right rotate-icon ms-auto" style="transition: transform 0.3s ease;"></i>');
-            $trigger.append($icon);
-        }
-        
-        // Update icon and rotation
-        $icon.removeClass('fa-chevron-right fa-chevron-down fas fa-chevron-right fas fa-chevron-down');
-        $icon.addClass(isOpen ? 'fa-chevron-down' : 'fa-chevron-right');
-        $icon.css('transform', isOpen ? 'rotate(90deg)' : 'rotate(0deg)');
     }
 
     // Save dropdown state to localStorage
@@ -110,11 +123,12 @@
                 const $trigger = $collapse.prev('.nav-link');
                 
                 if ($collapse.length && $trigger.length) {
-                    // Open the dropdown
+                    // Open the dropdown using Bootstrap's method
                     $collapse.addClass('show');
-                    $trigger.addClass('expanded');
+                    $trigger.removeClass('collapsed').addClass('expanded');
                     $trigger.attr('aria-expanded', 'true');
-                    updateDropdownIcon($trigger, true);
+                    
+                    console.log('Restored dropdown state:', dropdownId, '(open)');
                 }
             }
         });
@@ -222,12 +236,15 @@
         // Handle dropdown links
         $dropdownLinks.on('keydown', function(e) {
             const key = e.key;
+            const $this = $(this);
+            const $collapse = $($this.attr('href') || $this.data('bs-target'));
+            const isOpen = $collapse.hasClass('show');
             
             if (key === 'ArrowRight' || key === 'ArrowDown') {
                 e.preventDefault();
-                const $collapse = $($(this).attr('href') || $(this).data('bs-target'));
-                if (!$collapse.hasClass('show')) {
-                    toggleDropdown($collapse.attr('id'));
+                if (!isOpen) {
+                    // Open dropdown
+                    $collapse.collapse('show');
                 }
                 // Focus first item in dropdown
                 setTimeout(function() {
@@ -235,13 +252,20 @@
                 }, 100);
             } else if (key === 'ArrowLeft' || key === 'ArrowUp') {
                 e.preventDefault();
-                const $collapse = $($(this).attr('href') || $(this).data('bs-target'));
-                if ($collapse.hasClass('show')) {
-                    toggleDropdown($collapse.attr('id'));
+                if (isOpen) {
+                    // Close dropdown
+                    $collapse.collapse('hide');
                 }
             } else if (key === 'Enter' || key === ' ') {
                 e.preventDefault();
-                $(this).trigger('click');
+                // Toggle dropdown
+                if (isOpen) {
+                    $collapse.collapse('hide');
+                } else {
+                    // Close others first (accordion behavior)
+                    closeAllDropdowns();
+                    $collapse.collapse('show');
+                }
             }
         });
 
@@ -285,18 +309,29 @@
     $(document).ready(function() {
         console.log('Sidebar toggle initialized');
 
-        // Initialize dropdown icons
+        // Initialize dropdown icons and state
         $('.sidebar .nav-link[data-bs-toggle="collapse"]').each(function() {
-            updateDropdownIcon($(this), $(this).next('.collapse').hasClass('show'));
+            const $this = $(this);
+            const $collapse = $this.next('.collapse');
+            const isOpen = $collapse.hasClass('show');
+            
+            // Update classes and aria attributes
+            if (isOpen) {
+                $this.removeClass('collapsed').addClass('expanded');
+                $this.attr('aria-expanded', 'true');
+            } else {
+                $this.addClass('collapsed').removeClass('expanded');
+                $this.attr('aria-expanded', 'false');
+            }
         });
 
-        // Desktop sidebar toggle (circular button at bottom of sidebar)
+        // DESKTOP SIDEBAR TOGGLE (circular button at bottom of sidebar)
         $("#sidebarToggle").on('click', function(e) {
             e.preventDefault();
             toggleDesktopSidebar();
         });
 
-        // Mobile sidebar toggle (hamburger button in topbar)
+        // MOBILE SIDEBAR TOGGLE (hamburger button in topbar)
         $("#sidebarToggleTop").on('click', function(e) {
             e.preventDefault();
             toggleMobileSidebar();
@@ -312,31 +347,61 @@
             closeMobileSidebar();
         });
 
-        // Bootstrap collapse accordion behavior
+        // MAIN DROPDOWN CLICK HANDLER
+        // Handle click on dropdown triggers
+        $('.sidebar .nav-link[data-bs-toggle="collapse"]').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const $this = $(this);
+            const target = $this.attr('href') || $this.data('bs-target');
+            const $collapse = $(target);
+            
+            if ($collapse.length) {
+                // Check if it's already open
+                const isOpen = $collapse.hasClass('show');
+                
+                if (isOpen) {
+                    // Close it
+                    $collapse.collapse('hide');
+                } else {
+                    // Close all others first (accordion behavior)
+                    closeAllDropdowns();
+                    // Open this one
+                    $collapse.collapse('show');
+                }
+            }
+            
+            return false;
+        });
+
+        // Bootstrap collapse events - handle state management
         $('.sidebar .collapse').on('show.bs.collapse', function() {
             const $thisCollapse = $(this);
             const $trigger = $thisCollapse.prev('.nav-link');
             
-            // Close all other dropdowns first (accordion behavior)
-            $('.sidebar .collapse.show').each(function() {
-                if ($(this).attr('id') !== $thisCollapse.attr('id')) {
-                    const $otherTrigger = $(this).prev('.nav-link');
-                    $(this).collapse('hide');
-                    updateDropdownIcon($otherTrigger, false);
-                    saveDropdownState($(this).attr('id'), false);
-                }
-            });
+            // Update trigger state
+            $trigger.removeClass('collapsed').addClass('expanded');
+            $trigger.attr('aria-expanded', 'true');
             
-            // Update current dropdown icon
-            updateDropdownIcon($trigger, true);
+            // Save state
             saveDropdownState($thisCollapse.attr('id'), true);
+            
+            console.log('Opening dropdown:', $thisCollapse.attr('id'));
         });
 
         $('.sidebar .collapse').on('hide.bs.collapse', function() {
             const $thisCollapse = $(this);
             const $trigger = $thisCollapse.prev('.nav-link');
-            updateDropdownIcon($trigger, false);
+            
+            // Update trigger state
+            $trigger.removeClass('expanded').addClass('collapsed');
+            $trigger.attr('aria-expanded', 'false');
+            
+            // Save state
             saveDropdownState($thisCollapse.attr('id'), false);
+            
+            console.log('Closing dropdown:', $thisCollapse.attr('id'));
         });
 
         $('.sidebar .collapse').on('shown.bs.collapse', function() {
@@ -352,6 +417,12 @@
                     scrollTop: sidebarScrollTop + (collapseTop - sidebarTop) - 50
                 }, 200);
             }
+            
+            console.log('Dropdown shown:', $collapse.attr('id'));
+        });
+
+        $('.sidebar .collapse').on('hidden.bs.collapse', function() {
+            console.log('Dropdown hidden:', $(this).attr('id'));
         });
 
         // Prevent dropdown collapse when clicking inside the collapse content
@@ -381,13 +452,13 @@
         // Initialize sidebar state
         initializeSidebarState();
 
-        // Restore dropdown states
+        // Restore dropdown states from localStorage
         restoreDropdownStates();
 
         // Initialize keyboard navigation
         initKeyboardNavigation();
 
-        // Handle ESC key to close mobile sidebar
+        // Handle ESC key to close mobile sidebar and dropdowns
         $(document).on('keydown', function(e) {
             if (e.key === "Escape" && $('#sidebar-container').hasClass('sidebar-open')) {
                 closeMobileSidebar();
@@ -398,12 +469,17 @@
             }
         });
 
-        // Double-click on nav-link to toggle dropdown (for desktop accessibility)
-        $('.sidebar .nav-link[data-bs-toggle="collapse"]').on('dblclick', function(e) {
-            e.preventDefault();
-            const $collapse = $($(this).attr('href') || $(this).data('bs-target'));
-            toggleDropdown($collapse.attr('id'));
+        // Click handler for the entire sidebar to close dropdowns on outside click (desktop only)
+        $('.sidebar').on('click', function(e) {
+            const $target = $(e.target);
+            
+            // If clicked on the sidebar itself (not on nav links or collapse items)
+            if ($target.is('.sidebar') && !$target.closest('.nav-link').length && !$target.closest('.collapse').length) {
+                closeAllDropdowns();
+            }
         });
+        
+        console.log('All sidebar event handlers initialized');
     });
 
     // Initialize sidebar state based on screen size

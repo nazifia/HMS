@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar Dropdown Test</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #test-sidebar {
+            width: 250px;
+            background: #23272b;
+            color: white;
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        #test-sidebar .nav-link {
+            color: white;
+            padding: 10px 20px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        #test-sidebar .nav-link:hover {
+            background: #1a1d21;
+            color: #00bfff;
+        }
+        #test-sidebar .nav-link::after {
+            content: '\f105';
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            transition: transform 0.3s ease;
+            margin-left: auto;
+        }
+        #test-sidebar .nav-link.expanded::after,
+        #test-sidebar .nav-link[aria-expanded="true"]::after {
+            content: '\f107';
+            transform: rotate(90deg);
+        }
+        #test-sidebar .collapse {
+            display: none;
+        }
+        #test-sidebar .collapse.show {
+            display: block;
+            animation: slideDown 0.3s ease forwards;
+        }
+        #test-sidebar .collapse-inner {
+            background: #343a40;
+            padding: 5px 0;
+            margin: 0 10px;
+            border-radius: 4px;
+        }
+        #test-sidebar .collapse-item {
+            display: block;
+            padding: 8px 15px;
+            color: #e9ecef;
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin: 2px 5px;
+            border-radius: 3px;
+        }
+        #test-sidebar .collapse-item:hover {
+            background: #495057;
+            color: #00bfff;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .test-result { 
+            padding: 10px; margin: 10px; border-radius: 5px; 
+            font-family: monospace; font-size: 14px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-3">
+                <div id="test-sidebar">
+                    <h5 class="text-center mb-4">Test Sidebar</h5>
+                    
+                    <!-- Single dropdown -->
+                    <div class="nav-item">
+                        <a class="nav-link" href="#collapseTest1" data-bs-toggle="collapse" 
+                           data-bs-target="#collapseTest1" aria-expanded="false">
+                            <span><i class="fas fa-folder me-2"></i>Section 1</span>
+                        </a>
+                        <div id="collapseTest1" class="collapse">
+                            <div class="collapse-inner">
+                                <a href="#" class="collapse-item">Sub-item 1.1</a>
+                                <a href="#" class="collapse-item">Sub-item 1.2</a>
+                                <a href="#" class="collapse-item">Sub-item 1.3</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Another dropdown -->
+                    <div class="nav-item">
+                        <a class="nav-link" href="#collapseTest2" data-bs-toggle="collapse" 
+                           data-bs-target="#collapseTest2" aria-expanded="false">
+                            <span><i class="fas fa-cog me-2"></i>Section 2</span>
+                        </a>
+                        <div id="collapseTest2" class="collapse">
+                            <div class="collapse-inner">
+                                <a href="#" class="collapse-item">Sub-item 2.1</a>
+                                <a href="#" class="collapse-item">Sub-item 2.2</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Third dropdown -->
+                    <div class="nav-item">
+                        <a class="nav-link" href="#collapseTest3" data-bs-toggle="collapse" 
+                           data-bs-target="#collapseTest3" aria-expanded="false">
+                            <span><i class="fas fa-chart-bar me-2"></i>Section 3</span>
+                        </a>
+                        <div id="collapseTest3" class="collapse">
+                            <div class="collapse-inner">
+                                <a href="#" class="collapse-item">Sub-item 3.1</a>
+                                <a href="#" class="collapse-item">Sub-item 3.2</a>
+                                <a href="#" class="collapse-item">Sub-item 3.3</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <h3>Sidebar Dropdown Test page</h3>
+                <div id="test-results">
+                    <div class="info test-result">Click on the sidebar dropdowns and check console for detailed logs.</div>
+                </div>
+                <button onclick="runTests()" class="btn btn-primary mt-3">Run Automated Tests</button>
+                <div id="detailed-results" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Include our fixed sidebar.js -->
+    <script src="static/js/sidebar.js"></script>
+    
+    <script>
+        // Test functionality
+        $(document).ready(function() {
+            console.log('Sidebar test page loaded');
+            
+            // Monitor events
+            $('.nav-link[data-bs-toggle="collapse"]').on('click', function() {
+                const target = $(this).attr('data-bs-target');
+                console.log('Clicked dropdown:', target);
+            });
+
+            $('.collapse').on('show.bs.collapse', function() {
+                console.log('Opening:', this.id);
+                addTestResult('Opening: ' + this.id, 'info');
+            });
+
+            $('.collapse').on('hide.bs.collapse', function() {
+                console.log('Closing:', this.id);
+                addTestResult('Closing: ' + this.id, 'info');
+            });
+
+            $('.collapse').on('shown.bs.collapse', function() {
+                console.log('Opened:', this.id);
+                addTestResult('Opened: ' + this.id, 'success');
+            });
+
+            $('.collapse').on('hidden.bs.collapse', function() {
+                console.log('Closed:', this.id);
+                addTestResult('Closed: ' + this.id, 'success');
+            });
+        });
+
+        function addTestResult(message, type) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            document.getElementById('detailed-results').prepend(resultDiv);
+        }
+
+        function runTests() {
+            const tests = [
+                { name: 'Test 1: Click first dropdown', action: () => $('#collapseTest1').collapse('show') },
+                { name: 'Test 2: Verify accordion - all closed', action: () => {
+                    const openCount = $('.collapse.show').length;
+                    return openCount <= 1; 
+                }},
+                { name: 'Test 3: Toggle same dropdown', action: () => $('#collapseTest1').collapse('toggle') },
+                { name: 'Test 4: Check animation', action: () => {
+                    return $('.collapse.show').css('animation') !== 'none';
+                }}
+            ];
+
+            let results = [];
+            tests.forEach((test, index) => {
+                setTimeout(() => {
+                    let result = false;
+                    try {
+                        if (typeof test.action === 'function') {
+                            const res = test.action();
+                            result = res === undefined ? true : res;
+                        }
+                        addTestResult(`${test.name}: ${result ? 'PASS' : 'FAIL'}`, result ? 'success' : 'error');
+                    } catch (e) {
+                        addTestResult(`${test.name}: ERROR - ${e.message}`, 'error');
+                    }
+                }, index * 500);
+            });
+        }
+    </script>
+</body>
+</html>

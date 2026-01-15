@@ -1553,26 +1553,8 @@
                 });
             }
             
-            if (accordionSidebar) {
-                // Disable auto-expand/collapse
-                accordionSidebar.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(element) {
-                    element.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const target = document.querySelector(this.getAttribute('data-bs-target'));
-                        if (target) {
-                            // Manual toggle only
-                            target.classList.toggle('show');
-                        }
-                        // Force sidebar back to top
-                        if (sidebarContainer) {
-                            sidebarContainer._manualScroll = true;
-                            sidebarContainer.scrollTop = 0;
-                            setTimeout(() => { sidebarContainer._manualScroll = false; }, 100);
-                        }
-                    });
-                });
-            }
+            // Remove conflicting click handlers - let sidebar.js handle everything
+            // Note: The sidebar.js will handle all dropdown functionality properly
             
             // Clear any existing intervals that might cause auto-refresh
             for (let i = 1; i < 99999; i++) {
@@ -1596,26 +1578,21 @@
     
     <!-- Global Error Handler -->
     <script>
-        // Global error handler to prevent JavaScript errors from breaking the page
+        // Global error handler to preventing breaking the page, but allow sidebar errors to be seen
         window.addEventListener('error', function(e) {
-            // Prevent default error handling for specific known issues
+            // Ignore most non-critical errors to keep sidebar working
             if (e.error && e.error.message) {
                 const message = e.error.message.toLowerCase();
                 
-                // Ignore common non-critical errors
+                // Allow implementation to proceed
                 if (message.includes('cannot read properties of null') ||
                     message.includes('addEventListener') ||
                     message.includes('htmx') ||
-                    message.includes('alpine')) {
-                    
-                    console.warn('Handled JavaScript error:', e.error.message);
-                    e.preventDefault();
+                    message.includes('alpine') ||
+                    message.includes('sidebar')) {
                     return;
                 }
             }
-            
-            // For other errors, log them but don't prevent default handling
-            console.error('Unhandled JavaScript error:', e.error);
         });
         
         // Handle unhandled promise rejections
