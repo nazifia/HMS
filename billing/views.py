@@ -66,16 +66,16 @@ def invoice_list(request):
 
     # Get total amounts - use aggregate for efficiency
     total_stats = Invoice.objects.aggregate(
-        total_amount=Sum('total_amount'),
-        paid_amount=Sum('total_amount', filter=Q(status='paid')),
-        pending_amount=Sum('total_amount', filter=Q(status='pending')),
-        overdue_amount=Sum('total_amount', filter=Q(status='overdue'))
+        total_sum=Sum('total_amount'),
+        paid_sum=Sum('total_amount', filter=Q(status='paid')),
+        pending_sum=Sum('total_amount', filter=Q(status='pending')),
+        overdue_sum=Sum('total_amount', filter=Q(status='overdue'))
     )
 
-    total_amount = total_stats['total_amount'] or 0
-    paid_amount = total_stats['paid_amount'] or 0
-    pending_amount = total_stats['pending_amount'] or 0
-    overdue_amount = total_stats['overdue_amount'] or 0
+    total_amount = total_stats['total_sum'] or 0
+    paid_amount = total_stats['paid_sum'] or 0
+    pending_amount = total_stats['pending_sum'] or 0
+    overdue_amount = total_stats['overdue_sum'] or 0
 
     context = {
         'page_obj': page_obj,
